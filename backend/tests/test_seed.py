@@ -126,3 +126,10 @@ def test_braude_sign_in_rules_are_its_two_microsoft_tenants(braude: Institution)
         ("microsoft", "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"),
         ("microsoft", "d4b0e69c-5394-4005-977c-7817ac32ca5e"),
     }
+
+
+def test_seeding_again_adds_missing_login_rules(session: Session, braude: Institution):
+    braude.login_rules.clear()
+    session.flush()
+    again = seed_braude(session)
+    assert len(again.login_rules) == 2

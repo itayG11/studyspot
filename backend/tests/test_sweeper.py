@@ -47,3 +47,20 @@ def test_sweep(session, braude, student):
 
     again = sweep(session, SUNDAY_10AM)
     assert (again.no_shows, again.completed, again.expired_check_ins) == (0, 0, 0)
+
+
+def test_sweep_deletes_sessions_past_their_lifetime(session, braude, student):
+    from app.models import AuthSession
+
+    old = AuthSession(
+        user_id=student.id, token_hash="o" * 64,
+        created_at=SUNDAY_10AM - timedelta(days=8), expires_at=SUNDAY_10AM - timedelta(days=1),
+    )
+    alive = AuthSession(
+        user_id=student.id, token_hash="a" * 64,
+        created_at=SUNDAY_10AM, expires_at=SUNDAY_10AM + timedelta(days=7),
+    )
+    session.add_all([old, alive])
+    session.flush()
+    assert sweep(session, SUNDAY_10AM).deleted_sessions == 1
+    assert session.scalars(select(AuthSession.token_hash)).all() == ["a" * 64]

@@ -129,5 +129,17 @@ def test_limits_are_per_user(client, braude, admin):
 
 
 def test_too_many_sign_in_attempts_get_429(client):
-    statuses = [client.get("/auth/microsoft/login", follow_redirects=False).status_code for _ in range(21)]
-    assert statuses[20] == 429
+    statuses = [
+        client.get("/auth/microsoft/login", follow_redirects=False).status_code for _ in range(121)
+    ]
+    assert statuses[:120].count(429) == 0
+    assert statuses[120] == 429
+
+
+def test_refresh_is_limited_per_session_not_per_ip(client):
+    client.cookies.set("studyspot_refresh", "one-session", domain="testserver.local", path="/auth")
+    statuses = [client.post("/auth/refresh").status_code for _ in range(11)]
+    assert statuses[10] == 429
+    client.cookies.clear()
+    client.cookies.set("studyspot_refresh", "another", domain="testserver.local", path="/auth")
+    assert client.post("/auth/refresh").status_code != 429

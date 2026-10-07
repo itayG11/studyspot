@@ -22,6 +22,9 @@ from app.errors import Refusal
 from app.models import AuthSession, User
 
 SESSION_LIFETIME = timedelta(days=7)
+# Two tabs may refresh with the same cookie at once; the second arrives just
+# after the first rotated it. That is not theft: refuse it, but keep sessions.
+ROTATION_GRACE = timedelta(seconds=30)
 ACCESS_TOKEN_LIFETIME = timedelta(minutes=15)
 ACCESS_ALGORITHM = "HS256"
 ISSUER = "studyspot"
@@ -55,6 +58,8 @@ def rotate(db: Session, refresh_token: str, now: datetime) -> tuple[User, Issued
     if row is None:
         raise Refusal(401, "invalid_session")
     if row.revoked_at is not None:
+        if row.replaced_by_id is not None and now - row.revoked_at <= ROTATION_GRACE:
+            raise Refusal(401, "session_rotated")
         if row.replaced_by_id is not None:
             # A token that was already exchanged is being used again: someone
             # holds a copy. End every session of this user to cut them off.

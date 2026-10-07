@@ -281,6 +281,7 @@ def test_reusing_an_old_refresh_token_revokes_every_session(auth_client, fake):
         auth_client.cookies.set("studyspot_refresh", token, domain="testserver.local", path="/auth")
         return auth_client.post("/auth/refresh")
 
+    app.dependency_overrides[get_now] = lambda: SUNDAY_10AM + timedelta(minutes=5)
     assert send_only(stolen).status_code == 401  # the thief replays the old token...
     assert send_only(owners).status_code == 401  # ...and that ended the owner's session too
 
@@ -321,3 +322,45 @@ def test_tampered_or_missing_access_token_is_refused(auth_client, fake):
     assert auth_client.get("/me", headers={"Authorization": f"Bearer {forged}"}).status_code == 401
     unsigned = jwt.encode(jwt.decode(token, options={"verify_signature": False}), None, algorithm="none")
     assert auth_client.get("/me", headers={"Authorization": f"Bearer {unsigned}"}).status_code == 401
+
+
+def test_two_tabs_refreshing_together_is_not_theft(auth_client, fake):
+    """Within the grace window, a just-rotated token is refused without revoking."""
+    sign_in(auth_client, fake)
+    shared = auth_client.cookies.get("studyspot_refresh", path="/auth")
+    first_tab = auth_client.post("/auth/refresh")
+    assert first_tab.status_code == 200
+    current = auth_client.cookies.get("studyspot_refresh", path="/auth")
+
+    auth_client.cookies.clear()
+    auth_client.cookies.set("studyspot_refresh", shared, domain="testserver.local", path="/auth")
+    second_tab = auth_client.post("/auth/refresh")
+    assert (second_tab.status_code, second_tab.json()["detail"]) == (401, "session_rotated")
+
+    auth_client.cookies.clear()
+    auth_client.cookies.set("studyspot_refresh", current, domain="testserver.local", path="/auth")
+    assert auth_client.post("/auth/refresh").status_code == 200  # still signed in
+
+
+def test_blank_name_and_long_email_from_the_provider_are_cleaned(auth_client, fake, session):
+    long_email = "a" * 400 + "@e.braude.ac.il"
+    response = finish_login(auth_client, fake, microsoft_claims(name="   ", preferred_username=long_email))
+    assert redirect_error(response) is None
+    user = session.scalars(select(User)).one()
+    assert user.display_name.strip() and len(user.email) <= 320
+
+
+def test_non_json_token_response_is_refused_cleanly(auth_client, fake):
+    original = fake.handle
+
+    def html_page(request):
+        if request.url.path.endswith("/token"):
+            return httpx.Response(200, text="<html>proxy error</html>")
+        return original(request)
+
+    fake.handle = html_page
+    app.dependency_overrides[get_http_client] = lambda: httpx.Client(
+        transport=httpx.MockTransport(html_page)
+    )
+    response = finish_login(auth_client, fake, microsoft_claims())
+    assert redirect_error(response) == "token_exchange_failed"

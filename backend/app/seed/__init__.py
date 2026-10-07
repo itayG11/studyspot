@@ -52,6 +52,13 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
     info = data["institution"]
     existing = session.scalars(select(Institution).where(Institution.slug == info["slug"])).first()
     if existing is not None:
+        # Data added in later stages (login rules) is filled in if missing.
+        known = {(r.provider, r.value) for r in existing.login_rules}
+        for rule in data.get("login_rules", []):
+            key = (AuthProvider(rule["provider"]), rule["value"].lower())
+            if key not in known:
+                existing.login_rules.append(InstitutionLoginRule(provider=key[0], value=key[1]))
+        session.flush()
         return existing
 
     institution = Institution(name=info["name"], slug=info["slug"], timezone=info["timezone"])

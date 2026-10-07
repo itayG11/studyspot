@@ -18,6 +18,7 @@ import httpx
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.accounts import sign_in
@@ -28,7 +29,7 @@ from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.models import Institution, User
 from app.oidc import Provider, configured_providers, new_pkce_pair
-from app.ratelimit import sign_in_limit
+from app.ratelimit import refresh_limit, sign_in_limit
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
     SESSION_LIFETIME,
@@ -58,8 +59,15 @@ def get_http_client() -> httpx.Client:
     return _http
 
 
+_providers: dict[int, dict[str, Provider]] = {}
+
+
 def get_providers(settings: SettingsDep) -> dict[str, Provider]:
-    return configured_providers(settings)
+    """Built once per settings object, so each provider's JWKS cache lives on."""
+    key = id(settings)
+    if key not in _providers:
+        _providers[key] = configured_providers(settings)
+    return _providers[key]
 
 
 def _provider(name: str, providers: dict[str, Provider]) -> Provider:
@@ -166,9 +174,13 @@ def callback(
             http, code, _callback_url(settings, provider_name), expected["verifier"]
         )
         claims = provider.verify_id_token(http, id_token, expected["nonce"])
-        with db.begin_nested():  # a refusal below undoes only this sign-in's writes
-            user = sign_in(db, provider, provider.identity(claims), now)
-            issued = start_session(db, user, now)
+        try:
+            with db.begin_nested():  # a refusal below undoes only this sign-in's writes
+                user = sign_in(db, provider, provider.identity(claims), now)
+                issued = start_session(db, user, now)
+        except IntegrityError:
+            # The same first sign-in finished in another tab a moment ago.
+            raise Refusal(409, "concurrent_sign_in") from None
         db.commit()
     except Refusal as refusal:
         response = _to_frontend(settings, refusal.code)
@@ -196,7 +208,7 @@ def _read_pending(pending: str | None, provider_name: str, now: datetime, settin
     return claims
 
 
-@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
+@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(refresh_limit)])
 def refresh(
     request: Request,
     response: Response,

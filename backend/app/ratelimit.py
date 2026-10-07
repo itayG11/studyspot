@@ -5,6 +5,7 @@ requests. It is per process, which is enough for one server; with several
 servers (stage 7) the counters move to a shared store such as Redis.
 """
 
+import hashlib
 import threading
 import time
 from collections import defaultdict, deque
@@ -32,7 +33,15 @@ class SlidingWindow:
             if len(hits) >= self.limit:
                 return False
             hits.append(now)
+            self._prune(now)
             return True
+
+    def _prune(self, now: float) -> None:
+        """Forget keys with no recent requests, so memory does not grow forever."""
+        if len(self._hits) < 10_000:
+            return
+        for key in [k for k, h in self._hits.items() if not h or h[-1] <= now - self.window]:
+            del self._hits[key]
 
     def reset(self) -> None:
         with self._lock:
@@ -62,6 +71,19 @@ def per_ip(name: str, limit: int, window_seconds: float) -> Callable:
     return dependency
 
 
+def per_cookie(name: str, cookie: str, limit: int, window_seconds: float) -> Callable:
+    """Per session, not per IP: a whole campus may share one public address."""
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
+
+    def dependency(request: Request) -> None:
+        value = request.cookies.get(cookie)
+        key = hashlib.sha256(value.encode()).hexdigest() if value else "no-cookie"
+        if not window.allow(key):
+            raise _too_many(window)
+
+    return dependency
+
+
 def per_user(name: str, limit: int, window_seconds: float) -> Callable:
     """For signed-in actions. FastAPI resolves get_current_user once per
     request, so this adds no second token check."""
@@ -74,6 +96,9 @@ def per_user(name: str, limit: int, window_seconds: float) -> Callable:
     return dependency
 
 
-# The limits used by the routes.
-sign_in_limit = per_ip("sign-in", limit=20, window_seconds=60)
+# The limits used by the routes. Sign-in is per IP and generous, because a
+# campus network can put many students behind one address (and until stage 7
+# configures the proxy, every request may seem to come from the proxy).
+sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60)
+refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seconds=60)
 write_limit = per_user("writes", limit=30, window_seconds=60)

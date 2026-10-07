@@ -99,9 +99,14 @@ class Provider:
             )
         except httpx.HTTPError:
             raise Refusal(502, "token_exchange_failed") from None
-        if response.status_code != 200 or "id_token" not in response.json():
+        try:
+            body = response.json() if response.status_code == 200 else {}
+        except ValueError:
+            body = {}
+        token = body.get("id_token") if isinstance(body, dict) else None
+        if not isinstance(token, str):
             raise Refusal(401, "token_exchange_failed")
-        return response.json()["id_token"]
+        return token
 
     def verify_id_token(self, http: httpx.Client, token: str, nonce: str) -> dict[str, Any]:
         try:
@@ -159,12 +164,12 @@ class MicrosoftProvider(Provider):
         tid, oid = str(claims.get("tid", "")).lower(), str(claims.get("oid", ""))
         if not tid or not oid:
             raise Refusal(401, "invalid_id_token")
-        email = str(claims.get("email") or claims.get("preferred_username") or "").lower()
+        email = str(claims.get("email") or claims.get("preferred_username") or "")
         return ProviderIdentity(
             subject=f"{tid}:{oid}",
             institution_key=tid,
-            email=email,
-            display_name=str(claims.get("name") or email or "Student"),
+            email=_clean_email(email),
+            display_name=_clean_name(claims.get("name"), email),
         )
 
 
@@ -186,9 +191,19 @@ class GoogleProvider(Provider):
         return ProviderIdentity(
             subject=str(claims["sub"]),
             institution_key=domain or None,
-            email=email,
-            display_name=str(claims.get("name") or email or "Student"),
+            email=_clean_email(email),
+            display_name=_clean_name(claims.get("name"), email),
         )
+
+
+def _clean_email(value: str) -> str:
+    """Shown to the user only; trimmed to fit the column."""
+    return value.strip().lower()[:320]
+
+
+def _clean_name(name: object, email: str) -> str:
+    text = str(name or "").strip() or email.split("@")[0].strip() or "Student"
+    return text[:100]
 
 
 def new_pkce_pair() -> tuple[str, str]:

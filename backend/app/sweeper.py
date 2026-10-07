@@ -15,11 +15,11 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
 from app.bookings import NO_SHOW_AFTER
-from app.models import Booking, BookingStatus, CheckIn, CheckInEndReason
+from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ class SweepResult:
     no_shows: int
     completed: int
     expired_check_ins: int
+    deleted_sessions: int = 0
 
 
 def sweep(session: Session, now: datetime) -> SweepResult:
@@ -47,8 +48,16 @@ def sweep(session: Session, now: datetime) -> SweepResult:
         .where(CheckIn.ended_at.is_(None), CheckIn.expires_at <= now)
         .values(ended_at=CheckIn.expires_at, end_reason=CheckInEndReason.EXPIRED)
     ).rowcount
+    # Sessions past their 7 days can never be used again (revoked ones are
+    # kept until then: reuse detection needs them).
+    old_sessions = session.execute(delete(AuthSession).where(AuthSession.expires_at <= now)).rowcount
     session.flush()
-    return SweepResult(no_shows=no_shows, completed=completed, expired_check_ins=expired)
+    return SweepResult(
+        no_shows=no_shows,
+        completed=completed,
+        expired_check_ins=expired,
+        deleted_sessions=old_sessions,
+    )
 
 
 def run_once() -> SweepResult:
@@ -66,7 +75,7 @@ async def run_forever(interval_seconds: float) -> None:
     while True:
         try:
             result = await asyncio.to_thread(run_once)
-            if result != SweepResult(0, 0, 0):
+            if result != SweepResult(0, 0, 0, 0):
                 log.info("sweep: %s", result)
         except Exception:
             log.exception("sweep failed; retrying next round")
