@@ -64,11 +64,18 @@ def check_in(
     closes_at = _closing_time_if_open(session, place, now)
     seat = _seat_for(session, place, seat_id)
 
-    _close_expired(session, user, place, seat, now)
+    expires_at = now + CHECK_IN_DURATION
+    if closes_at is not None:
+        expires_at = min(expires_at, closes_at)
+
+    _close_expired(session, user, seat, now)
     current = session.scalars(
         select(CheckIn).where(CheckIn.user_id == user.id, CheckIn.ended_at.is_(None))
     ).first()
     if current is not None and current.place_id == place.id and current.seat_id == seat_id:
+        # Scanning the same place again means "I'm still here": extend.
+        current.expires_at = max(current.expires_at, expires_at)
+        session.flush()
         return CheckInResult(current, created=False)
 
     if seat is not None and _seat_is_taken(session, seat, now):
@@ -85,9 +92,6 @@ def check_in(
         current.end_reason = CheckInEndReason.MOVED
         session.flush()  # free the "one open check-in per user" slot first
 
-    expires_at = now + CHECK_IN_DURATION
-    if closes_at is not None:
-        expires_at = min(expires_at, closes_at)
     row = CheckIn(
         institution_id=place.institution_id,
         user_id=user.id,
@@ -183,10 +187,15 @@ def _seat_is_taken(session: Session, seat: Seat, now: datetime) -> bool:
     )
 
 
-def _close_expired(session: Session, user: User, place: Place, seat: Seat | None, now: datetime):
-    """Lazy release: mark expired open check-ins as ended, so the partial
-    unique indexes stop counting them."""
-    involved = [CheckIn.user_id == user.id, CheckIn.place_id == place.id]
+def _close_expired(session: Session, user: User, seat: Seat | None, now: datetime):
+    """Lazy release: end the expired open check-ins that would block this one
+    in the partial unique indexes: the student's own, and the chosen seat's.
+
+    Counting never needs this (it filters on expires_at). Touching only these
+    rows keeps the set of locked rows small, which makes deadlocks between
+    concurrent check-ins unlikely; the API turns one into a retryable 409.
+    """
+    involved = [CheckIn.user_id == user.id]
     if seat is not None:
         involved.append(CheckIn.seat_id == seat.id)
     session.execute(

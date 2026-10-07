@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_code_secret, get_session
@@ -15,6 +15,14 @@ from app.models import CheckIn, User
 from app.schemas import CheckInCreate, CheckInOut
 
 router = APIRouter(tags=["check-ins"])
+
+RACE_CONSTRAINTS = {"uq_check_ins_one_active_per_user", "uq_check_ins_one_active_per_seat"}
+DEADLOCK_DETECTED = "40P01"  # PostgreSQL error code
+
+
+def _constraint(error: IntegrityError) -> str | None:
+    diag = getattr(error.orig, "diag", None)
+    return getattr(diag, "constraint_name", None)
 
 SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(get_now)]
@@ -47,9 +55,16 @@ def _run(session: Session, action):
             result = action()
     except CheckInError as error:
         raise HTTPException(error.status, error.code) from None
-    except IntegrityError:
+    except IntegrityError as error:
         # The database caught a race the code did not, for example the
         # same student checking in at two places in the same instant.
+        # Any other constraint means a bug: let it surface as a 500.
+        if _constraint(error) not in RACE_CONSTRAINTS:
+            raise
+        raise HTTPException(409, "concurrent_check_in") from None
+    except OperationalError as error:
+        if getattr(error.orig, "sqlstate", None) != DEADLOCK_DETECTED:
+            raise
         raise HTTPException(409, "concurrent_check_in") from None
     session.commit()
     return result

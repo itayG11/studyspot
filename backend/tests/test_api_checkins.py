@@ -68,12 +68,15 @@ def test_check_in_ends_at_closing_time(client, braude):
     assert parse(response.json()["expires_at"]) == local(2026, 10, 11, 20, 0)
 
 
-def test_scanning_the_same_place_again_keeps_the_check_in(client, braude):
+def test_scanning_the_same_place_again_extends_the_check_in(client, braude):
+    """Re-scanning means "I'm still here": same check-in, two more hours."""
     area = place_named(braude, "L", "מתחם לימוד")
     first = check_in(client, area).json()
+    client.clock.now = SUNDAY_10AM + timedelta(hours=1, minutes=50)
     again = check_in(client, area)
     assert again.status_code == 200
     assert again.json()["id"] == first["id"]
+    assert parse(again.json()["expires_at"]) == client.clock.now + timedelta(hours=2)
     assert occupied(client, area) == 1
 
 

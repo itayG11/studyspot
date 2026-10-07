@@ -29,8 +29,6 @@ def opening_status(
         return OpeningStatus(is_open=False, closes_at=None)
     current = local_now.time()
     if today.opens <= current < today.closes:
-        closes = local_now.replace(
-            hour=today.closes.hour, minute=today.closes.minute, second=0, microsecond=0
-        )
+        closes = datetime.combine(local_now.date(), today.closes, tzinfo=local_now.tzinfo)
         return OpeningStatus(is_open=True, closes_at=closes)
     return OpeningStatus(is_open=False, closes_at=None)

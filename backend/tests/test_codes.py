@@ -43,3 +43,11 @@ def test_malformed_codes_are_rejected(garbage):
 def test_secret_must_be_long():
     with pytest.raises(ValueError):
         make_code(1, 1, b"short")
+
+
+def test_missing_secret_fails_clearly():
+    from app.config import Settings
+
+    settings = Settings(database_url="postgresql+psycopg://x@localhost/x", _env_file=None)
+    with pytest.raises(RuntimeError, match="CHECKIN_CODE_SECRET"):
+        settings.code_secret_bytes()

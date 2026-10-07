@@ -46,3 +46,10 @@ def test_special_period_opens_around_the_clock():
     status = opening_status(WEEK, at(SATURDAY, 2), open_all_day=True)
     assert status.is_open
     assert status.closes_at is None
+
+
+def test_closing_time_keeps_seconds():
+    hours = [OpeningHours(weekday=6, opens=time(7), closes=time(22, 0, 30))]
+    status = opening_status(hours, at(SUNDAY, 22).replace(second=10))
+    assert status.is_open
+    assert status.closes_at == at(SUNDAY, 22).replace(second=30)

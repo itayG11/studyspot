@@ -39,10 +39,15 @@ def _institution(session: Session, slug: str) -> Institution:
 
 
 def _place_views(
-    session: Session, institution: Institution, places: Sequence[Place], now: datetime
+    session: Session,
+    institution: Institution,
+    places: Sequence[Place],
+    now: datetime,
+    all_day: set[int] | None = None,
 ) -> list[PlaceOut]:
     local_now = now.astimezone(ZoneInfo(institution.timezone))
-    all_day = open_all_day_place_ids(session, institution.id, local_now.date())
+    if all_day is None:
+        all_day = open_all_day_place_ids(session, institution.id, local_now.date())
     occupied = occupied_by_place(session, [p.id for p in places], now)
     views = []
     for place in places:
@@ -78,12 +83,19 @@ def list_buildings(slug: Slug, session: SessionDep, now: NowDep):
     places = session.scalars(
         _places_query().where(Place.institution_id == institution.id)
     ).all()
-    occupied = occupied_by_place(session, [p.id for p in places], now)
+    # The map shows seats a student can walk into right now: open places,
+    # without group rooms (those are booked, not walked into).
+    walk_in = [
+        view
+        for view in _place_views(session, institution, places, now)
+        if view.is_open and view.kind != PlaceKind.GROUP_ROOM
+    ]
     result = []
     for building in institution.buildings:
         own = [p for p in places if p.building_id == building.id]
-        capacity = sum(p.capacity for p in own)
-        taken = sum(occupied.get(p.id, 0) for p in own)
+        open_here = [v for v in walk_in if v.building_code == building.code]
+        capacity = sum(v.capacity for v in open_here)
+        taken = sum(v.occupied for v in open_here)
         result.append(
             BuildingOut(
                 id=building.id,
@@ -128,8 +140,9 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     if place is None:
         raise HTTPException(404, "place_not_found")
     institution = session.get(Institution, place.institution_id)
-    view = _place_views(session, institution, [place], now)[0]
     local_today = now.astimezone(ZoneInfo(institution.timezone)).date()
+    all_day = open_all_day_place_ids(session, institution.id, local_today)
+    view = _place_views(session, institution, [place], now, all_day)[0]
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
         taken = occupied_seat_ids(session, place.id, now)
@@ -140,8 +153,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     return PlaceDetail(
         **view.model_dump(),
         opening_hours=[OpeningHoursOut.model_validate(h) for h in place.opening_hours],
-        open_all_day_today=place.id
-        in open_all_day_place_ids(session, institution.id, local_today),
+        open_all_day_today=place.id in all_day,
         lab_rows=place.lab_rows,
         lab_cols=place.lab_cols,
         seats=seats,

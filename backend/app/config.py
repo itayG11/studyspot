@@ -20,9 +20,13 @@ class Settings(BaseSettings):
     database_url: str
     test_database_url: str | None = None
     # Signs the check-in codes. SecretStr keeps it out of logs and reprs.
-    checkin_code_secret: SecretStr = Field(min_length=32)
+    # Optional here so that tools which never sign codes (migrations, the
+    # seed) still run; code_secret_bytes() fails clearly when it is missing.
+    checkin_code_secret: SecretStr | None = Field(default=None, min_length=32)
 
     def code_secret_bytes(self) -> bytes:
+        if self.checkin_code_secret is None:
+            raise RuntimeError("CHECKIN_CODE_SECRET is not set (see .env.example)")
         return self.checkin_code_secret.get_secret_value().encode()
 
 

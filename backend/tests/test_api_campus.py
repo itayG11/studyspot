@@ -19,6 +19,8 @@ def test_buildings_with_occupancy(client):
     assert set(buildings) == {"M", "L", "EM", "EF", "P", "NX", "NG"}
     assert (buildings["M"]["places_count"], buildings["M"]["capacity"]) == (2, 65)
     assert (buildings["M"]["occupied"], buildings["M"]["available"]) == (0, 65)
+    # EM's group room is booked, not walked into: only its two labs count.
+    assert (buildings["EM"]["places_count"], buildings["EM"]["capacity"]) == (3, 30)
     assert buildings["NG"]["status"] == "under_construction"
     assert buildings["NX"]["places_count"] == 0
 
@@ -68,6 +70,8 @@ def test_closed_on_saturday(client):
     client.clock.now = local(2026, 10, 10, 11, 0)
     places = client.get("/institutions/braude/places").json()
     assert not any(p["is_open"] for p in places)
+    buildings = client.get("/institutions/braude/buildings").json()
+    assert all(b["available"] == 0 for b in buildings)
 
 
 def test_exam_period_opens_l_and_ef_areas_at_night(client):

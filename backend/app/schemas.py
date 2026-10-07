@@ -20,6 +20,9 @@ class Occupancy(BaseModel):
 
 
 class BuildingOut(Occupancy):
+    """capacity/occupied/available count only places a student can walk into
+    right now: open, and not group rooms (those are booked)."""
+
     id: int
     code: str
     name: str | None
