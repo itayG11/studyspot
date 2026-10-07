@@ -88,7 +88,7 @@ students sign in.
 | POST | `/bookings/{id}/cancel` | signed in, own booking only |
 | POST | `/bookings/{id}/extend` | signed in, own booking only |
 | GET | `/places/{id}/availability?date=` | anyone (busy times only, never who) |
-| GET | `/institutions/{slug}` | anyone (name and time zone) |
+| GET | `/institutions/{slug}` | anyone (name, time zone, booking rules) |
 | GET | `/auth/providers` | anyone (which sign-in buttons to show) |
 | GET | `/auth/{microsoft or google}/login` | anyone (redirects to the provider) |
 | POST | `/auth/demo/login` | anyone, only when `DEMO_LOGIN_ENABLED=true` |
@@ -97,6 +97,7 @@ students sign in.
 | GET | `/me` | signed in |
 | GET | `/admin/institutions/{slug}/codes` | institution admin |
 | POST | `/admin/places/{id}/revoke-code` | institution admin |
+| POST | `/admin/buildings/{id}/location` | institution admin |
 
 Sign-in setup (Microsoft app registration, `.env` values): [docs/AUTH_SETUP.md](docs/AUTH_SETUP.md) (Hebrew).
 
@@ -112,7 +113,7 @@ Interactive docs: http://localhost:8000/docs
 - [x] Bookings, renewal, no-show release and database-enforced double-booking prevention
 - [x] Authentication: Microsoft and Google sign-in, roles, rate limiting
 - [x] Web app, part 1: campus map, places list, place page with the lab seat map, demo sign-in
-- [ ] Web app, part 2: booking, QR check-in, my bookings, admin pages
+- [x] Web app, part 2: booking, QR check-in (`/scan#c=...`), my area, admin pages (printable QR signs, building placing)
 - [ ] CI, Docker, deployment
 - [ ] Notifications
 - [ ] Real-time updates and occupancy prediction
