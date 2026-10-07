@@ -1,7 +1,7 @@
 /* The home-page hero. Everything that moves reads --progress (0 at the top,
    1 when the hero has scrolled away), written by useScrollProgress. Only
-   transform, opacity and filter change, so the browser can animate them
-   without recalculating the page layout. */
+   transform and opacity change, which the browser can animate without
+   laying out or repainting the page again. */
 
 .hero {
   --progress: 0;
@@ -15,8 +15,9 @@
 
 .stage {
   position: sticky;
-  top: 0;
-  height: 100svh;
+  /* --header-h is the sticky header's height, measured in Layout. */
+  top: var(--header-h, 0px);
+  height: calc(100svh - var(--header-h, 0px));
   overflow: hidden;
   isolation: isolate;
   color: var(--paper);
@@ -33,10 +34,15 @@
   will-change: transform;
 }
 
-/* Only the photo is dimmed and softened; the building signs stay crisp. */
-.backdrop :global(.leaflet-tile-pane) {
-  filter: brightness(calc(0.42 + var(--progress) * 0.5)) saturate(calc(0.65 + var(--progress) * 0.5))
-    blur(calc((1 - var(--progress)) * 1.5px));
+/* The photo starts dark and brightens: a dark layer over the photo (and
+   under the signs) fades out. Fading opacity is cheap; animating a CSS
+   filter on the photo would repaint it on every frame. */
+.backdrop :global(.leaflet-tile-pane)::after {
+  content: '';
+  position: absolute;
+  inset: -100vmax;
+  background: #0b0f1c;
+  opacity: calc(0.6 - var(--progress) * 0.5);
 }
 
 .backdropMap {
@@ -120,6 +126,12 @@
   opacity: calc(1 - var(--progress) * 2.6);
   transform: translateY(calc(var(--progress) * -22vh)) scale(calc(1 - var(--progress) * 0.12));
   animation: rise 900ms var(--ease-out) both;
+}
+
+/* Faded out: no longer clickable, and out of the keyboard's Tab order. */
+.hero[data-landed] .content,
+.hero[data-landed] .cue {
+  visibility: hidden;
 }
 
 .kicker {
@@ -248,8 +260,19 @@
   color: rgb(243 238 227 / 55%);
 }
 
+/* No building on the map yet: a short still banner, no scrolling story. */
+.still {
+  height: auto;
+}
+
+.still .stage {
+  position: relative;
+  top: 0;
+  height: min(70svh, 560px);
+}
+
 @media (max-width: 640px) {
-  .hero {
+  .hero:not(.still) {
     height: 200vh;
   }
 
@@ -273,8 +296,12 @@
     transform: scale(1.35);
   }
 
-  .backdrop :global(.leaflet-tile-pane) {
-    filter: brightness(0.55);
+  .backdrop :global(.leaflet-tile-pane)::after {
+    opacity: 0.4;
+  }
+
+  .hero[data-landed] .content {
+    visibility: visible;
   }
 
   .pin,

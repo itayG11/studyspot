@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { progressFor } from './scroll'
+import { isLanded, progressFor } from './scroll'
 
 // A hero 2000px tall in an 800px window can scroll 1200px before it ends.
 const HEIGHT = 2000
@@ -19,6 +19,11 @@ describe('progressFor', () => {
   it('stops at 1 once the hero is behind', () => {
     expect(progressFor(-1200, HEIGHT, VIEWPORT)).toBe(1)
     expect(progressFor(-5000, HEIGHT, VIEWPORT)).toBe(1)
+  })
+
+  it('counts as landed once the headline has faded out', () => {
+    expect(isLanded(0.39)).toBe(false)
+    expect(isLanded(0.4)).toBe(true)
   })
 
   it('a hero no taller than the window is already done', () => {

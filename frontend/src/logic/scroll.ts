@@ -7,6 +7,15 @@
 //
 // The section can scroll (height - viewport) pixels before its bottom edge
 // reaches the bottom of the window; that distance is the whole range.
+// From this point the headline and its buttons have faded out completely
+// (see .content in hero.module.css), so they must stop taking clicks and
+// keyboard focus too.
+export const LANDED_FROM = 0.4
+
+export function isLanded(progress: number): boolean {
+  return progress >= LANDED_FROM
+}
+
 export function progressFor(top: number, height: number, viewport: number): number {
   const range = height - viewport
   if (range <= 0) return 1

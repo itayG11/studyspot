@@ -10,6 +10,7 @@ import { useRef } from 'react'
 import type { Building } from '../api/types'
 import { useScrollProgress } from '../hooks/useScrollProgress'
 import { useInstitution } from '../institution'
+import { position } from '../logic/occupancy'
 import { AERIAL } from '../map/tiles'
 import { HeroBackdrop } from './HeroBackdrop'
 import { HeroContent } from './HeroContent'
@@ -27,9 +28,11 @@ export function HomeHero({ buildings, onToMap }: Props) {
 
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
   const openBuildings = buildings.filter((b) => b.capacity > 0).length
+  // Nothing to land on: a short, still banner instead of the scroll story.
+  const still = !buildings.some((b) => position(b) !== null)
 
   return (
-    <section ref={section} className={styles.hero} aria-label="פתיחה">
+    <section ref={section} className={still ? `${styles.hero} ${styles.still}` : styles.hero} aria-label="פתיחה">
       <div className={styles.stage}>
         <HeroBackdrop buildings={buildings} />
         <div className={styles.shade} />
@@ -40,12 +43,14 @@ export function HomeHero({ buildings, onToMap }: Props) {
           institutionName={institution.name}
           onToMap={onToMap}
         />
-        <p className={styles.cue} aria-hidden="true">
+        <p className={styles.cue} aria-hidden="true" hidden={still}>
           גלול כדי לנחות על הקמפוס
         </p>
-        <p className={styles.landing} aria-hidden="true">
-          {buildings.length} בניינים · {freeNow} מקומות פנויים · המפה החיה למטה
-        </p>
+        {!still && (
+          <p className={styles.landing} aria-hidden="true">
+            {buildings.length} בניינים · {freeNow} מקומות פנויים · המפה החיה למטה
+          </p>
+        )}
         <p className={styles.credit} dir="ltr">
           {AERIAL.credit}
         </p>

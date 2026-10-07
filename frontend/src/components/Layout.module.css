@@ -1,6 +1,9 @@
 .app {
   min-height: 100vh;
-  overflow-x: clip; /* full-width sections must not cause sideways scrolling */
+  /* Full-width sections must not cause sideways scrolling. "hidden" is the
+     fallback for browsers without "clip" (which keeps sticky working). */
+  overflow-x: hidden;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
 }

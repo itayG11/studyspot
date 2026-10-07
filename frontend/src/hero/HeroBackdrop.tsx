@@ -22,6 +22,8 @@ export function HeroBackdrop({ buildings }: { buildings: Building[] }) {
     <div dir="ltr" className={styles.backdrop} aria-hidden="true">
       <MapContainer
         bounds={bounds}
+        // One building (or all at one point) has no area to fit: cap the zoom.
+        boundsOptions={{ maxZoom: 16 }}
         className={styles.backdropMap}
         zoomControl={false}
         attributionControl={false}

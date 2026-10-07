@@ -13,9 +13,9 @@ export interface TileSource {
 
 export const AERIAL: TileSource = {
   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+  attribution: 'Powered by Esri | Imagery &copy; Esri, Maxar, Earthstar Geographics',
   maxNativeZoom: 19,
-  credit: 'תצלום אוויר: © Esri, Maxar, Earthstar Geographics',
+  credit: 'Powered by Esri · Imagery © Esri, Maxar, Earthstar Geographics',
 }
 
 // Place and road names drawn on a transparent layer, laid over the photo.

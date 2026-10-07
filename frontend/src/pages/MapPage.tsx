@@ -24,6 +24,8 @@ export function MapPage() {
   const toMap = () => {
     const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     live.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+    // Move the keyboard focus too, so the next Tab continues from the map.
+    live.current?.focus({ preventScroll: true })
   }
 
   const select = (code: string) => setParams(code === selected ? {} : { building: code }, { replace: true })
@@ -44,7 +46,7 @@ export function MapPage() {
   return (
     <>
       <HomeHero buildings={all} onToMap={toMap} />
-      <div className={styles.mapPage} ref={live}>
+      <div className={styles.mapPage} ref={live} tabIndex={-1}>
         <aside>
           {refreshError && (
             <LoadError

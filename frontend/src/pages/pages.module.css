@@ -1,7 +1,8 @@
 /* --- Map page --------------------------------------------------------- */
 
 .mapPage {
-  scroll-margin-top: 5.5rem; /* "to the map" stops below the sticky header */
+  scroll-margin-top: calc(var(--header-h, 5rem) + 1rem); /* stop below the sticky header */
+  outline: none; /* it receives focus only so that Tab continues from here */
   display: grid;
   grid-template-columns: minmax(320px, 400px) 1fr;
   gap: 1.75rem;
