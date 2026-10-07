@@ -13,9 +13,10 @@ or rely on expensive occupancy sensors.
 ## What StudySpot does
 
 - **Live campus map** – buildings colored by how full they are right now.
-- **Three kinds of study spaces**
+- **Four kinds of study spaces**
   - *Group study rooms* – book the whole room for a time slot.
   - *Open study areas* – no booking; scan in and the system counts free seats.
+  - *Library* – works like an open area, shown separately on the map.
   - *Computer labs* – one QR code at the entrance opens a seat map of every station.
 - **QR check-in** to confirm you actually arrived.
 - **No-show release** – a booking that is not checked in within 15 minutes is released automatically, with reminders before it happens.
@@ -44,12 +45,14 @@ or rely on expensive occupancy sensors.
 ## Running locally
 
 ```bash
-cp .env.example .env              # then set a real POSTGRES_PASSWORD
+cp .env.example .env              # then replace every change-me with one real password
 docker compose up -d              # PostgreSQL 16
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest
+alembic upgrade head              # create the tables
+python -m app.seed                # load the Braude campus demo data
+pytest                            # uses a separate studyspot_test database
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 ```
 
@@ -58,7 +61,7 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 - [x] Planning and research
 - [x] Project skeleton (FastAPI health check, PostgreSQL in Docker)
 - [x] Campus data
-- [ ] Data model
+- [x] Data model (campus tables, migrations, Braude demo data)
 - [ ] Core API (spaces, check-in, bookings)
 - [ ] Authentication
 - [ ] Web app with campus map
