@@ -7,8 +7,7 @@ set -e
 alembic upgrade head
 python -m app.seed
 
-# --proxy-headers: the host's proxy says who the visitor is (X-Forwarded-For),
-# so the rate limits count real visitors, not the proxy. Trusting any proxy
-# address is safe only because the container is reachable through the
-# host's proxy alone (Render), never directly.
-exec uvicorn app.site:app --host 0.0.0.0 --port "${PORT:-8000}" --proxy-headers --forwarded-allow-ips="*"
+# The visitor's address for the rate limits is read by the app itself,
+# from the hops our own proxy adds (TRUSTED_PROXY_HOPS, app/ratelimit.py),
+# never from what the visitor wrote. Nothing else needs it.
+exec uvicorn app.site:app --host 0.0.0.0 --port "${PORT:-8000}"

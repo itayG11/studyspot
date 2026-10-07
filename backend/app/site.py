@@ -78,8 +78,11 @@ def create_site(static_dir: Path, api_docs: bool = False) -> FastAPI:
 
     site.mount("/api", api)
 
-    @site.get("/{path:path}", include_in_schema=False)
+    # HEAD too: uptime monitors and `curl -I` ask that way.
+    @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def web_app(path: str) -> FileResponse:
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(404)  # an API address the API did not take
         try:
             file = (root / path).resolve()
             # Never outside the build folder, whatever the address says.

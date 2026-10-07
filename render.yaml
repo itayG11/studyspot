@@ -23,4 +23,9 @@ services:
         value: "true"
       - key: DEMO_INSTITUTION
         value: demo
+      # Render's proxy adds the visitor's address at the end of
+      # X-Forwarded-For. If there are in fact more hops, the limits count
+      # by a proxy's address instead: stricter, never fooled by the visitor.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
       # The site's address comes from Render itself (RENDER_EXTERNAL_URL).

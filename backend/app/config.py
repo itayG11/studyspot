@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     site_url: str | None = Field(default=None, validation_alias=AliasChoices("SITE_URL", "RENDER_EXTERNAL_URL", "site_url"))
     # Comma-separated extra origins allowed to call the API with cookies.
     cors_origins: str = ""
+    # How many proxies of our own stand between the visitor and the server
+    # (they add to X-Forwarded-For). 0 in development: the header is then
+    # ignored. Read by the rate limits only (app/ratelimit.py).
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
     # Secure cookies need HTTPS; browsers also accept them on localhost.
     cookie_secure: bool = True
 

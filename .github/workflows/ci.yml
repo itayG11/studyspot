@@ -145,5 +145,7 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://localhost:8000/api/health && break; sleep 2; done
           curl -fsS http://localhost:8000/api/health
           curl -fsS -o /dev/null http://localhost:8000/spaces/1
-          curl -fsSI http://localhost:8000/ | grep -i "content-security-policy"
-          docker logs site
+          curl -fsS -D - -o /dev/null http://localhost:8000/ | grep -i "content-security-policy"
+      - name: The container's log, when something above failed
+        if: failure()
+        run: docker logs site

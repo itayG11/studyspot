@@ -15,6 +15,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 
 from app.auth import get_current_user
+from app.config import Settings, get_settings
 from app.models import User
 
 
@@ -64,19 +65,38 @@ def _too_many(window: SlidingWindow) -> HTTPException:
     )
 
 
+def client_address(request: Request, trusted_hops: int) -> str:
+    """The visitor's address, as far as it can be trusted.
+
+    X-Forwarded-For is a list that each proxy on the way adds to, at the
+    end. Whatever the visitor wrote comes first, so only the entries added
+    by our own proxies mean anything: with N trusted proxies, the visitor
+    is the Nth entry from the right. With none (development), the header is
+    ignored and the connection's own address is used.
+    """
+    connected = request.client.host if request.client else "unknown"
+    if trusted_hops <= 0:
+        return connected
+    header = request.headers.get("x-forwarded-for", "")
+    hops = [part.strip() for part in header.split(",") if part.strip()]
+    return hops[-trusted_hops] if len(hops) >= trusted_hops else connected
+
+
+def _trusted_hops(settings: Annotated[Settings, Depends(get_settings)]) -> int:
+    return settings.trusted_proxy_hops
+
+
 def per_ip(name: str, limit: int, window_seconds: float, total_limit: int | None = None) -> Callable:
     """For endpoints without a user, such as sign-in.
 
-    The address comes from the host's proxy (X-Forwarded-For, see
-    deploy/start.sh), and a client can put anything in that header. So a
-    total limit over all addresses backs it up: faking a new address on
-    every request still runs into it.
+    A total over all addresses backs the per-address limit up: one small
+    server, and a last line if the proxy setup is ever wrong.
     """
     window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
     total = LIMITERS.setdefault(f"{name}:total", SlidingWindow(total_limit, window_seconds)) if total_limit else None
 
-    def dependency(request: Request) -> None:
-        client = request.client.host if request.client else "unknown"
+    def dependency(request: Request, trusted_hops: Annotated[int, Depends(_trusted_hops)]) -> None:
+        client = client_address(request, trusted_hops)
         if total is not None and not total.allow("all"):
             raise _too_many(total)
         if not window.allow(client):

@@ -84,6 +84,17 @@ def engine() -> Iterator[Engine]:
 
 
 @pytest.fixture(autouse=True)
+def no_site_address(monkeypatch) -> Iterator[None]:
+    """A SITE_URL or Render's RENDER_EXTERNAL_URL in the shell would move
+    every address the tests expect; they always run as on a laptop."""
+    for name in ("SITE_URL", "RENDER_EXTERNAL_URL", "TRUSTED_PROXY_HOPS"):
+        monkeypatch.delenv(name, raising=False)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def fresh_rate_limits() -> Iterator[None]:
     """Each test starts with empty rate-limit counters."""
     from app.ratelimit import LIMITERS

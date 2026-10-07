@@ -71,6 +71,19 @@ def test_odd_addresses_are_404_not_a_server_error(site: TestClient):
         assert "content-security-policy" in response.headers
 
 
+def test_head_requests_are_answered_like_get(site: TestClient):
+    # Uptime monitors and `curl -I` ask with HEAD.
+    assert site.head("/").status_code == 200
+    assert "content-security-policy" in site.head("/").headers
+    assert site.head("/spaces/5").status_code == 200
+
+
+def test_the_bare_api_address_is_not_the_web_app(site: TestClient):
+    response = site.get("/api")
+    assert response.status_code == 404
+    assert "StudySpot" not in response.text
+
+
 def test_an_unknown_api_address_is_a_json_404_not_the_web_app(site: TestClient):
     response = site.get("/api/nothing-here")
     assert response.status_code == 404
