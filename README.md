@@ -54,6 +54,7 @@ alembic upgrade head              # create the tables
 python -m app.seed                # load the Braude campus demo data
 python -m app.codes braude        # print the signed check-in code of every place
 python -m app.sweeper             # one cleanup round (the server also runs it every 60 s)
+python -m app.admin grant-role --email you@example.edu institution_admin
 pytest                            # uses a separate studyspot_test database
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 ```
@@ -65,7 +66,7 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 | GET | `/institutions/{slug}/buildings` | anyone |
 | GET | `/institutions/{slug}/places?building=&kind=` | anyone |
 | GET | `/places/{id}` | anyone |
-| POST | `/check-ins` | signed in (sign-in arrives in stage 5) |
+| POST | `/check-ins` | signed in |
 | GET | `/me/check-in` | signed in |
 | POST | `/check-ins/{id}/checkout` | signed in, own check-in only |
 | POST | `/bookings` | signed in |
@@ -73,6 +74,14 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 | POST | `/bookings/{id}/cancel` | signed in, own booking only |
 | POST | `/bookings/{id}/extend` | signed in, own booking only |
 | GET | `/places/{id}/availability?date=` | anyone (busy times only, never who) |
+| GET | `/auth/{microsoft or google}/login` | anyone (redirects to the provider) |
+| POST | `/auth/refresh` | refresh cookie: returns a 15-minute access token |
+| POST | `/auth/logout`, `/auth/logout-all` | signed in |
+| GET | `/me` | signed in |
+| GET | `/admin/institutions/{slug}/codes` | institution admin |
+| POST | `/admin/places/{id}/revoke-code` | institution admin |
+
+Sign-in setup (Microsoft app registration, `.env` values): [docs/AUTH_SETUP.md](docs/AUTH_SETUP.md) (Hebrew).
 
 Interactive docs: http://localhost:8000/docs
 
@@ -84,7 +93,7 @@ Interactive docs: http://localhost:8000/docs
 - [x] Data model (campus tables, migrations, Braude demo data)
 - [x] Core API: places, live occupancy, check-in with signed codes
 - [x] Bookings, renewal, no-show release and database-enforced double-booking prevention
-- [ ] Authentication
+- [x] Authentication: Microsoft and Google sign-in, roles, rate limiting
 - [ ] Web app with campus map
 - [ ] CI, Docker, deployment
 - [ ] Notifications
