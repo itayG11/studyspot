@@ -2,6 +2,9 @@
 
 Real-time occupancy and booking for campus study spaces.
 
+> **Live demo:** https://studyspot-yetb.onrender.com (a demo campus; sign in as the demo student or admin).
+> The free server sleeps after 15 idle minutes: the first visit then takes about a minute.
+>
 > 🚧 Work in progress. Started October 2026.
 
 ## The problem
