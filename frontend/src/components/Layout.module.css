@@ -1,0 +1,118 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 900; /* above the map's own layers */
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.6rem clamp(1rem, 3vw, 2rem);
+  color: var(--paper);
+  background: var(--ink);
+  border-bottom: 6px solid var(--signal);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.brandName {
+  font: 700 2.4rem/1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.brandName::before {
+  content: '';
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-inline-end: 0.25em;
+  background: var(--signal);
+  border-radius: 2px;
+  transform: rotate(45deg) translateY(-0.05em);
+}
+
+.brandInstitution {
+  font-size: 0.85rem;
+  color: rgb(243 238 227 / 70%);
+}
+
+.nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.navLink {
+  position: relative;
+  padding: 0.35rem 0.8rem;
+  font: 700 1.5rem/1 var(--font-display);
+  text-decoration: none;
+  color: rgb(243 238 227 / 75%);
+  transition: color 160ms;
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0.8rem;
+  bottom: -0.1rem;
+  height: 3px;
+  background: var(--signal);
+  transform: scaleX(0);
+  transition: transform 240ms var(--ease-out);
+}
+
+.navLink:hover,
+.navLink[aria-current='page'] {
+  color: var(--paper);
+}
+
+.navLink:hover::after,
+.navLink[aria-current='page']::after {
+  transform: scaleX(1);
+}
+
+.account {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.accountName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+@media (max-width: 640px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .brandInstitution {
+    display: none;
+  }
+
+  .account {
+    font-size: 0.85rem;
+  }
+}

@@ -1,0 +1,199 @@
+/* --- The map frame ---------------------------------------------------- */
+
+.frame {
+  position: relative;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.map {
+  height: min(70vh, 640px);
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .map {
+    height: min(55vh, 420px);
+  }
+}
+
+/* "Live" tag in the corner of the map. */
+.live {
+  position: absolute;
+  z-index: 800;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  font: 600 0.8rem var(--font-body);
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 999px;
+  direction: rtl;
+}
+
+.liveDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--free);
+  animation: beat 1.8s ease-in-out infinite;
+}
+
+@keyframes beat {
+  50% {
+    box-shadow: 0 0 0 6px rgb(15 157 88 / 0%);
+    transform: scale(0.8);
+  }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(15 157 88 / 55%);
+  }
+}
+
+/* Leaflet draws its own elements; these rules reach them with :global. */
+.frame :global(.leaflet-tooltip.map-label) {
+  padding: 0;
+  font: 700 1.25rem/1 var(--font-display);
+  color: #fff;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+  pointer-events: none;
+}
+
+.frame :global(.leaflet-tooltip.map-label-dark) {
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.frame :global(.leaflet-tooltip.map-label::before) {
+  display: none;
+}
+
+.frame :global(.marker-selected) {
+  animation: ring 1.4s var(--ease-out) infinite;
+}
+
+@keyframes ring {
+  0% {
+    stroke-width: 3;
+    stroke-opacity: 1;
+  }
+
+  100% {
+    stroke-width: 18;
+    stroke-opacity: 0;
+  }
+}
+
+.frame :global(.leaflet-control-layers),
+.frame :global(.leaflet-bar) {
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-family: var(--font-body);
+}
+
+/* --- The building board ---------------------------------------------- */
+
+.board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    background 180ms;
+}
+
+.row:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.row[aria-pressed='true'] {
+  background: #fff3ea;
+  box-shadow: 4px 4px 0 var(--signal);
+}
+
+.rowText {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-weight: 600;
+}
+
+.rowSummary {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.rowCount {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.rowTotal {
+  font-size: 0.9rem;
+  color: var(--ink-faint);
+}
+
+/* --- Legend ---------------------------------------------------------- */
+
+.legend {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+}
+
+.swatchConstruction {
+  background: repeating-linear-gradient(-45deg, var(--hazard) 0 3px, var(--ink) 3px 6px) !important;
+}

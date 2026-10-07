@@ -1,0 +1,267 @@
+/* Page-wide rules and the few shared building blocks (button, panel, badge).
+   Everything specific to one component is in that component's .module.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background-color: var(--paper);
+  /* A faint site-plan grid under everything. */
+  background-image:
+    linear-gradient(rgb(20 26 46 / 5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(20 26 46 / 5%) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Paper grain on top, so flat colours do not look digital. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.4em;
+}
+
+h1 {
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+}
+
+h2 {
+  font-size: 2.2rem;
+}
+
+h3 {
+  font-size: 1.6rem;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--signal);
+  outline-offset: 2px;
+}
+
+/* --- Shared building blocks ------------------------------------------ */
+
+.panel {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.4rem;
+  box-shadow: var(--shadow-hard);
+}
+
+.panel.narrow {
+  max-width: 34rem;
+  margin: 2rem auto;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.2rem;
+  font: 600 1rem var(--font-body);
+  color: var(--paper);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+
+/* An orange sweep from the reading side on hover. */
+.button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 260ms var(--ease-out);
+}
+
+.button:hover::before {
+  transform: scaleX(1);
+}
+
+.button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.button:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.button-secondary {
+  color: var(--ink);
+  background: transparent;
+}
+
+.link-button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.05rem 0.55rem;
+  font: 600 0.8rem/1.5 var(--font-body);
+  border-radius: 999px;
+  border: 1.5px solid currentcolor;
+  white-space: nowrap;
+}
+
+.badge-open {
+  color: var(--free);
+}
+
+.badge-closed {
+  color: var(--ink-faint);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font: 600 0.8rem var(--font-body);
+  color: var(--paper);
+  background: var(--signal);
+  border-radius: 3px;
+}
+
+.page-message {
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 1.1rem;
+  color: var(--ink-soft);
+}
+
+.error {
+  color: var(--full);
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--ink-soft);
+  margin-top: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Motion ---------------------------------------------------------- */
+
+/* Things rise into place one after another: set --i on each item. */
+.rise {
+  animation: rise 520ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* A number that changed rolls in from above. */
+.tick {
+  display: inline-block;
+  animation: tick 420ms var(--ease-out) both;
+}
+
+@keyframes tick {
+  from {
+    opacity: 0;
+    transform: translateY(-60%);
+  }
+}
+
+/* Page changes: the old page slides away, the new one rises. */
+::view-transition-old(root) {
+  animation: 180ms ease-in both page-out;
+}
+
+::view-transition-new(root) {
+  animation: 360ms var(--ease-out) both page-in;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

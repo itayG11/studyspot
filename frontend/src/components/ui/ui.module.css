@@ -1,0 +1,55 @@
+/* The building code as a sign: ink tile, paper letters, a coloured edge. */
+.tile {
+  --edge: var(--closed);
+  display: inline-grid;
+  place-items: center;
+  min-width: 3.2rem;
+  height: 3.2rem;
+  padding: 0 0.5rem;
+  font: 700 2.1rem/1 var(--font-display);
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: var(--radius);
+  border-inline-start: 7px solid var(--edge);
+  letter-spacing: 0.04em;
+}
+
+.tileLarge {
+  min-width: 5.5rem;
+  height: 5.5rem;
+  font-size: 3.6rem;
+  border-inline-start-width: 11px;
+}
+
+/* Under construction: hazard stripes instead of a colour. */
+.tileConstruction {
+  color: var(--ink);
+  background: repeating-linear-gradient(-45deg, var(--hazard) 0 10px, var(--ink) 10px 20px);
+  border-inline-start-color: var(--hazard);
+  text-shadow:
+    0 0 4px var(--hazard),
+    0 0 2px var(--hazard);
+}
+
+.meter {
+  position: relative;
+  height: 8px;
+  background: var(--paper-deep);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.meterFill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: inherit;
+  transition: width 700ms var(--ease-out);
+  animation: grow 900ms var(--ease-out) both;
+}
+
+@keyframes grow {
+  from {
+    width: 0;
+  }
+}
