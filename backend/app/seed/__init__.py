@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
+    Amenity,
     AuthProvider,
     Building,
     BuildingStatus,
@@ -22,10 +23,13 @@ from app.models import (
     InstitutionLoginRule,
     OpeningHours,
     Place,
+    PlaceAmenity,
+    PlaceAtmosphere,
     PlaceKind,
     Seat,
     SpecialPeriod,
     SpecialPeriodPlace,
+    SuitedFor,
     floor_exists,
 )
 from app.seed.braude import BRAUDE
@@ -38,6 +42,14 @@ def seat_label(row: int, col: int) -> str:
     if not 1 <= row <= 26:
         raise ValueError(f"lab row {row} is out of range 1-26")
     return f"{chr(ord('A') + row - 1)}{col}"
+
+
+def _apply_details(place: Place, details: Mapping[str, Any]) -> None:
+    """What the place is like. Seed details are demo values, marked as such."""
+    place.atmosphere = PlaceAtmosphere(details["atmosphere"])
+    place.suited_for = SuitedFor(details["suited_for"])
+    place.amenities = [PlaceAmenity(amenity=Amenity(a)) for a in details["amenities"]]
+    place.details_are_demo = True
 
 
 def _position(position: tuple[str, str]) -> tuple[Decimal, Decimal]:
@@ -66,9 +78,19 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
             if key not in known:
                 existing.login_rules.append(InstitutionLoginRule(provider=key[0], value=key[1]))
         positions = {b["code"]: b["position"] for b in data["buildings"] if "position" in b}
+        details = {
+            (b["code"], p["name"]): p["details"]
+            for b in data["buildings"]
+            for p in b["places"]
+            if "details" in p
+        }
         for building in existing.buildings:
             if building.latitude is None and building.code in positions:
                 building.latitude, building.longitude = _position(positions[building.code])
+            for place in building.places:
+                # Only places that never got details (older databases).
+                if not place.amenities and (building.code, place.name) in details:
+                    _apply_details(place, details[(building.code, place.name)])
         session.flush()
         return existing
 
@@ -131,6 +153,8 @@ def _make_place(building: Building, p: Mapping[str, Any], hours: Hours) -> Place
         lab_rows=rows,
         lab_cols=cols,
     )
+    if "details" in p:
+        _apply_details(place, p["details"])
     if kind == PlaceKind.COMPUTER_LAB:
         place.seats = [
             Seat(row=r, col=c, label=seat_label(r, c))

@@ -15,9 +15,12 @@ from app.demo import Persona
 from app.models import (
     BookingSource,
     BookingStatus,
+    Amenity,
     BuildingStatus,
     CheckInEndReason,
+    PlaceAtmosphere,
     PlaceKind,
+    SuitedFor,
     UserRole,
 )
 
@@ -85,6 +88,14 @@ class PlaceOut(Occupancy):
     is_open: bool
     bookable: bool
     counted: bool
+    atmosphere: PlaceAtmosphere
+    suited_for: SuitedFor
+    amenities: list[Amenity]
+    details_are_demo: bool  # the three fields above are sample data, not checked
+    # Group rooms only (None elsewhere): is anyone holding the room now, and
+    # if so, when it frees up, after any back-to-back bookings.
+    free_now: bool | None
+    free_from: datetime | None
 
 
 class OpeningHoursOut(BaseModel):

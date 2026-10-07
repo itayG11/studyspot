@@ -87,9 +87,16 @@ def _place_views(
     if all_day is None:
         all_day = open_all_day_place_ids(session, institution.id, local_now.date())
     occupied = occupied_by_place(session, [p.id for p in places], now)
+    rooms = [p.id for p in places if p.kind == PlaceKind.GROUP_ROOM]
+    held_until = _room_held_until(session, rooms, now)
     views = []
     for place in places:
         taken = occupied.get(place.id, 0)
+        is_open = opening_status(place.opening_hours, local_now, place.id in all_day).is_open
+        free_now = free_from = None
+        if place.kind == PlaceKind.GROUP_ROOM:
+            free_from = held_until.get(place.id) if is_open else None
+            free_now = is_open and free_from is None
         views.append(
             PlaceOut(
                 id=place.id,
@@ -101,12 +108,46 @@ def _place_views(
                 capacity=place.capacity,
                 occupied=taken,
                 available=max(place.capacity - taken, 0),
-                is_open=opening_status(place.opening_hours, local_now, place.id in all_day).is_open,
+                is_open=is_open,
                 bookable=is_bookable(place.kind),
                 counted=is_counted(place.kind),
+                atmosphere=place.atmosphere,
+                suited_for=place.suited_for,
+                amenities=sorted(a.amenity for a in place.amenities),
+                details_are_demo=place.details_are_demo,
+                free_now=free_now,
+                free_from=free_from,
             )
         )
     return views
+
+
+def _room_held_until(session: Session, room_ids: list[int], now: datetime) -> dict[int, datetime]:
+    """For each group room booked right now: when it frees up.
+
+    Bookings that follow each other with no gap count as one stretch, so a
+    room booked 10-11 and 11-12 frees up at 12, not at 11.
+    """
+    if not room_ids:
+        return {}
+    rows = session.execute(
+        select(Booking.place_id, Booking.starts_at, Booking.ends_at)
+        .where(
+            Booking.place_id.in_(room_ids),
+            Booking.seat_id.is_(None),
+            holding(now),
+            Booking.ends_at > now,
+        )
+        .order_by(Booking.place_id, Booking.starts_at)
+    )
+    held: dict[int, datetime] = {}
+    for place_id, starts_at, ends_at in rows:
+        until = held.get(place_id)
+        if until is None and starts_at <= now:
+            held[place_id] = ends_at  # held right now
+        elif until is not None and starts_at <= until:
+            held[place_id] = max(until, ends_at)  # continues with no gap
+    return held
 
 
 def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
@@ -151,7 +192,9 @@ def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
 
 def _places_query():
     return select(Place).join(Place.building).options(
-        selectinload(Place.opening_hours), selectinload(Place.building)
+        selectinload(Place.opening_hours),
+        selectinload(Place.building),
+        selectinload(Place.amenities),
     )
 
 

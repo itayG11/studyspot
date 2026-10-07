@@ -2,12 +2,16 @@
 
 from app.models.bookings import ACTIVE_STATUSES, Booking, BookingSource, BookingStatus
 from app.models.campus import (
+    Amenity,
     Building,
     BuildingStatus,
     Institution,
     Place,
+    PlaceAmenity,
+    PlaceAtmosphere,
     PlaceKind,
     Seat,
+    SuitedFor,
     floor_exists,
     is_bookable,
     is_counted,
@@ -24,6 +28,10 @@ from app.models.people import (
 )
 
 __all__ = [
+    "Amenity",
+    "PlaceAmenity",
+    "PlaceAtmosphere",
+    "SuitedFor",
     "AuthProvider",
     "AuthSession",
     "InstitutionLoginRule",

@@ -26,6 +26,12 @@ STAFF_TENANT = "d4b0e69c-5394-4005-977c-7817ac32ca5e"  # braude.ac.il
 # 2026-10-07 (the middle of each roof), rounded to the 6 decimals the
 # column keeps (about 10 cm).
 
+# What each place is like: DEMO VALUES, not collected from the campus.
+# They give the site realistic content; every place carries
+# details_are_demo, and the site labels these details as demo data.
+LAB = {"atmosphere": "quiet", "suited_for": "solo", "amenities": ["computers", "outlets", "ac"]}
+OPEN_AREA = {"atmosphere": "conversation", "suited_for": "both", "amenities": ["outlets", "daylight"]}
+
 BRAUDE = {
     "institution": {"name": "מכללת בראודה", "slug": "braude", "timezone": "Asia/Jerusalem"},
     "buildings": [
@@ -34,8 +40,11 @@ BRAUDE = {
             "position": ("32.912751", "35.282293"),
             "floors_count": 3,
             "places": [
-                {"kind": "computer_lab", "name": "M206", "floor": 1, "lab_rows": 5, "lab_cols": 8},
-                {"kind": "computer_lab", "name": "M305", "floor": 2, "lab_rows": 5, "lab_cols": 5},
+                {
+                    "kind": "computer_lab", "name": "M206", "floor": 1, "lab_rows": 5, "lab_cols": 8,
+                    "details": {**LAB, "amenities": [*LAB["amenities"], "printer"]},
+                },
+                {"kind": "computer_lab", "name": "M305", "floor": 2, "lab_rows": 5, "lab_cols": 5, "details": LAB},
             ],
         },
         {
@@ -50,6 +59,7 @@ BRAUDE = {
                     "capacity": 50,
                     "location_note": "ברחבת הבניין, לא מקום ייעודי",
                     "special_periods": [EXAM_PERIOD],
+                    "details": OPEN_AREA,
                 },
             ],
         },
@@ -58,9 +68,16 @@ BRAUDE = {
             "position": ("32.914079", "35.281250"),
             "floors_count": 4,
             "places": [
-                {"kind": "computer_lab", "name": "EM315", "floor": 2, "lab_rows": 4, "lab_cols": 5},
-                {"kind": "computer_lab", "name": "EM212", "floor": 1, "lab_rows": 2, "lab_cols": 5},
-                {"kind": "group_room", "name": "EM107", "floor": 0, "capacity": 15},
+                {"kind": "computer_lab", "name": "EM315", "floor": 2, "lab_rows": 4, "lab_cols": 5, "details": LAB},
+                {"kind": "computer_lab", "name": "EM212", "floor": 1, "lab_rows": 2, "lab_cols": 5, "details": LAB},
+                {
+                    "kind": "group_room", "name": "EM107", "floor": 0, "capacity": 15,
+                    "details": {
+                        "atmosphere": "conversation",
+                        "suited_for": "group",
+                        "amenities": ["whiteboard", "screen", "outlets", "ac"],
+                    },
+                },
             ],
         },
         {
@@ -75,6 +92,7 @@ BRAUDE = {
                     "capacity": 50,
                     "location_note": "רחבה ייעודית, ללא מספור",
                     "special_periods": [EXAM_PERIOD],
+                    "details": {**OPEN_AREA, "atmosphere": "mixed", "amenities": ["outlets", "daylight", "ac"]},
                 },
                 {
                     "kind": "library",
@@ -82,6 +100,11 @@ BRAUDE = {
                     "floor": 0,
                     "capacity": 80,
                     "location_note": "EF102",
+                    "details": {
+                        "atmosphere": "quiet",
+                        "suited_for": "solo",
+                        "amenities": ["outlets", "ac", "daylight", "printer"],
+                    },
                 },
             ],
         },
@@ -97,6 +120,7 @@ BRAUDE = {
                     "floor": 0,
                     "capacity": 25,
                     "location_note": "ברחבת הבניין",
+                    "details": OPEN_AREA,
                 },
                 {
                     "kind": "open_area",
@@ -104,6 +128,7 @@ BRAUDE = {
                     "floor": 0,
                     "capacity": 15,
                     "location_note": "ברחבת הבניין",
+                    "details": {**OPEN_AREA, "amenities": ["daylight"]},
                 },
             ],
         },

@@ -17,6 +17,7 @@ from sqlalchemy import (
     Numeric,
     String,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -50,6 +51,29 @@ class PlaceKind(enum.StrEnum):
     OPEN_AREA = "open_area"
     LIBRARY = "library"
     COMPUTER_LAB = "computer_lab"
+
+
+class PlaceAtmosphere(enum.StrEnum):
+    QUIET = "quiet"  # silence is expected
+    CONVERSATION = "conversation"  # talking is fine
+    MIXED = "mixed"  # depends on the hour and the crowd
+
+
+class SuitedFor(enum.StrEnum):
+    SOLO = "solo"
+    GROUP = "group"
+    BOTH = "both"
+
+
+class Amenity(enum.StrEnum):
+    OUTLETS = "outlets"
+    WHITEBOARD = "whiteboard"
+    PROJECTOR = "projector"
+    SCREEN = "screen"
+    COMPUTERS = "computers"
+    AIR_CONDITIONING = "ac"
+    DAYLIGHT = "daylight"
+    PRINTER = "printer"
 
 
 # The one place in the code that says how each kind of place behaves.
@@ -171,6 +195,17 @@ class Place(Base):
     lab_cols: Mapped[int | None]
     # Part of the signed check-in code. Raising it invalidates printed codes.
     code_version: Mapped[int] = mapped_column(default=1, server_default="1")
+    # What the place is like. For Braude these are demo values for now
+    # (details_are_demo), and the site labels them as such.
+    atmosphere: Mapped[PlaceAtmosphere] = mapped_column(
+        _enum_column(PlaceAtmosphere, "place_atmosphere"),
+        default=PlaceAtmosphere.MIXED,
+        server_default=PlaceAtmosphere.MIXED.value,
+    )
+    suited_for: Mapped[SuitedFor] = mapped_column(
+        _enum_column(SuitedFor, "suited_for"), default=SuitedFor.BOTH, server_default=SuitedFor.BOTH.value
+    )
+    details_are_demo: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     # The composite foreign key means setting .building also copies the
     # building's institution_id into this place.
@@ -181,6 +216,20 @@ class Place(Base):
     opening_hours: Mapped[list["OpeningHours"]] = relationship(  # noqa: F821
         back_populates="place", cascade="all, delete-orphan", order_by="OpeningHours.weekday"
     )
+    amenities: Mapped[list["PlaceAmenity"]] = relationship(
+        cascade="all, delete-orphan", order_by="PlaceAmenity.amenity"
+    )
+
+
+class PlaceAmenity(Base):
+    """One piece of equipment or comfort a place has (outlets, a whiteboard...)."""
+
+    __tablename__ = "place_amenities"
+    __table_args__ = (UniqueConstraint("place_id", "amenity"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
+    amenity: Mapped[Amenity] = mapped_column(_enum_column(Amenity, "amenity"))
 
 
 class Seat(Base):
