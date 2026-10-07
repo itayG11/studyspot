@@ -53,6 +53,7 @@ pip install -e ".[dev]"
 alembic upgrade head              # create the tables
 python -m app.seed                # load the Braude campus demo data
 python -m app.codes braude        # print the signed check-in code of every place
+python -m app.sweeper             # one cleanup round (the server also runs it every 60 s)
 pytest                            # uses a separate studyspot_test database
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 ```
@@ -67,6 +68,11 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 | POST | `/check-ins` | signed in (sign-in arrives in stage 5) |
 | GET | `/me/check-in` | signed in |
 | POST | `/check-ins/{id}/checkout` | signed in, own check-in only |
+| POST | `/bookings` | signed in |
+| GET | `/me/bookings` | signed in |
+| POST | `/bookings/{id}/cancel` | signed in, own booking only |
+| POST | `/bookings/{id}/extend` | signed in, own booking only |
+| GET | `/places/{id}/availability?date=` | anyone (busy times only, never who) |
 
 Interactive docs: http://localhost:8000/docs
 
@@ -77,7 +83,7 @@ Interactive docs: http://localhost:8000/docs
 - [x] Campus data
 - [x] Data model (campus tables, migrations, Braude demo data)
 - [x] Core API: places, live occupancy, check-in with signed codes
-- [ ] Bookings and double-booking prevention
+- [x] Bookings, renewal, no-show release and database-enforced double-booking prevention
 - [ ] Authentication
 - [ ] Web app with campus map
 - [ ] CI, Docker, deployment
