@@ -91,6 +91,7 @@
 
 .bookingText {
   display: grid;
+  justify-items: start; /* the status badge keeps its own width */
   gap: 0.2rem;
 }
 
