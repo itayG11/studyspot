@@ -73,3 +73,17 @@ def test_session_token_hash_is_unique_and_expires_after_creation(session: Sessio
         lambda: session.add(AuthSession(user_id=user.id, token_hash="b" * 64, created_at=NOW, expires_at=NOW)),
         "ck_sessions_expires_after_creation",
     )
+
+
+def test_demo_identities_are_allowed_but_not_demo_login_rules(session: Session):
+    institution = make_institution(session)
+    user = make_user(session, institution)
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.DEMO, subject="student"))
+    session.flush()
+    assert_rejected(
+        session,
+        lambda: session.add(
+            InstitutionLoginRule(institution_id=institution.id, provider=AuthProvider.DEMO, value="any")
+        ),
+        "ck_institution_login_rules_real_provider",
+    )

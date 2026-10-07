@@ -1,6 +1,7 @@
 """The Braude demo data matches docs/CAMPUS_DATA.md."""
 
 from datetime import time
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import func, select
@@ -133,3 +134,22 @@ def test_seeding_again_adds_missing_login_rules(session: Session, braude: Instit
     session.flush()
     again = seed_braude(session)
     assert len(again.login_rules) == 2
+
+
+def test_every_braude_building_is_on_the_map(braude: Institution):
+    # Positions copied by Itay from Google Maps (docs/CAMPUS_DATA.md).
+    positions = {b.code: (b.latitude, b.longitude) for b in braude.buildings}
+    assert positions["M"] == (Decimal("32.912751"), Decimal("35.282293"))
+    assert positions["P"] == (Decimal("32.917067"), Decimal("35.281550"))
+    assert all(lat is not None and lng is not None for lat, lng in positions.values())
+
+
+def test_seeding_again_fills_only_missing_positions(session: Session, braude: Institution):
+    by_code = {b.code: b for b in braude.buildings}
+    by_code["L"].latitude = by_code["L"].longitude = None
+    # A position an admin changed by hand is kept.
+    by_code["M"].latitude, by_code["M"].longitude = Decimal("32.9"), Decimal("35.3")
+    session.flush()
+    seed_braude(session)
+    assert by_code["L"].latitude == Decimal("32.912396")
+    assert (by_code["M"].latitude, by_code["M"].longitude) == (Decimal("32.9"), Decimal("35.3"))

@@ -6,6 +6,8 @@
 - POST /auth/logout               end this device's session
 - POST /auth/logout-all           end every session of the user
 - GET  /me                        who am I
+- GET  /auth/providers            which sign-in buttons to show
+- POST /auth/demo/login           demo sign-in, only when DEMO_LOGIN_ENABLED
 """
 
 import hmac
@@ -26,8 +28,9 @@ from app.api.deps import get_session
 from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
+from app.demo import demo_user
 from app.errors import Refusal
-from app.models import Institution, User
+from app.models import AuthSession, Institution, User
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.ratelimit import refresh_limit, sign_in_limit
 from app.sessions import (
@@ -39,7 +42,7 @@ from app.sessions import (
     rotate,
     start_session,
 )
-from app.schemas import MeOut, TokenOut
+from app.schemas import DemoLoginIn, MeOut, ProvidersOut, TokenOut
 
 router = APIRouter(tags=["auth"])
 
@@ -112,6 +115,36 @@ def _to_frontend(settings: Settings, error: str | None = None) -> RedirectRespon
     if error is not None:
         target += "?" + urlencode({"error": error})
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/auth/providers", response_model=ProvidersOut)
+def list_providers(
+    settings: SettingsDep, providers: Annotated[dict[str, Provider], Depends(get_providers)]
+):
+    return ProvidersOut(providers=sorted(providers), demo=settings.demo_login_enabled)
+
+
+@router.post("/auth/demo/login", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
+def demo_login(
+    body: DemoLoginIn,
+    request: Request,
+    response: Response,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+):
+    if not settings.demo_login_enabled:
+        raise HTTPException(404, "demo_login_disabled")
+    # It sets the refresh cookie, so it gets the same CSRF guard as refresh.
+    _require_allowed_origin(request, settings)
+    try:
+        user = demo_user(db, settings.demo_institution, body.persona, now)
+        issued = start_session(db, user, now)
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    _set_refresh_cookie(response, issued.refresh_token, settings)
+    return _token_out(db, user, issued.session, now, settings)
 
 
 @router.get("/auth/{provider_name}/login", dependencies=[Depends(sign_in_limit)])
@@ -228,8 +261,12 @@ def refresh(
         raise HTTPException(refusal.status, refusal.code, headers=dict(response.headers)) from None
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
+    return _token_out(db, user, issued.session, now, settings)
+
+
+def _token_out(db: Session, user: User, session: AuthSession, now: datetime, settings: Settings) -> TokenOut:
     return TokenOut(
-        access_token=access_token(user, issued.session, now, settings.jwt_secret_bytes()),
+        access_token=access_token(user, session, now, settings.jwt_secret_bytes()),
         token_type="bearer",
         expires_in=int(ACCESS_TOKEN_LIFETIME.total_seconds()),
         user=_me(db, user),

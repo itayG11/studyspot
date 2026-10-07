@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from app.demo import Persona
 from app.models import (
     BookingSource,
     BookingStatus,
@@ -19,6 +20,12 @@ from app.models import (
     PlaceKind,
     UserRole,
 )
+
+
+class InstitutionOut(BaseModel):
+    slug: str
+    name: str
+    timezone: str  # all opening hours and bookings are in this zone
 
 
 class Occupancy(BaseModel):
@@ -157,3 +164,16 @@ class Availability(BaseModel):
     place_id: int
     date: date
     busy: list[BusyRange]
+
+
+class ProvidersOut(BaseModel):
+    """Which sign-in buttons the site should show."""
+
+    providers: list[str]
+    demo: bool
+
+
+class DemoLoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    persona: Persona

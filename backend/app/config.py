@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: SecretStr | None = None
 
+    # Demo sign-in: two fixed users (a student and an institution admin) with
+    # no Microsoft or Google account. For development and the live demo only;
+    # when off, the endpoint answers 404 as if it did not exist.
+    demo_login_enabled: bool = False
+    demo_institution: str = "braude"
+
     # Where the API and the web app live; used for redirect URLs and CORS.
     public_api_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"

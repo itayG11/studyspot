@@ -22,11 +22,16 @@ EXAM_PERIOD = "exam-period"  # tag used below to mark places open 24/7 in exams
 STUDENTS_TENANT = "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"  # e.braude.ac.il
 STAFF_TENANT = "d4b0e69c-5394-4005-977c-7817ac32ca5e"  # braude.ac.il
 
+# "position" is (latitude, longitude), copied by Itay from Google Maps on
+# 2026-10-07 (the middle of each roof), rounded to the 6 decimals the
+# column keeps (about 10 cm).
+
 BRAUDE = {
     "institution": {"name": "מכללת בראודה", "slug": "braude", "timezone": "Asia/Jerusalem"},
     "buildings": [
         {
             "code": "M",
+            "position": ("32.912751", "35.282293"),
             "floors_count": 3,
             "places": [
                 {"kind": "computer_lab", "name": "M206", "floor": 1, "lab_rows": 5, "lab_cols": 8},
@@ -35,6 +40,7 @@ BRAUDE = {
         },
         {
             "code": "L",
+            "position": ("32.912396", "35.282790"),
             "floors_count": 1,
             "places": [
                 {
@@ -49,6 +55,7 @@ BRAUDE = {
         },
         {
             "code": "EM",
+            "position": ("32.914079", "35.281250"),
             "floors_count": 4,
             "places": [
                 {"kind": "computer_lab", "name": "EM315", "floor": 2, "lab_rows": 4, "lab_cols": 5},
@@ -58,6 +65,7 @@ BRAUDE = {
         },
         {
             "code": "EF",
+            "position": ("32.913367", "35.282003"),
             "floors_count": 2,
             "places": [
                 {
@@ -79,6 +87,7 @@ BRAUDE = {
         },
         {
             "code": "P",
+            "position": ("32.917067", "35.281550"),
             "floors_count": 1,
             "hours": WEEK,  # closed on Friday
             "places": [
@@ -98,8 +107,8 @@ BRAUDE = {
                 },
             ],
         },
-        {"code": "NX", "floors_count": 3, "status": "new", "places": []},
-        {"code": "NG", "floors_count": 4, "status": "under_construction", "places": []},
+        {"code": "NX", "floors_count": 3, "status": "new", "position": ("32.914579", "35.280014"), "places": []},
+        {"code": "NG", "floors_count": 4, "status": "under_construction", "position": ("32.914383", "35.280751"), "places": []},
     ],
     "login_rules": [
         {"provider": "microsoft", "value": STUDENTS_TENANT},

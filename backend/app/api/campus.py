@@ -25,7 +25,14 @@ from app.models import (
     is_counted,
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
-from app.schemas import BuildingOut, OpeningHoursOut, PlaceDetail, PlaceOut, SeatOut
+from app.schemas import (
+    BuildingOut,
+    InstitutionOut,
+    OpeningHoursOut,
+    PlaceDetail,
+    PlaceOut,
+    SeatOut,
+)
 
 router = APIRouter(tags=["campus"])
 
@@ -39,6 +46,12 @@ def _institution(session: Session, slug: str) -> Institution:
     if institution is None:
         raise HTTPException(404, "institution_not_found")
     return institution
+
+
+@router.get("/institutions/{slug}", response_model=InstitutionOut)
+def get_institution(slug: Slug, session: SessionDep):
+    institution = _institution(session, slug)
+    return InstitutionOut(slug=institution.slug, name=institution.name, timezone=institution.timezone)
 
 
 def _place_views(

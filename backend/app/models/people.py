@@ -26,6 +26,7 @@ class UserRole(enum.StrEnum):
 class AuthProvider(enum.StrEnum):
     MICROSOFT = "microsoft"
     GOOGLE = "google"
+    DEMO = "demo"  # the demo sign-in (app/demo.py); never in a login rule
 
 
 class User(Base):
@@ -83,6 +84,8 @@ class InstitutionLoginRule(Base):
     __table_args__ = (
         UniqueConstraint("provider", "value"),
         CheckConstraint("value = lower(value) AND btrim(value) <> ''", name="value_lowercase"),
+        # Demo users are placed in their institution directly, never by a rule.
+        CheckConstraint("provider IN ('microsoft', 'google')", name="real_provider"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

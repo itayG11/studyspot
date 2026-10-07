@@ -25,7 +25,16 @@ def test_buildings_with_occupancy(client):
     assert buildings["NX"]["places_count"] == 0
 
 
+def test_institution_details(client):
+    response = client.get("/institutions/braude")
+    assert response.status_code == 200
+    assert response.json() == {
+        "slug": "braude", "name": "מכללת בראודה", "timezone": "Asia/Jerusalem"
+    }
+
+
 def test_unknown_institution_is_404(client):
+    assert client.get("/institutions/nowhere").status_code == 404
     assert client.get("/institutions/nowhere/buildings").status_code == 404
     assert client.get("/institutions/nowhere/places").status_code == 404
 

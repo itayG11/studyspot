@@ -8,6 +8,7 @@ reusable by the campus-table upload planned for week two.
 
 from collections.abc import Mapping
 from datetime import time
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -39,6 +40,11 @@ def seat_label(row: int, col: int) -> str:
     return f"{chr(ord('A') + row - 1)}{col}"
 
 
+def _position(position: tuple[str, str]) -> tuple[Decimal, Decimal]:
+    latitude, longitude = position
+    return Decimal(latitude), Decimal(longitude)
+
+
 def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
     """Create an institution from campus data. Does nothing if it already exists.
 
@@ -52,12 +58,17 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
     info = data["institution"]
     existing = session.scalars(select(Institution).where(Institution.slug == info["slug"])).first()
     if existing is not None:
-        # Data added in later stages (login rules) is filled in if missing.
+        # Data added in later stages (login rules, map positions) is filled
+        # in if missing. A position already set (maybe by an admin) is kept.
         known = {(r.provider, r.value) for r in existing.login_rules}
         for rule in data.get("login_rules", []):
             key = (AuthProvider(rule["provider"]), rule["value"].lower())
             if key not in known:
                 existing.login_rules.append(InstitutionLoginRule(provider=key[0], value=key[1]))
+        positions = {b["code"]: b["position"] for b in data["buildings"] if "position" in b}
+        for building in existing.buildings:
+            if building.latitude is None and building.code in positions:
+                building.latitude, building.longitude = _position(positions[building.code])
         session.flush()
         return existing
 
@@ -82,6 +93,8 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
             floors_count=b["floors_count"],
             status=BuildingStatus(b.get("status", "active")),
         )
+        if "position" in b:
+            building.latitude, building.longitude = _position(b["position"])
         institution.buildings.append(building)
         hours: Hours = b.get("hours", default_hours)
         for p in b["places"]:
