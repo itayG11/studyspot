@@ -13,6 +13,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Index,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -51,6 +52,11 @@ class CheckIn(Base):
             ondelete="CASCADE",
             name="fk_check_ins_seat",
         ),
+        # A check-in can confirm a booking (group rooms, lab seats).
+        ForeignKeyConstraint(
+            ["booking_id"], ["bookings.id"], ondelete="SET NULL", name="fk_check_ins_booking"
+        ),
+        UniqueConstraint("booking_id"),
         CheckConstraint("expires_at > started_at", name="expires_after_start"),
         CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ends_after_start"),
         CheckConstraint("(ended_at IS NULL) = (end_reason IS NULL)", name="ended_with_reason"),
@@ -75,6 +81,7 @@ class CheckIn(Base):
     user_id: Mapped[int]
     place_id: Mapped[int]
     seat_id: Mapped[int | None]
+    booking_id: Mapped[int | None]
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

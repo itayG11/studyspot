@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Building, BuildingStatus, Institution, Place, PlaceKind
+from app.models import Building, BuildingStatus, Institution, Place, PlaceKind, User
 
 
 def make_institution(session: Session, slug: str = "test-college") -> Institution:
@@ -55,3 +55,10 @@ def assert_rejected(session: Session, add_row, constraint: str) -> None:
             add_row()
             session.flush()
     assert error.value.orig.diag.constraint_name == constraint
+
+
+def make_user(session: Session, institution: Institution, email: str = "student@example.com") -> User:
+    user = User(institution_id=institution.id, email=email, display_name="Student")
+    session.add(user)
+    session.flush()
+    return user

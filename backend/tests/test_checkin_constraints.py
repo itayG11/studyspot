@@ -6,16 +6,9 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.models import CheckIn, CheckInEndReason, PlaceKind, Seat, User
-from factories import assert_rejected, make_building, make_institution, make_place
+from factories import assert_rejected, make_building, make_institution, make_place, make_user
 
 NOW = datetime(2026, 10, 7, 9, 0, tzinfo=UTC)
-
-
-def make_user(session: Session, institution, email: str = "student@example.com") -> User:
-    user = User(institution_id=institution.id, email=email, display_name="Student")
-    session.add(user)
-    session.flush()
-    return user
 
 
 def check_in(session: Session, user: User, place, seat=None, **kw) -> CheckIn:

@@ -1,5 +1,6 @@
 """All database models. Importing this package registers every table on Base.metadata."""
 
+from app.models.bookings import ACTIVE_STATUSES, Booking, BookingSource, BookingStatus
 from app.models.campus import (
     Building,
     BuildingStatus,
@@ -16,6 +17,10 @@ from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
 from app.models.people import User
 
 __all__ = [
+    "ACTIVE_STATUSES",
+    "Booking",
+    "BookingSource",
+    "BookingStatus",
     "Building",
     "BuildingStatus",
     "CheckIn",

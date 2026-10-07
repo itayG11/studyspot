@@ -20,6 +20,7 @@ TABLES = {
     "special_period_places",
     "users",
     "check_ins",
+    "bookings",
 }
 
 
