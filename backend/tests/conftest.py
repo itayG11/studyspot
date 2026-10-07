@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
@@ -135,7 +136,7 @@ def client(session: Session, braude: Institution, student: User) -> Iterator[Tes
 
     def current_user() -> User:
         if test_client.user is None:
-            return get_current_user()
+            raise HTTPException(401, "not_authenticated")
         return test_client.user
 
     app.dependency_overrides[get_session] = lambda: session

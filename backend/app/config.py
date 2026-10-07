@@ -24,6 +24,32 @@ class Settings(BaseSettings):
     # seed) still run; code_secret_bytes() fails clearly when it is missing.
     checkin_code_secret: SecretStr | None = Field(default=None, min_length=32)
 
+    # Signs access tokens and the short-lived sign-in cookie.
+    jwt_secret: SecretStr | None = Field(default=None, min_length=32)
+
+    # Sign-in providers. A provider without a client id is simply switched off.
+    microsoft_client_id: str | None = None
+    microsoft_client_secret: SecretStr | None = None
+    google_client_id: str | None = None
+    google_client_secret: SecretStr | None = None
+
+    # Where the API and the web app live; used for redirect URLs and CORS.
+    public_api_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:5173"
+    # Comma-separated extra origins allowed to call the API with cookies.
+    cors_origins: str = ""
+    # Secure cookies need HTTPS; browsers also accept them on localhost.
+    cookie_secure: bool = True
+
+    def allowed_origins(self) -> list[str]:
+        extra = [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
+        return [self.frontend_url.rstrip("/"), *extra]
+
+    def jwt_secret_bytes(self) -> bytes:
+        if self.jwt_secret is None:
+            raise RuntimeError("JWT_SECRET is not set (see .env.example)")
+        return self.jwt_secret.get_secret_value().encode()
+
     def code_secret_bytes(self) -> bytes:
         if self.checkin_code_secret is None:
             raise RuntimeError("CHECKIN_CODE_SECRET is not set (see .env.example)")

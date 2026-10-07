@@ -11,7 +11,14 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from app.models import BookingSource, BookingStatus, BuildingStatus, CheckInEndReason, PlaceKind
+from app.models import (
+    BookingSource,
+    BookingStatus,
+    BuildingStatus,
+    CheckInEndReason,
+    PlaceKind,
+    UserRole,
+)
 
 
 class Occupancy(BaseModel):
@@ -98,6 +105,21 @@ class CheckInOut(BaseModel):
     # Set when a walk-in got less than the full time, so the app can warn:
     # "booking" = the seat is booked soon, "closing" = the place closes soon.
     cut_short_by: Literal["booking", "closing"] | None = None
+
+
+class MeOut(BaseModel):
+    id: int
+    email: str
+    display_name: str
+    role: UserRole
+    institution_slug: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"]
+    expires_in: int  # seconds
+    user: MeOut
 
 
 class BookingCreate(BaseModel):

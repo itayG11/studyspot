@@ -9,8 +9,10 @@ import os
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import bookings, campus, checkins
+from app.api import auth, bookings, campus, checkins
+from app.config import get_settings
 from app.sweeper import run_forever
 
 # Seconds between background sweeps; 0 turns the sweep off (tests do this).
@@ -41,6 +43,16 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# Only the web app's own origin may call the API with credentials.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+app.include_router(auth.router)
 app.include_router(campus.router)
 app.include_router(checkins.router)
 app.include_router(bookings.router)
