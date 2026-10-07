@@ -83,6 +83,16 @@ def engine() -> Iterator[Engine]:
     engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def fresh_rate_limits() -> Iterator[None]:
+    """Each test starts with empty rate-limit counters."""
+    from app.ratelimit import LIMITERS
+
+    for limiter in LIMITERS.values():
+        limiter.reset()
+    yield
+
+
 @pytest.fixture
 def session(engine: Engine) -> Iterator[Session]:
     """A Session whose work, including commit(), is rolled back after the test."""

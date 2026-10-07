@@ -28,6 +28,7 @@ from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.models import Institution, User
 from app.oidc import Provider, configured_providers, new_pkce_pair
+from app.ratelimit import sign_in_limit
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
     SESSION_LIFETIME,
@@ -105,7 +106,7 @@ def _to_frontend(settings: Settings, error: str | None = None) -> RedirectRespon
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 
-@router.get("/auth/{provider_name}/login")
+@router.get("/auth/{provider_name}/login", dependencies=[Depends(sign_in_limit)])
 def login(
     provider_name: str,
     settings: SettingsDep,
@@ -144,7 +145,7 @@ def login(
     return response
 
 
-@router.get("/auth/{provider_name}/callback")
+@router.get("/auth/{provider_name}/callback", dependencies=[Depends(sign_in_limit)])
 def callback(
     provider_name: str,
     db: SessionDep,
@@ -195,7 +196,7 @@ def _read_pending(pending: str | None, provider_name: str, now: datetime, settin
     return claims
 
 
-@router.post("/auth/refresh", response_model=TokenOut)
+@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
 def refresh(
     request: Request,
     response: Response,

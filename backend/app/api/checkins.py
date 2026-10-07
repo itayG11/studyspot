@@ -12,6 +12,7 @@ from app.auth import get_current_user
 from app.checkins import check_in, check_out, current_check_in
 from app.clock import get_now
 from app.models import CheckIn, User
+from app.ratelimit import write_limit
 from app.schemas import CheckInCreate, CheckInOut
 
 router = APIRouter(tags=["check-ins"])
@@ -38,7 +39,12 @@ def _out(row: CheckIn, cut_short_by=None) -> CheckInOut:
     )
 
 
-@router.post("/check-ins", response_model=CheckInOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/check-ins",
+    response_model=CheckInOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(write_limit)],
+)
 def create_check_in(
     body: CheckInCreate,
     response: Response,
@@ -61,7 +67,11 @@ def get_my_check_in(user: UserDep, session: SessionDep, now: NowDep):
     return _out(row)
 
 
-@router.post("/check-ins/{check_in_id}/checkout", response_model=CheckInOut)
+@router.post(
+    "/check-ins/{check_in_id}/checkout",
+    response_model=CheckInOut,
+    dependencies=[Depends(write_limit)],
+)
 def check_out_endpoint(
     check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
 ):

@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, bookings, campus, checkins
+from app.api import admin, auth, bookings, campus, checkins
 from app.config import get_settings
 from app.sweeper import run_forever
 
@@ -56,3 +56,4 @@ app.include_router(auth.router)
 app.include_router(campus.router)
 app.include_router(checkins.router)
 app.include_router(bookings.router)
+app.include_router(admin.router)

@@ -13,6 +13,7 @@ from app.auth import get_current_user
 from app.bookings import busy_ranges, cancel_booking, create_booking, extend_booking, upcoming_bookings
 from app.clock import get_now
 from app.models import Booking, Place, User
+from app.ratelimit import write_limit
 from app.schemas import Availability, BookingCreate, BookingOut, BusyRange
 
 router = APIRouter(tags=["bookings"])
@@ -38,7 +39,12 @@ def _out(row: Booking) -> BookingOut:
     )
 
 
-@router.post("/bookings", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/bookings",
+    response_model=BookingOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(write_limit)],
+)
 def create(body: BookingCreate, user: UserDep, session: SessionDep, now: NowDep):
     booking = run_action(
         session,
@@ -54,12 +60,16 @@ def my_bookings(user: UserDep, session: SessionDep, now: NowDep):
     return [_out(b) for b in upcoming_bookings(session, user, now)]
 
 
-@router.post("/bookings/{booking_id}/cancel", response_model=BookingOut)
+@router.post(
+    "/bookings/{booking_id}/cancel", response_model=BookingOut, dependencies=[Depends(write_limit)]
+)
 def cancel(booking_id: BookingId, user: UserDep, session: SessionDep):
     return _out(run_action(session, lambda: cancel_booking(session, user, booking_id)))
 
 
-@router.post("/bookings/{booking_id}/extend", response_model=BookingOut)
+@router.post(
+    "/bookings/{booking_id}/extend", response_model=BookingOut, dependencies=[Depends(write_limit)]
+)
 def extend(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDep):
     return _out(run_action(session, lambda: extend_booking(session, user, booking_id, now)))
 
