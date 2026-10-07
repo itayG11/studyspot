@@ -106,3 +106,9 @@
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-2);
 }
+
+.sky {
+  padding: var(--s-6);
+  background: linear-gradient(var(--sky), var(--stone-1) 70%);
+  border-radius: var(--r-lg);
+}

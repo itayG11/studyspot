@@ -4,6 +4,9 @@
 import { Monitor, Plug, Search, Sun, Users, Volume1 } from 'lucide-react'
 import { useState } from 'react'
 import { ApiError } from '../api/client'
+import { getBuildings } from '../api/campus'
+import { useApi } from '../hooks/useApi'
+import { CampusModel } from '../illustrations/CampusModel'
 import { Badge, Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Sheet, Skeleton, useToast } from '../ui'
 import styles from './Showcase.module.css'
 
@@ -27,6 +30,7 @@ export function Showcase() {
   const [filters, setFilters] = useState<Set<string>>(new Set(['free']))
   const [sheet, setSheet] = useState(false)
   const toast = useToast()
+  const buildings = useApi(getBuildings, 'showcase-buildings')
   const toggle = (key: string) =>
     setFilters((current) => {
       const next = new Set(current)
@@ -42,6 +46,11 @@ export function Showcase() {
         <h1 className={styles.hero}>יש לך מקום בקמפוס.</h1>
         <p className={styles.lead}>אור יום בגליל: אבן לבנה, דיו כחול-לילה, צללים רכים וארוכים.</p>
       </header>
+
+      <section>
+        <h2 className={styles.h2}>הקמפוס</h2>
+        <div className={styles.sky}>{buildings.data && <CampusModel buildings={buildings.data} pinAt="EM" />}</div>
+      </section>
 
       <section>
         <h2 className={styles.h2}>צבעים</h2>
