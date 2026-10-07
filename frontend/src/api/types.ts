@@ -4,6 +4,9 @@
 export type PlaceKind = 'group_room' | 'open_area' | 'library' | 'computer_lab'
 export type BuildingStatus = 'active' | 'new' | 'under_construction'
 export type UserRole = 'student' | 'institution_admin' | 'system_admin'
+export type Atmosphere = 'quiet' | 'conversation' | 'mixed'
+export type SuitedFor = 'solo' | 'group' | 'both'
+export type Amenity = 'outlets' | 'whiteboard' | 'projector' | 'screen' | 'computers' | 'ac' | 'daylight' | 'printer'
 
 export interface BookingRules {
   slot_minutes: number
@@ -51,6 +54,13 @@ export interface Place extends Occupancy {
   is_open: boolean
   bookable: boolean
   counted: boolean
+  atmosphere: Atmosphere
+  suited_for: SuitedFor
+  amenities: Amenity[] // sorted
+  details_are_demo: boolean // the three fields above are sample data
+  // Group rooms only (null elsewhere): free right now, and if not, from when.
+  free_now: boolean | null
+  free_from: string | null
 }
 
 export interface OpeningHours {

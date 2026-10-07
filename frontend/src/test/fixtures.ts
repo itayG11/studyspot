@@ -15,6 +15,8 @@ export function place(overrides: Partial<Place> = {}): Place {
     id: 1, building_code: 'M', kind: 'computer_lab', name: 'M206', floor: 1,
     location_note: null, capacity: 40, occupied: 2, available: 38,
     is_open: true, bookable: true, counted: false,
+    atmosphere: 'quiet', suited_for: 'solo', amenities: ['ac', 'computers', 'outlets'],
+    details_are_demo: true, free_now: null, free_from: null,
     ...overrides,
   }
 }
