@@ -47,7 +47,7 @@ or rely on expensive occupancy sensors.
 cp .env.example .env              # then set a real POSTGRES_PASSWORD
 docker compose up -d              # PostgreSQL 16
 cd backend
-python -m venv .venv && source .venv/bin/activate   # Windows: .venvScriptsctivate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
