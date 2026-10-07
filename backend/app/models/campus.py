@@ -93,6 +93,9 @@ class Institution(Base):
     special_periods: Mapped[list["SpecialPeriod"]] = relationship(  # noqa: F821
         back_populates="institution", cascade="all, delete-orphan", order_by="SpecialPeriod.id"
     )
+    login_rules: Mapped[list["InstitutionLoginRule"]] = relationship(  # noqa: F821
+        cascade="all, delete-orphan", order_by="InstitutionLoginRule.id"
+    )
 
 
 class Building(Base):

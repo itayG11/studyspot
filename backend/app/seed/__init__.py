@@ -14,9 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
+    AuthProvider,
     Building,
     BuildingStatus,
     Institution,
+    InstitutionLoginRule,
     OpeningHours,
     Place,
     PlaceKind,
@@ -58,6 +60,10 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
         for p in data.get("special_periods", [])
     }
     institution.special_periods.extend(periods.values())
+    institution.login_rules = [
+        InstitutionLoginRule(provider=AuthProvider(rule["provider"]), value=rule["value"].lower())
+        for rule in data.get("login_rules", [])
+    ]
 
     # Children are appended to their parent's collection: since SQLAlchemy
     # 2.0, setting only the child's many-to-one side (Building(institution=...))

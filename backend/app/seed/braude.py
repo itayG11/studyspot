@@ -15,6 +15,13 @@ WEEK_AND_FRIDAY = {**WEEK, FRIDAY: (time(7), time(14))}
 
 EXAM_PERIOD = "exam-period"  # tag used below to mark places open 24/7 in exams
 
+# Microsoft tenant ids of Braude, read on 2026-10-07 from Microsoft's public
+# discovery documents (login.microsoftonline.com/<domain>/v2.0/
+# .well-known/openid-configuration). A sign-in from any other tenant is not
+# Braude, whatever email address it carries.
+STUDENTS_TENANT = "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"  # e.braude.ac.il
+STAFF_TENANT = "d4b0e69c-5394-4005-977c-7817ac32ca5e"  # braude.ac.il
+
 BRAUDE = {
     "institution": {"name": "מכללת בראודה", "slug": "braude", "timezone": "Asia/Jerusalem"},
     "buildings": [
@@ -93,6 +100,10 @@ BRAUDE = {
         },
         {"code": "NX", "floors_count": 3, "status": "new", "places": []},
         {"code": "NG", "floors_count": 4, "status": "under_construction", "places": []},
+    ],
+    "login_rules": [
+        {"provider": "microsoft", "value": STUDENTS_TENANT},
+        {"provider": "microsoft", "value": STAFF_TENANT},
     ],
     "default_hours": WEEK_AND_FRIDAY,
     "special_periods": [

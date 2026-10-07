@@ -14,9 +14,21 @@ from app.models.campus import (
 )
 from app.models.checkins import CheckIn, CheckInEndReason
 from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
-from app.models.people import User
+from app.models.people import (
+    AuthProvider,
+    AuthSession,
+    InstitutionLoginRule,
+    User,
+    UserIdentity,
+    UserRole,
+)
 
 __all__ = [
+    "AuthProvider",
+    "AuthSession",
+    "InstitutionLoginRule",
+    "UserIdentity",
+    "UserRole",
     "ACTIVE_STATUSES",
     "Booking",
     "BookingSource",

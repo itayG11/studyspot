@@ -41,12 +41,11 @@ def campus(session: Session):
     return institution, building, area, lab, seat
 
 
-def test_user_email_is_unique_and_lowercase(session: Session, campus):
+def test_user_email_is_lowercase(session: Session, campus):
+    """The email is information, not identity, so it need not be unique (stage 5)."""
     institution = campus[0]
     make_user(session, institution, "a@example.com")
-    assert_rejected(
-        session, lambda: make_user(session, institution, "a@example.com"), "uq_users_email"
-    )
+    make_user(session, institution, "a@example.com")
     assert_rejected(
         session, lambda: make_user(session, institution, "B@Example.com"), "ck_users_email_lowercase"
     )

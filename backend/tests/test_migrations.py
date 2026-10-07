@@ -21,6 +21,9 @@ TABLES = {
     "users",
     "check_ins",
     "bookings",
+    "user_identities",
+    "institution_login_rules",
+    "sessions",
 }
 
 

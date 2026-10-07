@@ -118,3 +118,11 @@ def test_seed_rejects_a_place_on_a_floor_the_building_does_not_have(session: Ses
     leftover = select(func.count()).select_from(Institution).where(Institution.slug == "floor-test")
     assert session.scalar(leftover) == 0
 
+
+
+def test_braude_sign_in_rules_are_its_two_microsoft_tenants(braude: Institution):
+    rules = {(r.provider.value, r.value) for r in braude.login_rules}
+    assert rules == {
+        ("microsoft", "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"),
+        ("microsoft", "d4b0e69c-5394-4005-977c-7817ac32ca5e"),
+    }
