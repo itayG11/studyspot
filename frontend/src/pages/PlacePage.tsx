@@ -9,7 +9,7 @@ import { Count } from '../components/ui/Count'
 import { Meter } from '../components/ui/Meter'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { useApi } from '../hooks/useApi'
-import { errorMessage } from '../i18n/errors'
+import { LoadError } from '../components/LoadError'
 import { floorLabel, KIND_LABELS } from '../i18n/labels'
 import { useInstitution } from '../institution'
 import { LEVEL_COLORS, placeLevel } from '../logic/occupancy'
@@ -22,12 +22,18 @@ export function PlacePage() {
   const { placeId } = useParams()
   const id = Number(placeId)
   const valid = Number.isInteger(id) && id > 0
-  const place = useApi(() => getPlace(id), `place-${placeId}`, valid ? REFRESH_INTERVAL_MS : undefined)
+  // An address like /places/abc is not sent to the server at all.
+  const place = useApi(() => getPlace(id), valid ? `place-${id}` : null, REFRESH_INTERVAL_MS)
 
   if (!valid || place.error?.code === 'place_not_found') return <NotFoundPage />
-  if (place.error) return <p className="page-message" role="alert">{errorMessage(place.error.code)}</p>
+  if (!place.data && place.error) return <LoadError error={place.error} onRetry={place.reload} />
   if (!place.data) return <p className="page-message">טוען…</p>
-  return <PlaceView place={place.data} />
+  return (
+    <>
+      {place.error && <LoadError error={place.error} onRetry={place.reload} inline />}
+      <PlaceView place={place.data} />
+    </>
+  )
 }
 
 function PlaceView({ place }: { place: PlaceDetail }) {

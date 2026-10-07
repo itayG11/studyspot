@@ -261,7 +261,10 @@ def refresh(
         user, issued = rotate(db, token, now)
     except Refusal as refusal:
         db.commit()  # keep a theft-triggered revoke-all
-        _clear_refresh_cookie(response, settings)
+        # session_rotated: another tab just swapped this cookie for a new one,
+        # which the browser already holds. Clearing it would sign both out.
+        if refusal.code != "session_rotated":
+            _clear_refresh_cookie(response, settings)
         raise HTTPException(refusal.status, refusal.code, headers=dict(response.headers)) from None
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)

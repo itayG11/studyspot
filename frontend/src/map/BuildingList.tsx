@@ -38,9 +38,13 @@ export function BuildingList({ buildings, selected, onSelect, startIndex = 0 }: 
                 {hasSeats && <Meter taken={building.occupied} total={building.capacity} color={LEVEL_COLORS[level]} />}
               </span>
               {hasSeats && (
-                <span aria-label={buildingSummary(building)}>
-                  <Count value={building.available} className={styles.rowCount} />
-                  <span className={`num ${styles.rowTotal}`}>/{building.capacity}</span>
+                <span>
+                  {/* The numbers are drawn for the eye; screen readers get the sentence. */}
+                  <span aria-hidden="true">
+                    <Count value={building.available} className={styles.rowCount} />
+                    <span className={`num ${styles.rowTotal}`}>/{building.capacity}</span>
+                  </span>
+                  <span className="visually-hidden">{buildingSummary(building)}</span>
                 </span>
               )}
             </button>

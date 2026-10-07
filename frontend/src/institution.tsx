@@ -4,13 +4,13 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { getInstitution } from './api/campus'
 import type { Institution } from './api/types'
 import { useApi } from './hooks/useApi'
-import { errorMessage } from './i18n/errors'
+import { LoadError } from './components/LoadError'
 
 const InstitutionContext = createContext<Institution | null>(null)
 
 export function InstitutionProvider({ children }: { children: ReactNode }) {
-  const { data, error } = useApi(getInstitution, 'institution')
-  if (error) return <p className="page-message" role="alert">{errorMessage(error.code)}</p>
+  const { data, error, reload } = useApi(getInstitution, 'institution')
+  if (!data && error) return <LoadError error={error} onRetry={reload} />
   if (!data) return <p className="page-message">טוען…</p>
   return <InstitutionContext.Provider value={data}>{children}</InstitutionContext.Provider>
 }

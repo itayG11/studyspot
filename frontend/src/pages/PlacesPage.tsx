@@ -4,7 +4,7 @@ import type { PlaceKind } from '../api/types'
 import { PlaceCard } from '../components/PlaceCard'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { useApi } from '../hooks/useApi'
-import { errorMessage } from '../i18n/errors'
+import { LoadError } from '../components/LoadError'
 import { KIND_LABELS, KINDS } from '../i18n/labels'
 import styles from './pages.module.css'
 
@@ -42,7 +42,7 @@ export function PlacesPage() {
         ))}
       </div>
 
-      {places.error && <p className="error" role="alert">{errorMessage(places.error.code)}</p>}
+      {places.error && <LoadError error={places.error} onRetry={places.reload} inline={places.data !== null} />}
       {places.loading && !places.data && <p className="page-message">טוען…</p>}
       {places.data && places.data.length === 0 && <p className="page-message">אין מקומות מהסוג הזה.</p>}
       {places.data && (

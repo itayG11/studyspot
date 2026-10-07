@@ -28,7 +28,10 @@ export class ApiError extends Error {
 type Listener = (user: Me | null) => void
 
 let accessToken: string | null = null
+let currentUser: Me | null = null
 let refreshing: Promise<Me | null> | null = null
+// Counts sign-ins and sign-outs, so a slow refresh can tell it is out of date.
+let generation = 0
 const listeners = new Set<Listener>()
 
 export function getAccessToken(): string | null {
@@ -43,12 +46,16 @@ export function onSessionChange(listener: Listener): () => void {
 
 function setSession(token: string | null, user: Me | null): void {
   accessToken = token
+  currentUser = user
+  generation += 1
   for (const listener of listeners) listener(user)
 }
 
 export function resetSessionForTests(): void {
   accessToken = null
+  currentUser = null
   refreshing = null
+  generation = 0
   listeners.clear()
 }
 
@@ -113,14 +120,28 @@ export function refreshSession(): Promise<Me | null> {
   return refreshing
 }
 
-async function doRefresh(): Promise<Me | null> {
+// How long to wait before trying again when another tab refreshed first.
+const ROTATED_RETRY_MS = 300
+
+async function doRefresh(retried = false): Promise<Me | null> {
+  const startedAt = generation
   try {
     const result = await send<TokenResponse>('/auth/refresh', { method: 'POST' })
     setSession(result.access_token, result.user)
     return result.user
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status === 0) throw error
-    setSession(null, null) // no session, or it ended: signed out
+    // Only "no valid session" (401) means signed out. A network error, a
+    // server error or "too many requests" leaves the session as it is.
+    if (!(error instanceof ApiError) || error.status !== 401) throw error
+    if (error.code === 'session_rotated' && !retried) {
+      // Another tab swapped the cookie a moment ago; the browser shares
+      // the new one with this tab, so one more try succeeds.
+      await new Promise((resolve) => setTimeout(resolve, ROTATED_RETRY_MS))
+      return doRefresh(true)
+    }
+    // A sign-in that finished while this refresh was on its way wins.
+    if (generation !== startedAt) return currentUser
+    setSession(null, null)
     return null
   }
 }

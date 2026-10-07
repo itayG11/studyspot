@@ -21,7 +21,7 @@ const MESSAGES: Record<string, string> = {
   provider_unavailable: 'שירות ההתחברות לא זמין כרגע. נסה שוב בעוד רגע.',
   provider_not_available: 'שיטת ההתחברות הזו לא פעילה.',
   institution_not_supported: 'החשבון הזה לא שייך למוסד שמחובר למערכת. התחבר עם חשבון המוסד שלך.',
-  concurrent_sign_in: 'ההתחברות הושלמה בלשונית אחרת. רענן את הדף.',
+  concurrent_sign_in: 'התחברות אחרת לאותו חשבון הסתיימה באותו רגע. נסה שוב.',
   demo_login_disabled: 'כניסת ההדגמה כבויה בשרת הזה.',
 
   // Campus

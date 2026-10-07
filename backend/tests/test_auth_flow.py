@@ -336,6 +336,9 @@ def test_two_tabs_refreshing_together_is_not_theft(auth_client, fake):
     auth_client.cookies.set("studyspot_refresh", shared, domain="testserver.local", path="/auth")
     second_tab = auth_client.post("/auth/refresh")
     assert (second_tab.status_code, second_tab.json()["detail"]) == (401, "session_rotated")
+    # The browser shares one cookie jar between tabs: the second tab's
+    # answer must not delete the new cookie the first tab just received.
+    assert "studyspot_refresh" not in second_tab.headers.get("set-cookie", "")
 
     auth_client.cookies.clear()
     auth_client.cookies.set("studyspot_refresh", current, domain="testserver.local", path="/auth")

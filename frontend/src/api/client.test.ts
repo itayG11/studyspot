@@ -115,6 +115,35 @@ describe('session', () => {
     expect(getAccessToken()).toBeNull()
   })
 
+  it('waits and tries again when another tab has just refreshed', async () => {
+    // The other tab already got the new cookie; the browser shares it.
+    fetchMock
+      .mockResolvedValueOnce(json(401, { detail: 'session_rotated' }))
+      .mockResolvedValueOnce(tokenResponse('t2'))
+    await expect(refreshSession()).resolves.toEqual(ME)
+    expect(getAccessToken()).toBe('t2')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('a server error during refresh does not sign the user out', async () => {
+    fetchMock.mockResolvedValueOnce(tokenResponse('t1')).mockResolvedValueOnce(json(502, { detail: 'bad gateway' }))
+    await refreshSession()
+    await expect(refreshSession()).rejects.toMatchObject({ status: 502 })
+    expect(getAccessToken()).toBe('t1')
+  })
+
+  it('a late refresh failure does not undo a sign-in that happened meanwhile', async () => {
+    let answerRefresh: (r: Response) => void = () => {}
+    fetchMock
+      .mockReturnValueOnce(new Promise<Response>((resolve) => (answerRefresh = resolve)))
+      .mockResolvedValueOnce(tokenResponse('demo'))
+    const pending = refreshSession() // no cookie yet: will be refused
+    await demoLogin('student')
+    answerRefresh(json(401, { detail: 'invalid_session' }))
+    await expect(pending).resolves.toEqual(ME)
+    expect(getAccessToken()).toBe('demo')
+  })
+
   it('a missing session is signed out, not an error', async () => {
     fetchMock.mockResolvedValueOnce(json(401, { detail: 'invalid_session' }))
     await expect(refreshSession()).resolves.toBeNull()

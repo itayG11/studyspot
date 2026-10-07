@@ -5,7 +5,7 @@ import { BuildingTile } from '../components/ui/BuildingTile'
 import { Count } from '../components/ui/Count'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { useApi } from '../hooks/useApi'
-import { errorMessage } from '../i18n/errors'
+import { LoadError } from '../components/LoadError'
 import { BuildingList, Legend } from '../map/BuildingList'
 import { CampusMap } from '../map/CampusMap'
 import { occupancyLevel, position } from '../logic/occupancy'
@@ -21,19 +21,32 @@ export function MapPage() {
 
   const select = (code: string) => setParams(code === selected ? {} : { building: code }, { replace: true })
 
-  if (buildings.error) return <p className="page-message" role="alert">{errorMessage(buildings.error.code)}</p>
+  // Without data the whole page is the error. With data (one refresh failed)
+  // the numbers stay, the map keeps its zoom, and a small notice appears.
+  if (!buildings.data && buildings.error) return <LoadError error={buildings.error} onRetry={buildings.reload} />
   if (!buildings.data) return <p className="page-message">טוען את מפת הקמפוס…</p>
 
   const all = buildings.data
   const onMap = all.filter((b) => position(b) !== null)
   const offMap = all.filter((b) => position(b) === null)
   const chosen = all.find((b) => b.code === selected) ?? null
-  const chosenPlaces = (places.data ?? []).filter((p) => p.building_code === chosen?.code)
+  const chosenPlaces = places.data?.filter((p) => p.building_code === chosen?.code) ?? null
+  const refreshError = buildings.error ?? places.error
   const freeNow = all.reduce((sum, b) => sum + b.available, 0)
 
   return (
     <div className={styles.mapPage}>
       <aside>
+        {refreshError && (
+          <LoadError
+            error={refreshError}
+            onRetry={() => {
+              buildings.reload()
+              places.reload()
+            }}
+            inline
+          />
+        )}
         {chosen ? (
           <section className="panel rise" key={chosen.code}>
             <div className={styles.chosenHead}>
@@ -43,7 +56,9 @@ export function MapPage() {
                 <span className={styles.heroMeta}>{buildingSummary(chosen)}</span>
               </div>
             </div>
-            {chosenPlaces.length > 0 ? (
+            {chosenPlaces === null ? (
+              <p className="hint">טוען את המקומות…</p>
+            ) : chosenPlaces.length > 0 ? (
               <ul className={styles.cards}>
                 {chosenPlaces.map((place, i) => (
                   <PlaceCard key={place.id} place={place} index={i} />
