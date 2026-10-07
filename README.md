@@ -57,7 +57,7 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 
 - [x] Planning and research
 - [x] Project skeleton (FastAPI health check, PostgreSQL in Docker)
-- [ ] Campus data
+- [x] Campus data
 - [ ] Data model
 - [ ] Core API (spaces, check-in, bookings)
 - [ ] Authentication
