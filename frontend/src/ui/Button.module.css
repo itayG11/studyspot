@@ -1,0 +1,132 @@
+.button {
+  --bg: var(--ink);
+  --fg: var(--on-ink);
+  --border: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 44px; /* a comfortable finger target */
+  padding: 0 var(--s-5);
+  font: 600 var(--text-md) / 1 var(--font-body);
+  color: var(--fg);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    background-color var(--dur-ui) ease,
+    border-color var(--dur-ui) ease,
+    box-shadow var(--dur-ui) ease;
+}
+
+.button svg {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+}
+
+/* Pressing answers at once: the button gives a little. */
+.button:active:not(:disabled, [aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.button[aria-disabled='true'] {
+  cursor: progress;
+}
+
+.primary {
+  box-shadow: var(--shadow-1);
+}
+
+.secondary {
+  --bg: var(--stone-0);
+  --fg: var(--ink);
+  --border: var(--stone-3);
+  box-shadow: var(--shadow-1);
+}
+
+.ghost {
+  --bg: transparent;
+  --fg: var(--ink);
+}
+
+.danger {
+  --bg: var(--full);
+  --fg: #fff;
+}
+
+/* Hover only where there is a mouse: on a phone, a tap would leave it stuck. */
+@media (hover: hover) {
+  .primary:hover:not(:disabled) {
+    --bg: #23325a;
+    box-shadow: var(--shadow-2);
+  }
+  .secondary:hover:not(:disabled) {
+    --border: var(--ink-3);
+  }
+  .ghost:hover:not(:disabled) {
+    --bg: var(--stone-2);
+  }
+  .danger:hover:not(:disabled) {
+    --bg: #96251c;
+  }
+}
+
+.sm {
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  font-size: var(--text-sm);
+}
+
+.lg {
+  min-height: 52px;
+  padding: 0 var(--s-6);
+  font-size: var(--text-lg);
+}
+
+.block {
+  width: 100%;
+}
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: spin 650ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+  .button:active:not(:disabled, [aria-disabled='true']) {
+    transform: none;
+  }
+  .spinner {
+    animation-duration: 1.6s;
+  }
+}

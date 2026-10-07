@@ -1,0 +1,62 @@
+.state {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  max-width: 28rem;
+  margin: var(--s-12) auto;
+  padding: 0 var(--s-4);
+  text-align: center;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--s-2);
+  color: var(--ink-2);
+  background: var(--stone-0);
+  border-radius: 50%;
+  box-shadow: var(--shadow-2);
+}
+
+.icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.iconError {
+  color: var(--full);
+}
+
+.title {
+  margin: 0;
+  font: 600 var(--text-xl) / 1.25 var(--font-heading);
+}
+
+.text {
+  margin: 0 0 var(--s-2);
+  color: var(--ink-2);
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  color: var(--full);
+  background: var(--full-tint);
+  border-radius: var(--r-md);
+}
+
+.stripIcon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.strip > span {
+  flex: 1;
+  min-width: 12rem;
+}

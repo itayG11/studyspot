@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font: 600 var(--text-xs) / 1.2 var(--font-body);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.shape {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+
+.free {
+  color: var(--free);
+  background: var(--free-tint);
+}
+
+.filling {
+  color: var(--busy);
+  background: var(--busy-tint);
+}
+
+.full {
+  color: var(--full);
+  background: var(--full-tint);
+}
+
+.closed {
+  color: var(--closed);
+  background: var(--closed-tint);
+}

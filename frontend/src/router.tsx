@@ -35,6 +35,10 @@ export const routes = [
       },
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', Component: SignedInPage },
+      // The living style guide, in development only; the build leaves it out.
+      ...(import.meta.env.DEV
+        ? [{ path: 'design', lazy: () => import('./design/Showcase').then((module) => ({ Component: module.Showcase })) }]
+        : []),
       { path: '*', Component: NotFoundPage },
     ],
   },

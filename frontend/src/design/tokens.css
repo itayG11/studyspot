@@ -1,0 +1,114 @@
+/* Design tokens: every colour, size, shadow and timing the site uses.
+
+   The direction is "Galilee daylight": warm white stone, night-blue ink,
+   soft long shadows and a lot of air. Colour carries meaning only where it
+   must (free / filling / full), and always together with a shape and words.
+
+   Contrast (WCAG AA, 4.5:1 for text) was measured for every text colour:
+   --ink, --ink-2, --free, --busy, --full and --closed pass on all three
+   stone surfaces; --ink-3 passes on --stone-0 and --stone-1 only, so it is
+   never used on --stone-2. --accent is decoration, never text. */
+
+:root {
+  /* Stone: page, raised card, sunken well */
+  --stone-0: #fdfcf9; /* raised: cards, sheets */
+  --stone-1: #f5f2eb; /* the page */
+  --stone-2: #ebe6da; /* sunken: inputs, tracks, skeletons */
+  --stone-3: #d9d2c2; /* hairlines */
+
+  /* Ink: text and the main action */
+  --ink: #14203a;
+  --ink-2: #46506a; /* secondary text */
+  --ink-3: #666e82; /* hints and meta, on stone-0 and stone-1 only */
+  --on-ink: #fdfcf9;
+
+  /* Occupancy: text colour, and a light tint for the badge behind it */
+  --free: #11714f;
+  --free-tint: #e3f2ea;
+  --busy: #8f5600;
+  --busy-tint: #fbefd9;
+  --full: #b42f25;
+  --full-tint: #fbe5e1;
+  --closed: #6b6a64;
+  --closed-tint: #ecebe7;
+
+  /* The red of the chairs in the EM atrium: decoration only */
+  --accent: #d2402e;
+
+  /* Landscape and scene light, for the illustrations */
+  --sky: #d7e8f3;
+  --grass: #8db46a;
+  --hills: #a9b99a;
+  --light-sun: #ffd68a; /* open area */
+  --light-screen: #8fd3ff; /* computer lab */
+  --light-lamp: #ffb36b; /* group room */
+  --light-paper: #f6ecd6; /* library */
+
+  /* Type */
+  --font-heading: 'Frank Ruhl Libre Variable', 'Frank Ruhl Libre', serif;
+  --font-body: 'IBM Plex Sans Hebrew', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.9rem, 4vw, 2.6rem);
+  --text-hero: clamp(2.6rem, 7vw, 5.2rem);
+
+  /* Space: steps of 4px */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Shape */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  /* Depth: three levels of a soft, long shadow, as in late-morning sun */
+  --shadow-1: 0 1px 2px rgb(20 32 58 / 6%), 0 2px 6px -2px rgb(20 32 58 / 8%);
+  --shadow-2: 0 2px 4px rgb(20 32 58 / 5%), 0 12px 24px -10px rgb(20 32 58 / 18%);
+  --shadow-3: 0 4px 8px rgb(20 32 58 / 6%), 0 28px 56px -20px rgb(20 32 58 / 32%);
+  --ring: 0 0 0 3px rgb(20 32 58 / 22%);
+
+  /* Layers */
+  --z-header: 50;
+  --z-sticky: 40;
+  --z-sheet: 80;
+  --z-toast: 90;
+
+  /* Motion. Strong curves; the built-in ones are too soft.
+     src/design/motion.ts holds the same values for Motion. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* enter, respond */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* move on screen */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets */
+  --dur-press: 120ms;
+  --dur-ui: 220ms;
+  --dur-exit: 160ms; /* leaving is quicker than arriving */
+  --dur-sheet: 380ms;
+
+  /* Old names, still used by pages that have not been redesigned yet.
+     They are removed once every page uses the tokens above. */
+  --paper: #f3eee3;
+  --paper-deep: #e8e0cd;
+  --card: #fbf8f1;
+  --ink-soft: #4b5068;
+  --ink-faint: #8d8f9c;
+  --line: #d6cdb8;
+  --signal: #ff5b14;
+  --hazard: #ffcc00;
+  --font-display: 'Karantina', 'IBM Plex Sans Hebrew', sans-serif;
+  --radius: 6px;
+  --shadow-hard: 6px 6px 0 var(--ink);
+  --shadow-soft: 0 10px 30px -12px rgb(20 26 46 / 35%);
+  --stagger: 45ms;
+}

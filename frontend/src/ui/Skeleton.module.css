@@ -1,0 +1,30 @@
+.skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--stone-2);
+  border-radius: var(--r-sm);
+}
+
+/* A soft light passing in the reading direction (right to left). */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 55%), transparent);
+  transform: translateX(100%);
+  animation: shimmer 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    opacity: 0;
+  }
+}
