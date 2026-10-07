@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from conftest import place_named
 
 from app.models import User
-from conftest import place_named
 
 TZ = ZoneInfo("Asia/Jerusalem")
 

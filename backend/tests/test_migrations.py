@@ -4,11 +4,11 @@ produce exactly the schema that the models describe."""
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from conftest import alembic_config
 from sqlalchemy import Engine, inspect
 
 import app.models  # noqa: F401  (registers every table on Base.metadata)
 from app.db import Base
-from conftest import alembic_config
 
 TABLES = {
     "institutions",

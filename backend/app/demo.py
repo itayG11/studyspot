@@ -40,6 +40,11 @@ def demo_user(db: Session, institution_slug: str, persona: Persona, now: datetim
     institution = db.scalars(select(Institution).where(Institution.slug == institution_slug)).first()
     if institution is None:
         raise Refusal(404, "institution_not_found")
+    # An institution where real people sign in (it has sign-in rules, like
+    # Braude's Microsoft tenants) is never a demo: otherwise one wrong
+    # setting would make every visitor an admin of a real college.
+    if institution.login_rules:
+        raise Refusal(403, "not_a_demo_institution")
     profile = PROFILES[persona]
     # The identity is "<slug>:<persona>", so each institution has its own pair.
     subject = f"{institution.slug}:{persona.value}"

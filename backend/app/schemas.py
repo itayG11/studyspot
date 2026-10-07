@@ -13,9 +13,9 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.demo import Persona
 from app.models import (
+    Amenity,
     BookingSource,
     BookingStatus,
-    Amenity,
     BuildingStatus,
     CheckInEndReason,
     PlaceAtmosphere,

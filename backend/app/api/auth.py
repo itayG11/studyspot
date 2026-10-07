@@ -33,6 +33,7 @@ from app.errors import Refusal
 from app.models import AuthSession, Institution, User
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.ratelimit import refresh_limit, sign_in_limit
+from app.schemas import DemoLoginIn, MeOut, ProvidersOut, TokenOut
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
     SESSION_LIFETIME,
@@ -42,7 +43,6 @@ from app.sessions import (
     rotate,
     start_session,
 )
-from app.schemas import DemoLoginIn, MeOut, ProvidersOut, TokenOut
 
 router = APIRouter(tags=["auth"])
 
@@ -97,7 +97,7 @@ def _set_refresh_cookie(response: Response, token: str, settings: Settings) -> N
         REFRESH_COOKIE,
         token,
         max_age=int(SESSION_LIFETIME.total_seconds()),
-        path="/auth",
+        path=settings.auth_cookie_path(),
         httponly=True,  # page scripts cannot read it, so XSS cannot steal it
         secure=settings.cookie_secure,
         samesite="lax",
@@ -106,7 +106,7 @@ def _set_refresh_cookie(response: Response, token: str, settings: Settings) -> N
 
 def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
     response.delete_cookie(
-        REFRESH_COOKIE, path="/auth", httponly=True, secure=settings.cookie_secure, samesite="lax"
+        REFRESH_COOKIE, path=settings.auth_cookie_path(), httponly=True, secure=settings.cookie_secure, samesite="lax"
     )
 
 
@@ -182,7 +182,7 @@ def login(
         LOGIN_COOKIE,
         pending,
         max_age=int(LOGIN_LIFETIME.total_seconds()),
-        path="/auth",
+        path=settings.auth_cookie_path(),
         httponly=True,
         secure=settings.cookie_secure,
         samesite="lax",  # sent on the provider's top-level redirect back to us
@@ -224,7 +224,7 @@ def callback(
     else:
         response = _to_frontend(settings)
         _set_refresh_cookie(response, issued.refresh_token, settings)
-    response.delete_cookie(LOGIN_COOKIE, path="/auth", secure=settings.cookie_secure)
+    response.delete_cookie(LOGIN_COOKIE, path=settings.auth_cookie_path(), secure=settings.cookie_secure)
     return response
 
 

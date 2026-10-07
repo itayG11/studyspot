@@ -6,8 +6,9 @@ which is git-ignored. See .env.example for the expected keys.
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env sits at the repository root, one level above backend/.
@@ -37,19 +38,48 @@ class Settings(BaseSettings):
     # no Microsoft or Google account. For development and the live demo only;
     # when off, the endpoint answers 404 as if it did not exist.
     demo_login_enabled: bool = False
-    demo_institution: str = "braude"
+    # The demo campus (app/seed/demo.py). Demo sign-in refuses an institution
+    # with real sign-in rules, so it can never be pointed at Braude.
+    demo_institution: str = "demo"
 
     # Where the API and the web app live; used for redirect URLs and CORS.
     public_api_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
+    # In production both live at one address (app/site.py), the API under
+    # /api. Setting that address sets both. Render provides it on its own,
+    # as RENDER_EXTERNAL_URL.
+    site_url: str | None = Field(default=None, validation_alias=AliasChoices("SITE_URL", "RENDER_EXTERNAL_URL", "site_url"))
     # Comma-separated extra origins allowed to call the API with cookies.
     cors_origins: str = ""
     # Secure cookies need HTTPS; browsers also accept them on localhost.
     cookie_secure: bool = True
 
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg_driver(cls, url: str) -> str:
+        """Hosting providers hand out postgresql:// (or postgres://) addresses;
+        SQLAlchemy needs to be told the driver this project installs."""
+        for plain in ("postgresql://", "postgres://"):
+            if url.startswith(plain):
+                return "postgresql+psycopg://" + url[len(plain) :]
+        return url
+
+    @model_validator(mode="after")
+    def _one_site_address(self) -> "Settings":
+        if self.site_url:
+            site = self.site_url.rstrip("/")
+            self.frontend_url = site
+            self.public_api_url = f"{site}/api"
+        return self
+
     def allowed_origins(self) -> list[str]:
         extra = [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
         return [self.frontend_url.rstrip("/"), *extra]
+
+    def auth_cookie_path(self) -> str:
+        """The sign-in cookies go only to the /auth endpoints, wherever the API
+        lives: "/auth" on its own server, "/api/auth" next to the web app."""
+        return urlparse(self.public_api_url).path.rstrip("/") + "/auth"
 
     def jwt_secret_bytes(self) -> bytes:
         if self.jwt_secret is None:

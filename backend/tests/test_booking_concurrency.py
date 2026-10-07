@@ -11,13 +11,13 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from conftest import SUNDAY_10AM
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session
 
 from app.bookings import create_booking
 from app.errors import Refusal
 from app.models import Building, Institution, OpeningHours, Place, PlaceKind, Seat, User
-from conftest import SUNDAY_10AM
 
 STUDENTS = 10
 MONDAY_14 = datetime(2026, 10, 12, 14, 0, tzinfo=ZoneInfo("Asia/Jerusalem"))

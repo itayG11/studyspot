@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from conftest import SUNDAY_10AM, code_for, place_named
 
 from app.models import User
-from conftest import SUNDAY_10AM, code_for, place_named
 
 TZ = ZoneInfo("Asia/Jerusalem")
 MIN = timedelta(minutes=1)

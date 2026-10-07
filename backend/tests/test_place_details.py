@@ -1,14 +1,14 @@
 """What a place is like (atmosphere, who it suits, equipment), and when a
 group room is free. The Braude details are demo values, and say so."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from conftest import place_named
+from factories import assert_rejected, make_building, make_institution, make_place
 from sqlalchemy.orm import Session
 
 from app.models import Amenity, Institution, PlaceAmenity, PlaceAtmosphere, SuitedFor
-from conftest import place_named
-from factories import assert_rejected, make_building, make_institution, make_place
 
 TZ = ZoneInfo("Asia/Jerusalem")
 

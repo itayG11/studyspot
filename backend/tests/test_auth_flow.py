@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import jwt
 import pytest
+from conftest import SUNDAY_10AM
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
@@ -24,7 +25,6 @@ from app.main import app
 from app.models import User, UserIdentity
 from app.oidc import GoogleProvider, MicrosoftProvider
 from app.seed.braude import STUDENTS_TENANT
-from conftest import SUNDAY_10AM
 
 CLIENT_ID = "studyspot-test-client"
 OTHER_TENANT = "11111111-2222-3333-4444-555555555555"
@@ -158,7 +158,8 @@ def test_login_redirect_has_state_nonce_and_pkce(auth_client):
 
 
 def test_unknown_provider_is_404(auth_client):
-    app.dependency_overrides[get_providers] = lambda: {}
+    # A lambda, not `dict`: FastAPI reads the override's signature, and dict has none.
+    app.dependency_overrides[get_providers] = lambda: {}  # noqa: PIE807
     assert auth_client.get("/auth/microsoft/login", follow_redirects=False).status_code == 404
 
 

@@ -8,13 +8,13 @@ transactions. It cleans up after itself.
 import threading
 from datetime import time
 
+from conftest import SUNDAY_10AM, TEST_CODE_SECRET
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session
 
 from app.checkins import CheckInError, check_in
 from app.codes import make_code
 from app.models import Building, Institution, OpeningHours, Place, PlaceKind, User
-from conftest import SUNDAY_10AM, TEST_CODE_SECRET
 
 STUDENTS = 10
 

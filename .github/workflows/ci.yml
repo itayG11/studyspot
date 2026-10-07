@@ -1,0 +1,149 @@
+# Every push and pull request: the server's tests against a real PostgreSQL,
+# the web app's checks, the whole site in a real browser, and the Docker
+# image. A red check means something broke before anyone deploys it.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Test-only values, not secrets of any real deployment.
+  DATABASE_URL: postgresql+psycopg://studyspot:studyspot@localhost:5432/studyspot
+  TEST_DATABASE_URL: postgresql+psycopg://studyspot:studyspot@localhost:5432/studyspot_test
+  JWT_SECRET: ci-only-jwt-secret-0123456789abcdef0123456789
+  CHECKIN_CODE_SECRET: ci-only-code-secret-0123456789abcdef01234567
+
+jobs:
+  server:
+    name: Server (pytest, ruff, migrations)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: studyspot
+          POSTGRES_PASSWORD: studyspot
+          POSTGRES_DB: studyspot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studyspot" --health-interval 5s --health-timeout 3s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check app tests
+      - name: Migrations build the schema, and match the models
+        run: |
+          alembic upgrade head
+          alembic check
+      - run: pytest -q
+
+  web:
+    name: Web app (lint, types, unit tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build # includes the type check (tsc -b)
+
+  browser:
+    name: Whole site in a browser (Playwright, axe)
+    runs-on: ubuntu-latest
+    needs: [server, web]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: studyspot
+          POSTGRES_PASSWORD: studyspot
+          POSTGRES_DB: studyspot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studyspot" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Database with both campuses
+        working-directory: backend
+        run: |
+          pip install -e .
+          alembic upgrade head
+          python -m app.seed
+      - working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Playwright
+        working-directory: frontend
+        env:
+          PYTHON: python
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/test-results
+          retention-days: 7
+
+  image:
+    name: Docker image builds and starts
+    runs-on: ubuntu-latest
+    needs: [server, web]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: studyspot
+          POSTGRES_PASSWORD: studyspot
+          POSTGRES_DB: studyspot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studyspot" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t studyspot .
+      - name: Starts on an empty database and answers
+        run: |
+          docker run -d --name site --network host \
+            -e DATABASE_URL=postgresql://studyspot:studyspot@localhost:5432/studyspot \
+            -e JWT_SECRET -e CHECKIN_CODE_SECRET \
+            -e SITE_URL=http://localhost:8000 studyspot
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/api/health && break; sleep 2; done
+          curl -fsS http://localhost:8000/api/health
+          curl -fsS -o /dev/null http://localhost:8000/spaces/1
+          curl -fsSI http://localhost:8000/ | grep -i "content-security-policy"
+          docker logs site

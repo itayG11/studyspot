@@ -3,10 +3,10 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from factories import assert_rejected, make_building, make_institution, make_place, make_user
 from sqlalchemy.orm import Session
 
 from app.models import Booking, BookingSource, BookingStatus, PlaceKind, Seat
-from factories import assert_rejected, make_building, make_institution, make_place, make_user
 
 T14 = datetime(2026, 10, 12, 11, 0, tzinfo=UTC)  # 14:00 in Karmiel
 HOUR = timedelta(hours=1)

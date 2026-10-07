@@ -10,12 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_session
 from app import bookings as rules
+from app.api.deps import get_session
 from app.bookings import MIN_WALK_IN, holding
-from app.hours import place_status
 from app.clock import get_now
-from app.hours import opening_status
+from app.hours import opening_status, place_status
 from app.models import (
     Booking,
     Building,

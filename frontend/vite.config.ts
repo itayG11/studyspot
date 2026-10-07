@@ -21,5 +21,9 @@ export default defineConfig({
     // Motion's animation features (src/design/MotionProvider.tsx) and the
     // admin page (src/admin/LazyAdminPage.tsx).
     chunkSizeWarningLimit: 600,
+    // Fonts stay files, never inlined as data: addresses. The production
+    // policy allows fonts from this site only (font-src 'self', see
+    // backend/app/site.py), and files are cached across pages anyway.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
   },
 })

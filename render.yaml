@@ -1,0 +1,26 @@
+# Render Blueprint: the live demo site, one free web service.
+# The database is on Neon (Render's free database is deleted after 30 days);
+# its address is pasted in once, as DATABASE_URL. Steps: docs/DEPLOY.md.
+services:
+  - type: web
+    name: studyspot
+    runtime: docker
+    plan: free
+    region: frankfurt # the closest region to Israel
+    healthCheckPath: /api/health
+    envVars:
+      # From Neon's dashboard, asked for when the Blueprint is created.
+      - key: DATABASE_URL
+        sync: false
+      # Random 256-bit values made by Render, never seen by anyone.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CHECKIN_CODE_SECRET
+        generateValue: true
+      # Visitors try everything in the demo campus (app/seed/demo.py).
+      # The server refuses this for an institution with real sign-in rules.
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"
+      - key: DEMO_INSTITUTION
+        value: demo
+      # The site's address comes from Render itself (RENDER_EXTERNAL_URL).

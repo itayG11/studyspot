@@ -18,6 +18,7 @@ dependencies = [
 dev = [
     "pytest>=8",
     "httpx2>=2",
+    "ruff>=0.16",
 ]
 
 [tool.pytest.ini_options]
@@ -25,6 +26,14 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # A SQLAlchemy warning usually means data was silently not saved: fail on it.
 filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
+
+# Lint only (no formatter rules): the code's own layout stays as written.
+[tool.ruff]
+line-length = 120
+extend-exclude = ["migrations"]  # written by Alembic, kept as generated
+
+[tool.ruff.lint]
+ignore = ["FLY002"]  # a list joined with "; " reads better for headers
 
 [build-system]
 requires = ["setuptools>=68"]

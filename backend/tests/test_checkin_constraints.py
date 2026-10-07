@@ -3,10 +3,10 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from factories import assert_rejected, make_building, make_institution, make_place, make_user
 from sqlalchemy.orm import Session
 
 from app.models import CheckIn, CheckInEndReason, PlaceKind, Seat, User
-from factories import assert_rejected, make_building, make_institution, make_place, make_user
 
 NOW = datetime(2026, 10, 7, 9, 0, tzinfo=UTC)
 

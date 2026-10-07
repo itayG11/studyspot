@@ -7,7 +7,7 @@ import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMapEvents } from 'r
 import type { Building } from '../api/types'
 import { position } from '../logic/occupancy'
 import { SourceLayer } from '../map/CampusMap'
-import { AERIAL, AERIAL_LABELS, MAX_ZOOM } from '../map/tiles'
+import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS } from '../map/tiles'
 import styles from './admin.module.css'
 
 interface Props {
@@ -36,10 +36,14 @@ export function PickMap({ buildings, selected, onPick }: Props) {
   return (
     <div dir="ltr" className={styles.pickMap}>
       <MapContainer {...view} maxZoom={MAX_ZOOM} style={{ height: '100%' }}>
-        <LayerGroup>
-          <SourceLayer source={AERIAL} />
-          <SourceLayer source={AERIAL_LABELS} />
-        </LayerGroup>
+        {AERIAL_ENABLED ? (
+          <LayerGroup>
+            <SourceLayer source={AERIAL} />
+            <SourceLayer source={AERIAL_LABELS} />
+          </LayerGroup>
+        ) : (
+          <SourceLayer source={STREETS} />
+        )}
         {buildings.map((b) => {
           const at = position(b)
           if (!at) return null

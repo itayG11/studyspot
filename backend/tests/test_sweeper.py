@@ -3,11 +3,11 @@ closes expired check-ins. Running it twice changes nothing more."""
 
 from datetime import timedelta
 
+from conftest import SUNDAY_10AM, place_named
 from sqlalchemy import select
 
 from app.models import Booking, BookingSource, BookingStatus, CheckIn, CheckInEndReason
 from app.sweeper import sweep
-from conftest import SUNDAY_10AM, place_named
 
 MIN = timedelta(minutes=1)
 

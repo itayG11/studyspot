@@ -50,10 +50,9 @@ def assert_rejected(session: Session, add_row, constraint: str) -> None:
     Checking the constraint name proves each test fails for the rule it is
     about, not because of some unrelated mistake in the test data.
     """
-    with pytest.raises(IntegrityError) as error:
-        with session.begin_nested():  # a SAVEPOINT, rolled back on error
-            add_row()
-            session.flush()
+    with pytest.raises(IntegrityError) as error, session.begin_nested():  # a SAVEPOINT, rolled back on error
+        add_row()
+        session.flush()
     assert error.value.orig.diag.constraint_name == constraint
 
 

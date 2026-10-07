@@ -23,17 +23,16 @@ or rely on expensive occupancy sensors.
 - **Notifications** – web push, email, and an optional Telegram bot.
 - **Multi-campus** – any college or university can define its own campus. Braude College is the first one.
 
-## Tech stack (planned)
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.12, FastAPI |
-| Database | PostgreSQL, SQLAlchemy, Alembic |
-| Auth | Google & Microsoft (OpenID Connect), JWT |
-| Frontend | React + Vite, Leaflet + OpenStreetMap, PWA |
-| Real-time | WebSocket |
-| Notifications | Web Push, email, Telegram bot |
-| DevOps | Docker Compose, GitHub Actions, pytest |
+| Backend | Python 3.13, FastAPI, SQLAlchemy 2, Alembic |
+| Database | PostgreSQL 16 (an exclusion constraint prevents double bookings) |
+| Auth | Microsoft & Google (OpenID Connect with PKCE), short JWTs, rotating refresh cookie |
+| Frontend | React 19, TypeScript, Vite, Motion, Leaflet + OpenStreetMap |
+| Tests | pytest, Vitest, Playwright, axe |
+| DevOps | Docker (one image), GitHub Actions, Render + Neon |
 
 ## Documentation
 
@@ -41,6 +40,8 @@ or rely on expensive occupancy sensors.
 - [Competitive analysis](docs/COMPETITIVE_ANALYSIS.md) (Hebrew)
 - [Interview report](docs/INTERVIEW_REPORT.md) (Hebrew, updated every stage)
 - [Campus data](docs/CAMPUS_DATA.md) (Hebrew, filled in by hand)
+- [Deploying the live demo](docs/DEPLOY.md) (Hebrew)
+- [Launching at Braude for real](docs/BRAUDE_LAUNCH.md) (Hebrew)
 
 ## Running locally
 
@@ -51,7 +52,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 alembic upgrade head              # create the tables
-python -m app.seed                # load the Braude campus demo data
+python -m app.seed                # load Braude, and the demo campus the live site shows
 python -m app.codes braude        # print the signed check-in code of every place
 python -m app.sweeper             # one cleanup round (the server also runs it every 60 s)
 python -m app.admin grant-role --email you@example.edu institution_admin
@@ -68,12 +69,30 @@ npm install
 npm run dev                       # http://localhost:5173
 ```
 
-To sign in without a Microsoft account during development, set
-`DEMO_LOGIN_ENABLED=true` in `.env`: the sign-in page then offers a demo
-student and a demo institution admin. Keep it `false` wherever real
-students sign in.
+To sign in without a Microsoft account, set `DEMO_LOGIN_ENABLED=true` in
+`.env`: the sign-in page then offers a demo student and a demo institution
+admin, in the demo campus (`VITE_INSTITUTION=demo`). The server refuses demo
+sign-in for an institution with real sign-in rules, so it can never hand out
+a Braude admin.
+
+## The whole site in one container
+
+The image builds the web app and serves it next to the API (under `/api`),
+from one address, so the sign-in cookie is first-party. It runs the
+migrations and loads the campus data on start.
+
+```bash
+docker build -t studyspot .
+docker run -p 8000:8000 --env-file .env -e SITE_URL=http://localhost:8000 studyspot
+```
+
+Every push runs [CI](.github/workflows/ci.yml): the server's tests on a real
+PostgreSQL, the web app's lint, types, unit tests and build, the whole site
+in a browser (Playwright, with an accessibility check), and the image.
 
 ## API (so far)
+
+Paths as served by `uvicorn app.main:app`; in the container they are under `/api`.
 
 | Method | Path | Who |
 |---|---|---|

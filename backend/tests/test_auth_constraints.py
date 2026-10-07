@@ -2,10 +2,10 @@
 
 from datetime import UTC, datetime, timedelta
 
+from factories import assert_rejected, make_institution, make_user
 from sqlalchemy.orm import Session
 
 from app.models import AuthProvider, AuthSession, InstitutionLoginRule, UserIdentity, UserRole
-from factories import assert_rejected, make_institution, make_user
 
 NOW = datetime(2026, 10, 11, 7, 0, tzinfo=UTC)
 

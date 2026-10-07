@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Building, Institution, Place, PlaceKind, Seat, SpecialPeriod
-from app.seed import seed_braude, seed_institution
+from app.seed import seed_braude, seed_demo, seed_institution
 from app.seed.braude import FRIDAY, SUNDAY_TO_THURSDAY
 
 
@@ -153,3 +153,18 @@ def test_seeding_again_fills_only_missing_positions(session: Session, braude: In
     seed_braude(session)
     assert by_code["L"].latitude == Decimal("32.912396")
     assert (by_code["M"].latitude, by_code["M"].longitude) == (Decimal("32.9"), Decimal("35.3"))
+
+
+def test_the_demo_campus_has_the_same_layout_and_no_real_sign_in(session: Session, braude: Institution):
+    demo = seed_demo(session)
+    assert (demo.slug, demo.name) == ("demo", "קמפוס הדגמה")
+    assert demo.id != braude.id
+    assert demo.login_rules == []  # nobody signs in to it with a real account
+    assert count(session, Building, demo) == count(session, Building, braude)
+    assert count(session, Place, demo) == count(session, Place, braude)
+    assert sorted(p.name for b in demo.buildings for p in b.places) == sorted(
+        p.name for b in braude.buildings for p in b.places
+    )
+    # Braude itself is untouched.
+    assert len(braude.login_rules) > 0
+    assert seed_demo(session).id == demo.id  # running the seed again changes nothing

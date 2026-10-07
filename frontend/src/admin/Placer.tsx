@@ -5,6 +5,7 @@ import { placeBuilding } from '../api/admin'
 import { getBuildings } from '../api/campus'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
+import { AERIAL_ENABLED } from '../map/tiles'
 import { ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
@@ -31,7 +32,7 @@ export function Placer() {
   return (
     <div className={styles.placer}>
       <div className={styles.side}>
-        <p className={styles.lead}>בחר בניין, ואז לחץ על הגג שלו בתצלום האוויר.</p>
+        <p className={styles.lead}>בחר בניין, ואז לחץ על הגג שלו {AERIAL_ENABLED ? 'בתצלום האוויר' : 'במפה'}.</p>
         <ul className={styles.choices}>
           {buildings.data.map((b) => (
             <li key={b.code}>

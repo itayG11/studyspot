@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from conftest import SUNDAY_10AM, code_for, place_named
 
 from app.models import User
-from conftest import SUNDAY_10AM, code_for, place_named
 
 TZ = ZoneInfo("Asia/Jerusalem")
 
@@ -180,8 +180,9 @@ def test_revoked_code_is_rejected(client, session, braude):
 
 
 def test_code_for_a_place_that_does_not_exist(client):
-    from app.codes import make_code
     from conftest import TEST_CODE_SECRET
+
+    from app.codes import make_code
 
     response = client.post("/check-ins", json={"code": make_code(999999, 1, TEST_CODE_SECRET)})
     assert (response.status_code, response.json()["detail"]) == (400, "invalid_code")

@@ -1,10 +1,10 @@
 """Roles, the first admin endpoints, the admin CLI, and rate limiting."""
 
 import pytest
+from conftest import code_for, place_named
 from sqlalchemy import select
 
 from app.models import User, UserRole
-from conftest import code_for, place_named
 
 
 @pytest.fixture

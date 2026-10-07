@@ -1,8 +1,13 @@
-// Where the map pictures (tiles) come from. Used by the campus map and by
-// the home-page hero, so both show the same aerial photo.
+// Where the map pictures (tiles) come from: the finder's map and the
+// admin's map for placing buildings.
 //
-// Each provider asks for credit on the map (attribution). Before going
-// public, check each provider's terms of use (noted in docs/INTERVIEW_REPORT.md).
+// Each provider asks for credit on the map (attribution). Terms of use:
+// docs/DEPLOY.md. OpenStreetMap's tiles may be used by a light site that
+// credits them and sends a Referer (the server's Referrer-Policy does).
+// Esri's aerial photo is licensed through an ArcGIS account, so the public
+// build leaves it out unless VITE_AERIAL=on is set at build time.
+
+export const AERIAL_ENABLED: boolean = (import.meta.env.VITE_AERIAL ?? (import.meta.env.DEV ? 'on' : 'off')) === 'on'
 
 export interface TileSource {
   url: string

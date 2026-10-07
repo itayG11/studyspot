@@ -25,7 +25,7 @@ async function check(page: Page, what: string) {
 }
 
 async function firstPlace(page: Page, name: string): Promise<number> {
-  const places = await (await page.request.get(`${API}/institutions/braude/places`)).json()
+  const places = await (await page.request.get(`${API}/institutions/demo/places`)).json()
   return places.find((p: { name: string }) => p.name === name).id
 }
 

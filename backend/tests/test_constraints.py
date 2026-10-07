@@ -8,7 +8,7 @@ the checks in Python.
 from datetime import date, time
 
 import pytest
-from sqlalchemy.exc import IntegrityError
+from factories import assert_rejected, make_building, make_institution, make_place
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -20,8 +20,6 @@ from app.models import (
     SpecialPeriod,
     SpecialPeriodPlace,
 )
-from factories import assert_rejected, make_building, make_institution, make_place
-
 
 # --- Valid rows are accepted -------------------------------------------------
 

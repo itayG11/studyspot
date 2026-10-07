@@ -11,7 +11,7 @@ async function apiToken(request: APIRequestContext, persona: 'student' | 'admin'
 }
 
 async function findPlace(request: APIRequestContext, building: string, name: string) {
-  const places = await (await request.get(`${API}/institutions/braude/places?building=${building}`)).json()
+  const places = await (await request.get(`${API}/institutions/demo/places?building=${building}`)).json()
   return places.find((p: { name: string }) => p.name === name)
 }
 
@@ -67,7 +67,7 @@ test('a student checks in by opening the address on a sign', async ({ page, requ
   // The code printed on L's sign, as the admin's page would show it.
   const adminToken = await apiToken(request, 'admin')
   const codes = await (
-    await request.get(`${API}/admin/institutions/braude/codes`, { headers: { Authorization: `Bearer ${adminToken}` } })
+    await request.get(`${API}/admin/institutions/demo/codes`, { headers: { Authorization: `Bearer ${adminToken}` } })
   ).json()
   const sign = codes.find((c: { place_id: number }) => c.place_id === area.id)
 

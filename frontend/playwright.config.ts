@@ -39,7 +39,7 @@ export default defineConfig({
     {
       command: `npx vite --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
-      env: { VITE_API_URL: `http://localhost:${API_PORT}`, VITE_INSTITUTION: 'braude' },
+      env: { VITE_API_URL: `http://localhost:${API_PORT}`, VITE_INSTITUTION: 'demo' },
       reuseExistingServer: false,
     },
   ],

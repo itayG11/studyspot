@@ -8,7 +8,7 @@ import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Toolt
 import type { Building } from '../api/types'
 import styles from './map.module.css'
 import { LEVEL_COLORS, occupancyLevel, position } from '../logic/occupancy'
-import { AERIAL, AERIAL_LABELS, MAX_ZOOM, STREETS, type TileSource } from './tiles'
+import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS, type TileSource } from './tiles'
 
 interface Props {
   buildings: Building[] // only buildings that have a position
@@ -26,17 +26,21 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
     // Leaflet is built for left-to-right pages, so the map itself stays LTR.
     <div dir="ltr" className={styles.frame}>
       <MapContainer bounds={bounds} maxZoom={MAX_ZOOM} scrollWheelZoom className={styles.map}>
-        <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="תצלום אוויר">
-            <LayerGroup>
-              <SourceLayer source={AERIAL} />
-              <SourceLayer source={AERIAL_LABELS} />
-            </LayerGroup>
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="מפת רחובות">
-            <SourceLayer source={STREETS} />
-          </LayersControl.BaseLayer>
-        </LayersControl>
+        {AERIAL_ENABLED ? (
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer checked name="תצלום אוויר">
+              <LayerGroup>
+                <SourceLayer source={AERIAL} />
+                <SourceLayer source={AERIAL_LABELS} />
+              </LayerGroup>
+            </LayersControl.BaseLayer>
+            <LayersControl.BaseLayer name="מפת רחובות">
+              <SourceLayer source={STREETS} />
+            </LayersControl.BaseLayer>
+          </LayersControl>
+        ) : (
+          <SourceLayer source={STREETS} />
+        )}
 
         {flyToSelected && <FlyTo target={points[buildings.findIndex((b) => b.code === selected)] ?? null} />}
         {buildings.map((building, i) => {

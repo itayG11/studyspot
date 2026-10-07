@@ -33,6 +33,7 @@ from app.models import (
     floor_exists,
 )
 from app.seed.braude import BRAUDE
+from app.seed.demo import DEMO
 
 Hours = Mapping[int, tuple[time, time]]
 
@@ -170,3 +171,7 @@ def _make_place(building: Building, p: Mapping[str, Any], hours: Hours) -> Place
 
 def seed_braude(session: Session) -> Institution:
     return seed_institution(session, BRAUDE)
+
+
+def seed_demo(session: Session) -> Institution:
+    return seed_institution(session, DEMO)
