@@ -59,6 +59,20 @@ pytest                            # uses a separate studyspot_test database
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 ```
 
+The web app, in a second terminal ([frontend/README.md](frontend/README.md)):
+
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev                       # http://localhost:5173
+```
+
+To sign in without a Microsoft account during development, set
+`DEMO_LOGIN_ENABLED=true` in `.env`: the sign-in page then offers a demo
+student and a demo institution admin. Keep it `false` wherever real
+students sign in.
+
 ## API (so far)
 
 | Method | Path | Who |
@@ -74,7 +88,10 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 | POST | `/bookings/{id}/cancel` | signed in, own booking only |
 | POST | `/bookings/{id}/extend` | signed in, own booking only |
 | GET | `/places/{id}/availability?date=` | anyone (busy times only, never who) |
+| GET | `/institutions/{slug}` | anyone (name and time zone) |
+| GET | `/auth/providers` | anyone (which sign-in buttons to show) |
 | GET | `/auth/{microsoft or google}/login` | anyone (redirects to the provider) |
+| POST | `/auth/demo/login` | anyone, only when `DEMO_LOGIN_ENABLED=true` |
 | POST | `/auth/refresh` | refresh cookie: returns a 15-minute access token |
 | POST | `/auth/logout`, `/auth/logout-all` | signed in |
 | GET | `/me` | signed in |
@@ -94,7 +111,8 @@ Interactive docs: http://localhost:8000/docs
 - [x] Core API: places, live occupancy, check-in with signed codes
 - [x] Bookings, renewal, no-show release and database-enforced double-booking prevention
 - [x] Authentication: Microsoft and Google sign-in, roles, rate limiting
-- [ ] Web app with campus map
+- [x] Web app, part 1: campus map, places list, place page with the lab seat map, demo sign-in
+- [ ] Web app, part 2: booking, QR check-in, my bookings, admin pages
 - [ ] CI, Docker, deployment
 - [ ] Notifications
 - [ ] Real-time updates and occupancy prediction
