@@ -52,9 +52,23 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -e ".[dev]"
 alembic upgrade head              # create the tables
 python -m app.seed                # load the Braude campus demo data
+python -m app.codes braude        # print the signed check-in code of every place
 pytest                            # uses a separate studyspot_test database
 uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 ```
+
+## API (so far)
+
+| Method | Path | Who |
+|---|---|---|
+| GET | `/institutions/{slug}/buildings` | anyone |
+| GET | `/institutions/{slug}/places?building=&kind=` | anyone |
+| GET | `/places/{id}` | anyone |
+| POST | `/check-ins` | signed in (sign-in arrives in stage 5) |
+| GET | `/me/check-in` | signed in |
+| POST | `/check-ins/{id}/checkout` | signed in, own check-in only |
+
+Interactive docs: http://localhost:8000/docs
 
 ## Status
 
@@ -62,7 +76,8 @@ uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
 - [x] Project skeleton (FastAPI health check, PostgreSQL in Docker)
 - [x] Campus data
 - [x] Data model (campus tables, migrations, Braude demo data)
-- [ ] Core API (spaces, check-in, bookings)
+- [x] Core API: places, live occupancy, check-in with signed codes
+- [ ] Bookings and double-booking prevention
 - [ ] Authentication
 - [ ] Web app with campus map
 - [ ] CI, Docker, deployment

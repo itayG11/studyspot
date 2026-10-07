@@ -5,7 +5,11 @@
 - This is a portfolio project for the CV (1–2 weeks of work). The user must be able to explain every part in a job interview.
 
 ## How to work with the user
-- Communicate in Hebrew. Keep Hebrew text right-to-left friendly: start lines with Hebrew, put English terms in `code` or in separate table cells, avoid mixing languages mid-sentence when possible.
+- Communicate in Hebrew. The user reads with a global right-to-left mod, so every Hebrew output must be RTL-friendly. This applies to chat replies, tool-question text, plans and docs alike:
+  - Start every line, bullet, heading and table cell with Hebrew, never with an English word, a code span or a number.
+  - Put English terms, commands and file names in `code`, or in a separate table cell.
+  - Avoid switching languages mid-sentence; no English inside parentheses in a Hebrew sentence.
+  - Prefer short lines and tables over long mixed sentences.
 - Before each stage: explain in simple Hebrew what we are about to do and why. After each stage: short summary of what was done and what was learned.
 - Do not start a new stage without the user's approval.
 - Rely on official, current documentation before and during work. Answer only when sure; say clearly when something is not verified.
