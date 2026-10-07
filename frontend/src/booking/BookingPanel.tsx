@@ -38,7 +38,7 @@ export function BookingPanel({ place, seat, rules, timeZone }: Props) {
   const days = bookableDays(now, place.opening_hours, rules, timeZone)
   const [chosenDay, setDay] = useState<string | null>(null)
   const day = chosenDay && days.includes(chosenDay) ? chosenDay : (days[0] ?? null)
-  const [slot, setSlot] = useState<Slot | null>(null)
+  const [picked, setSlot] = useState<Slot | null>(null)
   const [minutes, setMinutes] = useState<number | null>(null)
   const [booked, setBooked] = useState<string | null>(null)
   const action = useAction()
@@ -51,7 +51,11 @@ export function BookingPanel({ place, seat, rules, timeZone }: Props) {
   const slots = day && availability.data
     ? daySlots({ date: day, hours: place.opening_hours, busy: availability.data.busy, seatId, now, rules, timeZone })
     : []
+  // The chosen slot as it is now: it may have become past (the clock moved)
+  // or booked (after a refresh); then it is no longer chosen.
+  const slot = picked ? (slots.find((s) => s.start === picked.start && s.state === 'free') ?? null) : null
   const lengths = slot ? durationsFrom(slot, rules) : []
+  const upcoming = slots.filter((s) => s.state !== 'past')
 
   function choose(next: Slot | null) {
     setSlot(next)
@@ -105,22 +109,22 @@ export function BookingPanel({ place, seat, rules, timeZone }: Props) {
         </h3>
         {availability.error && <LoadError error={availability.error} onRetry={availability.reload} inline />}
         {availability.loading && <p className="hint">טוען את הזמנים…</p>}
-        {availability.data && (
+        {availability.data && upcoming.length === 0 && <p className="hint">לא נשארו היום שעות להזמנה. בחר יום אחר.</p>}
+        {availability.data && upcoming.length > 0 && (
           <div className={styles.board} role="group" aria-label="שעת התחלה">
-            {slots
-              .filter((s) => s.state !== 'past')
-              .map((s) => (
-                <button
-                  key={s.start}
-                  type="button"
-                  className={styles.time}
-                  disabled={s.state === 'busy'}
-                  aria-pressed={s.start === slot?.start}
-                  onClick={() => choose(s)}
-                >
-                  {s.label}
-                </button>
-              ))}
+            {upcoming.map((s) => (
+              <button
+                key={s.start}
+                type="button"
+                className={styles.time}
+                disabled={s.state !== 'free'}
+                title={s.state === 'tooFar' ? 'עוד אי אפשר להזמין כל כך רחוק מראש' : undefined}
+                aria-pressed={s.start === slot?.start}
+                onClick={() => choose(s)}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
         )}
       </div>

@@ -72,7 +72,7 @@ test('a student checks in by opening the address on a sign', async ({ page, requ
   const sign = codes.find((c: { place_id: number }) => c.place_id === area.id)
 
   await signInAsStudent(page)
-  await page.goto(`/scan?c=${encodeURIComponent(sign.code)}`)
+  await page.goto(`/scan#c=${encodeURIComponent(sign.code)}`)
   await expect(page.getByRole('heading', { name: 'מתחם לימוד' })).toBeVisible()
   await expect(page).toHaveURL('/scan') // the code is not kept in the address
   await page.getByRole('button', { name: 'אני כאן' }).click()

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import { jsonResponse, place } from '../test/fixtures'
 import { BookingPanel } from './BookingPanel'
 
 const RULES: BookingRules = {
-  slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2,
+  slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2,
   arrive_early_minutes: 10, no_show_after_minutes: 15,
 }
 const ME = { id: 1, email: 'a@b', display_name: 'סטודנט', role: 'student', institution_slug: 'braude' }
@@ -94,5 +94,18 @@ describe('BookingPanel', () => {
     await user.click(await screen.findByRole('button', { name: '08:30' }))
     expect(screen.getByRole('button', { name: 'חצי שעה' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'שעה' })).not.toBeInTheDocument()
+  })
+})
+
+describe('BookingPanel as time passes', () => {
+  it('a chosen time that becomes too late is no longer offered for booking', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '08:00' })) // 05:00 UTC, now is 05:00
+    await user.click(screen.getByRole('button', { name: 'רבע שעה' }))
+    expect(screen.getByRole('button', { name: 'להזמין' })).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(16 * 60_000)) // 08:16: past its no-show deadline
+    expect(screen.queryByRole('button', { name: 'להזמין' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '08:00' })).not.toBeInTheDocument()
   })
 })

@@ -9,7 +9,7 @@ import { PlacePage } from './PlacePage'
 
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
 
 function lab(overrides: Partial<PlaceDetail> = {}): PlaceDetail {

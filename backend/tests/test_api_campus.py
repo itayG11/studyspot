@@ -35,6 +35,7 @@ def test_institution_details(client):
         "slot_minutes": 15,
         "max_minutes": 120,
         "days_ahead": 4,
+        "horizon_minutes": 4 * 24 * 60,
         "max_upcoming": 2,
         "arrive_early_minutes": 10,
         "no_show_after_minutes": 15,

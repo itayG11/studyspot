@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placeIdFromCode, scanUrl } from './codes'
+import { codeFromHash, placeIdFromCode, scanUrl } from './codes'
 
 const SIG = 'A'.repeat(43)
 
@@ -18,6 +18,12 @@ describe('placeIdFromCode', () => {
 
 describe('scanUrl', () => {
   it('is the address a phone camera opens from the printed sign', () => {
-    expect(scanUrl('https://studyspot.example', `p1.v1.${SIG}`)).toBe(`https://studyspot.example/scan?c=p1.v1.${SIG}`)
+    expect(scanUrl('https://studyspot.example', `p1.v1.${SIG}`)).toBe(`https://studyspot.example/scan#c=p1.v1.${SIG}`)
+  })
+
+  it('the code is read back from the fragment', () => {
+    expect(codeFromHash(`#c=p1.v1.${SIG}`)).toBe(`p1.v1.${SIG}`)
+    expect(codeFromHash('')).toBeNull()
+    expect(codeFromHash('#other=1')).toBeNull()
   })
 })

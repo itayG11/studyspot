@@ -12,7 +12,7 @@ import { MyPage } from './MyPage'
 const ME = { id: 1, email: 'demo.student@studyspot.invalid', display_name: 'סטודנט לדוגמה', role: 'student', institution_slug: 'braude' }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
 const ROOM: Booking = {
   id: 7, place_id: 3, place_name: 'EM107', building_code: 'EM', seat_id: null, seat_label: null,

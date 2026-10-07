@@ -13,7 +13,7 @@ const SIG = 'A'.repeat(43)
 const ME = { id: 1, email: 'a@b', display_name: 'סטודנט', role: 'student', institution_slug: 'braude' }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
 const NOW = new Date('2026-10-11T07:00:00Z') // Sunday 10:00 in Israel
 
@@ -31,6 +31,8 @@ let places: Record<number, PlaceDetail> = {}
 let bookings: Booking[] = []
 let checkInResponse: () => Response
 let checkInBody: unknown = null
+let current: unknown = null
+let signedIn = true
 
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW, shouldAdvanceTime: true })
@@ -38,6 +40,9 @@ beforeEach(() => {
   places = { 5: AREA, 1: LAB }
   bookings = []
   checkInBody = null
+  current = null
+  signedIn = true
+  sessionStorage.clear()
   checkInResponse = () =>
     jsonResponse({
       id: 1, place_id: 5, place_name: 'מתחם לימוד', building_code: 'L', seat_id: null, seat_label: null,
@@ -47,7 +52,13 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (path === '/auth/refresh')
-      return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
+      return Promise.resolve(
+        signedIn
+          ? jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME })
+          : jsonResponse({ detail: 'invalid_session' }, 401),
+      )
+    if (path === '/me/check-in')
+      return Promise.resolve(current ? jsonResponse(current) : jsonResponse({ detail: 'no_active_check_in' }, 404))
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
     const placeMatch = /^\/places\/(\d+)$/.exec(path)
@@ -70,7 +81,11 @@ afterEach(() => {
 
 function renderScan(path: string) {
   const router = createMemoryRouter(
-    [{ path: '/scan', element: <ScanPage /> }, { path: '/me', element: <p>האזור שלי</p> }],
+    [
+      { path: '/scan', element: <ScanPage /> },
+      { path: '/me', element: <p>האזור שלי</p> },
+      { path: '/login', element: <p>התחברות</p> },
+    ],
     { initialEntries: [path] },
   )
   render(
@@ -87,16 +102,16 @@ const user = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
 describe('ScanPage', () => {
   it('shows the place, checks in, and takes the code out of the address', async () => {
-    const router = renderScan(`/scan?c=p5.v1.${SIG}`)
+    const router = renderScan(`/scan#c=p5.v1.${SIG}`)
     expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
-    expect(router.state.location.search).toBe('') // not kept in the history
+    expect(router.state.location.hash).toBe('') // not kept in the history
     await user().click(screen.getByRole('button', { name: 'אני כאן' }))
     expect(await screen.findByText(/נכנסת. המקום שמור לך עד 12:00/)).toBeInTheDocument()
     expect(checkInBody).toEqual({ code: `p5.v1.${SIG}` })
   })
 
   it('in a lab without a booking, a free station must be chosen', async () => {
-    renderScan(`/scan?c=p1.v1.${SIG}`)
+    renderScan(`/scan#c=p1.v1.${SIG}`)
     expect(await screen.findByRole('heading', { name: 'M206' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'אני כאן' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: /A2/ })).not.toBeInTheDocument() // taken: not a choice
@@ -110,7 +125,7 @@ describe('ScanPage', () => {
       id: 4, place_id: 1, place_name: 'M206', building_code: 'M', seat_id: 2, seat_label: 'A2',
       starts_at: '2026-10-11T07:05:00Z', ends_at: '2026-10-11T08:00:00Z', status: 'booked', source: 'advance',
     }]
-    renderScan(`/scan?c=p1.v1.${SIG}`)
+    renderScan(`/scan#c=p1.v1.${SIG}`)
     expect(await screen.findByText(/יש לך הזמנה לתא A2/)).toBeInTheDocument()
     await user().click(screen.getByRole('button', { name: 'אני כאן' }))
     expect(checkInBody).toEqual({ code: `p1.v1.${SIG}` })
@@ -122,7 +137,7 @@ describe('ScanPage', () => {
       started_at: NOW.toISOString(), expires_at: '2026-10-11T07:45:00Z', ended_at: null, end_reason: null,
       booking_id: 9, cut_short_by: 'booking',
     }, 201)
-    renderScan(`/scan?c=p1.v1.${SIG}`)
+    renderScan(`/scan#c=p1.v1.${SIG}`)
     await user().click(await screen.findByRole('button', { name: /A1/ }))
     await user().click(screen.getByRole('button', { name: 'אני כאן' }))
     expect(await screen.findByText(/התא מוזמן אחריך/)).toBeInTheDocument()
@@ -130,7 +145,7 @@ describe('ScanPage', () => {
 
   it('shows the server refusal in Hebrew', async () => {
     checkInResponse = () => jsonResponse({ detail: 'place_full' }, 409)
-    renderScan(`/scan?c=p5.v1.${SIG}`)
+    renderScan(`/scan#c=p5.v1.${SIG}`)
     await user().click(await screen.findByRole('button', { name: 'אני כאן' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('המקום מלא כרגע')
   })
@@ -142,8 +157,54 @@ describe('ScanPage', () => {
     expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
   })
 
+  it('a signed-out student signs in first; the code waits outside the address', async () => {
+    signedIn = false
+    const router = renderScan(`/scan#c=p5.v1.${SIG}`)
+    expect(await screen.findByText('התחברות')).toBeInTheDocument()
+    expect(router.state.location.pathname + router.state.location.search).toBe('/login?next=%2Fscan')
+    expect(sessionStorage.getItem('studyspot.pendingCode')).toBe(`p5.v1.${SIG}`)
+  })
+
+  it('after signing in, the waiting code is used', async () => {
+    sessionStorage.setItem('studyspot.pendingCode', `p5.v1.${SIG}`)
+    renderScan('/scan')
+    expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
+  })
+
+  it('warns that a check-in elsewhere will end', async () => {
+    current = { id: 3, place_id: 1, place_name: 'M206', building_code: 'M', seat_id: 1, seat_label: 'A1',
+      started_at: NOW.toISOString(), expires_at: '2026-10-11T09:00:00Z', ended_at: null, end_reason: null,
+      booking_id: null, cut_short_by: null }
+    renderScan(`/scan#c=p5.v1.${SIG}`)
+    expect(await screen.findByText(/הכניסה שלך ב-M206, תא A1 תסתיים/)).toBeInTheDocument()
+  })
+
+  it('already checked in here: "still here" keeps the same station', async () => {
+    current = { id: 3, place_id: 1, place_name: 'M206', building_code: 'M', seat_id: 2, seat_label: 'A2',
+      started_at: NOW.toISOString(), expires_at: '2026-10-11T08:00:00Z', ended_at: null, end_reason: null,
+      booking_id: null, cut_short_by: null }
+    renderScan(`/scan#c=p1.v1.${SIG}`)
+    expect(await screen.findByText(/אתה כבר כאן, בתא A2, עד 11:00/)).toBeInTheDocument()
+    await user().click(screen.getByRole('button', { name: 'אני עדיין כאן' }))
+    expect(checkInBody).toEqual({ code: `p1.v1.${SIG}`, seat_id: 2 })
+  })
+
+  it('if my bookings cannot be loaded, it says so and offers to retry', async () => {
+    vi.mocked(fetch).mockImplementation((url) => {
+      const path = new URL(String(url)).pathname
+      if (path === '/auth/refresh')
+        return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
+      if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
+      if (path === '/places/5') return Promise.resolve(jsonResponse(AREA))
+      if (path === '/me/check-in') return Promise.resolve(jsonResponse({ detail: 'no_active_check_in' }, 404))
+      return Promise.resolve(jsonResponse({ detail: 'oops' }, 503))
+    })
+    renderScan(`/scan#c=p5.v1.${SIG}`)
+    expect(await screen.findByRole('button', { name: 'נסה שוב' })).toBeInTheDocument()
+  })
+
   it('a text that is not a code is refused before asking the server', async () => {
-    renderScan('/scan?c=hello')
+    renderScan('/scan#c=hello')
     expect(await screen.findByRole('alert')).toHaveTextContent('הקוד לא תקין')
   })
 })

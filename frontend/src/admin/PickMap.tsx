@@ -16,7 +16,14 @@ interface Props {
 }
 
 function ClickCatcher({ onPick }: { onPick: Props['onPick'] }) {
-  useMapEvents({ click: (event) => onPick(event.latlng.lat, event.latlng.lng) })
+  useMapEvents({
+    click: (event) => {
+      // A map scrolled past the date line repeats the world; wrap() brings
+      // the longitude back into -180..180, which the server accepts.
+      const point = event.latlng.wrap()
+      onPick(point.lat, point.lng)
+    },
+  })
   return null
 }
 

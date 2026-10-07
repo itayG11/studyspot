@@ -16,7 +16,15 @@ export function placeIdFromCode(text: string): number | null {
 }
 
 // The QR code on the sign holds this address, so the phone's own camera
-// opens the site straight on the check-in page.
+// opens the site straight on the check-in page. The code sits after "#"
+// (the fragment): browsers never send that part to any server, so it does
+// not end up in server logs or in the Referer header.
 export function scanUrl(siteOrigin: string, code: string): string {
-  return `${siteOrigin}/scan?c=${encodeURIComponent(code)}`
+  return `${siteOrigin}/scan#c=${encodeURIComponent(code)}`
+}
+
+// "#c=p1.v1...." -> "p1.v1....", or null.
+export function codeFromHash(hash: string): string | null {
+  const value = new URLSearchParams(hash.replace(/^#/, '')).get('c')
+  return value ? value : null
 }

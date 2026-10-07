@@ -69,6 +69,7 @@ BOOKING_RULES = BookingRules(
     slot_minutes=_minutes(rules.SLOT),
     max_minutes=_minutes(rules.MAX_DURATION),
     days_ahead=rules.HORIZON.days,
+    horizon_minutes=_minutes(rules.HORIZON),
     max_upcoming=rules.MAX_UPCOMING,
     arrive_early_minutes=_minutes(rules.ARRIVE_EARLY),
     no_show_after_minutes=_minutes(rules.NO_SHOW_AFTER),

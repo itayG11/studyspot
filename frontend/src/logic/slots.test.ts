@@ -4,7 +4,7 @@ import { bookableDays, daySlots, durationsFrom } from './slots'
 
 const TZ = 'Asia/Jerusalem'
 const RULES: BookingRules = {
-  slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2,
+  slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2,
   arrive_early_minutes: 10, no_show_after_minutes: 15,
 }
 // Sunday to Thursday 07:00-20:00, Friday 07:00-14:00 (Python weekdays).
@@ -58,6 +58,28 @@ describe('daySlots', () => {
 
   it('a closed day has no slots', () => {
     expect(daySlots({ date: '2026-10-17', hours: HOURS, busy: [], seatId: null, now: before, rules: RULES, timeZone: TZ })).toEqual([])
+  })
+})
+
+describe('the server limits, exactly', () => {
+  it('a start more than four days (96 hours) from now cannot be booked', () => {
+    const now = new Date('2026-10-11T06:00:00Z') // Sunday 09:00 local
+    const thursday = daySlots({ date: '2026-10-15', hours: HOURS, busy: [], seatId: null, now, rules: RULES, timeZone: TZ })
+    expect(thursday.find((s) => s.label === '09:00')!.state).toBe('free') // exactly 96 hours
+    expect(thursday.find((s) => s.label === '09:15')!.state).toBe('tooFar')
+  })
+
+  it('a start stays bookable until its no-show deadline', () => {
+    const now = new Date('2026-10-11T07:14:00Z') // 10:14 local
+    const slots = daySlots({ date: SUNDAY, hours: HOURS, busy: [], seatId: null, now, rules: RULES, timeZone: TZ })
+    expect(slots.find((s) => s.label === '10:00')!.state).toBe('free')
+    expect(slots.find((s) => s.label === '09:45')!.state).toBe('past')
+  })
+
+  it('a place opening off the grid still offers starts on the grid', () => {
+    const odd: OpeningHours[] = [{ weekday: 6, opens: '08:10:00', closes: '09:00:00' }]
+    const labels = daySlots({ date: SUNDAY, hours: odd, busy: [], seatId: null, now: before, rules: RULES, timeZone: TZ }).map((s) => s.label)
+    expect(labels).toEqual(['08:15', '08:30', '08:45'])
   })
 })
 

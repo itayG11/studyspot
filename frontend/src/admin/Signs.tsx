@@ -10,6 +10,7 @@ import { LoadError } from '../components/LoadError'
 import { BuildingTile } from '../components/ui/BuildingTile'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
+import { SITE_URL } from '../config'
 import { scanUrl } from '../logic/codes'
 import styles from './admin.module.css'
 import { useQrImage } from './useQrImage'
@@ -50,7 +51,7 @@ export function Signs() {
 }
 
 function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; onReplaced: (next: PlaceCode) => void }) {
-  const qr = useQrImage(scanUrl(window.location.origin, code.code))
+  const qr = useQrImage(scanUrl(SITE_URL, code.code))
   const action = useAction()
   const name = `${code.place_name}, בניין ${code.building_code}`
 
@@ -63,7 +64,11 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
       {qr ? <img className={styles.qr} src={qr} alt={`קוד QR לכניסה ל${code.place_name}`} /> : <div className={styles.qr} />}
       <p className={styles.signCall}>סרקו כדי להיכנס</p>
       <span className={styles.signBrand}>StudySpot · בניין {code.building_code}</span>
-      {fresh && <span role="status">קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.</span>}
+      {fresh && (
+        <span role="status" className={styles.screenOnly}>
+          קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.
+        </span>
+      )}
       <div className={styles.signActions}>
         <ConfirmButton
           label="לבטל את הקוד"
@@ -76,7 +81,11 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
           }
         />
       </div>
-      {action.error && <p className="error" role="alert">{action.error}</p>}
+      {action.error && (
+        <p className={`error ${styles.screenOnly}`} role="alert">
+          {action.error}
+        </p>
+      )}
     </li>
   )
 }

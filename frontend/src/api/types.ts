@@ -8,7 +8,8 @@ export type UserRole = 'student' | 'institution_admin' | 'system_admin'
 export interface BookingRules {
   slot_minutes: number
   max_minutes: number
-  days_ahead: number
+  days_ahead: number // calendar days to offer
+  horizon_minutes: number // the exact limit the server checks
   max_upcoming: number
   arrive_early_minutes: number
   no_show_after_minutes: number

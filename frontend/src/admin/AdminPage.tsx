@@ -13,16 +13,20 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('signs')
   return (
     <div className={styles.page}>
-      <h1>ניהול</h1>
-      <div className={styles.tabs} role="tablist" aria-label="ניהול">
-        <button type="button" role="tab" className={styles.tab} aria-selected={tab === 'signs'} onClick={() => setTab('signs')}>
+      <h1 className={styles.title}>ניהול</h1>
+      {/* Two plain toggle buttons: simpler than full ARIA tabs, and honest
+          about what they are. */}
+      <div className={styles.tabs} role="group" aria-label="ניהול">
+        <button type="button" className={styles.tab} aria-pressed={tab === 'signs'} onClick={() => setTab('signs')}>
           שלטים להדפסה
         </button>
-        <button type="button" role="tab" className={styles.tab} aria-selected={tab === 'placing'} onClick={() => setTab('placing')}>
+        <button type="button" className={styles.tab} aria-pressed={tab === 'placing'} onClick={() => setTab('placing')}>
           מיקום בניינים
         </button>
       </div>
-      <section role="tabpanel">{tab === 'signs' ? <Signs /> : <Placer />}</section>
+      <section aria-label={tab === 'signs' ? 'שלטים להדפסה' : 'מיקום בניינים'}>
+        {tab === 'signs' ? <Signs /> : <Placer />}
+      </section>
     </div>
   )
 }

@@ -22,7 +22,7 @@ export function Placer() {
   const chosen = buildings.data.find((b) => b.code === selected) ?? null
 
   async function pick(latitude: number, longitude: number) {
-    if (!chosen) return
+    if (!chosen || action.busy) return // one save at a time
     const saved = await action.run(() => placeBuilding(chosen.id, latitude, longitude))
     if (saved) {
       setDone(`בניין ${saved.code} מוקם על המפה (${saved.latitude}, ${saved.longitude}).`)

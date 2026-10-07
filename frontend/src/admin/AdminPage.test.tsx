@@ -21,7 +21,7 @@ vi.mock('./PickMap', () => ({
 const SIG = 'A'.repeat(43)
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
 
 let role = 'institution_admin'
@@ -92,7 +92,7 @@ describe('AdminPage', () => {
 
   it('places a building where the map is clicked, rounded to 6 decimals', async () => {
     renderAdmin()
-    await userEvent.click(await screen.findByRole('tab', { name: 'מיקום בניינים' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'מיקום בניינים' }))
     await userEvent.click(await screen.findByRole('button', { name: /בניין NX/ }))
     await userEvent.click(screen.getByRole('button', { name: 'לחיצה על המפה' }))
     await waitFor(() => expect(posts.map((p) => p.path)).toContain('/admin/buildings/6/location'))

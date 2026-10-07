@@ -5,7 +5,9 @@
 import type { BookingRules, BusyRange, OpeningHours } from '../api/types'
 import { addDays, dateInZone, weekdayOfDate, zonedToUtc } from './zoned'
 
-export type SlotState = 'free' | 'busy' | 'past'
+// free: can be booked. busy: someone booked it. past: too late.
+// tooFar: further ahead than the server allows (horizon_minutes from now).
+export type SlotState = 'free' | 'busy' | 'past' | 'tooFar'
 
 export interface Slot {
   start: string // ISO time
@@ -31,13 +33,15 @@ export function daySlots({ date, hours, busy, seatId, now, rules, timeZone }: Da
   const mine = busy
     .filter((range) => range.seat_id === seatId)
     .map((range) => ({ start: Date.parse(range.starts_at), end: Date.parse(range.ends_at) }))
-  // The slot that has already begun can still be booked (the server allows
-  // a start up to one slot ago); anything before it is past.
-  const currentSlot = Math.floor(now.getTime() / step) * step
+  // The server's rules, exactly: a start is too late once its no-show
+  // deadline has passed, and too far once it is beyond the horizon.
+  const tooLate = (start: number) => start + rules.no_show_after_minutes * MINUTE <= now.getTime()
+  const horizon = now.getTime() + rules.horizon_minutes * MINUTE
 
   const slots: Slot[] = []
   for (const window of hours.filter((h) => h.weekday === weekdayOfDate(date))) {
-    const opens = zonedToUtc(date, window.opens.slice(0, 5), timeZone).getTime()
+    // Starts sit on the grid even if a place opens at, say, 08:10.
+    const opens = Math.ceil(zonedToUtc(date, window.opens.slice(0, 5), timeZone).getTime() / step) * step
     const closes = zonedToUtc(date, window.closes.slice(0, 5), timeZone).getTime()
     for (let start = opens; start + step <= closes; start += step) {
       const taken = mine.some((range) => range.start < start + step && start < range.end)
@@ -47,7 +51,7 @@ export function daySlots({ date, hours, busy, seatId, now, rules, timeZone }: Da
         start: new Date(start).toISOString(),
         maxEnd: new Date(maxEnd).toISOString(),
         label: wallClock(start, timeZone),
-        state: start < currentSlot ? 'past' : taken ? 'busy' : 'free',
+        state: tooLate(start) ? 'past' : start > horizon ? 'tooFar' : taken ? 'busy' : 'free',
       })
     }
   }

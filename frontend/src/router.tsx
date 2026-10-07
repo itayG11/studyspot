@@ -22,7 +22,8 @@ export const routes = [
       { index: true, Component: MapPage },
       { path: 'places', Component: PlacesPage },
       { path: 'places/:placeId', Component: PlacePage },
-      { path: 'scan', element: <RequireAuth><ScanPage /></RequireAuth> },
+      // The scan page asks for sign-in itself, keeping the code out of the address.
+      { path: 'scan', Component: ScanPage },
       { path: 'me', element: <RequireAuth><MyPage /></RequireAuth> },
       {
         path: 'admin',

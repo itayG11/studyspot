@@ -27,7 +27,8 @@ class BookingRules(BaseModel):
 
     slot_minutes: int  # bookings start and end on this grid
     max_minutes: int  # longest booking
-    days_ahead: int  # how far ahead a booking may start
+    days_ahead: int  # how many calendar days ahead to offer
+    horizon_minutes: int  # exact limit: a booking may start at most this far from now
     max_upcoming: int  # active advance bookings per student
     arrive_early_minutes: int  # arrival can be confirmed this early
     no_show_after_minutes: int  # no confirmation by then: released
