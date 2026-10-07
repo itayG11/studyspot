@@ -6,7 +6,7 @@ import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { Finder } from '../features/finder/Finder'
-import { StoryScroller } from '../features/story/StoryScroller'
+import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
 import { useApi } from '../hooks/useApi'
 import { hasFilters, readFilters } from '../logic/filters'
 
@@ -39,7 +39,11 @@ export function HomePage() {
 
   return (
     <>
-      {buildings.data && places.data && <StoryScroller buildings={buildings.data} places={places.data} onToFinder={() => toFinder(true)} />}
+      {buildings.data && places.data ? (
+        <StoryScroller buildings={buildings.data} places={places.data} onToFinder={() => toFinder(true)} />
+      ) : (
+        <StoryPlaceholder />
+      )}
       <Finder
         places={places.data}
         buildings={buildings.data}

@@ -4,7 +4,7 @@
 // each chip at once, without animation: they change many times in a row.
 
 import { CircleDot, Computer, List, Map as MapIcon, Plug, Search, Star, Users, Volume1, X } from 'lucide-react'
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { ApiError } from '../../api/client'
 import type { Building, Place } from '../../api/types'
@@ -48,13 +48,30 @@ interface FinderProps {
 
 export function Finder({ places, buildings, error, onRetry }: FinderProps) {
   const [params, setParams] = useSearchParams()
-  const filters = readFilters(params)
+  const fromAddress = readFilters(params)
+  // The search box keeps its own text, updated on every keystroke, and
+  // copies it into the address. Reading it back from the address would lose
+  // letters while typing fast: the address catches up a moment later.
+  const [text, setText] = useState(fromAddress.q)
+  const written = useRef(fromAddress.q)
+  useEffect(() => {
+    // Changed from outside (a "clear" button, back and forward): follow it.
+    if (fromAddress.q !== written.current) {
+      written.current = fromAddress.q
+      setText(fromAddress.q)
+    }
+  }, [fromAddress.q])
+  const filters = { ...fromAddress, q: text }
   // Favourites are per device, so this filter is not put in the address.
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const { favorites } = useFavorites()
   const [selected, setSelected] = useState<string | null>(null)
 
-  const update = (next: Filters) => setParams(writeFilters(next), { replace: true, preventScrollReset: true })
+  const update = (next: Filters) => {
+    written.current = next.q
+    setText(next.q)
+    setParams(writeFilters(next), { replace: true, preventScrollReset: true })
+  }
 
   return (
     <section id="finder" className={styles.finder} aria-labelledby="finder-title" tabIndex={-1}>

@@ -1,9 +1,9 @@
 // The home page story: one pin, "your spot", travels through the campus.
 //
-//   opening   0.00-0.18  the campus model, the headline and the live number
-//   dive      0.18-0.35  the camera zooms in on the building under the pin
-//   rooms     0.35-0.85  four kinds of places, each in its own light
-//   landing   0.85-1.00  the pin drops towards the search below
+//   opening   0.00-0.12  the campus model, the headline and the live number
+//   dive      0.12-0.34  the camera zooms in on the building under the pin
+//   rooms     0.34-0.90  four kinds of places, each in its own light
+//   landing   0.90-1.00  the pin drops towards the search below
 //
 // The section is several screens tall and its stage stays pinned (sticky)
 // while it scrolls. Motion's useScroll gives the progress 0..1, and
@@ -29,9 +29,9 @@ const ROOMS: { kind: PlaceKind; light: string; line: string }[] = [
   { kind: 'group_room', light: 'var(--light-lamp)', line: 'חדר לכל הצוות, מוזמן מראש.' },
   { kind: 'library', light: 'var(--light-paper)', line: 'שקט של ספרייה, ליום ארוך של מבחנים.' },
 ]
-const ROOMS_FROM = 0.35
-const ROOM_SPAN = 0.125
-const LANDING_FROM = 0.85
+const ROOMS_FROM = 0.34
+const ROOM_SPAN = 0.14
+const LANDING_FROM = 0.9
 
 interface StoryProps {
   buildings: Building[]
@@ -53,7 +53,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const [opening, setOpening] = useState(true)
   const [landing, setLanding] = useState(false)
   useMotionValueEvent(p, 'change', (v) => {
-    setOpening(v < 0.15)
+    setOpening(v < 0.1)
     setLanding(v >= LANDING_FROM)
   })
 
@@ -66,25 +66,28 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const origin = geometry && roof
     ? { x: ((roof[0] - geometry.bounds.x) / geometry.bounds.width) * 100, y: ((roof[1] - geometry.bounds.y) / geometry.bounds.height) * 100 }
     : { x: 50, y: 50 }
-  const zoom = useTransform(p, [0.12, 0.33], [1, 3.2])
-  const panX = useTransform(p, [0.12, 0.33], [0, 50 - origin.x])
-  const panY = useTransform(p, [0.12, 0.33], [0, 50 - origin.y])
+  // The camera lands first (0.28); then the model's pin hands over to the
+  // travelling one in the same spot (0.28-0.31); then the campus fades.
+  const zoom = useTransform(p, [0.12, 0.28], [1, 3.2])
+  const panX = useTransform(p, [0.12, 0.28], [0, 50 - origin.x])
+  const panY = useTransform(p, [0.12, 0.28], [0, 50 - origin.y])
   const camera = useMotionTemplate`translate(${panX}%, ${panY}%) scale(${zoom})`
-  const campusOpacity = useTransform(p, [0.29, 0.36], [1, 0])
+  const campusPin = useTransform(p, [0.27, 0.31], [1, 0])
+  const campusOpacity = useTransform(p, [0.31, 0.36], [1, 0])
   const ratio = geometry ? geometry.bounds.width / geometry.bounds.height : 1.4
 
-  const headOpacity = useTransform(p, [0.06, 0.16], [1, 0])
-  const headY = useTransform(p, [0.06, 0.16], [0, -48])
+  const headOpacity = useTransform(p, [0.03, 0.1], [1, 0])
+  const headY = useTransform(p, [0.03, 0.1], [0, -48])
   const head = useMotionTemplate`translateY(${headY}px)`
 
   // The travelling pin, after the campus: centred where the camera left the
   // roof, bobbing over the rooms, then dropping down and shrinking.
-  const pinOpacity = useTransform(p, [0.3, 0.34, 0.97, 1], [0, 1, 1, 0.9])
+  const pinOpacity = useTransform(p, [0.27, 0.31], [0, 1])
   const pinY = useTransform(p, [0.34, LANDING_FROM, 1], [0, 0, 38])
   const pinScale = useTransform(p, [LANDING_FROM, 1], [1, 0.55])
   const pinTransform = useMotionTemplate`translate(-50%, calc(-100% + ${pinY}vh)) scale(${pinScale})`
 
-  const landingOpacity = useTransform(p, [0.88, 0.95], [0, 1])
+  const landingOpacity = useTransform(p, [0.92, 0.97], [0, 1])
 
   return (
     <section ref={section} className={styles.story} aria-label="סיפור: המקום שלך בקמפוס">
@@ -97,7 +100,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
           <RoomLight key={room.kind} progress={p} index={i} color={room.light} />
         ))}
 
-        <m.div className={styles.campus} style={{ opacity: campusOpacity }} aria-hidden={!opening}>
+        <m.div className={styles.campus} style={{ opacity: campusOpacity, '--campus-pin': campusPin } as MotionStyle} aria-hidden={!opening}>
           <m.div
             className={styles.camera}
             style={{ transform: camera, transformOrigin: `${origin.x}% ${origin.y}%`, '--ratio': ratio } as MotionStyle}
@@ -134,6 +137,19 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
             לחיפוש
           </Button>
         </div>
+      </div>
+    </section>
+  )
+}
+
+// Before the live data arrives: the stage's height and headline, so the
+// page below does not jump when the story appears.
+export function StoryPlaceholder() {
+  return (
+    <section className={styles.placeholder} aria-busy="true" aria-label="סיפור: המקום שלך בקמפוס">
+      <div className={styles.opening}>
+        <h1 className={styles.title}>יש לך מקום בקמפוס.</h1>
+        <p className={styles.eyebrow}>טוען את הקמפוס…</p>
       </div>
     </section>
   )

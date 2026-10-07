@@ -6,7 +6,18 @@
   --pin-x: 32%;
   --pin-y: 50%;
   position: relative;
-  height: 520vh;
+  height: 460vh;
+}
+
+.placeholder {
+  position: relative;
+  height: calc(100dvh - var(--header-h, 0px));
+  background: linear-gradient(var(--sky), var(--stone-1) 75%);
+}
+
+/* The pin on the model hands over to the travelling pin (StoryScroller). */
+.campus [data-layer='pin'] {
+  opacity: var(--campus-pin, 1);
 }
 
 .stage {
@@ -200,7 +211,7 @@
   .story {
     --pin-x: 50%;
     --pin-y: 29%;
-    height: 380vh;
+    height: 360vh;
   }
 
   .campus {

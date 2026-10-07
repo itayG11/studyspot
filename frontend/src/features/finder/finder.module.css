@@ -326,6 +326,9 @@
 }
 
 .mapBox {
+  position: relative;
+  z-index: 0; /* Leaflet's layers stay inside, under the sticky search */
+  isolation: isolate;
   min-height: 420px;
   order: -1; /* on a phone the map comes first, the list under it */
 }

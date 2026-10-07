@@ -2,11 +2,10 @@
 
 .frame {
   position: relative;
-  border: 3px solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-hard);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
   overflow: hidden;
-  background: var(--paper-deep);
+  background: var(--stone-2);
 }
 
 .map {

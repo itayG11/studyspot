@@ -19,6 +19,10 @@ test('a demo student finds a computer lab through the story and the search', asy
 
   // Ten Braude places, then one after searching.
   await expect(page.getByText('10 מקומות')).toBeVisible()
+  // Fast typing keeps every letter (the box must not wait for the address).
+  await search.pressSequentially('מחשבים', { delay: 15 })
+  await expect(search).toHaveValue('מחשבים')
+  await expect(page.getByText('4 מקומות')).toBeVisible()
   await search.fill('m206')
   await expect(page.getByText('מקום אחד')).toBeVisible()
   await expect(page).toHaveURL('/?q=m206')
