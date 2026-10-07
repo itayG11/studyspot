@@ -38,6 +38,12 @@ export function Layout() {
         <nav className={styles.nav} aria-label="ניווט ראשי">
           <NavLink to="/" end className={styles.navLink} viewTransition>מפה</NavLink>
           <NavLink to="/places" className={styles.navLink} viewTransition>מקומות</NavLink>
+          {status === 'signed-in' && (
+            <NavLink to="/me" className={styles.navLink} viewTransition>האזור שלי</NavLink>
+          )}
+          {user && user.role !== 'student' && (
+            <NavLink to="/admin" className={styles.navLink} viewTransition>ניהול</NavLink>
+          )}
         </nav>
         <div className={styles.account}>
           {status === 'signed-in' && user && (

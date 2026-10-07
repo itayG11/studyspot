@@ -1,0 +1,112 @@
+/* The check-in page: one big entry ticket in the middle of the screen. */
+
+.ticket {
+  max-width: 40rem;
+  margin: 1.5rem auto;
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  position: relative;
+  overflow: hidden;
+  animation: rise 480ms var(--ease-out) both;
+}
+
+/* The punched holes of a ticket, on both sides. */
+.ticket::before,
+.ticket::after {
+  content: '';
+  position: absolute;
+  top: 6.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+.ticket::before {
+  left: -0.95rem;
+}
+
+.ticket::after {
+  right: -0.95rem;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px dashed var(--ink);
+}
+
+.head h1 {
+  margin: 0.1em 0 0;
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+}
+
+.meta {
+  color: var(--ink-soft);
+}
+
+.confirm {
+  justify-self: start;
+  font-size: 1.15rem;
+  padding: 0.9rem 1.6rem;
+}
+
+.done {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem 1.1rem;
+  color: var(--paper);
+  background: var(--free);
+  border-radius: var(--radius);
+  animation: stamp 520ms var(--ease-out) both;
+}
+
+.done strong {
+  font: 700 1.9rem/1 var(--font-display);
+}
+
+.done a {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* Like a stamp landing on the ticket. */
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.25) rotate(-2deg);
+  }
+}
+
+.warning {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: rgb(242 169 0 / 22%);
+  border: 2px solid var(--busy);
+  border-radius: var(--radius);
+}
+
+.form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.input {
+  padding: 0.75rem 0.9rem;
+  font: 500 1rem var(--font-mono);
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  direction: ltr;
+  text-align: left;
+}

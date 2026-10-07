@@ -8,6 +8,9 @@ export function safeNext(value: string | null | undefined): string {
   // "//host" and "/\host" are read by browsers as another site.
   if (value.startsWith('//') || value.startsWith('/\\')) return '/'
   // No control characters (a newline could hide what follows).
-  if (/[\u0000-\u001f\u007f]/.test(value)) return '/'
+  for (const char of value) {
+    const code = char.charCodeAt(0)
+    if (code < 32 || code === 127) return '/'
+  }
   return value
 }

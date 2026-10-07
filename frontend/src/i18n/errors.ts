@@ -27,6 +27,40 @@ const MESSAGES: Record<string, string> = {
   // Campus
   institution_not_found: 'המוסד לא נמצא.',
   place_not_found: 'המקום לא נמצא.',
+  other_institution: 'המקום הזה שייך למוסד אחר.',
+
+  // Bookings
+  not_bookable: 'את המקום הזה לא מזמינים מראש. פשוט מגיעים וסורקים.',
+  seat_required: 'צריך לבחור תא.',
+  seat_not_in_place: 'התא לא שייך למקום הזה.',
+  invalid_range: 'שעת הסיום צריכה להיות אחרי שעת ההתחלה.',
+  not_on_slot: 'אפשר להזמין רק ברבעי שעה עגולים.',
+  too_long: 'ההזמנה ארוכה מדי.',
+  in_the_past: 'השעה הזו כבר עברה.',
+  too_far_ahead: 'אי אפשר להזמין כל כך הרבה זמן מראש.',
+  outside_opening_hours: 'המקום סגור בחלק מהזמן הזה.',
+  too_many_bookings: 'יש לך כבר את מספר ההזמנות המרבי. בטל אחת כדי להזמין עוד.',
+  slot_taken: 'מישהו הזמין את הזמן הזה ממש עכשיו. בחר זמן אחר.',
+  concurrent_request: 'בקשה אחרת שלך רצה באותו רגע. נסה שוב.',
+  booking_not_found: 'ההזמנה לא נמצאה, או שכבר אי אפשר לשנות אותה.',
+  not_checked_in: 'אפשר להאריך רק אחרי שאישרת הגעה.',
+  no_time_to_extend: 'אין זמן להאריך: מישהו הזמין אחריך, או שהמקום נסגר.',
+
+  // Check-in
+  invalid_code: 'הקוד לא תקין, או שהוחלף בקוד חדש. סרוק את השלט שבמקום.',
+  place_closed: 'המקום סגור עכשיו.',
+  place_full: 'המקום מלא כרגע.',
+  no_booking_now: 'אין לך הזמנה לחדר הזה עכשיו. אפשר לאשר הגעה מעשר דקות לפני ההזמנה.',
+  booked_other_seat: 'הזמנת תא אחר. שב בתא שהזמנת.',
+  seat_still_in_use: 'מי שיושב בתא עדיין לא סיים. נסה שוב כשהזמן שלו נגמר.',
+  seat_taken: 'מישהו כבר יושב בתא הזה.',
+  seat_booked: 'התא מוזמן עכשיו, ובעל ההזמנה עוד יכול להגיע.',
+  seat_booked_soon: 'התא מוזמן בעוד פחות מרבע שעה. בחר תא אחר.',
+  no_active_check_in: 'אין לך כניסה פעילה.',
+  check_in_not_found: 'הכניסה לא נמצאה, או שכבר הסתיימה.',
+
+  // Admin
+  building_not_found: 'הבניין לא נמצא.',
 }
 
 export function errorMessage(code: string): string {

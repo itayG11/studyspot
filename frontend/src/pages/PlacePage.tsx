@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 import { getPlace } from '../api/campus'
-import type { PlaceDetail } from '../api/types'
+import type { PlaceDetail, Seat } from '../api/types'
+import { BookingPanel } from '../booking/BookingPanel'
 import { OpenBadge } from '../components/Availability'
 import { SeatGrid } from '../components/SeatGrid'
 import { BuildingTile } from '../components/ui/BuildingTile'
@@ -37,8 +38,12 @@ export function PlacePage() {
 }
 
 function PlaceView({ place }: { place: PlaceDetail }) {
-  const { timezone } = useInstitution()
+  const { timezone, booking_rules: rules } = useInstitution()
   const level = placeLevel(place)
+  // In a computer lab, a station is chosen on the seat map to book it.
+  const [seatId, setSeatId] = useState<number | null>(null)
+  const seat: Seat | null = place.seats?.find((s) => s.id === seatId) ?? null
+  const isLab = place.kind === 'computer_lab'
 
   return (
     <article>
@@ -80,17 +85,30 @@ function PlaceView({ place }: { place: PlaceDetail }) {
           {place.seats && place.lab_rows && place.lab_cols && (
             <section className="rise" style={{ '--i': 2 } as CSSProperties}>
               <h2>מפת התאים</h2>
+              <p className="hint">כדי להזמין מראש, בחר תא ואז זמן.</p>
               <SeatGrid
                 seats={place.seats}
                 rows={place.lab_rows}
                 cols={place.lab_cols}
                 placeOpen={place.is_open}
                 timeZone={timezone}
+                canSelect={() => true}
+                selectedId={seatId}
+                onSelect={(s) => setSeatId(s.id === seatId ? null : s.id)}
               />
             </section>
           )}
 
-          {place.bookable && <p className={styles.note}>הזמנה מראש תיפתח באתר בקרוב.</p>}
+          {place.bookable && (
+            <section className="panel rise" style={{ '--i': 3 } as CSSProperties}>
+              <h2>הזמנה מראש</h2>
+              {isLab && !seat ? (
+                <p className={styles.note}>בחר תא במפת התאים, ואז תראה מתי הוא פנוי.</p>
+              ) : (
+                <BookingPanel key={seatId ?? 'room'} place={place} seat={seat} rules={rules} timeZone={timezone} />
+              )}
+            </section>
+          )}
         </div>
 
         <aside className="rise" style={{ '--i': 3 } as CSSProperties}>

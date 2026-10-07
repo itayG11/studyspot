@@ -1,3 +1,5 @@
+import { dateInZone, weekdayOfDate } from './zoned'
+
 // Times are shown in the institution's time zone, whatever the time zone of
 // the visitor's device. The server sends ISO times in UTC.
 
@@ -23,6 +25,12 @@ export function formatTime(iso: string, timeZone: string): string {
 export function todayWeekday(timeZone: string, now: Date = new Date()): number {
   const name = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(now)
   return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(name)
+}
+
+// "יום שני 12/10" for a moment, on the institution's calendar.
+export function formatDay(iso: string, timeZone: string): string {
+  const date = dateInZone(new Date(iso), timeZone)
+  return `${weekdayName(weekdayOfDate(date))} ${date.slice(8, 10)}/${date.slice(5, 7)}`
 }
 
 // "07:00:00" (a wall-clock time from the opening hours) -> "07:00".

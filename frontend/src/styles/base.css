@@ -139,6 +139,18 @@ a {
   background: transparent;
 }
 
+.button-danger {
+  background: var(--full);
+  border-color: var(--full);
+}
+
+.confirm-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: rise 240ms var(--ease-out) both;
+}
+
 .link-button {
   font: inherit;
   color: inherit;

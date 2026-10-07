@@ -12,9 +12,14 @@ interface Props {
   cols: number
   placeOpen: boolean
   timeZone: string
+  // Choosing a station (to book it, or to sit in it). Without these the
+  // map only shows the stations.
+  canSelect?: (seat: Seat) => boolean
+  selectedId?: number | null
+  onSelect?: (seat: Seat) => void
 }
 
-export function SeatGrid({ seats, rows, cols, placeOpen, timeZone }: Props) {
+export function SeatGrid({ seats, rows, cols, placeOpen, timeZone, canSelect, selectedId, onSelect }: Props) {
   return (
     <figure className={styles.wrap} dir="ltr" aria-label="מפת התאים">
       <div className={styles.front} dir="rtl">כניסה</div>
@@ -25,11 +30,29 @@ export function SeatGrid({ seats, rows, cols, placeOpen, timeZone }: Props) {
       >
         {seats.map((seat, i) => {
           const description = seatDescription(seat, placeOpen, timeZone)
+          const classes = [styles.seat, styles[seatState(seat, placeOpen)], seat.id === selectedId && styles.selected]
+          const position = { gridRow: seat.row, gridColumn: seat.col, '--i': i } as CSSProperties
+          if (onSelect && canSelect?.(seat)) {
+            return (
+              <li key={seat.id} style={position} className={styles.cell}>
+                <button
+                  type="button"
+                  className={classes.filter(Boolean).join(' ')}
+                  title={description}
+                  aria-label={description}
+                  aria-pressed={seat.id === selectedId}
+                  onClick={() => onSelect(seat)}
+                >
+                  {seat.label}
+                </button>
+              </li>
+            )
+          }
           return (
             <li
               key={seat.id}
-              className={`${styles.seat} ${styles[seatState(seat, placeOpen)]}`}
-              style={{ gridRow: seat.row, gridColumn: seat.col, '--i': i } as CSSProperties}
+              className={classes.filter(Boolean).join(' ')}
+              style={position}
               title={description}
               aria-label={description}
             >

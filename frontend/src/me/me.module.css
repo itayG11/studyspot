@@ -1,0 +1,132 @@
+.page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.who h1 {
+  margin: 0;
+}
+
+.email {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  direction: ltr;
+}
+
+/* The current check-in: a live, dark sign with a pulsing dot. */
+.now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 1.1rem 1.25rem;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: var(--radius);
+  border-inline-start: 8px solid var(--free);
+}
+
+.now h2 {
+  margin: 0;
+  color: var(--paper);
+}
+
+.liveDot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--free);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 8px rgb(15 157 88 / 0%);
+  }
+
+  0% {
+    box-shadow: 0 0 0 0 rgb(15 157 88 / 60%);
+  }
+}
+
+.nowText {
+  flex: 1;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.nowTime {
+  font-family: var(--font-mono);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.booking {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+}
+
+.bookingText {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.bookingTitle {
+  font: 700 1.6rem/1 var(--font-display);
+}
+
+.bookingWhen {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rowError {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .booking {
+    grid-template-columns: auto 1fr;
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+  }
+}
