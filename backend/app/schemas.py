@@ -5,12 +5,13 @@ route runs, and response models make sure only the listed fields leave
 the server.
 """
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from app.models import BuildingStatus, CheckInEndReason, PlaceKind
+from app.models import BookingSource, BookingStatus, BuildingStatus, CheckInEndReason, PlaceKind
 
 
 class Occupancy(BaseModel):
@@ -59,6 +60,10 @@ class SeatOut(BaseModel):
     col: int
     label: str
     occupied: bool
+    # Can a student sit here right now, and until when (the next booking or
+    # closing time; None means no limit today). Helps pick a seat with time.
+    free_now: bool
+    free_until: datetime | None
 
 
 class PlaceDetail(PlaceOut):
@@ -89,3 +94,44 @@ class CheckInOut(BaseModel):
     expires_at: datetime
     ended_at: datetime | None
     end_reason: CheckInEndReason | None
+    booking_id: int | None
+    # Set when a walk-in got less than the full time, so the app can warn:
+    # "booking" = the seat is booked soon, "closing" = the place closes soon.
+    cut_short_by: Literal["booking", "closing"] | None = None
+
+
+class BookingCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    place_id: int = Field(gt=0)
+    seat_id: int | None = Field(default=None, gt=0)
+    # AwareDatetime rejects times without a timezone: "14:00" alone is ambiguous.
+    starts_at: AwareDatetime
+    ends_at: AwareDatetime
+
+
+class BookingOut(BaseModel):
+    id: int
+    place_id: int
+    place_name: str
+    building_code: str
+    seat_id: int | None
+    seat_label: str | None
+    starts_at: datetime
+    ends_at: datetime
+    status: BookingStatus
+    source: BookingSource
+
+
+class BusyRange(BaseModel):
+    """Time held on a room (seat_id None) or a lab seat. Never says by whom."""
+
+    seat_id: int | None
+    starts_at: datetime
+    ends_at: datetime
+
+
+class Availability(BaseModel):
+    place_id: int
+    date: date
+    busy: list[BusyRange]

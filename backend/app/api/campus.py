@@ -2,18 +2,20 @@
 numbers, never who is where."""
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_session
+from app.bookings import holding, institution_zone
 from app.clock import get_now
 from app.hours import opening_status
 from app.models import (
+    Booking,
     Building,
     Institution,
     Place,
@@ -69,6 +71,46 @@ def _place_views(
             )
         )
     return views
+
+
+def _seat_map(session: Session, place: Place, is_open: bool, now: datetime) -> list[SeatOut]:
+    """Each seat: taken now? free now? free until when (next booking or closing)?"""
+    taken = occupied_seat_ids(session, place.id, now)
+    held_now = {
+        b.seat_id
+        for b in session.scalars(
+            select(Booking).where(
+                Booking.place_id == place.id, holding(now),
+                Booking.starts_at <= now, Booking.ends_at > now,
+            )
+        )
+    }
+    next_start = dict(
+        session.execute(
+            select(Booking.seat_id, func.min(Booking.starts_at))
+            .where(Booking.place_id == place.id, holding(now), Booking.starts_at > now)
+            .group_by(Booking.seat_id)
+        ).all()
+    )
+    closes_at = None
+    if is_open:
+        local_now = now.astimezone(institution_zone(session, place.institution_id))
+        all_day = place.id in open_all_day_place_ids(session, place.institution_id, local_now.date())
+        status = opening_status(place.opening_hours, local_now, all_day)
+        closes_at = status.closes_at.astimezone(UTC) if status.closes_at else None
+    seats = []
+    for s in place.seats:
+        free_now = is_open and s.id not in taken and s.id not in held_now
+        limits = [t for t in (next_start.get(s.id), closes_at) if t is not None]
+        seats.append(
+            SeatOut(
+                id=s.id, row=s.row, col=s.col, label=s.label,
+                occupied=s.id in taken,
+                free_now=free_now,
+                free_until=min(limits) if free_now and limits else None,
+            )
+        )
+    return seats
 
 
 def _places_query():
@@ -145,11 +187,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     view = _place_views(session, institution, [place], now, all_day)[0]
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
-        taken = occupied_seat_ids(session, place.id, now)
-        seats = [
-            SeatOut(id=s.id, row=s.row, col=s.col, label=s.label, occupied=s.id in taken)
-            for s in place.seats
-        ]
+        seats = _seat_map(session, place, view.is_open, now)
     return PlaceDetail(
         **view.model_dump(),
         opening_hours=[OpeningHoursOut.model_validate(h) for h in place.opening_hours],

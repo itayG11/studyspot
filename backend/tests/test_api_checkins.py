@@ -151,7 +151,7 @@ def test_seat_is_not_allowed_for_an_open_area(client, braude):
 
 def test_group_room_needs_a_booking(client, braude):
     response = check_in(client, place_named(braude, "EM", "EM107"))
-    assert (response.status_code, response.json()["detail"]) == (409, "booking_required")
+    assert (response.status_code, response.json()["detail"]) == (409, "no_booking_now")
 
 
 def test_closed_place_rejects_check_in(client, braude):
