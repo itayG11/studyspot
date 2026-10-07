@@ -52,7 +52,7 @@ ONE_YEAR = "public, max-age=31536000, immutable"  # file names carry a hash
 ONE_WEEK = "public, max-age=604800"
 
 
-def create_site(static_dir: Path) -> FastAPI:
+def create_site(static_dir: Path, api_docs: bool = False) -> FastAPI:
     root = static_dir.resolve()
     index = root / "index.html"
     # The API's own lifespan (the background sweep) runs with this app: a
@@ -65,13 +65,28 @@ def create_site(static_dir: Path) -> FastAPI:
         response.headers.update(SECURITY_HEADERS)
         return response
 
+    if not api_docs:
+        # The API's own docs page lists every route, the admin ones too, and
+        # loads its scripts from a CDN that the policy above blocks anyway.
+        # Off on the public site; on in development (uvicorn app.main:app).
+        # These exact paths are matched before the mounted API.
+        def no_docs() -> None:
+            raise HTTPException(404)
+
+        for path in ("/api/docs", "/api/docs/oauth2-redirect", "/api/redoc", "/api/openapi.json"):
+            site.add_api_route(path, no_docs, methods=["GET"], include_in_schema=False)
+
     site.mount("/api", api)
 
     @site.get("/{path:path}", include_in_schema=False)
     def web_app(path: str) -> FileResponse:
-        file = (root / path).resolve()
-        # Never outside the build folder, whatever the address says.
-        if path and file.is_relative_to(root) and file.is_file():
+        try:
+            file = (root / path).resolve()
+            # Never outside the build folder, whatever the address says.
+            found = bool(path) and file.is_relative_to(root) and file.is_file()
+        except (ValueError, OSError):  # a NUL byte, a name too long for the disk
+            raise HTTPException(404) from None
+        if found:
             return FileResponse(file, headers={"Cache-Control": ONE_YEAR if path.startswith("assets/") else ONE_WEEK})
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(404)  # a missing file, not a page of the app

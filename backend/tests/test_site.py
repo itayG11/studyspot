@@ -58,6 +58,19 @@ def test_files_outside_the_build_are_never_served(site: TestClient):
         assert "not for the web" not in site.get(path).text
 
 
+def test_the_api_docs_are_not_public(site: TestClient):
+    for path in ["/api/docs", "/api/redoc", "/api/openapi.json"]:
+        assert site.get(path).status_code == 404
+    assert site.get("/api/health").status_code == 200
+
+
+def test_odd_addresses_are_404_not_a_server_error(site: TestClient):
+    for path in ["/a%00", "/a%00.txt", "/" + "x" * 5000, "/" + "x" * 5000 + ".js"]:
+        response = site.get(path)
+        assert response.status_code in (200, 404), path  # a page of the app, or missing
+        assert "content-security-policy" in response.headers
+
+
 def test_an_unknown_api_address_is_a_json_404_not_the_web_app(site: TestClient):
     response = site.get("/api/nothing-here")
     assert response.status_code == 404

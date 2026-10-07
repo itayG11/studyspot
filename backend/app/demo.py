@@ -13,6 +13,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.errors import Refusal
 from app.models import AuthProvider, Institution, User, UserIdentity, UserRole
 
@@ -69,3 +70,17 @@ def demo_user(db: Session, institution_slug: str, persona: Persona, now: datetim
     user.last_login_at = now
     db.flush()
     return user
+
+
+def demo_still_allowed(db: Session, user: User, settings: Settings) -> bool:
+    """A demo user's session lasts only while the demo does: demo sign-in is
+    on, and the user's institution still has no real sign-in rules. Checked
+    on every refresh, so switching either off ends existing demo sessions
+    too, not only new sign-ins. Other users are never affected."""
+    is_demo = db.scalars(
+        select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
+    ).first()
+    if is_demo is None:
+        return True
+    institution = db.get(Institution, user.institution_id)
+    return settings.demo_login_enabled and institution is not None and not institution.login_rules

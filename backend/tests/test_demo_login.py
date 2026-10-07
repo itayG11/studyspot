@@ -15,7 +15,7 @@ from app.api.deps import get_session
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.main import app, demo_warning
-from app.models import AuthProvider, Institution, User, UserIdentity, UserRole
+from app.models import AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
 from app.seed import seed_demo
 
 FRONTEND = "https://app.example"
@@ -127,6 +127,33 @@ def test_the_cookie_follows_the_api_when_it_lives_under_a_path(make_client):
     client = make_client(demo_login_enabled=True, public_api_url="https://testserver/api")
     cookie = demo_login(client).headers["set-cookie"]
     assert "Path=/api/auth" in cookie
+
+
+def test_a_demo_session_ends_when_demo_sign_in_is_switched_off(demo_client):
+    assert demo_login(demo_client).status_code == 200
+    app.dependency_overrides[get_settings] = lambda: make_settings(demo_login_enabled=False)
+    response = demo_client.post("/auth/refresh")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "demo_ended"
+
+
+def test_a_demo_session_ends_when_its_institution_gets_real_sign_in(demo_client, session, demo):
+    assert demo_login(demo_client, "admin").status_code == 200
+    demo.login_rules.append(InstitutionLoginRule(provider=AuthProvider.MICROSOFT, value="tenant-of-a-real-college"))
+    session.flush()
+    response = demo_client.post("/auth/refresh")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "demo_ended"
+
+
+def test_a_real_user_is_never_affected(session, braude):
+    from app.demo import demo_still_allowed
+
+    # Signed in with Microsoft, not the demo: demo settings do not matter.
+    user = User(institution_id=braude.id, email="real@braude.example", display_name="Real")
+    session.add(user)
+    session.flush()
+    assert demo_still_allowed(session, user, make_settings(demo_login_enabled=False))
 
 
 def test_demo_institution_must_exist(make_client):

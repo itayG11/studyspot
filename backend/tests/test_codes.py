@@ -45,9 +45,11 @@ def test_secret_must_be_long():
         make_code(1, 1, b"short")
 
 
-def test_missing_secret_fails_clearly():
+def test_missing_secret_fails_clearly(monkeypatch):
     from app.config import Settings
 
+    # Not set anywhere, also where CI sets it for the other tests.
+    monkeypatch.delenv("CHECKIN_CODE_SECRET", raising=False)
     settings = Settings(database_url="postgresql+psycopg://x@localhost/x", _env_file=None)
     with pytest.raises(RuntimeError, match="CHECKIN_CODE_SECRET"):
         settings.code_secret_bytes()

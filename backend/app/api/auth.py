@@ -28,7 +28,7 @@ from app.api.deps import get_session
 from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
-from app.demo import demo_user
+from app.demo import demo_still_allowed, demo_user
 from app.errors import Refusal
 from app.models import AuthSession, Institution, User
 from app.oidc import Provider, configured_providers, new_pkce_pair
@@ -146,6 +146,11 @@ def demo_login(
     except IntegrityError:
         # Two first sign-ins of the same persona at once: one created the user.
         raise HTTPException(409, "concurrent_sign_in") from None
+    if not demo_still_allowed(db, user, settings):
+        revoke_all(db, user.id, now)
+        db.commit()
+        _clear_refresh_cookie(response, settings)
+        raise HTTPException(401, "demo_ended", headers=dict(response.headers))
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
     return _token_out(db, user, issued.session, now, settings)
@@ -266,6 +271,11 @@ def refresh(
         if refusal.code != "session_rotated":
             _clear_refresh_cookie(response, settings)
         raise HTTPException(refusal.status, refusal.code, headers=dict(response.headers)) from None
+    if not demo_still_allowed(db, user, settings):
+        revoke_all(db, user.id, now)
+        db.commit()
+        _clear_refresh_cookie(response, settings)
+        raise HTTPException(401, "demo_ended", headers=dict(response.headers))
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
     return _token_out(db, user, issued.session, now, settings)
