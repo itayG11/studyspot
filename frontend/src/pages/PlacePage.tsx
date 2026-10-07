@@ -47,8 +47,8 @@ function PlaceView({ place }: { place: PlaceDetail }) {
 
   return (
     <article>
-      <Link to={`/?building=${encodeURIComponent(place.building_code)}`} className={styles.back} viewTransition>
-        חזרה לבניין {place.building_code}
+      <Link to={`/?near=${encodeURIComponent(place.building_code)}#finder`} className={styles.back} viewTransition>
+        חזרה לחיפוש
       </Link>
 
       <header className={`${styles.hero} rise`}>

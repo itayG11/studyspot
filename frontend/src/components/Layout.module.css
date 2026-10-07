@@ -8,94 +8,90 @@
   flex-direction: column;
 }
 
+/* A light glass bar: the page shows through it a little as it scrolls. */
 .header {
   position: sticky;
   top: 0;
   z-index: 900; /* above the map's own layers */
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.6rem clamp(1rem, 3vw, 2rem);
-  color: var(--paper);
-  background: var(--ink);
-  border-bottom: 6px solid var(--signal);
+  gap: var(--s-6);
+  min-height: 60px;
+  padding: var(--s-2) clamp(1rem, 3vw, 2rem);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--stone-1) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid rgb(20 32 58 / 8%);
 }
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--ink);
   text-decoration: none;
 }
 
 .brandName {
-  font: 700 2.4rem/1 var(--font-display);
-  letter-spacing: 0.02em;
-}
-
-.brandName::before {
-  content: '';
-  display: inline-block;
-  width: 0.55em;
-  height: 0.55em;
-  margin-inline-end: 0.25em;
-  background: var(--signal);
-  border-radius: 2px;
-  transform: rotate(45deg) translateY(-0.05em);
+  font: 700 1.45rem / 1 var(--font-heading);
+  letter-spacing: -0.01em;
 }
 
 .brandInstitution {
-  font-size: 0.85rem;
-  color: rgb(243 238 227 / 70%);
+  padding-inline-start: var(--s-3);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  border-inline-start: 1px solid var(--stone-3);
 }
 
 .nav {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--s-1);
 }
 
 .navLink {
-  position: relative;
-  padding: 0.35rem 0.8rem;
-  font: 700 1.5rem/1 var(--font-display);
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 var(--s-4);
+  font: 600 var(--text-md) / 1 var(--font-body);
+  color: var(--ink-2);
   text-decoration: none;
-  color: rgb(243 238 227 / 75%);
-  transition: color 160ms;
+  border-radius: var(--r-pill);
+  transition:
+    background-color var(--dur-ui) ease,
+    color var(--dur-ui) ease;
 }
 
-.navLink::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0.8rem;
-  bottom: -0.1rem;
-  height: 3px;
-  background: var(--signal);
-  transform: scaleX(0);
-  transition: transform 240ms var(--ease-out);
-}
-
-.navLink:hover,
 .navLink[aria-current='page'] {
-  color: var(--paper);
+  color: var(--ink);
+  background: var(--stone-0);
+  box-shadow: var(--shadow-1);
 }
 
-.navLink:hover::after,
-.navLink[aria-current='page']::after {
-  transform: scaleX(1);
+.navLink:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .navLink:hover {
+    color: var(--ink);
+  }
 }
 
 .account {
   margin-inline-start: auto;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 0.95rem;
+  gap: var(--s-4);
+  font-size: var(--text-sm);
 }
 
 .accountName {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--s-2);
 }
 
 .main {
@@ -106,10 +102,16 @@
   padding: clamp(1rem, 3vw, 2rem);
 }
 
+/* The home page's story runs from edge to edge; the finder sets its own width. */
+.mainBleed {
+  flex: 1;
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .header {
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    gap: var(--s-1) var(--s-3);
   }
 
   .brandInstitution {

@@ -1,0 +1,280 @@
+/* The story: a tall section whose stage stays pinned while it scrolls.
+   Desktop: text on the reading side (right), picture on the left.
+   Phone: picture on top, text under it, and the search button at the thumb. */
+
+.story {
+  --pin-x: 32%;
+  --pin-y: 50%;
+  position: relative;
+  height: 520vh;
+}
+
+.stage {
+  position: sticky;
+  top: var(--header-h, 0px);
+  height: calc(100dvh - var(--header-h, 0px));
+  overflow: hidden;
+  background: var(--stone-1);
+}
+
+.skip {
+  position: absolute;
+  top: var(--s-2);
+  inset-inline-start: var(--s-4);
+  z-index: 5;
+  padding: var(--s-2) var(--s-4);
+  color: var(--on-ink);
+  background: var(--ink);
+  border-radius: var(--r-pill);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+  outline: 3px solid var(--accent);
+}
+
+.light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- The campus and its camera --------------------------------------- */
+
+.campus {
+  position: absolute;
+  inset: 0;
+  padding: 6vh 4vw;
+  padding-inline-start: 38%;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+/* Exactly the model's box, so the zoom's origin is the pinned roof. */
+.camera {
+  width: min(100cqw, 100cqh * var(--ratio));
+  will-change: transform;
+}
+
+.opening {
+  position: absolute;
+  top: 16vh;
+  inset-inline-start: 6vw;
+  z-index: 2;
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+  max-width: 30rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font: 600 var(--text-sm) / 1.3 var(--font-body);
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+
+.title {
+  margin: 0;
+  font: 700 var(--text-hero) / 1 var(--font-heading);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.bigLine,
+.bigLineSmall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: var(--s-2) 0 var(--s-4);
+  font: 500 var(--text-lg) / 1.2 var(--font-body);
+  color: var(--ink-2);
+}
+
+.number {
+  font: 600 clamp(3rem, 7vw, 5.5rem) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.bigLineSmall .number {
+  font-size: 2.6rem;
+}
+
+.lineText {
+  margin: 0;
+  max-width: 24rem;
+  font: 400 var(--text-xl) / 1.35 var(--font-heading);
+  color: var(--ink);
+}
+
+/* --- The four rooms -------------------------------------------------- */
+
+.chapter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scene {
+  position: absolute;
+  top: 8vh;
+  bottom: 8vh;
+  inset-inline-end: 4vw;
+  width: 56%;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+}
+
+.scene svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Depth: the furniture moves a little more than the room around it. */
+.scene [data-layer='furniture'],
+.scene [data-layer='light'] {
+  transform: translateY(calc(var(--depth, 0) * 1px));
+}
+
+.chapterText {
+  position: absolute;
+  top: 28vh;
+  inset-inline-start: 6vw;
+  max-width: 26rem;
+}
+
+/* --- The pin and the landing ----------------------------------------- */
+
+.pin {
+  position: absolute;
+  top: var(--pin-y);
+  left: var(--pin-x);
+  z-index: 3;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 10px 12px rgb(20 32 58 / 25%));
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.pin svg {
+  animation: bob 2.4s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes bob {
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+.landing {
+  position: absolute;
+  bottom: 5vh;
+  left: var(--pin-x);
+  margin: 0;
+  transform: translateX(-50%);
+  font: 600 var(--text-xl) / 1.3 var(--font-heading);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.stickyAction {
+  position: absolute;
+  bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+  inset-inline-start: var(--s-4);
+  z-index: 4;
+  transition: opacity var(--dur-ui) ease;
+}
+
+.stickyAction[inert] {
+  opacity: 0;
+}
+
+/* --- Phone ------------------------------------------------------------ */
+
+@media (max-width: 760px) {
+  .story {
+    --pin-x: 50%;
+    --pin-y: 29%;
+    height: 380vh;
+  }
+
+  .campus {
+    bottom: 42%;
+    padding: 2vh 4vw;
+  }
+
+  .opening,
+  .chapterText {
+    top: auto;
+    bottom: 12vh;
+    inset-inline: var(--s-4);
+  }
+
+  .scene {
+    top: 2vh;
+    bottom: 44%;
+    inset-inline: 4vw;
+    width: auto;
+  }
+
+  .stickyAction {
+    inset-inline: var(--s-4);
+    display: grid;
+  }
+
+  .landing {
+    white-space: normal;
+    width: 80%;
+    text-align: center;
+  }
+}
+
+/* --- Still version (reduce motion) ------------------------------------ */
+
+.still {
+  display: grid;
+  gap: var(--s-8);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-10) var(--s-4);
+}
+
+.stillHead {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+}
+
+.stillCampus {
+  padding: var(--s-4);
+  background: linear-gradient(var(--sky), var(--stone-1) 75%);
+  border-radius: var(--r-lg);
+}
+
+.stillRooms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stillRooms li {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-5);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.stillRooms svg {
+  max-height: 180px;
+  margin: 0 auto;
+}

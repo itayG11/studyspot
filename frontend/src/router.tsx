@@ -10,7 +10,7 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlacePage } from './pages/PlacePage'
-import { PlacesPage } from './pages/PlacesPage'
+import { PlacesRedirect } from './pages/PlacesRedirect'
 import { SignedInPage } from './pages/SignedInPage'
 import { ScanPage } from './scan/ScanPage'
 
@@ -20,7 +20,8 @@ export const routes = [
     Component: Layout,
     children: [
       { index: true, Component: HomePage },
-      { path: 'places', Component: PlacesPage },
+      // The old list of places is now the finder; its ?kind= links still work.
+      { path: 'places', Component: PlacesRedirect },
       { path: 'places/:placeId', Component: PlacePage },
       // The scan page asks for sign-in itself, keeping the code out of the address.
       { path: 'scan', Component: ScanPage },

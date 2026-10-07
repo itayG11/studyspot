@@ -84,7 +84,7 @@ export function MyPage() {
         {bookings.error && <LoadError error={bookings.error} onRetry={bookings.reload} inline />}
         {bookings.data?.length === 0 && (
           <p className="hint">
-            אין לך הזמנות. אפשר להזמין חדר או תא <Link to="/places">מרשימת המקומות</Link>.
+            אין לך הזמנות. אפשר להזמין חדר או תא <Link to="/#finder">מהחיפוש</Link>.
           </p>
         )}
         {bookings.data && bookings.data.length > 0 && (

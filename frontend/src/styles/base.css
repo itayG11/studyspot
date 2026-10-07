@@ -18,24 +18,8 @@ body {
   font-size: 16px;
   line-height: 1.55;
   color: var(--ink);
-  background-color: var(--paper);
-  /* A faint site-plan grid under everything. */
-  background-image:
-    linear-gradient(rgb(20 26 46 / 5%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(20 26 46 / 5%) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
-
-/* Paper grain on top, so flat colours do not look digital. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  opacity: 0.22;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-color: var(--stone-1);
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,

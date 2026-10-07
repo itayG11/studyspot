@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Pin } from '../illustrations/Pin'
 import type { UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
@@ -15,6 +16,7 @@ export function Layout() {
   const { status, user, logout } = useAuth()
   const institution = useInstitution()
   const header = useRef<HTMLElement>(null)
+  const { pathname } = useLocation()
 
   // The sticky header's height, as --header-h, so full-screen sections can
   // start below it. It changes when the header wraps on a narrow screen.
@@ -32,12 +34,12 @@ export function Layout() {
     <div className={styles.app}>
       <header ref={header} className={styles.header}>
         <Link to="/" className={styles.brand} viewTransition>
+          <Pin size={18} />
           <span className={styles.brandName} lang="en">StudySpot</span>
           <span className={styles.brandInstitution}>{institution.name}</span>
         </Link>
         <nav className={styles.nav} aria-label="ניווט ראשי">
-          <NavLink to="/" end className={styles.navLink} viewTransition>מפה</NavLink>
-          <NavLink to="/places" className={styles.navLink} viewTransition>מקומות</NavLink>
+          <NavLink to="/" end className={styles.navLink} viewTransition>חיפוש מקום</NavLink>
           {status === 'signed-in' && (
             <NavLink to="/me" className={styles.navLink} viewTransition>האזור שלי</NavLink>
           )}
@@ -64,7 +66,7 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className={styles.main}>
+      <main className={pathname === '/' ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
     </div>

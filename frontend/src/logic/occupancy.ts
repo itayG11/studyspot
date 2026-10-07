@@ -14,14 +14,6 @@ export const LEVEL_COLORS: Record<Level, string> = {
   construction: '#5b6b8c',
 }
 
-export const LEVEL_LABELS: Record<Level, string> = {
-  low: 'יש הרבה מקום',
-  medium: 'מתמלא',
-  high: 'כמעט מלא',
-  closed: 'סגור, או אין מקומות פתוחים',
-  construction: 'בבנייה',
-}
-
 // The server counts only places a student can walk into right now
 // (open, and not group rooms). capacity 0 means nothing is open.
 export function occupancyLevel(building: Building): Level {

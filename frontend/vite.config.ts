@@ -15,10 +15,11 @@ export default defineConfig({
   server: { headers: SECURITY_HEADERS },
   preview: { headers: SECURITY_HEADERS },
   build: {
-    // The main bundle is about 570 kB (180 kB gzipped): React, the router,
-    // Leaflet and the small core of Motion. Split off: the admin page
-    // (src/admin/LazyAdminPage.tsx) and Motion's animation features
-    // (src/design/MotionProvider.tsx), loaded after the first screen.
+    // The main bundle is about 450 kB (147 kB gzipped): React, the router,
+    // the small core of Motion and the illustrations. Split off, loaded only
+    // when needed: the map with Leaflet (src/features/finder/FinderMap.tsx),
+    // Motion's animation features (src/design/MotionProvider.tsx) and the
+    // admin page (src/admin/LazyAdminPage.tsx).
     chunkSizeWarningLimit: 600,
   },
 })

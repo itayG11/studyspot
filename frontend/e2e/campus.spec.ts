@@ -5,27 +5,24 @@ test.beforeEach(async ({ page }) => {
   await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
 })
 
-test('a demo student finds a free station in a computer lab', async ({ page }) => {
+test('a demo student finds a computer lab through the story and the search', async ({ page }) => {
   await page.goto('/login')
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
 
-  // The home page opens on the hero; its button leads down to the live map.
+  // The home page opens on the story; its button leads down to the finder.
   await expect(page).toHaveURL('/')
   await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('איפה יש מקום עכשיו?')
-  await page.getByRole('button', { name: 'למפה החיה' }).click()
-  const liveMap = page.getByRole('region', { name: 'מפת הקמפוס' })
-  await expect(liveMap).toBeInViewport()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('יש לך מקום בקמפוס.')
+  await page.getByRole('button', { name: 'לחיפוש מקום' }).click()
+  const search = page.getByRole('searchbox', { name: 'חיפוש מקום' })
+  await expect(search).toBeInViewport()
 
-  // The seven Braude buildings on the board.
-  const board = page.getByRole('list', { name: 'בניינים' })
-  await expect(board.getByRole('button')).toHaveCount(7)
-  // Five buildings have places and two do not; every one is on the map.
-  await expect(liveMap.locator('.leaflet-interactive')).toHaveCount(7)
-
-  await board.getByRole('button', { name: /בניין M/ }).click()
-  await expect(page).toHaveURL('/?building=M')
-  await page.getByRole('link', { name: /M206/ }).click()
+  // Ten Braude places, then one after searching.
+  await expect(page.getByText('10 מקומות')).toBeVisible()
+  await search.fill('m206')
+  await expect(page.getByText('מקום אחד')).toBeVisible()
+  await expect(page).toHaveURL('/?q=m206')
+  await page.getByRole('link', { name: 'M206' }).click()
 
   await expect(page.getByRole('heading', { name: 'M206' })).toBeVisible()
   const seats = page.getByRole('list', { name: 'תאים' }).getByRole('listitem')
@@ -41,10 +38,12 @@ test('a demo student finds a free station in a computer lab', async ({ page }) =
   await expect(page.getByRole('link', { name: 'התחברות' })).toBeVisible()
 })
 
-test('the places list filters by kind', async ({ page }) => {
-  await page.goto('/places')
-  await page.getByRole('button', { name: 'ספרייה' }).click()
-  await expect(page).toHaveURL('/places?kind=library')
-  await expect(page.getByRole('link', { name: /ספרייה.*בניין EF/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: /M206/ })).toHaveCount(0)
+test('an old places link opens the finder with its filter', async ({ page }) => {
+  await page.goto('/places?kind=library')
+  await expect(page).toHaveURL('/?kind=library#finder')
+  await expect(page.getByRole('button', { name: 'ספרייה' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('link', { name: 'ספרייה' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'M206' })).toHaveCount(0)
+  // The shared link skips the story and lands on the results.
+  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
 })
