@@ -16,7 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
+    # hide_input_in_errors: a refused value (say, a database address with its
+    # password) is never printed in the error, and so never in a log.
+    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore", hide_input_in_errors=True)
 
     database_url: str
     test_database_url: str | None = None
@@ -62,10 +64,15 @@ class Settings(BaseSettings):
     @classmethod
     def _psycopg_driver(cls, url: str) -> str:
         """Hosting providers hand out postgresql:// (or postgres://) addresses;
-        SQLAlchemy needs to be told the driver this project installs."""
+        SQLAlchemy needs to be told the driver this project installs. A value
+        pasted with spaces or quotes around it is cleaned first."""
+        url = url.strip().strip("'\"").strip()
         for plain in ("postgresql://", "postgres://"):
             if url.startswith(plain):
-                return "postgresql+psycopg://" + url[len(plain) :]
+                url = "postgresql+psycopg://" + url[len(plain) :]
+        if not url.startswith("postgresql+psycopg://"):
+            # For example a whole `psql '...'` command copied instead of the address.
+            raise ValueError("DATABASE_URL must start with postgresql:// (copy the connection string, not a command)")
         return url
 
     @model_validator(mode="after")
