@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_session
+from app import bookings as rules
 from app.bookings import MIN_WALK_IN, holding
 from app.hours import place_status
 from app.clock import get_now
@@ -26,6 +27,7 @@ from app.models import (
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
 from app.schemas import (
+    BookingRules,
     BuildingOut,
     InstitutionOut,
     OpeningHoursOut,
@@ -51,7 +53,26 @@ def _institution(session: Session, slug: str) -> Institution:
 @router.get("/institutions/{slug}", response_model=InstitutionOut)
 def get_institution(slug: Slug, session: SessionDep):
     institution = _institution(session, slug)
-    return InstitutionOut(slug=institution.slug, name=institution.name, timezone=institution.timezone)
+    return InstitutionOut(
+        slug=institution.slug,
+        name=institution.name,
+        timezone=institution.timezone,
+        booking_rules=BOOKING_RULES,
+    )
+
+
+def _minutes(delta) -> int:
+    return int(delta.total_seconds() // 60)
+
+
+BOOKING_RULES = BookingRules(
+    slot_minutes=_minutes(rules.SLOT),
+    max_minutes=_minutes(rules.MAX_DURATION),
+    days_ahead=rules.HORIZON.days,
+    max_upcoming=rules.MAX_UPCOMING,
+    arrive_early_minutes=_minutes(rules.ARRIVE_EARLY),
+    no_show_after_minutes=_minutes(rules.NO_SHOW_AFTER),
+)
 
 
 def _place_views(

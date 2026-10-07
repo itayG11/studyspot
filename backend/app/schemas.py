@@ -22,10 +22,36 @@ from app.models import (
 )
 
 
+class BookingRules(BaseModel):
+    """The booking rules, so the site shows them without keeping a copy."""
+
+    slot_minutes: int  # bookings start and end on this grid
+    max_minutes: int  # longest booking
+    days_ahead: int  # how far ahead a booking may start
+    max_upcoming: int  # active advance bookings per student
+    arrive_early_minutes: int  # arrival can be confirmed this early
+    no_show_after_minutes: int  # no confirmation by then: released
+
+
 class InstitutionOut(BaseModel):
     slug: str
     name: str
     timezone: str  # all opening hours and bookings are in this zone
+    booking_rules: BookingRules
+
+
+class BuildingLocationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    latitude: Decimal = Field(ge=-90, le=90, max_digits=9, decimal_places=6)
+    longitude: Decimal = Field(ge=-180, le=180, max_digits=9, decimal_places=6)
+
+
+class BuildingLocationOut(BaseModel):
+    id: int
+    code: str
+    latitude: Decimal
+    longitude: Decimal
 
 
 class Occupancy(BaseModel):

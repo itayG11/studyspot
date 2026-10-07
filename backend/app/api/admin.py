@@ -12,6 +12,8 @@ from app.api.deps import get_code_secret, get_session
 from app.codes import make_code
 from app.models import Building, Institution, Place, User
 from app.permissions import can_manage, require_admin
+from app.ratelimit import write_limit
+from app.schemas import BuildingLocationIn, BuildingLocationOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -50,7 +52,9 @@ def list_codes(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: S
     return [_code(place, code, secret) for place, code in rows]
 
 
-@router.post("/places/{place_id}/revoke-code", response_model=PlaceCode)
+@router.post(
+    "/places/{place_id}/revoke-code", response_model=PlaceCode, dependencies=[Depends(write_limit)]
+)
 def revoke_code(
     place_id: Annotated[int, Path(gt=0)], admin: AdminDep, db: SessionDep, secret: SecretDep
 ):
@@ -63,3 +67,23 @@ def revoke_code(
     place.code_version += 1
     db.commit()
     return _code(place, place.building.code, secret)
+
+
+@router.post(
+    "/buildings/{building_id}/location",
+    response_model=BuildingLocationOut,
+    dependencies=[Depends(write_limit)],
+)
+def place_building(
+    building_id: Annotated[int, Path(gt=0)], body: BuildingLocationIn, admin: AdminDep, db: SessionDep
+):
+    """Put a building on the map, where the admin clicked."""
+    building = db.get(Building, building_id)
+    institution = db.get(Institution, building.institution_id) if building else None
+    if building is None or not can_manage(admin, institution):
+        raise HTTPException(404, "building_not_found")
+    building.latitude, building.longitude = body.latitude, body.longitude
+    db.commit()
+    return BuildingLocationOut(
+        id=building.id, code=building.code, latitude=building.latitude, longitude=building.longitude
+    )

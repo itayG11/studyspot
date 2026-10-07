@@ -143,3 +143,61 @@ def test_refresh_is_limited_per_session_not_per_ip(client):
     client.cookies.clear()
     client.cookies.set("studyspot_refresh", "another", domain="testserver.local", path="/auth")
     assert client.post("/auth/refresh").status_code != 429
+
+
+# --- Placing buildings on the map -------------------------------------------------
+
+
+def building_named(braude, code):
+    return next(b for b in braude.buildings if b.code == code)
+
+
+def test_admin_places_a_building_on_the_map(client, braude, admin):
+    client.user = admin
+    nx = building_named(braude, "NX")
+    response = client.post(
+        f"/admin/buildings/{nx.id}/location", json={"latitude": 32.9146, "longitude": 35.28}
+    )
+    assert response.status_code == 200, response.json()
+    assert response.json() == {"id": nx.id, "code": "NX", "latitude": "32.914600", "longitude": "35.280000"}
+    on_map = {b["code"]: b for b in client.get("/institutions/braude/buildings").json()}
+    assert (on_map["NX"]["latitude"], on_map["NX"]["longitude"]) == ("32.914600", "35.280000")
+
+
+def test_students_cannot_move_buildings(client, braude):
+    nx = building_named(braude, "NX")
+    body = {"latitude": 32.9, "longitude": 35.3}
+    assert client.post(f"/admin/buildings/{nx.id}/location", json=body).status_code == 403
+
+
+def test_admin_of_another_institution_cannot_move_buildings(client, braude, other_institution_admin):
+    client.user = other_institution_admin
+    nx = building_named(braude, "NX")
+    response = client.post(f"/admin/buildings/{nx.id}/location", json={"latitude": 1, "longitude": 1})
+    assert (response.status_code, response.json()["detail"]) == (404, "building_not_found")
+    assert client.post("/admin/buildings/999999/location", json={"latitude": 1, "longitude": 1}).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"latitude": 91, "longitude": 35},
+        {"latitude": 32, "longitude": -181},
+        {"latitude": 32},
+        {"latitude": 32, "longitude": 35, "name": "x"},
+        {"latitude": "north", "longitude": 35},
+    ],
+)
+def test_invalid_positions_are_rejected(client, braude, admin, body):
+    client.user = admin
+    nx = building_named(braude, "NX")
+    assert client.post(f"/admin/buildings/{nx.id}/location", json=body).status_code == 422
+
+
+def test_admin_writes_are_rate_limited(client, braude, admin):
+    client.user = admin
+    nx = building_named(braude, "NX")
+    body = {"latitude": 32.9, "longitude": 35.3}
+    statuses = [client.post(f"/admin/buildings/{nx.id}/location", json=body).status_code for _ in range(31)]
+    assert statuses[:30].count(429) == 0
+    assert statuses[30] == 429

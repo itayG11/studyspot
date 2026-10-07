@@ -28,8 +28,16 @@ def test_buildings_with_occupancy(client):
 def test_institution_details(client):
     response = client.get("/institutions/braude")
     assert response.status_code == 200
-    assert response.json() == {
-        "slug": "braude", "name": "מכללת בראודה", "timezone": "Asia/Jerusalem"
+    body = response.json()
+    assert (body["slug"], body["name"], body["timezone"]) == ("braude", "מכללת בראודה", "Asia/Jerusalem")
+    # The site reads the booking rules from here instead of keeping a copy.
+    assert body["booking_rules"] == {
+        "slot_minutes": 15,
+        "max_minutes": 120,
+        "days_ahead": 4,
+        "max_upcoming": 2,
+        "arrive_early_minutes": 10,
+        "no_show_after_minutes": 15,
     }
 
 
