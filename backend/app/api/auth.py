@@ -138,10 +138,14 @@ def demo_login(
     # It sets the refresh cookie, so it gets the same CSRF guard as refresh.
     _require_allowed_origin(request, settings)
     try:
-        user = demo_user(db, settings.demo_institution, body.persona, now)
-        issued = start_session(db, user, now)
+        with db.begin_nested():  # a failure below undoes only this sign-in's writes
+            user = demo_user(db, settings.demo_institution, body.persona, now)
+            issued = start_session(db, user, now)
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
+    except IntegrityError:
+        # Two first sign-ins of the same persona at once: one created the user.
+        raise HTTPException(409, "concurrent_sign_in") from None
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
     return _token_out(db, user, issued.session, now, settings)

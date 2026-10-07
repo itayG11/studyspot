@@ -8,11 +8,12 @@ setting cannot open a back door in a real deployment by accident.
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_session
 from app.clock import get_now
 from app.config import Settings, get_settings
-from app.main import app
+from app.main import app, demo_warning
 from app.models import AuthProvider, User, UserIdentity, UserRole
 from conftest import SUNDAY_10AM
 
@@ -128,3 +129,21 @@ def test_providers_lists_what_is_switched_on(make_client):
         demo_login_enabled=True, microsoft_client_id="id", microsoft_client_secret="secret"
     )
     assert on.get("/auth/providers").json() == {"providers": ["microsoft"], "demo": True}
+
+
+def test_two_first_demo_sign_ins_at_once_get_a_clear_answer(demo_client, monkeypatch):
+    # The losing request of the race hits the unique (provider, subject)
+    # rule; it must answer 409, not crash with 500.
+    def lost_the_race(*_args):
+        raise IntegrityError("INSERT INTO user_identities", {}, Exception("duplicate key"))
+
+    monkeypatch.setattr("app.api.auth.demo_user", lost_the_race)
+    response = demo_login(demo_client)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "concurrent_sign_in"
+
+
+def test_the_server_warns_when_demo_sign_in_is_on():
+    assert demo_warning(make_settings()) is None
+    warning = demo_warning(make_settings(demo_login_enabled=True))
+    assert warning is not None and "braude" in warning

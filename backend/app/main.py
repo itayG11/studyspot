@@ -5,6 +5,7 @@ Run locally with:  uvicorn app.main:app --reload
 
 import asyncio
 import contextlib
+import logging
 import os
 from collections.abc import AsyncIterator
 
@@ -12,16 +13,32 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, auth, bookings, campus, checkins
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.sweeper import run_forever
 
 # Seconds between background sweeps; 0 turns the sweep off (tests do this).
 SWEEP_INTERVAL = float(os.environ.get("SWEEP_INTERVAL_SECONDS", "60"))
 
+logger = logging.getLogger("studyspot")
+
+
+def demo_warning(settings: Settings) -> str | None:
+    """The demo sign-in hands out an institution admin to anyone, so a
+    server that has it on says so loudly at startup."""
+    if not settings.demo_login_enabled:
+        return None
+    return (
+        "DEMO_LOGIN_ENABLED is on: anyone can sign in as a demo student or as a "
+        f"demo institution admin of '{settings.demo_institution}'. "
+        "Never leave it on where real students sign in."
+    )
+
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Start the background sweep with the server, stop it on shutdown."""
+    if warning := demo_warning(get_settings()):
+        logger.warning(warning)
     task = asyncio.create_task(run_forever(SWEEP_INTERVAL)) if SWEEP_INTERVAL > 0 else None
     yield
     if task is not None:
