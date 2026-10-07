@@ -10,6 +10,8 @@ dependencies = [
     "alembic>=1.16",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.6",
+    "pyjwt[crypto]>=2.10",
+    "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
@@ -23,3 +25,11 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # A SQLAlchemy warning usually means data was silently not saved: fail on it.
 filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Only app/ is the Python package; migrations/ and tests/ are not installed.
+[tool.setuptools.packages.find]
+include = ["app*"]
