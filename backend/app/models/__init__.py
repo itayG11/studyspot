@@ -11,11 +11,15 @@ from app.models.campus import (
     is_bookable,
     is_counted,
 )
+from app.models.checkins import CheckIn, CheckInEndReason
 from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
+from app.models.people import User
 
 __all__ = [
     "Building",
     "BuildingStatus",
+    "CheckIn",
+    "CheckInEndReason",
     "Institution",
     "OpeningHours",
     "Place",
@@ -23,6 +27,7 @@ __all__ = [
     "Seat",
     "SpecialPeriod",
     "SpecialPeriodPlace",
+    "User",
     "floor_exists",
     "is_bookable",
     "is_counted",

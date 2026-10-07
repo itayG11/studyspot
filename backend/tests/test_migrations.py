@@ -10,7 +10,7 @@ import app.models  # noqa: F401  (registers every table on Base.metadata)
 from app.db import Base
 from conftest import alembic_config
 
-CAMPUS_TABLES = {
+TABLES = {
     "institutions",
     "buildings",
     "places",
@@ -18,6 +18,8 @@ CAMPUS_TABLES = {
     "opening_hours",
     "special_periods",
     "special_period_places",
+    "users",
+    "check_ins",
 }
 
 
@@ -25,11 +27,11 @@ def test_upgrade_downgrade_upgrade(engine: Engine):
     config = alembic_config(engine.url.render_as_string(hide_password=False))
     try:
         command.downgrade(config, "base")
-        assert CAMPUS_TABLES.isdisjoint(inspect(engine).get_table_names())
+        assert TABLES.isdisjoint(inspect(engine).get_table_names())
     finally:
         # Leave the shared test database at head even if the check fails.
         command.upgrade(config, "head")
-    assert CAMPUS_TABLES <= set(inspect(engine).get_table_names())
+    assert TABLES <= set(inspect(engine).get_table_names())
 
 
 def test_migrations_match_the_models(engine: Engine):

@@ -142,6 +142,7 @@ class Place(Base):
         UniqueConstraint("id", "institution_id"),
         CheckConstraint("btrim(name) <> ''", name="name_not_blank"),
         CheckConstraint("floor >= 0", name="floor_not_negative"),
+        CheckConstraint("code_version >= 1", name="code_version_positive"),
         CheckConstraint("capacity > 0", name="capacity_positive"),
         CheckConstraint(
             # IS NOT NULL is required: "NULL > 0" is NULL, not false, and a
@@ -165,6 +166,8 @@ class Place(Base):
     capacity: Mapped[int]
     lab_rows: Mapped[int | None]
     lab_cols: Mapped[int | None]
+    # Part of the signed check-in code. Raising it invalidates printed codes.
+    code_version: Mapped[int] = mapped_column(default=1, server_default="1")
 
     # The composite foreign key means setting .building also copies the
     # building's institution_id into this place.
@@ -184,6 +187,8 @@ class Seat(Base):
     __table_args__ = (
         UniqueConstraint("place_id", "row", "col"),
         UniqueConstraint("place_id", "label"),
+        # Target of the composite foreign key from check_ins.
+        UniqueConstraint("id", "place_id"),
         CheckConstraint("row >= 1", name="row_positive"),
         CheckConstraint("col >= 1", name="col_positive"),
     )
