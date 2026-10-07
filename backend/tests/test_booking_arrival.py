@@ -234,4 +234,54 @@ def test_rescanning_a_lab_seat_renews_the_walk_in(client, lab):
     again = scan(client, lab, lab.seats[0].id)
     assert again.status_code == 200
     assert again.json()["id"] == first["id"]
-    assert datetime.fromisoformat(again.json()["expires_at"]) == SUNDAY_10AM + 100 * MIN + 2 * HOUR
+    # 11:40 + 2h = 13:40, rounded down to the 15-minute grid.
+    assert datetime.fromisoformat(again.json()["expires_at"]) == local(2026, 10, 11, 13, 30)
+
+
+# --- Edges found in code review --------------------------------------------------
+
+
+def test_early_arrival_waits_for_the_previous_walk_in(client, lab, other_student, student):
+    seat = lab.seats[0]
+    start = local(2026, 10, 11, 14, 0)
+    book(client, lab, start, start + 2 * HOUR, seat.id)  # student's booking at 14:00
+    client.user = other_student
+    at(client, local(2026, 10, 11, 13, 0))
+    walk_in = scan(client, lab, seat.id).json()
+    assert datetime.fromisoformat(walk_in["expires_at"]) == start  # cut short for the booking
+
+    client.user = student
+    at(client, start - 8 * MIN)
+    assert detail(scan(client, lab)) == "seat_still_in_use"
+    at(client, start + 1 * MIN)  # the walk-in has expired: no sweep needed
+    assert scan(client, lab).status_code == 201
+
+
+def test_renewal_ends_on_the_15_minute_grid(client, room, room_booking):
+    at(client, ROOM_START)
+    scan(client, room)
+    at(client, ROOM_START + 97 * MIN + timedelta(seconds=33))  # 15:37:33
+    response = client.post(f"/bookings/{room_booking['id']}/extend")
+    assert datetime.fromisoformat(response.json()["ends_at"]) == local(2026, 10, 11, 17, 30)
+
+
+def test_seat_with_less_than_fifteen_minutes_is_not_shown_as_free(client, lab, other_student):
+    seat = lab.seats[0]
+    client.user = other_student
+    start = local(2026, 10, 11, 10, 15)
+    book(client, lab, start, start + HOUR, seat.id)
+    at(client, local(2026, 10, 11, 10, 5))
+    client.user = None
+    first = client.get(f"/places/{lab.id}").json()["seats"][0]
+    assert (first["free_now"], first["free_until"]) == (False, None)
+
+
+def test_booking_the_running_slot_needs_its_arrival_window_open(client, room):
+    at(client, local(2026, 10, 11, 14, 15))
+    late = local(2026, 10, 11, 14, 0)
+    assert detail(client.post("/bookings", json={
+        "place_id": room.id, "starts_at": late.isoformat(),
+        "ends_at": (late + HOUR).isoformat(),
+    })) == "in_the_past"
+    at(client, local(2026, 10, 11, 14, 14))
+    assert book(client, room, late, late + HOUR)["status"] == "booked"

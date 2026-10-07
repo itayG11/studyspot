@@ -7,29 +7,26 @@ overlap", is left to the database's EXCLUDE constraints: this module
 does not lock anything, it just turns the database's refusal into a 409.
 """
 
-from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
-from app.hours import opening_status
+from app.hours import institution_zone, place_status
 from app.models import (
     ACTIVE_STATUSES,
     Booking,
     BookingSource,
     BookingStatus,
     CheckIn,
-    Institution,
     Place,
     PlaceKind,
     Seat,
     User,
     is_bookable,
 )
-from app.occupancy import open_all_day_place_ids
 
 # Product rules (agreed with the user in stage 4).
 MAX_DURATION = timedelta(hours=2)  # one booking, and one renewal step
@@ -42,12 +39,6 @@ MIN_WALK_IN = timedelta(minutes=15)  # shortest walk-in worth giving
 
 
 # --- Small helpers shared with check-in ---------------------------------------------
-
-
-def institution_zone(session: Session, institution_id: int) -> ZoneInfo:
-    return ZoneInfo(
-        session.scalar(select(Institution.timezone).where(Institution.id == institution_id))
-    )
 
 
 def same_resource(place: Place, seat_id: int | None):
@@ -116,13 +107,10 @@ def insert_booking(session: Session, booking: Booking) -> Booking:
     return booking
 
 
-def _closes_at(session: Session, place: Place, local_moment: datetime) -> tuple[bool, datetime | None]:
-    """(is open at that moment, closing time that day or None if open all day)."""
-    all_day = place.id in open_all_day_place_ids(
-        session, place.institution_id, local_moment.date()
-    )
-    status = opening_status(place.opening_hours, local_moment, all_day)
-    return status.is_open, status.closes_at
+def floor_to_slot(moment: datetime) -> datetime:
+    """Round down to the 15-minute grid, so freed time stays bookable."""
+    moment = moment.replace(second=0, microsecond=0)
+    return moment - timedelta(minutes=moment.minute % 15)
 
 
 # --- Creating, cancelling, renewing -------------------------------------------------
@@ -204,13 +192,12 @@ def renew(session: Session, booking: Booking, now: datetime) -> bool:
     place = session.scalars(
         select(Place).where(Place.id == booking.place_id).options(selectinload(Place.opening_hours))
     ).one()
-    local_now = now.astimezone(institution_zone(session, place.institution_id))
-    is_open, closes_at = _closes_at(session, place, local_now)
-    if not is_open:
+    status = place_status(session, place, now)
+    if not status.is_open:
         return False
-    new_end = now + MAX_DURATION
-    if closes_at is not None:
-        new_end = min(new_end, closes_at.astimezone(UTC))
+    new_end = floor_to_slot(now + MAX_DURATION)
+    if status.closes_at is not None:
+        new_end = min(new_end, status.closes_at)
     following = session.scalar(
         select(func.min(Booking.starts_at)).where(
             same_resource(place, booking.seat_id),
@@ -223,11 +210,20 @@ def renew(session: Session, booking: Booking, now: datetime) -> bool:
         new_end = min(new_end, following)
     if new_end <= booking.ends_at:
         return False
-    booking.ends_at = new_end
-    check_in = session.scalars(select(CheckIn).where(CheckIn.booking_id == booking.id)).first()
-    if check_in is not None and check_in.ended_at is None:
-        check_in.expires_at = new_end
-    session.flush()  # the database re-checks the EXCLUDE constraint here
+    try:
+        with session.begin_nested():
+            booking.ends_at = new_end
+            check_in = session.scalars(
+                select(CheckIn).where(CheckIn.booking_id == booking.id)
+            ).first()
+            if check_in is not None and check_in.ended_at is None:
+                check_in.expires_at = new_end
+            session.flush()  # the database re-checks the EXCLUDE constraint here
+    except IntegrityError as error:
+        # Someone booked the following time in the same instant: no renewal.
+        if sqlstate(error) == EXCLUSION_VIOLATION:
+            return False
+        raise
     return True
 
 
@@ -239,14 +235,7 @@ def extend_booking(session: Session, user: User, booking_id: int, now: datetime)
         raise Refusal(404, "booking_not_found")
     if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
         raise Refusal(409, "not_checked_in")
-    try:
-        with session.begin_nested():
-            renewed = renew(session, booking, now)
-    except IntegrityError as error:
-        if sqlstate(error) == EXCLUSION_VIOLATION:
-            raise Refusal(409, "no_time_to_extend") from None
-        raise
-    if not renewed:
+    if not renew(session, booking, now):
         raise Refusal(409, "no_time_to_extend")
     return booking
 
@@ -308,8 +297,9 @@ def _check_times(
         raise Refusal(400, "not_on_slot")
     if ends_at - starts_at > MAX_DURATION:
         raise Refusal(400, "too_long")
-    # The slot that is running now may still be booked.
-    if starts_at < now - SLOT:
+    # The slot that is running now may still be booked, as long as its
+    # arrival window (until 15 minutes after the start) is still open.
+    if starts_at + NO_SHOW_AFTER <= now:
         raise Refusal(400, "in_the_past")
     if starts_at > now + HORIZON:
         raise Refusal(400, "too_far_ahead")
@@ -319,6 +309,6 @@ def _check_times(
     local_last = (ends_at - timedelta(microseconds=1)).astimezone(zone)
     if local_start.date() != local_last.date():
         raise Refusal(409, "outside_opening_hours")
-    is_open, closes_at = _closes_at(session, place, local_start)
-    if not is_open or (closes_at is not None and ends_at > closes_at):
+    status = place_status(session, place, starts_at)
+    if not status.is_open or (status.closes_at is not None and ends_at > status.closes_at):
         raise Refusal(409, "outside_opening_hours")

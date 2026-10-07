@@ -32,3 +32,33 @@ def opening_status(
         closes = datetime.combine(local_now.date(), today.closes, tzinfo=local_now.tzinfo)
         return OpeningStatus(is_open=True, closes_at=closes)
     return OpeningStatus(is_open=False, closes_at=None)
+
+
+def institution_zone(session, institution_id: int):
+    """The institution's timezone (opening hours are local times)."""
+    from zoneinfo import ZoneInfo
+
+    from sqlalchemy import select
+
+    from app.models import Institution
+
+    return ZoneInfo(
+        session.scalar(select(Institution.timezone).where(Institution.id == institution_id))
+    )
+
+
+def place_status(session, place, moment: datetime) -> OpeningStatus:
+    """Is the place open at `moment` (any timezone)? closes_at is returned in UTC.
+
+    The one place that combines opening hours with special periods; booking
+    rules, check-in and the seat map all use it.
+    """
+    from datetime import UTC
+
+    from app.occupancy import open_all_day_place_ids
+
+    local = moment.astimezone(institution_zone(session, place.institution_id))
+    all_day = place.id in open_all_day_place_ids(session, place.institution_id, local.date())
+    status = opening_status(place.opening_hours, local, all_day)
+    closes = status.closes_at.astimezone(UTC) if status.closes_at else None
+    return OpeningStatus(is_open=status.is_open, closes_at=closes)

@@ -2,16 +2,17 @@
 numbers, never who is where."""
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_session
-from app.bookings import holding, institution_zone
+from app.bookings import MIN_WALK_IN, holding
+from app.hours import place_status
 from app.clock import get_now
 from app.hours import opening_status
 from app.models import (
@@ -73,41 +74,41 @@ def _place_views(
     return views
 
 
-def _seat_map(session: Session, place: Place, is_open: bool, now: datetime) -> list[SeatOut]:
-    """Each seat: taken now? free now? free until when (next booking or closing)?"""
+def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
+    """Each seat: taken now? free now? free until when (next booking or closing)?
+
+    "Free now" means a walk-in would be accepted, so it uses the same rule
+    as check-in: at least MIN_WALK_IN before the next booking or closing.
+    """
+    status = place_status(session, place, now)
     taken = occupied_seat_ids(session, place.id, now)
-    held_now = {
-        b.seat_id
-        for b in session.scalars(
-            select(Booking).where(
-                Booking.place_id == place.id, holding(now),
-                Booking.starts_at <= now, Booking.ends_at > now,
-            )
+    held_now: set[int] = set()
+    next_start: dict[int, datetime] = {}
+    for seat_id, starts_at in session.execute(
+        select(Booking.seat_id, Booking.starts_at).where(
+            Booking.place_id == place.id, holding(now), Booking.ends_at > now
         )
-    }
-    next_start = dict(
-        session.execute(
-            select(Booking.seat_id, func.min(Booking.starts_at))
-            .where(Booking.place_id == place.id, holding(now), Booking.starts_at > now)
-            .group_by(Booking.seat_id)
-        ).all()
-    )
-    closes_at = None
-    if is_open:
-        local_now = now.astimezone(institution_zone(session, place.institution_id))
-        all_day = place.id in open_all_day_place_ids(session, place.institution_id, local_now.date())
-        status = opening_status(place.opening_hours, local_now, all_day)
-        closes_at = status.closes_at.astimezone(UTC) if status.closes_at else None
+    ):
+        if starts_at <= now:
+            held_now.add(seat_id)
+        elif seat_id not in next_start or starts_at < next_start[seat_id]:
+            next_start[seat_id] = starts_at
     seats = []
     for s in place.seats:
-        free_now = is_open and s.id not in taken and s.id not in held_now
-        limits = [t for t in (next_start.get(s.id), closes_at) if t is not None]
+        limits = [t for t in (next_start.get(s.id), status.closes_at) if t is not None]
+        until = min(limits) if limits else None
+        free_now = (
+            status.is_open
+            and s.id not in taken
+            and s.id not in held_now
+            and (until is None or until - now >= MIN_WALK_IN)
+        )
         seats.append(
             SeatOut(
                 id=s.id, row=s.row, col=s.col, label=s.label,
                 occupied=s.id in taken,
                 free_now=free_now,
-                free_until=min(limits) if free_now and limits else None,
+                free_until=until if free_now else None,
             )
         )
     return seats
@@ -187,7 +188,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     view = _place_views(session, institution, [place], now, all_day)[0]
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
-        seats = _seat_map(session, place, view.is_open, now)
+        seats = _seat_map(session, place, now)
     return PlaceDetail(
         **view.model_dump(),
         opening_hours=[OpeningHoursOut.model_validate(h) for h in place.opening_hours],

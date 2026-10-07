@@ -12,7 +12,7 @@ of an open area at the same moment are handled one after the other.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import select, update
@@ -24,7 +24,7 @@ from app.bookings import (
     MIN_WALK_IN,
     NO_SHOW_AFTER,
     booking_covering,
-    institution_zone,
+    floor_to_slot,
     insert_booking,
     next_booking_start,
     release_no_shows,
@@ -32,7 +32,7 @@ from app.bookings import (
 )
 from app.codes import InvalidCode, read_code
 from app.errors import Refusal
-from app.hours import opening_status
+from app.hours import place_status
 from app.models import (
     Booking,
     BookingSource,
@@ -44,7 +44,7 @@ from app.models import (
     Seat,
     User,
 )
-from app.occupancy import is_active, occupied_by_place, open_all_day_place_ids
+from app.occupancy import is_active, occupied_by_place
 
 CHECK_IN_DURATION = MAX_DURATION
 
@@ -166,7 +166,7 @@ def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
     if booking_covering(session, place, seat.id, now, now) is not None:
         raise Refusal(409, "seat_booked")  # its owner may still arrive
 
-    ends_at, cut_short_by = now + CHECK_IN_DURATION, None
+    ends_at, cut_short_by = floor_to_slot(now + CHECK_IN_DURATION), None
     if closes_at is not None and closes_at < ends_at:
         ends_at, cut_short_by = closes_at, "closing"
     following = next_booking_start(session, place, seat.id, now, now)
@@ -198,9 +198,17 @@ def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
 
 def _confirm(session, user, place, booking: Booking, current, now) -> CheckInResult:
     """Turn an arriving booking into a check-in that lasts until the booking ends."""
+    seat = session.get(Seat, booking.seat_id) if booking.seat_id else None
+    if seat is not None:
+        # Arriving early: the previous student may still have the seat until
+        # this booking starts. Free it if their time is over; otherwise wait.
+        _expire(session, CheckIn.seat_id == seat.id, now)
+        if _seat_is_taken(session, seat, now) and not (
+            current is not None and current.seat_id == seat.id
+        ):
+            raise Refusal(409, "seat_still_in_use")
     _end_current(session, current, now)
     booking.status = BookingStatus.CHECKED_IN
-    seat = session.get(Seat, booking.seat_id) if booking.seat_id else None
     row = _new_check_in(session, user, place, seat, booking, now, booking.ends_at)
     return CheckInResult(row, created=True)
 
@@ -278,12 +286,10 @@ def _place_from_code(session: Session, code: str, secret: bytes) -> Place:
 
 def _closing_time_if_open(session: Session, place: Place, now: datetime) -> datetime | None:
     """Raise if the place is closed; otherwise return when it closes (None: open all day)."""
-    local_now = now.astimezone(institution_zone(session, place.institution_id))
-    all_day = place.id in open_all_day_place_ids(session, place.institution_id, local_now.date())
-    status = opening_status(place.opening_hours, local_now, all_day)
+    status = place_status(session, place, now)
     if not status.is_open:
         raise Refusal(409, "place_closed")
-    return status.closes_at.astimezone(UTC) if status.closes_at else None
+    return status.closes_at
 
 
 def _seat_for(session: Session, place: Place, seat_id: int | None) -> Seat:

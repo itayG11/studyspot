@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
-from app.errors import Refusal
+from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
 
 # Unique indexes that two simultaneous requests can race on. Losing such a
 # race is a normal 409, not a server error.
@@ -34,15 +34,17 @@ def run_action(session: Session, action):
     except Refusal as error:
         raise HTTPException(error.status, error.code) from None
     except IntegrityError as error:
-        # The database caught a race the code did not, for example the
-        # same student checking in at two places in the same instant.
+        # The database caught a race the code did not: two bookings for the
+        # same time (EXCLUDE), or one student acting twice in the same instant.
         # Any other constraint means a bug: let it surface as a 500.
+        if sqlstate(error) == EXCLUSION_VIOLATION:
+            raise HTTPException(409, "slot_taken") from None
         if _constraint(error) not in RACE_CONSTRAINTS:
             raise
-        raise HTTPException(409, "concurrent_check_in") from None
+        raise HTTPException(409, "concurrent_request") from None
     except OperationalError as error:
-        if getattr(error.orig, "sqlstate", None) != DEADLOCK_DETECTED:
+        if sqlstate(error) != DEADLOCK_DETECTED:
             raise
-        raise HTTPException(409, "concurrent_check_in") from None
+        raise HTTPException(409, "concurrent_request") from None
     session.commit()
     return result
