@@ -1,0 +1,192 @@
+.page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab {
+  padding: 0.45rem 1rem;
+  font: 700 1.4rem/1 var(--font-display);
+  color: var(--ink);
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--paper);
+  background: var(--ink);
+  box-shadow: inset 0 -4px 0 var(--signal);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.signs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1.25rem;
+}
+
+/* A printed sign: what hangs at the entrance of each place. */
+.sign {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 1.25rem 1rem 1rem;
+  text-align: center;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  border-top: 14px solid var(--ink);
+}
+
+.signHead {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.signName {
+  margin: 0;
+  font: 700 2.2rem/1 var(--font-display);
+}
+
+.qr {
+  width: 11rem;
+  height: 11rem;
+  image-rendering: pixelated;
+}
+
+.signCall {
+  margin: 0;
+  font: 700 1.5rem/1 var(--font-display);
+  color: var(--signal);
+}
+
+.signBrand {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.signActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fresh {
+  animation: stamp 520ms var(--ease-out) both;
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.12) rotate(-1.5deg);
+  }
+}
+
+/* --- Placing buildings ---------------------------------------------- */
+
+.placer {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.choice {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  text-align: start;
+  color: inherit;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.choice[aria-pressed='true'] {
+  box-shadow: 4px 4px 0 var(--signal);
+  background: #fff3ea;
+}
+
+.coords {
+  font: 500 0.8rem var(--font-mono);
+  color: var(--ink-soft);
+  direction: ltr;
+}
+
+.pickMap {
+  height: min(65vh, 560px);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+@media (max-width: 900px) {
+  .placer {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Printing: only the signs, one per page ------------------------- */
+
+@media print {
+  .toolbar,
+  .tabs,
+  .signActions {
+    display: none !important;
+  }
+
+  .signs {
+    display: block;
+  }
+
+  .sign {
+    break-after: page;
+    min-height: 90vh;
+    align-content: center;
+    border-width: 4px;
+    border-top-width: 24px;
+  }
+
+  .signName {
+    font-size: 4.5rem;
+  }
+
+  .qr {
+    width: 22rem;
+    height: 22rem;
+  }
+
+  .signCall {
+    font-size: 3rem;
+  }
+}

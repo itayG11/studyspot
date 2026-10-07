@@ -2,7 +2,8 @@
 // "Data mode" (createBrowserRouter) is used for its page-change animations.
 
 import { createBrowserRouter } from 'react-router'
-import { RequireAuth } from './auth/guards'
+import { AdminPage } from './admin/AdminPage'
+import { RequireAdmin, RequireAuth } from './auth/guards'
 import { Layout } from './components/Layout'
 import { MyPage } from './me/MyPage'
 import { LoginPage } from './pages/LoginPage'
@@ -23,6 +24,7 @@ export const routes = [
       { path: 'places/:placeId', Component: PlacePage },
       { path: 'scan', element: <RequireAuth><ScanPage /></RequireAuth> },
       { path: 'me', element: <RequireAuth><MyPage /></RequireAuth> },
+      { path: 'admin', element: <RequireAdmin><AdminPage /></RequireAdmin> },
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', Component: SignedInPage },
       { path: '*', Component: NotFoundPage },

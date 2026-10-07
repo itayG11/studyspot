@@ -308,3 +308,15 @@ a {
     transition-duration: 1ms !important;
   }
 }
+
+/* Printing (the admin's signs): no header, no background grid or grain. */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  body::before,
+  header {
+    display: none !important;
+  }
+}
