@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { Pin } from '../illustrations/Pin'
 import type { UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -69,6 +69,8 @@ export function Layout() {
       <main className={pathname === '/' ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
+      {/* A new page starts at the top; "back" returns to where you were. */}
+      <ScrollRestoration />
     </div>
   )
 }

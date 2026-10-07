@@ -1,0 +1,386 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-4) var(--s-4) var(--s-16);
+}
+
+.notice {
+  max-width: 1200px;
+  margin: var(--s-3) auto 0;
+  padding: 0 var(--s-4);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  margin-bottom: var(--s-3);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* --- The header: the card's picture, grown --------------------------- */
+
+.hero {
+  position: relative;
+  height: clamp(280px, 52vh, 520px);
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.heroPhoto {
+  position: absolute;
+  inset: 0;
+}
+
+.heroShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(9 14 28 / 72%) 0%, rgb(9 14 28 / 30%) 38%, rgb(9 14 28 / 0%) 62%);
+  pointer-events: none;
+}
+
+.heroText {
+  position: absolute;
+  inset-inline: var(--s-6);
+  bottom: var(--s-6);
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+  color: #fff;
+}
+
+.kind {
+  font: 600 var(--text-sm) / 1.3 var(--font-body);
+  color: rgb(255 255 255 / 88%);
+}
+
+.title {
+  margin: 0;
+  font: 700 var(--text-hero) / 1 var(--font-heading);
+  text-shadow: 0 2px 20px rgb(9 14 28 / 40%);
+}
+
+.meta {
+  margin: 0 0 var(--s-1);
+  font-size: var(--text-lg);
+  color: rgb(255 255 255 / 92%);
+}
+
+.star {
+  position: absolute;
+  top: var(--s-4);
+  inset-inline-end: var(--s-4);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--ink);
+  background: rgb(253 252 249 / 90%);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.star:active {
+  transform: scale(0.92);
+}
+
+.star:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.star svg {
+  width: 22px;
+  height: 22px;
+}
+
+.starOn {
+  color: #c98a00;
+  fill: #f2b522;
+}
+
+/* --- Body ------------------------------------------------------------- */
+
+.layout {
+  display: grid;
+  gap: var(--s-6);
+  margin-top: var(--s-6);
+}
+
+@media (min-width: 761px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    align-items: start;
+  }
+}
+
+.main {
+  display: grid;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.card,
+.aside {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-6);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.aside {
+  position: sticky;
+  top: calc(var(--header-h, 0px) + var(--s-4));
+  box-shadow: var(--shadow-2);
+}
+
+.h2 {
+  margin: 0;
+  font: 600 var(--text-xl) / 1.2 var(--font-heading);
+  text-align: start;
+  color: var(--ink);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.facts div {
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-1);
+  border-radius: var(--r-md);
+}
+
+.facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.facts dt svg {
+  width: 16px;
+  height: 16px;
+}
+
+.facts dd {
+  margin: 2px 0 0;
+  font: 600 var(--text-lg) / 1.3 var(--font-body);
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.amenities li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  background: var(--stone-1);
+  border-radius: var(--r-pill);
+}
+
+.amenities svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-2);
+}
+
+.demo {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.walkIn {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  background: var(--free-tint);
+  border-radius: var(--r-md);
+}
+
+/* --- Today's timeline ------------------------------------------------ */
+
+.timeline {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.bar,
+.barSkeleton {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+}
+
+.barSkeleton {
+  background: var(--stone-2);
+}
+
+.seg_free,
+.seg_tooFar {
+  background: var(--free);
+}
+
+/* Booked is striped, not only another colour. */
+.seg_busy {
+  background: repeating-linear-gradient(-45deg, var(--full) 0 6px, #d4574d 6px 12px);
+}
+
+.seg_past {
+  background: var(--stone-3);
+}
+
+.now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-inline-start: -1px;
+  background: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px var(--stone-0);
+}
+
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--ink-2);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend span {
+  display: inline-block;
+  width: 18px;
+  height: 10px;
+  border-radius: var(--r-pill);
+}
+
+/* --- Opening hours --------------------------------------------------- */
+
+.timetable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.timetable caption {
+  margin-bottom: var(--s-3);
+}
+
+.timetable th,
+.timetable td {
+  padding: 10px var(--s-3);
+  text-align: start;
+  border-bottom: 1px solid var(--stone-2);
+}
+
+.timetable th {
+  font-weight: 500;
+}
+
+.timetable td {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.today {
+  background: var(--stone-1);
+}
+
+.today th {
+  font-weight: 700;
+}
+
+.closedDay td {
+  color: var(--ink-3);
+}
+
+/* --- Phone: booking at the thumb ------------------------------------- */
+
+.bookBar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--stone-1) 90%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--stone-3);
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding-bottom: calc(var(--s-16) + var(--s-8));
+  }
+
+  .hero {
+    height: 46vh;
+    margin-inline: calc(-1 * var(--s-4));
+    border-radius: 0;
+  }
+
+  .heroText {
+    inset-inline: var(--s-4);
+    bottom: var(--s-4);
+  }
+
+  .card {
+    padding: var(--s-4);
+  }
+}

@@ -259,6 +259,12 @@ a {
 }
 
 /* Page changes: the old page slides away, the new one rises. */
+/* A place's picture moving from its card to the space page (and back). */
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 ::view-transition-old(root) {
   animation: 180ms ease-in both page-out;
 }
@@ -285,6 +291,7 @@ a {
   *,
   *::before,
   *::after,
+  ::view-transition-group(*),
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation-duration: 1ms !important;

@@ -1,0 +1,231 @@
+.form {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.step {
+  display: grid;
+  gap: var(--s-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0;
+  font: 600 var(--text-md) / 1.2 var(--font-body);
+  color: var(--ink);
+}
+
+.stepNumber {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font: 600 var(--text-xs) / 1 var(--font-mono);
+  color: var(--on-ink);
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.date {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  opacity: 0.75;
+}
+
+/* Times read right to left, like the hands of a Hebrew clock face would. */
+.times {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  max-height: 232px;
+  overflow-y: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.time {
+  min-height: 38px;
+  font: 500 var(--text-sm) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    background-color var(--dur-ui) ease;
+}
+
+.time:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.time:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.time[aria-pressed='true'] {
+  color: var(--on-ink);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* Booked: struck through, not only greyed, so it reads without colour. */
+.time:disabled {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  background: var(--stone-2);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .time:not(:disabled, [aria-pressed='true']):hover {
+    border-color: var(--ink-3);
+  }
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.clash {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  color: var(--ink);
+  background: var(--busy-tint);
+  border-inline-start: 4px solid var(--busy);
+  border-radius: var(--r-md);
+}
+
+.summary {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  background: var(--stone-1);
+  border-radius: var(--r-md);
+}
+
+.summaryText {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font: 600 var(--text-lg) / 1.3 var(--font-heading);
+}
+
+.summaryTime {
+  font: 500 var(--text-md) var(--font-mono);
+  color: var(--ink-2);
+}
+
+.error {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  color: var(--full);
+  background: var(--full-tint);
+  border-radius: var(--r-md);
+}
+
+/* --- The ticket --------------------------------------------------------- */
+
+.ticketWrap {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.ticket {
+  position: relative;
+  display: grid;
+  gap: var(--s-1);
+  padding: var(--s-6) var(--s-6) var(--s-5);
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+
+.ticketEyebrow {
+  margin: 0;
+  font: 600 var(--text-sm) / 1.3 var(--font-body);
+  color: var(--free);
+}
+
+.ticketPlace {
+  margin: 0;
+  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+}
+
+.ticketPlace span {
+  font-weight: 500;
+}
+
+.ticketDay {
+  margin: var(--s-2) 0 0;
+  color: var(--ink-2);
+}
+
+.ticketTime {
+  margin: 0;
+  font: 600 2.4rem / 1.1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tear line of a printed ticket. */
+.perforation {
+  height: 0;
+  margin: var(--s-4) calc(-1 * var(--s-6));
+  border-top: 2px dashed var(--stone-3);
+}
+
+.ticketNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.ticketNumber {
+  margin: var(--s-2) 0 0;
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--ink-3);
+}
+
+.stamp {
+  position: absolute;
+  top: var(--s-5);
+  inset-inline-end: var(--s-5);
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  font: 700 var(--text-lg) / 1 var(--font-heading);
+  color: var(--free);
+  border: 3px double var(--free);
+  border-radius: 50%;
+  opacity: 0.9;
+}
+
+.ticketActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

@@ -1,14 +1,14 @@
-import { m } from 'motion/react'
 import { MapPin, Star } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import type { Place } from '../../api/types'
-import { SPRING } from '../../design/motion'
 import { useFavorites } from '../../hooks/useFavorites'
 import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS } from '../../i18n/labels'
 import { useInstitution } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
 import { KIND_PHOTO } from '../../media/photos'
 import { Badge, Photo } from '../../ui'
+import { artTransitionName } from '../space/transition'
 import { AMENITY_ICONS, topAmenities } from './amenityIcons'
 import styles from './finder.module.css'
 
@@ -36,17 +36,17 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
 
   return (
     <li className={styles.card}>
-      {/* Shares its layoutId with the space page header: the picture grows into it. */}
-      <m.div layoutId={`space-art-${place.id}`} transition={SPRING} className={styles.art}>
+      {/* Named like the space page header: the browser grows one into the other. */}
+      <div className={styles.art} style={{ viewTransitionName: artTransitionName(place.id) } as CSSProperties}>
         <Photo name={KIND_PHOTO[place.kind]} variant="card" decorative className={styles.artPhoto} />
-      </m.div>
+      </div>
       <div className={styles.body}>
         <div className={styles.top}>
           <Badge tone={status.tone}>{status.label}</Badge>
           {place.details_are_demo && <span className={styles.demo}>נתוני דמו</span>}
         </div>
         <h3 className={styles.title}>
-          <Link to={`/places/${place.id}`} className={styles.link} viewTransition>
+          <Link to={`/spaces/${place.id}`} className={styles.link} viewTransition>
             {place.name}
           </Link>
         </h3>
