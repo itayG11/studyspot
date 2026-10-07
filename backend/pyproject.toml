@@ -6,6 +6,10 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.1",
+    "alembic>=1.16",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
 ]
 
 [project.optional-dependencies]
@@ -17,3 +21,5 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# A SQLAlchemy warning usually means data was silently not saved: fail on it.
+filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
