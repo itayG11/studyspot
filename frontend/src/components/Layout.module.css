@@ -1,5 +1,6 @@
 .app {
   min-height: 100vh;
+  overflow-x: clip; /* full-width sections must not cause sideways scrolling */
   display: flex;
   flex-direction: column;
 }

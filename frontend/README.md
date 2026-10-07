@@ -35,7 +35,8 @@ migrated and seeded first. `PYTHON` picks the Python that runs the API;
 | `src/api` | Server types (`types.ts`, mirrors `backend/app/schemas.py`) and the one fetch wrapper (`client.ts`) |
 | `src/auth` | Who is signed in (`AuthContext`) |
 | `src/logic` | Pure functions: occupancy levels, seat states, wording, time zones. Tested without a browser |
-| `src/components`, `src/map`, `src/pages` | What is drawn. Each has its own `.module.css` |
+| `src/components`, `src/map`, `src/hero`, `src/pages` | What is drawn. Each has its own `.module.css` |
+| `src/map/tiles.ts` | Where map pictures come from (aerial photo, labels, street map) and their credits |
 | `src/styles` | Design tokens (colours, fonts, motion) and the shared base styles |
 | `src/i18n` | Hebrew texts and the Hebrew message for each server error code |
 | `e2e` | Playwright tests |

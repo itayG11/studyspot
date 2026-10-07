@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { PlaceCard } from '../components/PlaceCard'
@@ -8,6 +9,7 @@ import { useApi } from '../hooks/useApi'
 import { LoadError } from '../components/LoadError'
 import { BuildingList, Legend } from '../map/BuildingList'
 import { CampusMap } from '../map/CampusMap'
+import { HomeHero } from '../hero/HomeHero'
 import { occupancyLevel, position } from '../logic/occupancy'
 import { buildingSummary } from '../logic/places'
 import styles from './pages.module.css'
@@ -18,6 +20,11 @@ export function MapPage() {
   // The chosen building lives in the address (?building=M), so it can be shared.
   const [params, setParams] = useSearchParams()
   const selected = params.get('building')
+  const live = useRef<HTMLDivElement>(null)
+  const toMap = () => {
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    live.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+  }
 
   const select = (code: string) => setParams(code === selected ? {} : { building: code }, { replace: true })
 
@@ -35,70 +42,73 @@ export function MapPage() {
   const freeNow = all.reduce((sum, b) => sum + b.available, 0)
 
   return (
-    <div className={styles.mapPage}>
-      <aside>
-        {refreshError && (
-          <LoadError
-            error={refreshError}
-            onRetry={() => {
-              buildings.reload()
-              places.reload()
-            }}
-            inline
-          />
-        )}
-        {chosen ? (
-          <section className="panel rise" key={chosen.code}>
-            <div className={styles.chosenHead}>
-              <BuildingTile code={chosen.code} level={occupancyLevel(chosen)} large />
-              <div>
-                <h2>בניין {chosen.code}</h2>
-                <span className={styles.heroMeta}>{buildingSummary(chosen)}</span>
+    <>
+      <HomeHero buildings={all} onToMap={toMap} />
+      <div className={styles.mapPage} ref={live}>
+        <aside>
+          {refreshError && (
+            <LoadError
+              error={refreshError}
+              onRetry={() => {
+                buildings.reload()
+                places.reload()
+              }}
+              inline
+            />
+          )}
+          {chosen ? (
+            <section className="panel rise" key={chosen.code}>
+              <div className={styles.chosenHead}>
+                <BuildingTile code={chosen.code} level={occupancyLevel(chosen)} large />
+                <div>
+                  <h2>בניין {chosen.code}</h2>
+                  <span className={styles.heroMeta}>{buildingSummary(chosen)}</span>
+                </div>
               </div>
-            </div>
-            {chosenPlaces === null ? (
-              <p className="hint">טוען את המקומות…</p>
-            ) : chosenPlaces.length > 0 ? (
-              <ul className={styles.cards}>
-                {chosenPlaces.map((place, i) => (
-                  <PlaceCard key={place.id} place={place} index={i} />
-                ))}
-              </ul>
-            ) : (
-              <p>אין בבניין הזה מקומות לימוד במערכת.</p>
-            )}
-            <p>
-              <button type="button" className="link-button" onClick={() => select(chosen.code)}>
-                חזרה לכל הבניינים
-              </button>
-            </p>
-          </section>
-        ) : (
-          <section className="panel">
-            <div className={styles.sideTitle}>
-              <h2>איפה יש מקום?</h2>
-              <Count value={freeNow} className={styles.bigCount} />
-            </div>
-            <p className="hint">מקומות פנויים עכשיו בכל הקמפוס. בחר בניין במפה או ברשימה.</p>
-            <BuildingList buildings={onMap} selected={selected} onSelect={select} />
-            {offMap.length > 0 && (
-              <>
-                <h3 className={styles.subTitle}>לא מופיעים במפה</h3>
-                <BuildingList buildings={offMap} selected={selected} onSelect={select} startIndex={onMap.length} />
-              </>
-            )}
-          </section>
-        )}
-      </aside>
+              {chosenPlaces === null ? (
+                <p className="hint">טוען את המקומות…</p>
+              ) : chosenPlaces.length > 0 ? (
+                <ul className={styles.cards}>
+                  {chosenPlaces.map((place, i) => (
+                    <PlaceCard key={place.id} place={place} index={i} />
+                  ))}
+                </ul>
+              ) : (
+                <p>אין בבניין הזה מקומות לימוד במערכת.</p>
+              )}
+              <p>
+                <button type="button" className="link-button" onClick={() => select(chosen.code)}>
+                  חזרה לכל הבניינים
+                </button>
+              </p>
+            </section>
+          ) : (
+            <section className="panel">
+              <div className={styles.sideTitle}>
+                <h2>לוח הבניינים</h2>
+                <Count value={freeNow} className={styles.bigCount} />
+              </div>
+              <p className="hint">מקומות פנויים עכשיו בכל הקמפוס. בחר בניין במפה או ברשימה.</p>
+              <BuildingList buildings={onMap} selected={selected} onSelect={select} />
+              {offMap.length > 0 && (
+                <>
+                  <h3 className={styles.subTitle}>לא מופיעים במפה</h3>
+                  <BuildingList buildings={offMap} selected={selected} onSelect={select} startIndex={onMap.length} />
+                </>
+              )}
+            </section>
+          )}
+        </aside>
 
-      <section className={styles.mapArea} aria-label="מפת הקמפוס">
-        {onMap.length > 0 ? (
-          <CampusMap buildings={onMap} selected={selected} onSelect={select} />
-        ) : (
-          <p className="page-message">אף בניין עדיין לא מוקם על המפה.</p>
-        )}
-        <Legend />
-      </section>
-    </div>
+        <section className={styles.mapArea} aria-label="מפת הקמפוס">
+          {onMap.length > 0 ? (
+            <CampusMap buildings={onMap} selected={selected} onSelect={select} />
+          ) : (
+            <p className="page-message">אף בניין עדיין לא מוקם על המפה.</p>
+          )}
+          <Legend />
+        </section>
+      </div>
+    </>
   )
 }

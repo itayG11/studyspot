@@ -9,13 +9,19 @@ test('a demo student finds a free station in a computer lab', async ({ page }) =
   await page.goto('/login')
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
 
-  // The map page, signed in, with the seven Braude buildings on the board.
+  // The home page opens on the hero; its button leads down to the live map.
   await expect(page).toHaveURL('/')
   await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('איפה יש מקום עכשיו?')
+  await page.getByRole('button', { name: 'למפה החיה' }).click()
+  const liveMap = page.getByRole('region', { name: 'מפת הקמפוס' })
+  await expect(liveMap).toBeInViewport()
+
+  // The seven Braude buildings on the board.
   const board = page.getByRole('list', { name: 'בניינים' })
   await expect(board.getByRole('button')).toHaveCount(7)
   // Five buildings have places and two do not; every one is on the map.
-  await expect(page.locator('.leaflet-interactive')).toHaveCount(7)
+  await expect(liveMap.locator('.leaflet-interactive')).toHaveCount(7)
 
   await board.getByRole('button', { name: /בניין M/ }).click()
   await expect(page).toHaveURL('/?building=M')

@@ -78,6 +78,11 @@
   display: none;
 }
 
+/* A soft dark glow lifts the building circles off the aerial photo. */
+.frame :global(path.leaflet-interactive) {
+  filter: drop-shadow(0 0 5px rgb(0 0 0 / 65%));
+}
+
 .frame :global(.marker-selected) {
   animation: ring 1.4s var(--ease-out) infinite;
 }

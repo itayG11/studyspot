@@ -2,10 +2,11 @@
 // aerial photo. Leaflet does the drawing; react-leaflet wraps it in components.
 
 import { latLngBounds } from 'leaflet'
-import { CircleMarker, LayersControl, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
+import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
 import type { Building } from '../api/types'
 import styles from './map.module.css'
 import { LEVEL_COLORS, occupancyLevel, position } from '../logic/occupancy'
+import { AERIAL, AERIAL_LABELS, MAX_ZOOM, STREETS, type TileSource } from './tiles'
 
 interface Props {
   buildings: Building[] // only buildings that have a position
@@ -21,21 +22,16 @@ export function CampusMap({ buildings, selected, onSelect }: Props) {
   return (
     // Leaflet is built for left-to-right pages, so the map itself stays LTR.
     <div dir="ltr" className={styles.frame}>
-      <MapContainer bounds={bounds} maxZoom={19} scrollWheelZoom className={styles.map}>
+      <MapContainer bounds={bounds} maxZoom={MAX_ZOOM} scrollWheelZoom className={styles.map}>
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="מפת רחובות">
-            <TileLayer
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              maxZoom={19}
-            />
+          <LayersControl.BaseLayer checked name="תצלום אוויר">
+            <LayerGroup>
+              <SourceLayer source={AERIAL} />
+              <SourceLayer source={AERIAL_LABELS} />
+            </LayerGroup>
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="תצלום אוויר">
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution="Tiles &copy; Esri"
-              maxZoom={19}
-            />
+          <LayersControl.BaseLayer name="מפת רחובות">
+            <SourceLayer source={STREETS} />
           </LayersControl.BaseLayer>
         </LayersControl>
 
@@ -50,8 +46,9 @@ export function CampusMap({ buildings, selected, onSelect }: Props) {
               center={points[i]}
               radius={isSelected ? 19 : 15}
               pathOptions={{
-                color: isSelected ? '#ff5b14' : '#141a2e',
-                weight: 3,
+                // A white ring reads on both the dark photo and the light street map.
+                color: isSelected ? '#ff5b14' : '#ffffff',
+                weight: isSelected ? 4 : 3,
                 fillColor: level === 'construction' ? '#ffcc00' : LEVEL_COLORS[level],
                 fillOpacity: 0.95,
                 dashArray: level === 'construction' ? '5 4' : undefined,
@@ -75,5 +72,16 @@ export function CampusMap({ buildings, selected, onSelect }: Props) {
         מתעדכן כל 30 שניות
       </div>
     </div>
+  )
+}
+
+export function SourceLayer({ source }: { source: TileSource }) {
+  return (
+    <TileLayer
+      url={source.url}
+      attribution={source.attribution}
+      maxNativeZoom={source.maxNativeZoom}
+      maxZoom={MAX_ZOOM}
+    />
   )
 }
