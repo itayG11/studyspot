@@ -34,7 +34,8 @@ class OpeningHours(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"), index=True)
+    # Indexed by uq(place_id, weekday).
+    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
     weekday: Mapped[int] = mapped_column(SmallInteger)
     opens: Mapped[time]
     closes: Mapped[time]
@@ -55,14 +56,13 @@ class SpecialPeriod(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    institution_id: Mapped[int] = mapped_column(
-        ForeignKey("institutions.id", ondelete="CASCADE"), index=True
-    )
+    # Indexed by uq(institution_id, name).
+    institution_id: Mapped[int] = mapped_column(ForeignKey("institutions.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(100))
     starts_on: Mapped[date]
     ends_on: Mapped[date]
 
-    institution: Mapped[Institution] = relationship()
+    institution: Mapped[Institution] = relationship(back_populates="special_periods")
     place_links: Mapped[list["SpecialPeriodPlace"]] = relationship(
         back_populates="period", cascade="all, delete-orphan"
     )

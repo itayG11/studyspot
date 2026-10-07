@@ -90,6 +90,9 @@ class Institution(Base):
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"
     )
+    special_periods: Mapped[list["SpecialPeriod"]] = relationship(  # noqa: F821
+        back_populates="institution", cascade="all, delete-orphan", order_by="SpecialPeriod.id"
+    )
 
 
 class Building(Base):
@@ -106,9 +109,8 @@ class Building(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    institution_id: Mapped[int] = mapped_column(
-        ForeignKey("institutions.id", ondelete="CASCADE"), index=True
-    )
+    # No separate index: uq(institution_id, code) already starts with it.
+    institution_id: Mapped[int] = mapped_column(ForeignKey("institutions.id", ondelete="CASCADE"))
     code: Mapped[str] = mapped_column(String(16))
     name: Mapped[str | None] = mapped_column(String(200))
     floors_count: Mapped[int]
@@ -153,7 +155,7 @@ class Place(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     institution_id: Mapped[int] = mapped_column(index=True)
-    building_id: Mapped[int] = mapped_column(index=True)
+    building_id: Mapped[int]  # indexed by uq(building_id, name)
     kind: Mapped[PlaceKind] = mapped_column(_enum_column(PlaceKind, "place_kind"))
     name: Mapped[str] = mapped_column(String(100))
     floor: Mapped[int]
@@ -187,7 +189,8 @@ class Seat(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"), index=True)
+    # Indexed by uq(place_id, row, col).
+    place_id: Mapped[int] = mapped_column(ForeignKey("places.id", ondelete="CASCADE"))
     row: Mapped[int]
     col: Mapped[int]
     label: Mapped[str] = mapped_column(String(16))

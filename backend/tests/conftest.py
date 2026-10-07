@@ -54,14 +54,20 @@ def alembic_config(url: str) -> Config:
     return config
 
 
+def reset_schema(engine: Engine) -> None:
+    """Drop everything in the test database, whatever state a previous run left."""
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+
+
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
     url = _test_database_url()
     _create_database_if_missing(url)
-    config = alembic_config(url)
-    command.downgrade(config, "base")
-    command.upgrade(config, "head")
     engine = create_engine(url)
+    reset_schema(engine)
+    command.upgrade(alembic_config(url), "head")
     yield engine
     engine.dispose()
 

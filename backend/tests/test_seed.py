@@ -8,9 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Building, Institution, Place, PlaceKind, Seat, SpecialPeriod
 from app.seed import seed_braude, seed_institution
-
-SUNDAY_TO_THURSDAY = {6, 0, 1, 2, 3}  # Python weekday(): Monday is 0, Sunday is 6
-FRIDAY = 4
+from app.seed.braude import FRIDAY, SUNDAY_TO_THURSDAY
 
 
 @pytest.fixture
@@ -103,7 +101,7 @@ def test_seeding_twice_does_not_duplicate(session: Session):
 
 def test_seed_rejects_a_place_on_a_floor_the_building_does_not_have(session: Session):
     data = {
-        "institution": {"name": "Floor Test", "slug": "floor-test"},
+        "institution": {"name": "Floor Test", "slug": "floor-test", "timezone": "Asia/Jerusalem"},
         "buildings": [
             {
                 "code": "Z",
@@ -114,4 +112,9 @@ def test_seed_rejects_a_place_on_a_floor_the_building_does_not_have(session: Ses
     }
     with pytest.raises(ValueError, match="floor"):
         seed_institution(session, data)
+    # Nothing from the rejected campus is left waiting in the session.
+    assert not session.new
+    session.flush()
+    leftover = select(func.count()).select_from(Institution).where(Institution.slug == "floor-test")
+    assert session.scalar(leftover) == 0
 

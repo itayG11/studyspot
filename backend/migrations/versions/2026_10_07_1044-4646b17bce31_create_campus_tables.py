@@ -53,7 +53,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('id', 'institution_id', name=op.f('uq_buildings_id_institution_id')),
     sa.UniqueConstraint('institution_id', 'code', name=op.f('uq_buildings_institution_id_code'))
     )
-    op.create_index(op.f('ix_buildings_institution_id'), 'buildings', ['institution_id'], unique=False)
     op.create_table('special_periods',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('institution_id', sa.Integer(), nullable=False),
@@ -67,7 +66,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('id', 'institution_id', name=op.f('uq_special_periods_id_institution_id')),
     sa.UniqueConstraint('institution_id', 'name', name=op.f('uq_special_periods_institution_id_name'))
     )
-    op.create_index(op.f('ix_special_periods_institution_id'), 'special_periods', ['institution_id'], unique=False)
     op.create_table('places',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('institution_id', sa.Integer(), nullable=False),
@@ -89,7 +87,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('building_id', 'name', name=op.f('uq_places_building_id_name')),
     sa.UniqueConstraint('id', 'institution_id', name=op.f('uq_places_id_institution_id'))
     )
-    op.create_index(op.f('ix_places_building_id'), 'places', ['building_id'], unique=False)
     op.create_index(op.f('ix_places_institution_id'), 'places', ['institution_id'], unique=False)
     op.create_table('opening_hours',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -103,7 +100,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id', name=op.f('pk_opening_hours')),
     sa.UniqueConstraint('place_id', 'weekday', name=op.f('uq_opening_hours_place_id_weekday'))
     )
-    op.create_index(op.f('ix_opening_hours_place_id'), 'opening_hours', ['place_id'], unique=False)
     op.create_table('seats',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('place_id', sa.Integer(), nullable=False),
@@ -117,7 +113,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('place_id', 'label', name=op.f('uq_seats_place_id_label')),
     sa.UniqueConstraint('place_id', 'row', 'col', name=op.f('uq_seats_place_id_row_col'))
     )
-    op.create_index(op.f('ix_seats_place_id'), 'seats', ['place_id'], unique=False)
     op.create_table('special_period_places',
     sa.Column('period_id', sa.Integer(), nullable=False),
     sa.Column('place_id', sa.Integer(), nullable=False),
@@ -133,15 +128,10 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(op.f('ix_special_period_places_place_id'), table_name='special_period_places')
     op.drop_table('special_period_places')
-    op.drop_index(op.f('ix_seats_place_id'), table_name='seats')
     op.drop_table('seats')
-    op.drop_index(op.f('ix_opening_hours_place_id'), table_name='opening_hours')
     op.drop_table('opening_hours')
     op.drop_index(op.f('ix_places_institution_id'), table_name='places')
-    op.drop_index(op.f('ix_places_building_id'), table_name='places')
     op.drop_table('places')
-    op.drop_index(op.f('ix_special_periods_institution_id'), table_name='special_periods')
     op.drop_table('special_periods')
-    op.drop_index(op.f('ix_buildings_institution_id'), table_name='buildings')
     op.drop_table('buildings')
     op.drop_table('institutions')

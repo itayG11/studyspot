@@ -40,24 +40,24 @@ def seat_label(row: int, col: int) -> str:
 def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
     """Create an institution from campus data. Does nothing if it already exists.
 
-    Raises ValueError for data the database cannot check on its own, such
-    as a place on a floor its building does not have.
+    The whole campus is built in memory first and added to the session only
+    at the end, so a ValueError (for example a place on a floor its building
+    does not have) leaves nothing half-built in the session.
+
+    The data is trusted (it lives in this repository). The planned upload
+    feature must validate uploaded files with a schema before calling this.
     """
     info = data["institution"]
     existing = session.scalars(select(Institution).where(Institution.slug == info["slug"])).first()
     if existing is not None:
         return existing
 
-    institution = Institution(**info)
-    session.add(institution)
-
+    institution = Institution(name=info["name"], slug=info["slug"], timezone=info["timezone"])
     periods = {
-        p["key"]: SpecialPeriod(
-            institution=institution, name=p["name"], starts_on=p["starts_on"], ends_on=p["ends_on"]
-        )
+        p["key"]: SpecialPeriod(name=p["name"], starts_on=p["starts_on"], ends_on=p["ends_on"])
         for p in data.get("special_periods", [])
     }
-    session.add_all(periods.values())
+    institution.special_periods.extend(periods.values())
 
     # Children are appended to their parent's collection: since SQLAlchemy
     # 2.0, setting only the child's many-to-one side (Building(institution=...))
@@ -75,10 +75,13 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
             place = _make_place(building, p, hours)
             building.places.append(place)
             for key in p.get("special_periods", []):
+                if key not in periods:
+                    raise ValueError(f"{building.code}/{place.name}: unknown special period {key!r}")
                 # The link copies institution_id from the period, and the
                 # database checks that the place has the same one.
                 periods[key].place_links.append(SpecialPeriodPlace(place=place))
 
+    session.add(institution)
     session.flush()
     return institution
 
