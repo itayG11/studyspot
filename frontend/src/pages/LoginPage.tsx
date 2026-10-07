@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { ApiError, providerLoginUrl } from '../api/client'
 import { getProviders } from '../api/campus'
 import type { DemoPersona } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { rememberReturnTo } from '../auth/returnTo'
+import { safeNext } from '../logic/next'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
 import styles from './pages.module.css'
@@ -17,6 +19,9 @@ export function LoginPage() {
   const { status, demoLogin } = useAuth()
   const providers = useApi(getProviders, 'providers')
   const navigate = useNavigate()
+  // The page to go back to afterwards; only a path on this site is accepted.
+  const [params] = useSearchParams()
+  const next = safeNext(params.get('next'))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -24,7 +29,7 @@ export function LoginPage() {
     return (
       <section className="panel narrow">
         <h1>כבר התחברת</h1>
-        <Link to="/">למפת הקמפוס</Link>
+        <Link to={next}>{next === '/' ? 'למפת הקמפוס' : 'להמשיך'}</Link>
       </section>
     )
   }
@@ -34,7 +39,7 @@ export function LoginPage() {
     setError(null)
     try {
       await demoLogin(persona)
-      navigate('/')
+      navigate(next, { replace: true })
     } catch (reason) {
       setError(errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error'))
     } finally {
@@ -54,7 +59,7 @@ export function LoginPage() {
         <div className="stack">
           {available.providers.map((name) => (
             // A full-page visit, not fetch: the browser goes to the provider and back.
-            <a key={name} className="button" href={providerLoginUrl(name)}>
+            <a key={name} className="button" href={providerLoginUrl(name)} onClick={() => rememberReturnTo(next)}>
               {PROVIDER_LABELS[name] ?? name}
             </a>
           ))}

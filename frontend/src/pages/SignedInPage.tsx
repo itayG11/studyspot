@@ -2,14 +2,20 @@
 // On success there is no token in the address: the AuthProvider's refresh
 // picks up the new session cookie.
 
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { clearReturnTo, peekReturnTo } from '../auth/returnTo'
 import { errorMessage } from '../i18n/errors'
 
 export function SignedInPage() {
   const [params] = useSearchParams()
   const { status } = useAuth()
   const error = params.get('error')
+  const [target] = useState(peekReturnTo) // the page the student came from
+  useEffect(() => {
+    if (status !== 'loading') clearReturnTo()
+  }, [status])
 
   if (error) {
     return (
@@ -20,7 +26,7 @@ export function SignedInPage() {
       </section>
     )
   }
-  if (status === 'signed-in') return <Navigate to="/" replace />
+  if (status === 'signed-in') return <Navigate to={target} replace />
   if (status === 'loading') return <p className="page-message">משלים את ההתחברות…</p>
   return (
     <section className="panel narrow">

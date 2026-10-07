@@ -67,3 +67,36 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('button', { name: /לדוגמה/ })).not.toBeInTheDocument()
   })
 })
+
+describe('LoginPage return path', () => {
+  function renderAt(path: string) {
+    const router = createMemoryRouter(
+      [
+        { path: '/login', Component: LoginPage },
+        { path: '/', element: <p>מפה</p> },
+        { path: '/me', element: <p>האזור שלי</p> },
+      ],
+      { initialEntries: [path] },
+    )
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>,
+    )
+    return router
+  }
+
+  it('goes back to the page that asked for sign-in', async () => {
+    const router = renderAt('/login?next=%2Fme')
+    await userEvent.click(await screen.findByRole('button', { name: 'כניסה כסטודנט לדוגמה' }))
+    expect(await screen.findByText('האזור שלי')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/me')
+  })
+
+  it('never follows a return address to another site', async () => {
+    const router = renderAt('/login?next=%2F%2Fevil.example')
+    await userEvent.click(await screen.findByRole('button', { name: 'כניסה כסטודנט לדוגמה' }))
+    expect(await screen.findByText('מפה')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+  })
+})

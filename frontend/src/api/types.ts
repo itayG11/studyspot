@@ -5,10 +5,20 @@ export type PlaceKind = 'group_room' | 'open_area' | 'library' | 'computer_lab'
 export type BuildingStatus = 'active' | 'new' | 'under_construction'
 export type UserRole = 'student' | 'institution_admin' | 'system_admin'
 
+export interface BookingRules {
+  slot_minutes: number
+  max_minutes: number
+  days_ahead: number
+  max_upcoming: number
+  arrive_early_minutes: number
+  no_show_after_minutes: number
+}
+
 export interface Institution {
   slug: string
   name: string
   timezone: string
+  booking_rules: BookingRules
 }
 
 // capacity, occupied and available count seats a student can walk into now.
@@ -87,3 +97,59 @@ export interface Providers {
 }
 
 export type DemoPersona = 'student' | 'admin'
+
+export type BookingStatus = 'booked' | 'checked_in' | 'completed' | 'cancelled' | 'no_show'
+
+export interface BusyRange {
+  seat_id: number | null
+  starts_at: string
+  ends_at: string
+}
+
+export interface Availability {
+  place_id: number
+  date: string
+  busy: BusyRange[]
+}
+
+export interface Booking {
+  id: number
+  place_id: number
+  place_name: string
+  building_code: string
+  seat_id: number | null
+  seat_label: string | null
+  starts_at: string
+  ends_at: string
+  status: BookingStatus
+  source: 'advance' | 'walk_in'
+}
+
+export interface CheckIn {
+  id: number
+  place_id: number
+  place_name: string
+  building_code: string
+  seat_id: number | null
+  seat_label: string | null
+  started_at: string
+  expires_at: string
+  ended_at: string | null
+  end_reason: 'checkout' | 'expired' | 'moved' | null
+  booking_id: number | null
+  cut_short_by: 'booking' | 'closing' | null
+}
+
+export interface PlaceCode {
+  place_id: number
+  building_code: string
+  place_name: string
+  code: string
+}
+
+export interface BuildingLocation {
+  id: number
+  code: string
+  latitude: string
+  longitude: string
+}
