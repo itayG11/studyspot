@@ -112,3 +112,18 @@
   background: linear-gradient(var(--sky), var(--stone-1) 70%);
   border-radius: var(--r-lg);
 }
+
+.scenes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--s-6);
+}
+
+.scene {
+  margin: 0;
+  padding: var(--s-4);
+  text-align: center;
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}

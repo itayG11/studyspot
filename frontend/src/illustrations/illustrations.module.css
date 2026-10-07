@@ -44,3 +44,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Light adds to what is under it, like real light. */
+.light {
+  mix-blend-mode: screen;
+  pointer-events: none;
+}

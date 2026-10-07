@@ -7,6 +7,9 @@ import { ApiError } from '../api/client'
 import { getBuildings } from '../api/campus'
 import { useApi } from '../hooks/useApi'
 import { CampusModel } from '../illustrations/CampusModel'
+import { SpaceScene } from '../illustrations/SpaceScene'
+import { KIND_LABELS } from '../i18n/labels'
+import type { PlaceKind } from '../api/types'
 import { Badge, Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Sheet, Skeleton, useToast } from '../ui'
 import styles from './Showcase.module.css'
 
@@ -50,6 +53,18 @@ export function Showcase() {
       <section>
         <h2 className={styles.h2}>הקמפוס</h2>
         <div className={styles.sky}>{buildings.data && <CampusModel buildings={buildings.data} pinAt="EM" />}</div>
+      </section>
+
+      <section>
+        <h2 className={styles.h2}>ארבעה סוגי מקומות</h2>
+        <div className={styles.scenes} data-scenes>
+          {(['open_area', 'computer_lab', 'group_room', 'library'] as PlaceKind[]).map((kind) => (
+            <figure key={kind} className={styles.scene}>
+              <SpaceScene kind={kind} />
+              <figcaption>{KIND_LABELS[kind]}</figcaption>
+            </figure>
+          ))}
+        </div>
       </section>
 
       <section>
