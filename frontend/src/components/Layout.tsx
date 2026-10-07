@@ -52,9 +52,9 @@ export function Layout() {
             <>
               <span className={styles.accountName}>
                 {user.display_name}
-                {user.role !== 'student' && <span className="tag">{ROLE_LABELS[user.role]}</span>}
+                {user.role !== 'student' && <span className={styles.role}>{ROLE_LABELS[user.role]}</span>}
               </span>
-              <button type="button" className="link-button" onClick={() => void logout()}>
+              <button type="button" className={styles.logout} onClick={() => void logout()}>
                 התנתקות
               </button>
             </>

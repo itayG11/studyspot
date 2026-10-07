@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -155,6 +155,14 @@ describe('ScanPage', () => {
     await user().type(await screen.findByLabelText('הקוד מהשלט'), `p5.v1.${SIG}`)
     await user().click(screen.getByRole('button', { name: 'המשך' }))
     expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
+  })
+
+  it('a code opened while the page is already open is used too', async () => {
+    const router = renderScan('/scan')
+    await screen.findByLabelText('הקוד מהשלט')
+    await act(() => router.navigate(`/scan#c=p5.v1.${SIG}`))
+    expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
+    expect(router.state.location.hash).toBe('')
   })
 
   it('a signed-out student signs in first; the code waits outside the address', async () => {

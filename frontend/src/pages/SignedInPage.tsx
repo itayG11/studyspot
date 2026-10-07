@@ -3,10 +3,12 @@
 // picks up the new session cookie.
 
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router'
+import { Navigate, useSearchParams } from 'react-router'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 import { clearReturnTo, peekReturnTo } from '../auth/returnTo'
 import { errorMessage } from '../i18n/errors'
+import { ButtonLink, EmptyState, PageLoading } from '../ui'
 
 export function SignedInPage() {
   const [params] = useSearchParams()
@@ -17,21 +19,15 @@ export function SignedInPage() {
     if (status !== 'loading') clearReturnTo()
   }, [status])
 
+  const again = <ButtonLink to="/login">לנסות שוב</ButtonLink>
   if (error) {
     return (
-      <section className="panel narrow">
-        <h1>ההתחברות לא הצליחה</h1>
-        <p role="alert" className="error">{errorMessage(error)}</p>
-        <Link to="/login">לנסות שוב</Link>
-      </section>
+      <EmptyState icon={<LogIn />} title="ההתחברות לא הצליחה" action={again}>
+        <p role="alert">{errorMessage(error)}</p>
+      </EmptyState>
     )
   }
   if (status === 'signed-in') return <Navigate to={target} replace />
-  if (status === 'loading') return <p className="page-message">משלים את ההתחברות…</p>
-  return (
-    <section className="panel narrow">
-      <h1>ההתחברות לא הושלמה</h1>
-      <Link to="/login">לנסות שוב</Link>
-    </section>
-  )
+  if (status === 'loading') return <PageLoading label="משלים את ההתחברות…" />
+  return <EmptyState icon={<LogIn />} title="ההתחברות לא הושלמה" action={again} />
 }

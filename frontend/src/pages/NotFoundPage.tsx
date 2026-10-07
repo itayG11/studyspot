@@ -1,10 +1,10 @@
-import { Link } from 'react-router'
+import { MapPinOff } from 'lucide-react'
+import { ButtonLink, EmptyState } from '../ui'
 
 export function NotFoundPage() {
   return (
-    <section className="panel narrow">
-      <h1>הדף לא נמצא</h1>
-      <Link to="/">למפת הקמפוס</Link>
-    </section>
+    <EmptyState icon={<MapPinOff />} title="הדף לא נמצא" action={<ButtonLink to="/">לחיפוש מקום</ButtonLink>}>
+      אולי הקישור ישן, או שהמקום כבר לא קיים.
+    </EmptyState>
   )
 }

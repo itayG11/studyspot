@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import { placeBuilding } from '../api/admin'
 import { getBuildings } from '../api/campus'
-import { LoadError } from '../components/LoadError'
-import { BuildingTile } from '../components/ui/BuildingTile'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
-import { occupancyLevel } from '../logic/occupancy'
+import { ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
 
@@ -17,8 +15,8 @@ export function Placer() {
   const [done, setDone] = useState<string | null>(null)
   const action = useAction()
 
-  if (buildings.error) return <LoadError error={buildings.error} onRetry={buildings.reload} />
-  if (!buildings.data) return <p className="page-message">טוען…</p>
+  if (buildings.error) return <ErrorState error={buildings.error} onRetry={buildings.reload} />
+  if (!buildings.data) return <PageLoading />
   const chosen = buildings.data.find((b) => b.code === selected) ?? null
 
   async function pick(latitude: number, longitude: number) {
@@ -32,8 +30,8 @@ export function Placer() {
 
   return (
     <div className={styles.placer}>
-      <div className="stack">
-        <p className="hint">בחר בניין, ואז לחץ על הגג שלו בתצלום האוויר.</p>
+      <div className={styles.side}>
+        <p className={styles.lead}>בחר בניין, ואז לחץ על הגג שלו בתצלום האוויר.</p>
         <ul className={styles.choices}>
           {buildings.data.map((b) => (
             <li key={b.code}>
@@ -46,7 +44,7 @@ export function Placer() {
                   setDone(null)
                 }}
               >
-                <BuildingTile code={b.code} level={occupancyLevel(b)} />
+                <span className={styles.building}>{b.code}</span>
                 <span>
                   בניין {b.code}
                   <br />
@@ -56,8 +54,8 @@ export function Placer() {
             </li>
           ))}
         </ul>
-        {done && <p className="badge badge-open" role="status">{done}</p>}
-        {action.error && <p className="error" role="alert">{action.error}</p>}
+        <div role="status">{done && <Notice tone="success">{done}</Notice>}</div>
+        {action.error && <Notice tone="error">{action.error}</Notice>}
       </div>
       <PickMap buildings={buildings.data} selected={selected} onPick={(lat, lng) => void pick(lat, lng)} />
     </div>

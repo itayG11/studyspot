@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
+import { FlaskConical, GraduationCap, LogIn, ShieldCheck } from 'lucide-react'
 import { ApiError, providerLoginUrl } from '../api/client'
 import { getProviders } from '../api/campus'
 import type { DemoPersona } from '../api/types'
@@ -8,6 +9,7 @@ import { rememberReturnTo } from '../auth/returnTo'
 import { safeNext } from '../logic/next'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
+import { Button, ButtonLink, EmptyState, Notice, Photo, Skeleton } from '../ui'
 import styles from './pages.module.css'
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -23,19 +25,16 @@ export function LoginPage() {
   const [params] = useSearchParams()
   const next = safeNext(params.get('next'))
   const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<DemoPersona | null>(null)
 
   if (status === 'signed-in') {
     return (
-      <section className="panel narrow">
-        <h1>כבר התחברת</h1>
-        <Link to={next}>{next === '/' ? 'למפת הקמפוס' : 'להמשיך'}</Link>
-      </section>
+      <EmptyState icon={<ShieldCheck />} title="כבר התחברת" action={<ButtonLink to={next}>{next === '/' ? 'לחיפוש מקום' : 'להמשיך'}</ButtonLink>} />
     )
   }
 
   async function signInAsDemo(persona: DemoPersona) {
-    setBusy(true)
+    setBusy(persona)
     setError(null)
     try {
       await demoLogin(persona)
@@ -43,45 +42,73 @@ export function LoginPage() {
     } catch (reason) {
       setError(errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error'))
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   const available = providers.data
   return (
-    <section className="panel narrow rise">
-      <h1>התחברות</h1>
-      <p>אפשר לצפות במפה ובמקומות בלי להתחבר. כדי להזמין מקום או לסרוק קוד, צריך להתחבר עם חשבון המוסד.</p>
+    <div className={styles.login}>
+      <Photo name="hero" priority sizes="(max-width: 900px) 100vw, 50vw" className={styles.loginPhoto} />
+      <section className={styles.loginCard} aria-labelledby="login-title">
+        <h1 id="login-title" className={styles.loginTitle}>
+          התחברות
+        </h1>
+        <p className={styles.loginLead}>
+          אפשר לחפש מקומות בלי להתחבר. כדי להזמין מקום או לסרוק קוד, מתחברים עם חשבון המוסד.
+        </p>
 
-      {providers.error && <p role="alert" className="error">{errorMessage(providers.error.code)}</p>}
+        {providers.error && <Notice tone="error">{errorMessage(providers.error.code)}</Notice>}
+        {providers.loading && !available && (
+          <div className={styles.loginButtons} aria-hidden="true">
+            <Skeleton height="44px" radius="999px" />
+          </div>
+        )}
 
-      {available && (
-        <div className="stack">
-          {available.providers.map((name) => (
-            // A full-page visit, not fetch: the browser goes to the provider and back.
-            <a key={name} className="button" href={providerLoginUrl(name)} onClick={() => rememberReturnTo(next)}>
-              {PROVIDER_LABELS[name] ?? name}
-            </a>
-          ))}
+        {available && (
+          <div className={styles.loginButtons}>
+            {available.providers.map((name) => (
+              // A full-page visit, not fetch: the browser goes to the provider and back.
+              <a key={name} className={styles.provider} href={providerLoginUrl(name)} onClick={() => rememberReturnTo(next)}>
+                <LogIn aria-hidden="true" />
+                {PROVIDER_LABELS[name] ?? name}
+              </a>
+            ))}
 
-          {available.demo && (
-            <div className={styles.demoBox}>
-              <h2>כניסת הדגמה</h2>
-              <p>בלי חשבון אמיתי. מתאימה להדגמה ולפיתוח.</p>
-              <button type="button" className="button" disabled={busy} onClick={() => void signInAsDemo('student')}>
-                כניסה כסטודנט לדוגמה
-              </button>
-              <button type="button" className="button button-secondary" disabled={busy} onClick={() => void signInAsDemo('admin')}>
-                כניסה כמנהל מוסד לדוגמה
-              </button>
-            </div>
-          )}
+            {available.demo && (
+              <div className={styles.demoBox}>
+                <h2 className={styles.demoTitle}>
+                  <FlaskConical aria-hidden="true" /> כניסת הדגמה
+                </h2>
+                <p className={styles.demoText}>בלי חשבון אמיתי. מתאימה להדגמה ולפיתוח.</p>
+                <Button
+                  block
+                  icon={<GraduationCap aria-hidden="true" />}
+                  busy={busy === 'student'}
+                  disabled={busy === 'admin'}
+                  onClick={() => void signInAsDemo('student')}
+                >
+                  כניסה כסטודנט לדוגמה
+                </Button>
+                <Button
+                  block
+                  variant="secondary"
+                  icon={<ShieldCheck aria-hidden="true" />}
+                  busy={busy === 'admin'}
+                  disabled={busy === 'student'}
+                  onClick={() => void signInAsDemo('admin')}
+                >
+                  כניסה כמנהל מוסד לדוגמה
+                </Button>
+              </div>
+            )}
 
-          {available.providers.length === 0 && !available.demo && <p>אין כרגע שיטת התחברות פעילה בשרת הזה.</p>}
-        </div>
-      )}
+            {available.providers.length === 0 && !available.demo && <Notice>אין כרגע שיטת התחברות פעילה בשרת הזה.</Notice>}
+          </div>
+        )}
 
-      {error && <p role="alert" className="error">{error}</p>}
-    </section>
+        {error && <Notice tone="error">{error}</Notice>}
+      </section>
+    </div>
   )
 }

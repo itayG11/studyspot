@@ -29,10 +29,10 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.3rem 0.7rem;
-  font: 600 0.8rem var(--font-body);
-  color: var(--paper);
+  font: 600 var(--text-xs) var(--font-body);
+  color: var(--on-ink);
   background: var(--ink);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   direction: rtl;
 }
 
@@ -40,7 +40,7 @@
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: var(--free);
+  background: #4fd18f;
   animation: beat 1.8s ease-in-out infinite;
 }
 
@@ -59,7 +59,7 @@
 /* Leaflet draws its own elements; these rules reach them with :global. */
 .frame :global(.leaflet-tooltip.map-label) {
   padding: 0;
-  font: 700 1.25rem/1 var(--font-display);
+  font: 700 var(--text-md) / 1 var(--font-mono);
   color: #fff;
   background: none;
   border: none;
@@ -100,104 +100,15 @@
 
 .frame :global(.leaflet-control-layers),
 .frame :global(.leaflet-bar) {
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: none;
+  border: 0;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
   font-family: var(--font-body);
 }
 
-/* --- The building board ---------------------------------------------- */
-
-.board {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.row {
-  width: 100%;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.55rem 0.7rem;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition:
-    transform 180ms var(--ease-out),
-    box-shadow 180ms var(--ease-out),
-    background 180ms;
-}
-
-.row:hover {
-  transform: translate(-3px, -3px);
-  box-shadow: 3px 3px 0 var(--ink);
-}
-
-.row[aria-pressed='true'] {
-  background: #fff3ea;
-  box-shadow: 4px 4px 0 var(--signal);
-}
-
-.rowText {
-  display: grid;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.rowTitle {
-  font-weight: 600;
-}
-
-.rowSummary {
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-
-.rowCount {
-  font-size: 1.6rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.rowTotal {
-  font-size: 0.9rem;
-  color: var(--ink-faint);
-}
-
-/* --- Legend ---------------------------------------------------------- */
-
-.legend {
-  list-style: none;
-  margin: 1rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.2rem;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-
-.legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.swatch {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
-  border: 2px solid var(--ink);
-}
-
-.swatchConstruction {
-  background: repeating-linear-gradient(-45deg, var(--hazard) 0 3px, var(--ink) 3px 6px) !important;
+@media (prefers-reduced-motion: reduce) {
+  .liveDot,
+  .frame :global(.marker-selected) {
+    animation: none;
+  }
 }

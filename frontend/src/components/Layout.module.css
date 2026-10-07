@@ -94,6 +94,38 @@
   gap: var(--s-2);
 }
 
+.role {
+  padding: 2px var(--s-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--stone-2);
+  border-radius: var(--r-pill);
+}
+
+.logout {
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  font: inherit;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
+}
+
+.logout:focus-visible {
+  outline: 3px solid var(--ink);
+}
+
+@media (hover: hover) {
+  .logout:hover {
+    color: var(--ink);
+    background: var(--stone-2);
+  }
+}
+
 .main {
   flex: 1;
   width: 100%;

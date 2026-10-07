@@ -1,5 +1,5 @@
-/* Page-wide rules and the few shared building blocks (button, panel, badge).
-   Everything specific to one component is in that component's .module.css. */
+/* Page-wide rules. Everything specific to one component is in that
+   component's .module.css; the shared building blocks are in src/ui. */
 
 *,
 *::before,
@@ -25,23 +25,10 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-heading);
   font-weight: 700;
-  line-height: 0.95;
-  letter-spacing: 0.01em;
+  line-height: 1.15;
   margin: 0 0 0.4em;
-}
-
-h1 {
-  font-size: clamp(2.6rem, 6vw, 4.2rem);
-}
-
-h2 {
-  font-size: 2.2rem;
-}
-
-h3 {
-  font-size: 1.6rem;
 }
 
 a {
@@ -49,160 +36,8 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--signal);
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
-}
-
-/* --- Shared building blocks ------------------------------------------ */
-
-.panel {
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  padding: 1.25rem 1.4rem;
-  box-shadow: var(--shadow-hard);
-}
-
-.panel.narrow {
-  max-width: 34rem;
-  margin: 2rem auto;
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.2rem;
-  font: 600 1rem var(--font-body);
-  color: var(--paper);
-  background: var(--ink);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  text-decoration: none;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
-}
-
-/* An orange sweep from the reading side on hover. */
-.button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--signal);
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 260ms var(--ease-out);
-}
-
-.button:hover::before {
-  transform: scaleX(1);
-}
-
-.button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 var(--ink);
-}
-
-.button:active {
-  transform: none;
-  box-shadow: none;
-}
-
-.button:disabled {
-  opacity: 0.55;
-  cursor: wait;
-}
-
-.button-secondary {
-  color: var(--ink);
-  background: transparent;
-}
-
-.button-danger {
-  background: var(--full);
-  border-color: var(--full);
-}
-
-.confirm-pair {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  animation: rise 240ms var(--ease-out) both;
-}
-
-.link-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: none;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.05rem 0.55rem;
-  font: 600 0.8rem/1.5 var(--font-body);
-  border-radius: 999px;
-  border: 1.5px solid currentcolor;
-  white-space: nowrap;
-}
-
-.badge-open {
-  color: var(--free);
-}
-
-.badge-closed {
-  color: var(--ink-faint);
-}
-
-.tag {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  font: 600 0.8rem var(--font-body);
-  color: var(--paper);
-  background: var(--signal);
-  border-radius: 3px;
-}
-
-.page-message {
-  text-align: center;
-  padding: 3rem 1rem;
-  font-size: 1.1rem;
-  color: var(--ink-soft);
-}
-
-.error {
-  color: var(--full);
-  font-weight: 600;
-}
-
-.load-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem 1rem;
-  padding: 3rem 1rem;
-  font-weight: 600;
-  color: var(--full);
-}
-
-.load-error.inline {
-  justify-content: flex-start;
-  padding: 0.5rem 0.9rem;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  background: rgb(225 52 43 / 8%);
-  border: 2px solid var(--full);
-  border-radius: var(--radius);
 }
 
 /* Read by screen readers, not shown on screen. */
@@ -215,58 +50,17 @@ a {
   white-space: nowrap;
 }
 
-.hint {
-  color: var(--ink-soft);
-  margin-top: 0;
-}
+/* --- Page changes ---------------------------------------------------- */
 
-.stack {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- Motion ---------------------------------------------------------- */
-
-/* Things rise into place one after another: set --i on each item. */
-.rise {
-  animation: rise 520ms var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * var(--stagger));
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
-
-/* A number that changed rolls in from above. */
-.tick {
-  display: inline-block;
-  animation: tick 420ms var(--ease-out) both;
-}
-
-@keyframes tick {
-  from {
-    opacity: 0;
-    transform: translateY(-60%);
-  }
-}
-
-/* Page changes: the old page slides away, the new one rises. */
 /* A place's picture moving from its card to the space page (and back). */
 ::view-transition-group(*) {
   animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-timing-function: var(--ease-drawer);
 }
 
+/* The rest of the page: the old one fades quickly, the new one rises. */
 ::view-transition-old(root) {
-  animation: 180ms ease-in both page-out;
+  animation: var(--dur-exit) ease-out both page-out;
 }
 
 ::view-transition-new(root) {
@@ -276,7 +70,6 @@ a {
 @keyframes page-out {
   to {
     opacity: 0;
-    transform: translateY(-8px);
   }
 }
 
@@ -300,13 +93,12 @@ a {
   }
 }
 
-/* Printing (the admin's signs): no header, no background grid or grain. */
+/* Printing (the admin's signs): no header, a white page. */
 @media print {
   body {
     background: #fff;
   }
 
-  body::before,
   header {
     display: none !important;
   }

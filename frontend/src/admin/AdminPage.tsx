@@ -13,7 +13,10 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('signs')
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>ניהול</h1>
+      <header className={styles.head}>
+        <p className={styles.eyebrow}>מנהל המוסד</p>
+        <h1 className={styles.title}>ניהול</h1>
+      </header>
       {/* Two plain toggle buttons: simpler than full ARIA tabs, and honest
           about what they are. */}
       <div className={styles.tabs} role="group" aria-label="ניהול">

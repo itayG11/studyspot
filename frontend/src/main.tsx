@@ -1,5 +1,3 @@
-import '@fontsource/karantina/400.css'
-import '@fontsource/karantina/700.css'
 import '@fontsource/ibm-plex-sans-hebrew/400.css'
 import '@fontsource/ibm-plex-sans-hebrew/600.css'
 import '@fontsource/ibm-plex-mono/500.css'

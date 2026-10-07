@@ -6,7 +6,8 @@ import { resetSessionForTests } from '../api/client'
 import type { Booking, CheckIn } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { InstitutionProvider } from '../institution'
-import { jsonResponse } from '../test/fixtures'
+import { FAVORITES_KEY } from '../logic/favorites'
+import { jsonResponse, place } from '../test/fixtures'
 import { MyPage } from './MyPage'
 
 const ME = { id: 1, email: 'demo.student@studyspot.invalid', display_name: 'סטודנט לדוגמה', role: 'student', institution_slug: 'braude' }
@@ -43,6 +44,8 @@ beforeEach(() => {
     if (path === '/auth/refresh')
       return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
+    if (path === '/institutions/braude/places')
+      return Promise.resolve(jsonResponse([place({ id: 1, name: 'M206', kind: 'computer_lab' }), place({ id: 3, name: 'EM107', kind: 'group_room' })]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
     if (path === '/me/check-in')
       return Promise.resolve(checkIn ? jsonResponse(checkIn) : jsonResponse({ detail: 'no_active_check_in' }, 404))
@@ -60,7 +63,10 @@ beforeEach(() => {
   }))
 })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  localStorage.clear()
+})
 
 function renderMe() {
   const router = createMemoryRouter([{ path: '/me', element: <MyPage /> }, { path: '/', element: <p>מפה</p> }], {
@@ -119,5 +125,21 @@ describe('MyPage', () => {
     expect(calls).toContain('/auth/logout-all')
     expect(await screen.findByText('מפה')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('shows the favourite places, and says how to add one when there are none', async () => {
+    renderMe()
+    const favorites = await screen.findByRole('region', { name: 'המועדפים' })
+    expect(await within(favorites).findByText('אין עדיין מועדפים.')).toBeInTheDocument()
+  })
+
+  it('a favourite place appears as a card that links to it', async () => {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([3]))
+    renderMe()
+    const favorites = await screen.findByRole('region', { name: 'המועדפים' })
+    const link = await within(favorites).findByRole('link', { name: 'EM107' })
+    expect(link).toHaveAttribute('href', '/spaces/3')
+    await userEvent.click(within(favorites).getByRole('button', { name: 'מועדף: EM107' }))
+    expect(await within(favorites).findByText('אין עדיין מועדפים.')).toBeInTheDocument()
   })
 })

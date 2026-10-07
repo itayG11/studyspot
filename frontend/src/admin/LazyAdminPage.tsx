@@ -2,12 +2,13 @@
 // opens it, so students never download it.
 
 import { lazy, Suspense } from 'react'
+import { PageLoading } from '../ui'
 
 const AdminPage = lazy(() => import('./AdminPage').then((module) => ({ default: module.AdminPage })))
 
 export function LazyAdminPage() {
   return (
-    <Suspense fallback={<p className="page-message">טוען…</p>}>
+    <Suspense fallback={<PageLoading />}>
       <AdminPage />
     </Suspense>
   )

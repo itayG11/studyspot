@@ -1,296 +1,125 @@
-/* --- Map page --------------------------------------------------------- */
+/* --- Sign-in: a picture of the campus beside one quiet card ---------- */
 
-.mapPage {
-  scroll-margin-top: calc(var(--header-h, 5rem) + 1rem); /* stop below the sticky header */
-  outline: none; /* it receives focus only so that Tab continues from here */
+.login {
   display: grid;
-  grid-template-columns: minmax(320px, 400px) 1fr;
-  gap: 1.75rem;
-  align-items: start;
+  gap: var(--s-6);
+  max-width: 1080px;
+  margin: 0 auto;
 }
 
-.mapArea {
-  position: sticky;
-  top: 6.5rem;
-}
-
-.sideTitle {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.bigCount {
-  font-size: 3.4rem;
-  color: var(--signal);
-}
-
-.chosenHead {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.chosenHead h2 {
-  margin: 0;
-}
-
-.subTitle {
-  margin-top: 1.5rem;
-  font-size: 1.4rem;
-  color: var(--ink-soft);
-}
-
-@media (max-width: 900px) {
-  .mapPage {
-    grid-template-columns: 1fr;
-  }
-
-  /* On a phone the map comes first, above the list. */
-  .mapArea {
-    position: static;
-    order: -1;
-  }
-}
-
-/* --- Place cards ------------------------------------------------------ */
-
-.cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.75rem;
-}
-
-.cardsGrid {
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 1rem;
-}
-
-.card {
-  display: grid;
-  gap: 0.45rem;
-  height: 100%;
-  padding: 0.9rem 1rem 1rem;
-  text-decoration: none;
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
-  position: relative;
+.loginPhoto {
+  height: 200px;
   overflow: hidden;
-  transition:
-    transform 200ms var(--ease-out),
-    box-shadow 200ms var(--ease-out);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
 }
 
-/* The kind of place as a coloured strip on the reading edge. */
-.card::before {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 6px;
-  background: var(--kind, var(--ink));
-}
-
-.card:hover {
-  transform: translate(-3px, -3px);
-  box-shadow: 5px 5px 0 var(--ink);
-}
-
-.cardTitle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font: 700 1.7rem/1 var(--font-display);
-}
-
-.cardMeta {
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-
-.cardAvailability {
-  font-weight: 600;
-}
-
-/* --- Places page ------------------------------------------------------ */
-
-.pageHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.pageHead h1 {
-  margin: 0;
-}
-
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.chip {
-  padding: 0.4rem 0.95rem;
-  font: 600 0.95rem var(--font-body);
-  color: var(--ink);
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background 160ms,
-    color 160ms,
-    transform 160ms var(--ease-out);
-}
-
-.chip:hover {
-  transform: translateY(-2px);
-}
-
-.chip[aria-pressed='true'] {
-  color: var(--paper);
-  background: var(--ink);
-  box-shadow: inset 0 -4px 0 var(--signal);
-}
-
-/* --- Place page ------------------------------------------------------- */
-
-.back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.back::before {
-  content: '→ ';
-}
-
-.hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.hero h1 {
-  margin: 0.15em 0 0;
-}
-
-.heroMeta {
-  color: var(--ink-soft);
-}
-
-.placeGrid {
+.loginCard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 1.5rem;
-  align-items: start;
+  align-content: start;
+  gap: var(--s-4);
+  padding: var(--s-8) var(--s-6);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
 }
 
-@media (max-width: 900px) {
-  .placeGrid {
-    grid-template-columns: 1fr;
+@media (min-width: 900px) {
+  .login {
+    grid-template-columns: 1fr minmax(360px, 440px);
+    align-items: stretch;
+    margin-top: var(--s-6);
+  }
+
+  .loginPhoto {
+    height: auto;
+    min-height: 520px;
+  }
+
+  .loginCard {
+    align-content: center;
+    padding: var(--s-10);
   }
 }
 
-.stat {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+.loginTitle {
+  margin: 0;
+  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
 }
 
-.statNumber {
-  font-size: clamp(3.5rem, 9vw, 5.5rem);
-  font-weight: 600;
-  line-height: 0.9;
+.loginLead {
+  margin: 0;
+  color: var(--ink-2);
 }
 
-.statOf {
-  font-size: 1.1rem;
-  color: var(--ink-soft);
+.loginButtons {
+  display: grid;
+  gap: var(--s-3);
 }
 
-/* Opening hours as a station timetable. */
-.timetable {
-  width: 100%;
-  border-collapse: collapse;
-  color: var(--paper);
+/* A provider is a link (a full-page visit), drawn like the main button. */
+.provider {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  padding: 0 var(--s-5);
+  font: 600 var(--text-md) / 1 var(--font-body);
+  color: var(--on-ink);
   background: var(--ink);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-1);
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
-.timetable caption {
-  caption-side: top;
-  text-align: start;
-  padding-bottom: 0.5rem;
-  font: 700 1.6rem/1 var(--font-display);
-  color: var(--ink);
+.provider svg {
+  width: 1.15em;
+  height: 1.15em;
 }
 
-.timetable th,
-.timetable td {
-  padding: 0.55rem 0.9rem;
-  text-align: start;
-  border-bottom: 1px solid rgb(243 238 227 / 12%);
+.provider:active {
+  transform: scale(0.97);
 }
 
-.timetable td {
-  font-family: var(--font-mono);
+.provider:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
 }
-
-.timetable th {
-  font-weight: 500;
-}
-
-.today {
-  background: var(--signal);
-  color: var(--ink);
-}
-
-.closedDay td {
-  color: rgb(243 238 227 / 45%);
-}
-
-.note {
-  padding: 0.75rem 1rem;
-  border: 2px dashed var(--ink);
-  border-radius: var(--radius);
-  background: rgb(255 91 20 / 8%);
-}
-
-/* --- Sign-in ---------------------------------------------------------- */
 
 .demoBox {
   display: grid;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
-  padding: 1rem;
-  border: 2px dashed var(--ink);
-  border-radius: var(--radius);
-  background: repeating-linear-gradient(-45deg, transparent 0 14px, rgb(255 204 0 / 12%) 14px 28px);
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+  padding: var(--s-5);
+  background: var(--stone-1);
+  border: 1px dashed var(--stone-3);
+  border-radius: var(--r-md);
 }
 
-.demoBox h2 {
+.demoTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
   margin: 0;
-  font-size: 1.8rem;
+  font: 600 var(--text-lg) / 1.2 var(--font-heading);
 }
 
-.demoBox p {
-  margin: 0 0 0.25rem;
-  color: var(--ink-soft);
+.demoTitle svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-2);
+}
+
+.demoText {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .provider {
+    transition: none;
+  }
 }

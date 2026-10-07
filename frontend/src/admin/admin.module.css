@@ -1,31 +1,61 @@
 .page {
   display: grid;
-  gap: 1.25rem;
+  gap: var(--s-6);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-block: var(--s-6) var(--s-16);
+}
+
+.eyebrow {
+  margin: 0 0 var(--s-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.title {
+  margin: 0;
+  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+}
+
+.lead {
+  margin: 0;
+  color: var(--ink-2);
 }
 
 .screenOnly {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
+/* Two toggle buttons in one pill, like the list / map switch. */
 .tabs {
-  display: flex;
-  gap: 0.5rem;
+  display: inline-flex;
+  justify-self: start;
+  padding: 3px;
+  background: var(--stone-2);
+  border-radius: var(--r-pill);
 }
 
 .tab {
-  padding: 0.45rem 1rem;
-  font: 700 1.4rem/1 var(--font-display);
-  color: var(--ink);
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
+  min-height: 38px;
+  padding: 0 var(--s-5);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-pill);
   cursor: pointer;
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
 }
 
 .tab[aria-pressed='true'] {
-  color: var(--paper);
-  background: var(--ink);
-  box-shadow: inset 0 -4px 0 var(--signal);
+  color: var(--ink);
+  background: var(--stone-0);
+  box-shadow: var(--shadow-1);
+}
+
+.tab:focus-visible {
+  outline: 3px solid var(--ink);
 }
 
 .toolbar {
@@ -33,40 +63,57 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
 }
 
+/* The building code as a small square, as on the campus signposts. */
+.building {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--s-2);
+  font: 700 var(--text-md) / 1 var(--font-mono);
+  color: var(--on-ink);
+  background: var(--ink);
+  border-radius: var(--r-sm);
+}
+
+/* --- Signs ----------------------------------------------------------- */
+
 .signs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-  gap: 1.25rem;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* A printed sign: what hangs at the entrance of each place. */
 .sign {
   display: grid;
   justify-items: center;
-  gap: 0.6rem;
-  padding: 1.25rem 1rem 1rem;
+  gap: var(--s-3);
+  padding: var(--s-6) var(--s-5) var(--s-5);
   text-align: center;
   background: #fff;
-  border: 3px solid var(--ink);
-  border-radius: var(--radius);
-  border-top: 14px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  border-top: 10px solid var(--ink);
 }
 
 .signHead {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--s-3);
 }
 
 .signName {
   margin: 0;
-  font: 700 2.2rem/1 var(--font-display);
+  font: 700 var(--text-2xl) / 1 var(--font-heading);
 }
 
 .qr {
@@ -77,28 +124,35 @@
 
 .signCall {
   margin: 0;
-  font: 700 1.5rem/1 var(--font-display);
-  color: var(--signal);
+  font: 700 var(--text-xl) / 1 var(--font-heading);
+  color: var(--ink);
 }
 
 .signBrand {
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
 }
 
 .signActions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--s-2);
 }
 
 .fresh {
-  animation: stamp 520ms var(--ease-out) both;
+  animation: stamp 480ms var(--ease-out) both;
+}
+
+.freshNote {
+  padding: var(--s-2) var(--s-3);
+  color: var(--busy);
+  background: var(--busy-tint);
+  border-radius: var(--r-md);
 }
 
 @keyframes stamp {
   from {
     opacity: 0;
-    transform: scale(1.12) rotate(-1.5deg);
+    transform: scale(1.06) rotate(-1deg);
   }
 }
 
@@ -107,50 +161,60 @@
 .placer {
   display: grid;
   grid-template-columns: minmax(240px, 320px) 1fr;
-  gap: 1.25rem;
+  gap: var(--s-5);
   align-items: start;
 }
 
+.side {
+  display: grid;
+  gap: var(--s-3);
+}
+
 .choices {
-  list-style: none;
+  display: grid;
+  gap: var(--s-2);
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 0.4rem;
+  list-style: none;
 }
 
 .choice {
-  width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.45rem 0.6rem;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
   font: inherit;
   text-align: start;
   color: inherit;
-  background: var(--card);
-  border: 2px solid var(--ink);
-  border-radius: var(--radius);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
   cursor: pointer;
+  transition: border-color var(--dur-ui) ease, box-shadow var(--dur-ui) ease;
 }
 
 .choice[aria-pressed='true'] {
-  box-shadow: 4px 4px 0 var(--signal);
-  background: #fff3ea;
+  border-color: var(--ink);
+  box-shadow: var(--ring);
+}
+
+.choice:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .coords {
-  font: 500 0.8rem var(--font-mono);
-  color: var(--ink-soft);
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--ink-2);
   direction: ltr;
 }
 
 .pickMap {
   height: min(65vh, 560px);
-  border: 3px solid var(--ink);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-hard);
   overflow: hidden;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
   cursor: crosshair;
 }
 
@@ -160,15 +224,25 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .fresh {
+    animation: none;
+  }
+}
+
 /* --- Printing: only the signs, one per page ------------------------- */
 
 @media print {
-  .title,
+  .head,
   .toolbar,
   .tabs,
   .signActions,
   .screenOnly {
     display: none !important;
+  }
+
+  .page {
+    padding: 0;
   }
 
   .signs {
@@ -179,12 +253,20 @@
     break-after: page;
     min-height: 90vh;
     align-content: center;
-    border-width: 4px;
+    box-shadow: none;
+    border: 4px solid var(--ink);
     border-top-width: 24px;
   }
 
   .signName {
     font-size: 4.5rem;
+  }
+
+  .building {
+    print-color-adjust: exact;
+    min-width: 72px;
+    height: 72px;
+    font-size: 2rem;
   }
 
   .qr {

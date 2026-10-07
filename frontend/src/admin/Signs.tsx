@@ -5,13 +5,12 @@
 import { useState } from 'react'
 import { getCodes, revokeCode } from '../api/admin'
 import type { PlaceCode } from '../api/types'
-import { ConfirmButton } from '../components/ConfirmButton'
-import { LoadError } from '../components/LoadError'
-import { BuildingTile } from '../components/ui/BuildingTile'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { SITE_URL } from '../config'
 import { scanUrl } from '../logic/codes'
+import { Printer } from 'lucide-react'
+import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { useQrImage } from './useQrImage'
 
@@ -20,18 +19,16 @@ export function Signs() {
   // Codes replaced on this visit, by place, shown instead of the old ones.
   const [replaced, setReplaced] = useState<Record<number, PlaceCode>>({})
 
-  if (codes.error) return <LoadError error={codes.error} onRetry={codes.reload} />
-  if (!codes.data) return <p className="page-message">טוען…</p>
+  if (codes.error) return <ErrorState error={codes.error} onRetry={codes.reload} />
+  if (!codes.data) return <PageLoading />
 
   return (
     <>
       <div className={styles.toolbar}>
-        <p className="hint">
-          שלט אחד לכל מקום. בהדפסה כל שלט יוצא בעמוד משלו.
-        </p>
-        <button type="button" className="button" onClick={() => window.print()}>
+        <p className={styles.lead}>שלט אחד לכל מקום. בהדפסה כל שלט יוצא בעמוד משלו.</p>
+        <Button icon={<Printer aria-hidden="true" />} onClick={() => window.print()}>
           להדפיס את כל השלטים
-        </button>
+        </Button>
       </div>
       <ul className={styles.signs}>
         {codes.data.map((original) => {
@@ -58,14 +55,14 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
   return (
     <li className={fresh ? `${styles.sign} ${styles.fresh}` : styles.sign} aria-label={name}>
       <div className={styles.signHead}>
-        <BuildingTile code={code.building_code} level="low" />
+        <span className={styles.building}>{code.building_code}</span>
         <h2 className={styles.signName}>{code.place_name}</h2>
       </div>
       {qr ? <img className={styles.qr} src={qr} alt={`קוד QR לכניסה ל${code.place_name}`} /> : <div className={styles.qr} />}
       <p className={styles.signCall}>סרקו כדי להיכנס</p>
       <span className={styles.signBrand}>StudySpot · בניין {code.building_code}</span>
       {fresh && (
-        <span role="status" className={styles.screenOnly}>
+        <span role="status" className={`${styles.screenOnly} ${styles.freshNote}`}>
           קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.
         </span>
       )}
@@ -73,7 +70,8 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
         <ConfirmButton
           label="לבטל את הקוד"
           confirmLabel="כן, קוד חדש"
-          disabled={action.busy}
+          size="sm"
+          busy={action.busy}
           onConfirm={() =>
             void action.run(async () => {
               onReplaced(await revokeCode(code.place_id))
@@ -82,9 +80,9 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
         />
       </div>
       {action.error && (
-        <p className={`error ${styles.screenOnly}`} role="alert">
+        <Notice tone="error" className={styles.screenOnly}>
           {action.error}
-        </p>
+        </Notice>
       )}
     </li>
   )
