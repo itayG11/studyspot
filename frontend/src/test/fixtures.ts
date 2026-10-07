@@ -28,3 +28,8 @@ export function seat(overrides: Partial<Seat> = {}): Seat {
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
+
+export const INSTITUTION = {
+  slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+}

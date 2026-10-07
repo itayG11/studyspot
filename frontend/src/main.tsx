@@ -5,7 +5,6 @@ import '@fontsource/ibm-plex-sans-hebrew/600.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import '@fontsource/ibm-plex-mono/600.css'
 import '@fontsource-variable/frank-ruhl-libre/wght.css'
-import 'leaflet/dist/leaflet.css'
 import './design/tokens.css'
 import './styles/base.css'
 

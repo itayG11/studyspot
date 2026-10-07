@@ -1,6 +1,7 @@
 // A map that reports where it was clicked. The admin uses it to place a
 // building: click on the building's roof in the aerial photo.
 
+import 'leaflet/dist/leaflet.css'
 import { latLngBounds } from 'leaflet'
 import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMapEvents } from 'react-leaflet'
 import type { Building } from '../api/types'

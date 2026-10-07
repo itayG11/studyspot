@@ -1,8 +1,10 @@
 // The campus map: one coloured circle per building, on a street map or an
 // aerial photo. Leaflet does the drawing; react-leaflet wraps it in components.
 
+import 'leaflet/dist/leaflet.css'
 import { latLngBounds } from 'leaflet'
-import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
+import { useEffect } from 'react'
+import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import type { Building } from '../api/types'
 import styles from './map.module.css'
 import { LEVEL_COLORS, occupancyLevel, position } from '../logic/occupancy'
@@ -12,9 +14,10 @@ interface Props {
   buildings: Building[] // only buildings that have a position
   selected: string | null
   onSelect: (code: string) => void
+  flyToSelected?: boolean // move the map to the chosen building
 }
 
-export function CampusMap({ buildings, selected, onSelect }: Props) {
+export function CampusMap({ buildings, selected, onSelect, flyToSelected = false }: Props) {
   const points = buildings.map((b) => position(b)!)
   // The first view fits every building, with a little room around them.
   const bounds = latLngBounds(points).pad(0.25)
@@ -35,6 +38,7 @@ export function CampusMap({ buildings, selected, onSelect }: Props) {
           </LayersControl.BaseLayer>
         </LayersControl>
 
+        {flyToSelected && <FlyTo target={points[buildings.findIndex((b) => b.code === selected)] ?? null} />}
         {buildings.map((building, i) => {
           const level = occupancyLevel(building)
           const isSelected = building.code === selected
@@ -73,6 +77,19 @@ export function CampusMap({ buildings, selected, onSelect }: Props) {
       </div>
     </div>
   )
+}
+
+// Flies to a building when it is chosen. With "reduce motion", it jumps.
+const FLY_ZOOM = 18
+function FlyTo({ target }: { target: [number, number] | null }) {
+  const map = useMap()
+  const [lat, lng] = target ?? [null, null]
+  useEffect(() => {
+    if (lat === null || lng === null) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) map.setView([lat, lng], FLY_ZOOM)
+    else map.flyTo([lat, lng], FLY_ZOOM, { duration: 0.9 })
+  }, [map, lat, lng])
+  return null
 }
 
 export function SourceLayer({ source }: { source: TileSource }) {

@@ -1,0 +1,360 @@
+.finder {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-10) var(--s-4) var(--s-16);
+  scroll-margin-top: var(--header-h, 0px);
+}
+
+.finder:focus {
+  outline: none;
+}
+
+/* The search stays in reach while the results scroll. */
+.bar {
+  position: sticky;
+  top: var(--header-h, 0px);
+  z-index: var(--z-sticky);
+  display: grid;
+  gap: var(--s-3);
+  margin: 0 calc(-1 * var(--s-4));
+  padding: var(--s-3) var(--s-4);
+  background: color-mix(in srgb, var(--stone-1) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.heading {
+  margin: 0 0 var(--s-2);
+  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  color: var(--ink);
+}
+
+/* One scrolling row on a phone, wrapping lines on a wide screen. */
+.chips {
+  display: flex;
+  gap: var(--s-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--s-4));
+  padding: 2px var(--s-4) var(--s-1);
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .chips {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  margin: var(--s-1) var(--s-1);
+  background: var(--stone-3);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin: var(--s-4) 0;
+}
+
+.count {
+  margin: 0;
+  margin-inline-end: auto;
+  font: 600 var(--text-md) var(--font-body);
+  color: var(--ink-2);
+}
+
+.near {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.near select {
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-pill);
+}
+
+.near select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* List / map: a two-part switch. */
+.views {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--stone-2);
+  border-radius: var(--r-pill);
+}
+
+.views button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
+}
+
+.views button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.views button[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--stone-0);
+  box-shadow: var(--shadow-1);
+}
+
+.views button:focus-visible {
+  outline: 3px solid var(--ink);
+}
+
+.selected {
+  margin: 0 0 var(--s-3);
+}
+
+/* --- Cards ------------------------------------------------------------- */
+
+.grid,
+.list {
+  display: grid;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-ui) ease;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+/* The card's own focus ring, drawn when its link has the keyboard. */
+.card:has(.link:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.art {
+  display: grid;
+  place-items: center;
+  height: 168px;
+  padding: var(--s-2) var(--s-6);
+  overflow: hidden;
+  background: linear-gradient(var(--sky), var(--stone-1));
+}
+
+.art svg {
+  height: 156px;
+  width: auto;
+  max-width: 100%;
+  transition: transform 320ms var(--ease-out);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    box-shadow: var(--shadow-3);
+  }
+  .card:hover .art svg {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+
+.body {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  padding-inline-end: 84px; /* room for the buttons in the corner */
+}
+
+.demo {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.title {
+  margin: var(--s-1) 0 0;
+  font: 700 var(--text-xl) / 1.15 var(--font-heading);
+}
+
+.link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+/* The name's link covers the whole card, so the card is one big target. */
+.link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.meta,
+.facts {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  margin: var(--s-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.amenities li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.amenities svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-2);
+}
+
+/* Above the card's link, so they get their own clicks. */
+.actions {
+  position: absolute;
+  top: calc(168px + var(--s-3));
+  inset-inline-end: var(--s-3);
+  z-index: 1;
+  display: flex;
+  gap: var(--s-1);
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-ui) ease;
+}
+
+.iconButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.iconButton:active {
+  transform: scale(0.92);
+}
+
+.iconButton:focus-visible {
+  outline: 3px solid var(--ink);
+}
+
+@media (hover: hover) {
+  .iconButton:hover {
+    background: var(--stone-2);
+  }
+}
+
+.starOn {
+  color: #c98a00;
+  fill: #f2b522;
+}
+
+/* --- Map view ---------------------------------------------------------- */
+
+.mapLayout {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.mapBox {
+  min-height: 420px;
+  order: -1; /* on a phone the map comes first, the list under it */
+}
+
+@media (min-width: 900px) {
+  .mapLayout {
+    grid-template-columns: minmax(300px, 380px) 1fr;
+    align-items: start;
+  }
+
+  .mapBox {
+    position: sticky;
+    top: calc(var(--header-h, 0px) + 200px);
+    order: 0;
+  }
+
+  .list {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .art svg,
+  .iconButton {
+    transition: none;
+  }
+  .card:active,
+  .iconButton:active {
+    transform: none;
+  }
+}

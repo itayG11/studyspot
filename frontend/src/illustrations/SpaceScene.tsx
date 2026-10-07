@@ -42,7 +42,9 @@ const PALETTES: Record<PlaceKind, Palette> = {
   library: { floor: '#d6c4a4', wall: '#f2e8d4', light: 'var(--light-paper)' },
 }
 
-export function SpaceScene({ kind, className }: { kind: PlaceKind; className?: string }) {
+// decorative: next to text that already names the place (a card), the
+// picture is hidden from screen readers instead of being read twice.
+export function SpaceScene({ kind, className, decorative = false }: { kind: PlaceKind; className?: string; decorative?: boolean }) {
   const id = useId()
   const palette = PALETTES[kind]
   const scene = SCENES[kind]({ id, palette })
@@ -51,8 +53,7 @@ export function SpaceScene({ kind, className }: { kind: PlaceKind; className?: s
     <svg
       viewBox={`${BOUNDS.x} ${BOUNDS.y} ${BOUNDS.width} ${BOUNDS.height}`}
       className={[styles.svg, className].filter(Boolean).join(' ')}
-      role="img"
-      aria-label={`איור: ${KIND_LABELS[kind]}`}
+      {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': `איור: ${KIND_LABELS[kind]}` })}
       data-scene={kind}
     >
       <g data-layer="room">

@@ -7,7 +7,7 @@ import { RequireAdmin, RequireAuth } from './auth/guards'
 import { Layout } from './components/Layout'
 import { MyPage } from './me/MyPage'
 import { LoginPage } from './pages/LoginPage'
-import { MapPage } from './pages/MapPage'
+import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlacePage } from './pages/PlacePage'
 import { PlacesPage } from './pages/PlacesPage'
@@ -19,7 +19,7 @@ export const routes = [
     path: '/',
     Component: Layout,
     children: [
-      { index: true, Component: MapPage },
+      { index: true, Component: HomePage },
       { path: 'places', Component: PlacesPage },
       { path: 'places/:placeId', Component: PlacePage },
       // The scan page asks for sign-in itself, keeping the code out of the address.
