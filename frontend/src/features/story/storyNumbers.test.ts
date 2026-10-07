@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { building, place } from '../../test/fixtures'
-import { kindLine, pinBuilding } from './storyNumbers'
+import { place } from '../../test/fixtures'
+import { kindLine } from './storyNumbers'
 
 describe('kindLine', () => {
   const places = [
@@ -24,21 +24,5 @@ describe('kindLine', () => {
 
   it('says zero plainly', () => {
     expect(kindLine(places, 'open_area')).toEqual({ count: 0, text: 'מקומות פנויים עכשיו' })
-  })
-})
-
-describe('pinBuilding', () => {
-  it('puts the pin on the placed building with the most room', () => {
-    const buildings = [
-      building({ code: 'M', available: 40 }),
-      building({ code: 'EM', available: 90 }),
-      building({ code: 'NX', available: 200, latitude: null, longitude: null }),
-      building({ code: 'NG', available: 0, status: 'under_construction' }),
-    ]
-    expect(pinBuilding(buildings)).toBe('EM')
-  })
-
-  it('has no pin without a placed building', () => {
-    expect(pinBuilding([building({ latitude: null, longitude: null })])).toBeNull()
   })
 })

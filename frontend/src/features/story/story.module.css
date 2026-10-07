@@ -1,23 +1,10 @@
 /* The story: a tall section whose stage stays pinned while it scrolls.
-   Desktop: text on the reading side (right), picture on the left.
-   Phone: picture on top, text under it, and the search button at the thumb. */
+   Desktop: text on the reading side (right), over the calm part of each photo.
+   Phone (max-width 760px, as TALL_QUERY): tall photos, text at the bottom. */
 
 .story {
-  --pin-x: 32%;
-  --pin-y: 50%;
   position: relative;
-  height: 460vh;
-}
-
-.placeholder {
-  position: relative;
-  height: calc(100dvh - var(--header-h, 0px));
-  background: linear-gradient(var(--sky), var(--stone-1) 75%);
-}
-
-/* The pin on the model hands over to the travelling pin (StoryScroller). */
-.campus [data-layer='pin'] {
-  opacity: var(--campus-pin, 1);
+  height: 600vh;
 }
 
 .stage {
@@ -26,13 +13,14 @@
   height: calc(100dvh - var(--header-h, 0px));
   overflow: hidden;
   background: var(--stone-1);
+  container-type: size;
 }
 
 .skip {
   position: absolute;
   top: var(--s-2);
   inset-inline-start: var(--s-4);
-  z-index: 5;
+  z-index: 20;
   padding: var(--s-2) var(--s-4);
   color: var(--on-ink);
   background: var(--ink);
@@ -45,131 +33,66 @@
   outline: 3px solid var(--accent);
 }
 
-.light {
+/* --- Layers ----------------------------------------------------------- */
+
+.layer {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-}
-
-/* --- The campus and its camera --------------------------------------- */
-
-.campus {
-  position: absolute;
-  inset: 0;
-  padding: 6vh 4vw;
-  padding-inline-start: 38%;
-  display: grid;
-  place-items: center;
-  container-type: size;
-}
-
-/* Exactly the model's box, so the zoom's origin is the pinned roof. */
-.camera {
-  width: min(100cqw, 100cqh * var(--ratio));
+  overflow: hidden;
   will-change: transform;
 }
 
-.opening {
-  position: absolute;
-  top: 16vh;
-  inset-inline-start: 6vw;
-  z-index: 2;
-  display: grid;
-  justify-items: start;
-  gap: var(--s-3);
-  max-width: 30rem;
-}
-
-.eyebrow {
-  margin: 0;
-  font: 600 var(--text-sm) / 1.3 var(--font-body);
-  letter-spacing: 0.02em;
-  color: var(--ink-2);
-}
-
-.title {
-  margin: 0;
-  font: 700 var(--text-hero) / 1 var(--font-heading);
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.bigLine,
-.bigLineSmall {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-3);
-  margin: var(--s-2) 0 var(--s-4);
-  font: 500 var(--text-lg) / 1.2 var(--font-body);
-  color: var(--ink-2);
-}
-
-.number {
-  font: 600 clamp(3rem, 7vw, 5.5rem) / 1 var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.bigLineSmall .number {
-  font-size: 2.6rem;
-}
-
-.lineText {
-  margin: 0;
-  max-width: 24rem;
-  font: 400 var(--text-xl) / 1.35 var(--font-heading);
-  color: var(--ink);
-}
-
-/* --- The four rooms -------------------------------------------------- */
-
-.chapter {
+.clip {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  will-change: clip-path;
+}
+
+/* A box with the photo's own shape that covers the stage, like
+   object-fit: cover, so points on the photo stay points on the box. */
+.cover {
+  --ratio: 16 / 9;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100cqw, 100cqh * 16 / 9);
+  aspect-ratio: var(--ratio);
+  translate: -50% -50%;
+  will-change: transform;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: #0b1222;
+  opacity: 0;
   pointer-events: none;
 }
 
-.scene {
+/* Dark towards the reading side, so white text stays readable on light walls. */
+.shade {
   position: absolute;
-  top: 8vh;
-  bottom: 8vh;
-  inset-inline-end: 4vw;
-  width: 56%;
-  display: grid;
-  place-items: center;
-  will-change: transform, opacity;
+  inset: 0;
+  background: linear-gradient(to left, rgb(9 14 28 / 72%) 0%, rgb(9 14 28 / 45%) 30%, rgb(9 14 28 / 0%) 60%);
+  pointer-events: none;
 }
 
-.scene svg {
-  max-width: 100%;
-  max-height: 100%;
-}
-
-/* Depth: the furniture moves a little more than the room around it. */
-.scene [data-layer='furniture'],
-.scene [data-layer='light'] {
-  transform: translateY(calc(var(--depth, 0) * 1px));
-}
-
-.chapterText {
-  position: absolute;
-  top: 28vh;
-  inset-inline-start: 6vw;
-  max-width: 26rem;
-}
-
-/* --- The pin and the landing ----------------------------------------- */
+/* --- The pin ---------------------------------------------------------- */
 
 .pin {
   position: absolute;
-  top: var(--pin-y);
-  left: var(--pin-x);
-  z-index: 3;
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 10px 12px rgb(20 32 58 / 25%));
+  left: var(--wx);
+  top: var(--wy);
+  z-index: 2;
+  translate: -50% -100%;
+  filter: drop-shadow(0 8px 10px rgb(9 14 28 / 35%));
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
 .pin svg {
@@ -178,26 +101,117 @@
 
 @keyframes bob {
   to {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
 }
 
-.landing {
+/* --- Text --------------------------------------------------------------- */
+
+.title {
   position: absolute;
-  bottom: 5vh;
-  left: var(--pin-x);
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
   margin: 0;
-  transform: translateX(-50%);
-  font: 600 var(--text-xl) / 1.3 var(--font-heading);
-  color: var(--ink);
+  font: 700 var(--text-hero) / 1 var(--font-heading);
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 2px 24px rgb(9 14 28 / 45%);
+  pointer-events: none;
+}
+
+.title span {
+  display: inline-block;
   white-space: nowrap;
+}
+
+.panel {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 5vw;
+  z-index: 6;
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+  max-width: 28rem;
+  margin-top: -9rem;
+  padding: var(--s-6) var(--s-8);
+  color: #fff;
+  background: rgb(12 19 36 / 62%);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+}
+
+.roomText {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 6vw;
+  z-index: 3;
+  max-width: 26rem;
+  margin-top: -7rem;
+  color: #fff;
+  text-shadow: 0 1px 16px rgb(9 14 28 / 40%);
+}
+
+.eyebrow,
+.eyebrowLight {
+  margin: 0;
+  font: 600 var(--text-sm) / 1.3 var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+.eyebrow {
+  color: var(--ink-2);
+}
+
+.eyebrowLight {
+  color: rgb(255 255 255 / 85%);
+}
+
+.bigLine,
+.bigLineSmall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-3);
+  margin: var(--s-1) 0 var(--s-3);
+  font: 500 var(--text-lg) / 1.2 var(--font-body);
+}
+
+.number {
+  font: 600 clamp(3rem, 7vw, 5.5rem) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.bigLineSmall {
+  color: var(--ink-2);
+}
+
+.bigLineSmall .number {
+  font-size: 2.4rem;
+  color: var(--ink);
+}
+
+.lineText,
+.lineDark {
+  margin: 0;
+  font: 400 var(--text-xl) / 1.35 var(--font-heading);
+}
+
+.lineDark {
+  font-size: var(--text-lg);
+  color: var(--ink);
 }
 
 .stickyAction {
   position: absolute;
   bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
   inset-inline-start: var(--s-4);
-  z-index: 4;
+  z-index: 20;
   transition: opacity var(--dur-ui) ease;
 }
 
@@ -205,32 +219,74 @@
   opacity: 0;
 }
 
-/* --- Phone ------------------------------------------------------------ */
+/* These are not photos of the campus; the mark stays in a corner. */
+.simLabel {
+  position: absolute;
+  bottom: var(--s-3);
+  inset-inline-end: var(--s-3);
+  z-index: 20;
+  padding: 2px 10px;
+  font: 600 12px / 1.5 var(--font-body);
+  color: #fff;
+  background: rgb(12 19 36 / 55%);
+  border-radius: var(--r-pill);
+}
+
+/* --- Before data arrives --------------------------------------------- */
+
+.placeholder {
+  position: relative;
+  height: calc(100dvh - var(--header-h, 0px));
+  overflow: hidden;
+  background: var(--stone-1);
+}
+
+.placeholderFrame {
+  position: absolute;
+  inset: 17% 23%;
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+/* --- Phone ------------------------------------------------------------- */
 
 @media (max-width: 760px) {
   .story {
-    --pin-x: 50%;
-    --pin-y: 29%;
-    height: 360vh;
+    height: 520vh;
   }
 
-  .campus {
-    bottom: 42%;
-    padding: 2vh 4vw;
+  .cover {
+    --ratio: 9 / 16;
+    width: max(100cqw, 100cqh * 9 / 16);
   }
 
-  .opening,
-  .chapterText {
+  .pin {
+    left: var(--tx);
+    top: var(--ty);
+  }
+
+  .shade {
+    background: linear-gradient(to top, rgb(9 14 28 / 78%) 0%, rgb(9 14 28 / 45%) 32%, rgb(9 14 28 / 0%) 55%);
+  }
+
+  .title {
+    flex-direction: column;
+    gap: 0;
+    font-size: clamp(2.4rem, 11vw, 3.4rem);
+    text-align: center;
+  }
+
+  .panel,
+  .roomText {
     top: auto;
-    bottom: 12vh;
+    bottom: calc(var(--s-16) + env(safe-area-inset-bottom));
     inset-inline: var(--s-4);
+    max-width: none;
+    margin-top: 0;
   }
 
-  .scene {
-    top: 2vh;
-    bottom: 44%;
-    inset-inline: 4vw;
-    width: auto;
+  .panel {
+    padding: var(--s-5);
   }
 
   .stickyAction {
@@ -238,10 +294,9 @@
     display: grid;
   }
 
-  .landing {
-    white-space: normal;
-    width: 80%;
-    text-align: center;
+  .placeholderFrame {
+    inset: 14% 7%;
+    border-radius: 22px;
   }
 }
 
@@ -252,19 +307,31 @@
   gap: var(--s-8);
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--s-10) var(--s-4);
+  padding: var(--s-6) var(--s-4) var(--s-10);
+}
+
+.stillHero {
+  position: relative;
+  min-height: min(70vh, 640px);
+  overflow: hidden;
+  border-radius: var(--r-lg);
 }
 
 .stillHead {
+  position: absolute;
+  inset-block-end: var(--s-8);
+  inset-inline-start: var(--s-8);
+  z-index: 2;
   display: grid;
   justify-items: start;
-  gap: var(--s-3);
+  gap: var(--s-2);
+  max-width: 30rem;
+  color: #fff;
 }
 
-.stillCampus {
-  padding: var(--s-4);
-  background: linear-gradient(var(--sky), var(--stone-1) 75%);
-  border-radius: var(--r-lg);
+.stillTitle {
+  margin: 0;
+  font: 700 var(--text-hero) / 1 var(--font-heading);
 }
 
 .stillRooms {
@@ -279,13 +346,17 @@
 .stillRooms li {
   display: grid;
   gap: var(--s-2);
-  padding: var(--s-5);
+  padding-bottom: var(--s-5);
+  overflow: hidden;
   background: var(--stone-0);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-2);
 }
 
-.stillRooms svg {
-  max-height: 180px;
-  margin: 0 auto;
+.stillRooms li > :not(:first-child) {
+  padding-inline: var(--s-5);
+}
+
+.stillPhoto {
+  aspect-ratio: 3 / 2;
 }

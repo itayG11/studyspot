@@ -1,0 +1,30 @@
+.photo {
+  position: relative;
+  overflow: hidden;
+  background: var(--stone-2);
+}
+
+.photo picture {
+  display: contents;
+}
+
+.img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Small and quiet, but always there: these are not photos of the campus. */
+.label {
+  position: absolute;
+  bottom: var(--s-2);
+  inset-inline-end: var(--s-2);
+  padding: 2px 8px;
+  font: 600 11px / 1.4 var(--font-body);
+  color: #fff;
+  background: rgb(20 32 58 / 55%);
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}

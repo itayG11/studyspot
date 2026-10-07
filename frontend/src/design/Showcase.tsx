@@ -4,13 +4,10 @@
 import { Monitor, Plug, Search, Sun, Users, Volume1 } from 'lucide-react'
 import { useState } from 'react'
 import { ApiError } from '../api/client'
-import { getBuildings } from '../api/campus'
-import { useApi } from '../hooks/useApi'
-import { CampusModel } from '../illustrations/CampusModel'
-import { SpaceScene } from '../illustrations/SpaceScene'
+import { KIND_PHOTO } from '../media/photos'
 import { KIND_LABELS } from '../i18n/labels'
 import type { PlaceKind } from '../api/types'
-import { Badge, Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Sheet, Skeleton, useToast } from '../ui'
+import { Badge, Button, Chip, EmptyState, ErrorState, LoadingRegion, Photo, SearchField, Sheet, Skeleton, useToast } from '../ui'
 import styles from './Showcase.module.css'
 
 const SWATCHES = [
@@ -33,7 +30,6 @@ export function Showcase() {
   const [filters, setFilters] = useState<Set<string>>(new Set(['free']))
   const [sheet, setSheet] = useState(false)
   const toast = useToast()
-  const buildings = useApi(getBuildings, 'showcase-buildings')
   const toggle = (key: string) =>
     setFilters((current) => {
       const next = new Set(current)
@@ -51,8 +47,8 @@ export function Showcase() {
       </header>
 
       <section>
-        <h2 className={styles.h2}>הקמפוס</h2>
-        <div className={styles.sky}>{buildings.data && <CampusModel buildings={buildings.data} pinAt="EM" />}</div>
+        <h2 className={styles.h2}>תמונת הפתיחה</h2>
+        <Photo name="hero" className={styles.heroPhoto} />
       </section>
 
       <section>
@@ -60,7 +56,7 @@ export function Showcase() {
         <div className={styles.scenes} data-scenes>
           {(['open_area', 'computer_lab', 'group_room', 'library'] as PlaceKind[]).map((kind) => (
             <figure key={kind} className={styles.scene}>
-              <SpaceScene kind={kind} />
+              <Photo name={KIND_PHOTO[kind]} variant="card" decorative className={styles.scenePhoto} />
               <figcaption>{KIND_LABELS[kind]}</figcaption>
             </figure>
           ))}

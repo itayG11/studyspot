@@ -1,8 +1,7 @@
 // The live numbers the story tells. Pure functions.
 
-import type { Building, Place, PlaceKind } from '../../api/types'
+import type { Place, PlaceKind } from '../../api/types'
 import { isFreeNow } from '../../logic/availability'
-import { position } from '../../logic/occupancy'
 
 const UNITS: Record<PlaceKind, [one: string, many: string]> = {
   computer_lab: ['תא פנוי עכשיו', 'תאים פנויים עכשיו'],
@@ -20,11 +19,4 @@ export function kindLine(places: Place[], kind: PlaceKind): { count: number; tex
       : ofKind.filter((p) => p.is_open).reduce((sum, p) => sum + p.available, 0)
   const [one, many] = UNITS[kind]
   return { count, text: count === 1 ? one : many }
-}
-
-// The pin stands on the building with the most room right now.
-export function pinBuilding(buildings: Building[]): string | null {
-  const placed = buildings.filter((b) => position(b) !== null && b.status !== 'under_construction')
-  if (placed.length === 0) return null
-  return placed.reduce((best, b) => (b.available > best.available ? b : best)).code
 }

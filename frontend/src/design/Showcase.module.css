@@ -107,10 +107,15 @@
   box-shadow: var(--shadow-2);
 }
 
-.sky {
-  padding: var(--s-6);
-  background: linear-gradient(var(--sky), var(--stone-1) 70%);
+.heroPhoto {
+  aspect-ratio: 16 / 9;
   border-radius: var(--r-lg);
+}
+
+.scenePhoto {
+  aspect-ratio: 3 / 2;
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-md);
 }
 
 .scenes {
@@ -121,7 +126,7 @@
 
 .scene {
   margin: 0;
-  padding: var(--s-4);
+  padding: var(--s-3) var(--s-3) var(--s-4);
   text-align: center;
   background: var(--stone-0);
   border-radius: var(--r-lg);

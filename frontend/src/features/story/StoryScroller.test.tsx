@@ -53,6 +53,7 @@ describe('StoryScroller', () => {
     stubReducedMotion(true)
     const { container } = render(<StoryScroller buildings={BUILDINGS} places={PLACES} onToFinder={vi.fn()} />)
     expect(screen.queryByRole('link', { name: 'דלג לחיפוש' })).toBeNull()
-    expect(container.querySelectorAll('[data-scene]')).toHaveLength(4)
+    // The campus and the four places, each with its picture.
+    expect(container.querySelectorAll('img')).toHaveLength(5)
   })
 })

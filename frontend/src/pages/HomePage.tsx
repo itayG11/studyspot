@@ -6,6 +6,7 @@ import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { Finder } from '../features/finder/Finder'
+import { FinderReveal } from '../features/finder/FinderReveal'
 import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
 import { useApi } from '../hooks/useApi'
 import { hasFilters, readFilters } from '../logic/filters'
@@ -44,15 +45,17 @@ export function HomePage() {
       ) : (
         <StoryPlaceholder />
       )}
-      <Finder
-        places={places.data}
-        buildings={buildings.data}
-        error={places.error ?? buildings.error}
-        onRetry={() => {
-          places.reload()
-          buildings.reload()
-        }}
-      />
+      <FinderReveal>
+        <Finder
+          places={places.data}
+          buildings={buildings.data}
+          error={places.error ?? buildings.error}
+          onRetry={() => {
+            places.reload()
+            buildings.reload()
+          }}
+        />
+      </FinderReveal>
     </>
   )
 }

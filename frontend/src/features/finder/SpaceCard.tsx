@@ -5,10 +5,10 @@ import type { Place } from '../../api/types'
 import { SPRING } from '../../design/motion'
 import { useFavorites } from '../../hooks/useFavorites'
 import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS } from '../../i18n/labels'
-import { SpaceScene } from '../../illustrations/SpaceScene'
 import { useInstitution } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
-import { Badge } from '../../ui'
+import { KIND_PHOTO } from '../../media/photos'
+import { Badge, Photo } from '../../ui'
 import { AMENITY_ICONS, topAmenities } from './amenityIcons'
 import styles from './finder.module.css'
 
@@ -38,7 +38,7 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
     <li className={styles.card}>
       {/* Shares its layoutId with the space page header: the picture grows into it. */}
       <m.div layoutId={`space-art-${place.id}`} transition={SPRING} className={styles.art}>
-        <SpaceScene kind={place.kind} decorative />
+        <Photo name={KIND_PHOTO[place.kind]} variant="card" decorative className={styles.artPhoto} />
       </m.div>
       <div className={styles.body}>
         <div className={styles.top}>

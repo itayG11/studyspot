@@ -175,27 +175,25 @@
 }
 
 .art {
-  display: grid;
-  place-items: center;
-  height: 168px;
-  padding: var(--s-2) var(--s-6);
+  aspect-ratio: 3 / 2;
   overflow: hidden;
-  background: linear-gradient(var(--sky), var(--stone-1));
 }
 
-.art svg {
-  height: 156px;
-  width: auto;
-  max-width: 100%;
-  transition: transform 320ms var(--ease-out);
+.artPhoto {
+  width: 100%;
+  height: 100%;
+}
+
+.artPhoto img {
+  transition: transform 600ms var(--ease-out);
 }
 
 @media (hover: hover) {
   .card:hover {
     box-shadow: var(--shadow-3);
   }
-  .card:hover .art svg {
-    transform: translateY(-4px) scale(1.03);
+  .card:hover .artPhoto img {
+    transform: scale(1.04);
   }
 }
 
@@ -211,7 +209,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-2);
-  padding-inline-end: 84px; /* room for the buttons in the corner */
 }
 
 .demo {
@@ -273,7 +270,7 @@
 /* Above the card's link, so they get their own clicks. */
 .actions {
   position: absolute;
-  top: calc(168px + var(--s-3));
+  top: var(--s-3);
   inset-inline-end: var(--s-3);
   z-index: 1;
   display: flex;
@@ -286,8 +283,10 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  color: var(--ink-2);
-  background: transparent;
+  color: var(--ink);
+  background: rgb(253 252 249 / 88%);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(6px);
   border: 0;
   border-radius: 50%;
   cursor: pointer;
@@ -309,7 +308,7 @@
 
 @media (hover: hover) {
   .iconButton:hover {
-    background: var(--stone-2);
+    background: var(--stone-0);
   }
 }
 
@@ -352,7 +351,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .art svg,
+  .artPhoto img,
   .iconButton {
     transition: none;
   }

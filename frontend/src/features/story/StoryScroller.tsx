@@ -1,37 +1,48 @@
-// The home page story: one pin, "your spot", travels through the campus.
+// The home page story, told with illustrative photos (docs/IMAGES.md).
 //
-//   opening   0.00-0.12  the campus model, the headline and the live number
-//   dive      0.12-0.34  the camera zooms in on the building under the pin
-//   rooms     0.34-0.90  four kinds of places, each in its own light
-//   landing   0.90-1.00  the pin drops towards the search below
+//   opening  0.00-0.24  the campus photo grows from a framed card to the
+//                       whole screen, the headline parts, and a panel with
+//                       the live number rises. The pin lands on the campus.
+//   rooms    0.24-0.92  four kinds of places. Each photo rises from below
+//                       over the one before it, which steps back and dims.
+//                       A slow zoom inside each photo; the pin lands on the
+//                       free seat; a label and one live number.
 //
-// The section is several screens tall and its stage stays pinned (sticky)
-// while it scrolls. Motion's useScroll gives the progress 0..1, and
-// useTransform maps it to each element's transform and opacity. These are
-// written straight to the element's style: React does not re-render while
-// scrolling. With "reduce motion" on, a still version is shown instead.
+// The section is several screens tall and its stage stays pinned (sticky).
+// Motion's useScroll gives the progress 0..1 and useTransform maps it to
+// each element. Values go straight to style: React does not re-render while
+// scrolling. Only transform, opacity and one clip-path (the opening) move.
+// With "reduce motion" on, a still version shows the same content.
 
-import { m, useMotionTemplate, useMotionValueEvent, useReducedMotionConfig, useScroll, useTransform, type MotionStyle, type MotionValue } from 'motion/react'
-import { useRef, useState } from 'react'
+import {
+  m,
+  useMotionTemplate,
+  useMotionValueEvent,
+  useReducedMotionConfig,
+  useScroll,
+  useTransform,
+  type MotionStyle,
+  type MotionValue,
+} from 'motion/react'
+import { useRef, useState, type CSSProperties } from 'react'
 import type { Building, Place, PlaceKind } from '../../api/types'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { KIND_LABELS } from '../../i18n/labels'
-import { campusGeometry } from '../../illustrations/campus'
-import { CampusModel } from '../../illustrations/CampusModel'
 import { Pin } from '../../illustrations/Pin'
-import { SpaceScene } from '../../illustrations/SpaceScene'
-import { Button } from '../../ui'
-import { kindLine, pinBuilding } from './storyNumbers'
+import { KIND_PHOTO, PHOTOS, type PhotoName } from '../../media/photos'
+import { Button, Photo, TALL_QUERY } from '../../ui'
+import { kindLine } from './storyNumbers'
 import styles from './story.module.css'
 
-const ROOMS: { kind: PlaceKind; light: string; line: string }[] = [
-  { kind: 'open_area', light: 'var(--light-sun)', line: 'שולחן ליד החלון, ואפשר לדבר.' },
-  { kind: 'computer_lab', light: 'var(--light-screen)', line: 'תא שקט עם מחשב, בלי לחפש בין הקומות.' },
-  { kind: 'group_room', light: 'var(--light-lamp)', line: 'חדר לכל הצוות, מוזמן מראש.' },
-  { kind: 'library', light: 'var(--light-paper)', line: 'שקט של ספרייה, ליום ארוך של מבחנים.' },
+const ROOMS: { kind: PlaceKind; line: string }[] = [
+  { kind: 'open_area', line: 'שולחן באור השמש, ואפשר לדבר.' },
+  { kind: 'computer_lab', line: 'תא שקט עם מחשב, בלי לחפש בין הקומות.' },
+  { kind: 'group_room', line: 'חדר לכל הצוות, מוזמן מראש.' },
+  { kind: 'library', line: 'שקט של ספרייה, ליום ארוך של מבחנים.' },
 ]
-const ROOMS_FROM = 0.34
-const ROOM_SPAN = 0.14
-const LANDING_FROM = 0.9
+const ROOMS_FROM = 0.24
+const ROOM_SPAN = 0.17
+const ENTER = 0.06 // how long a photo takes to rise over the one before it
 
 interface StoryProps {
   buildings: Building[]
@@ -48,46 +59,32 @@ export function StoryScroller(props: StoryProps) {
 function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const section = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: section, offset: ['start start', 'end end'] })
-  // One state change at each end of the opening, so the buttons there stop
-  // taking clicks and focus once they have faded out.
+  const tall = useMediaQuery(TALL_QUERY)
+  // One state change when the opening is covered, so its buttons stop
+  // taking clicks and keyboard focus once nobody can see them.
   const [opening, setOpening] = useState(true)
-  const [landing, setLanding] = useState(false)
-  useMotionValueEvent(p, 'change', (v) => {
-    setOpening(v < 0.1)
-    setLanding(v >= LANDING_FROM)
-  })
+  useMotionValueEvent(p, 'change', (v) => setOpening(v < ROOMS_FROM + ENTER))
 
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
-  const pinAt = pinBuilding(buildings)
 
-  // The camera: zoom in on the pinned roof and bring it to the middle.
-  const geometry = campusGeometry(buildings)
-  const roof = geometry?.buildings.find((b) => b.code === pinAt)?.roof
-  const origin = geometry && roof
-    ? { x: ((roof[0] - geometry.bounds.x) / geometry.bounds.width) * 100, y: ((roof[1] - geometry.bounds.y) / geometry.bounds.height) * 100 }
-    : { x: 50, y: 50 }
-  // The camera lands first (0.28); then the model's pin hands over to the
-  // travelling one in the same spot (0.28-0.31); then the campus fades.
-  const zoom = useTransform(p, [0.12, 0.28], [1, 3.2])
-  const panX = useTransform(p, [0.12, 0.28], [0, 50 - origin.x])
-  const panY = useTransform(p, [0.12, 0.28], [0, 50 - origin.y])
-  const camera = useMotionTemplate`translate(${panX}%, ${panY}%) scale(${zoom})`
-  const campusPin = useTransform(p, [0.27, 0.31], [1, 0])
-  const campusOpacity = useTransform(p, [0.31, 0.36], [1, 0])
-  const ratio = geometry ? geometry.bounds.width / geometry.bounds.height : 1.4
-
-  const headOpacity = useTransform(p, [0.03, 0.1], [1, 0])
-  const headY = useTransform(p, [0.03, 0.1], [0, -48])
-  const head = useMotionTemplate`translateY(${headY}px)`
-
-  // The travelling pin, after the campus: centred where the camera left the
-  // roof, bobbing over the rooms, then dropping down and shrinking.
-  const pinOpacity = useTransform(p, [0.27, 0.31], [0, 1])
-  const pinY = useTransform(p, [0.34, LANDING_FROM, 1], [0, 0, 38])
-  const pinScale = useTransform(p, [LANDING_FROM, 1], [1, 0.55])
-  const pinTransform = useMotionTemplate`translate(-50%, calc(-100% + ${pinY}vh)) scale(${pinScale})`
-
-  const landingOpacity = useTransform(p, [0.92, 0.97], [0, 1])
+  // The opening photo grows out of a framed card (an inset clip that opens).
+  const [insetY, insetX, radius] = tall ? [14, 7, 22] : [17, 23, 28]
+  const clipY = useTransform(p, [0, 0.12], [insetY, 0])
+  const clipX = useTransform(p, [0, 0.12], [insetX, 0])
+  const clipR = useTransform(p, [0, 0.12], [radius, 0])
+  const heroClip = useMotionTemplate`inset(${clipY}% ${clipX}% ${clipY}% ${clipX}% round ${clipR}px)`
+  const heroZoom = useTransform(p, [0, 0.24], [1.18, 1.02])
+  const heroScale = useMotionTemplate`scale(${heroZoom})`
+  // The headline parts as the photo opens: each half moves to its side.
+  const part = useTransform(p, [0.02, 0.11], [0, tall ? 20 : 28])
+  const partOpacity = useTransform(p, [0.05, 0.11], [1, 0])
+  const rightHalf = useMotionTemplate`translateX(${part}vw)`
+  const leftHalf = useMotionTemplate`translateX(calc(-1 * ${part}vw))`
+  // Rises with the open photo, and leaves as the first room rises over it.
+  const panelOpacity = useTransform(p, [0.11, 0.16, ROOMS_FROM, ROOMS_FROM + 0.03], [0, 1, 1, 0])
+  const panelY = useTransform(p, [0.11, 0.16], [28, 0])
+  const panel = useMotionTemplate`translateY(${panelY}px)`
+  const heroBack = useStepBack(p, ROOMS_FROM)
 
   return (
     <section ref={section} className={styles.story} aria-label="סיפור: המקום שלך בקמפוס">
@@ -95,23 +92,20 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         דלג לחיפוש
       </a>
       <div className={styles.stage}>
-        <m.div className={styles.light} style={{ opacity: campusOpacity, background: 'linear-gradient(var(--sky), var(--stone-1) 75%)' }} />
-        {ROOMS.map((room, i) => (
-          <RoomLight key={room.kind} progress={p} index={i} color={room.light} />
-        ))}
-
-        <m.div className={styles.campus} style={{ opacity: campusOpacity, '--campus-pin': campusPin } as MotionStyle} aria-hidden={!opening}>
-          <m.div
-            className={styles.camera}
-            style={{ transform: camera, transformOrigin: `${origin.x}% ${origin.y}%`, '--ratio': ratio } as MotionStyle}
-          >
-            <CampusModel buildings={buildings} pinAt={pinAt ?? undefined} />
+        <m.div className={styles.layer} style={{ transform: heroBack.transform }}>
+          <m.div className={styles.clip} style={{ clipPath: heroClip }}>
+            <Scene name="hero" zoom={heroScale} pinProgress={p} pinFrom={0.13} priority />
           </m.div>
+          <m.div className={styles.dim} style={{ opacity: heroBack.dim }} />
         </m.div>
 
-        <m.div className={styles.opening} style={{ opacity: headOpacity, transform: head }} inert={!opening}>
+        <h1 className={styles.title}>
+          <m.span style={{ transform: rightHalf, opacity: partOpacity }}>יש לך</m.span>{' '}
+          <m.span style={{ transform: leftHalf, opacity: partOpacity }}>מקום בקמפוס.</m.span>
+        </h1>
+
+        <m.div className={styles.panel} style={{ opacity: panelOpacity, transform: panel }} inert={!opening}>
           <p className={styles.eyebrow}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
-          <h1 className={styles.title}>יש לך מקום בקמפוס.</h1>
           <p className={styles.bigLine}>
             <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו
           </p>
@@ -121,18 +115,12 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         </m.div>
 
         {ROOMS.map((room, i) => (
-          <RoomChapter key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} places={places} />
+          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} places={places} />
         ))}
 
-        <m.div className={styles.pin} style={{ opacity: pinOpacity, transform: pinTransform }} aria-hidden="true">
-          <Pin size={64} />
-        </m.div>
+        <span className={styles.simLabel}>הדמיה</span>
 
-        <m.p className={styles.landing} style={{ opacity: landingOpacity }} aria-hidden={!landing}>
-          עכשיו בוחרים. החיפוש מחכה ממש כאן.
-        </m.p>
-
-        <div className={styles.stickyAction} inert={opening || landing}>
+        <div className={styles.stickyAction} inert={opening}>
           <Button variant="secondary" size="sm" onClick={onToFinder}>
             לחיפוש
           </Button>
@@ -142,97 +130,118 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   )
 }
 
-// Before the live data arrives: the stage's height and headline, so the
-// page below does not jump when the story appears.
-export function StoryPlaceholder() {
-  return (
-    <section className={styles.placeholder} aria-busy="true" aria-label="סיפור: המקום שלך בקמפוס">
-      <div className={styles.opening}>
-        <h1 className={styles.title}>יש לך מקום בקמפוס.</h1>
-        <p className={styles.eyebrow}>טוען את הקמפוס…</p>
-      </div>
-    </section>
-  )
+// Once the next photo starts to rise, this one steps back and darkens.
+function useStepBack(progress: MotionValue<number>, from: number) {
+  const scale = useTransform(progress, [from, from + ENTER], [1, 0.92])
+  const dim = useTransform(progress, [from, from + ENTER], [0, 0.55])
+  return { transform: useMotionTemplate`scale(${scale})`, dim }
 }
 
-// A full-stage wash in a room's light, there only during its chapter.
-function RoomLight({ progress, index, color }: { progress: MotionValue<number>; index: number; color: string }) {
-  const opacity = useChapterOpacity(progress, index)
-  return <m.div className={styles.light} style={{ opacity, background: `radial-gradient(120% 90% at 30% 40%, color-mix(in srgb, ${color} 55%, var(--stone-1)), var(--stone-1) 70%)` }} />
-}
-
-function RoomChapter({ progress, index, kind, line, places }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; places: Place[] }) {
+function Room({ progress, index, kind, line, places }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; places: Place[] }) {
   const from = ROOMS_FROM + index * ROOM_SPAN
-  const to = from + ROOM_SPAN
-  const opacity = useChapterOpacity(progress, index)
-  // Depth: the whole scene drifts up slowly, its furniture a little faster.
-  const drift = useTransform(progress, [from, to], [24, -24])
-  const scale = useTransform(progress, [from, to], [0.96, 1.03])
-  const sceneTransform = useMotionTemplate`translateY(${drift}px) scale(${scale})`
-  const depth = useTransform(progress, [from, to], [10, -10])
-  const textY = useTransform(progress, [from, to], [20, -20])
-  const textTransform = useMotionTemplate`translateY(${textY}px)`
-  const { count, text } = kindLine(places, kind)
-  const [active, setActive] = useState(false)
-  useMotionValueEvent(progress, 'change', (v) => setActive(v >= from && v < to))
+  const rise = useTransform(progress, [from, from + ENTER], [100, 0])
+  const back = useStepBack(progress, from + ROOM_SPAN)
+  const layer = useMotionTemplate`translateY(${rise}%) ${back.transform}`
+  const zoomValue = useTransform(progress, [from, from + ROOM_SPAN + ENTER], [1.12, 1])
+  const zoom = useMotionTemplate`scale(${zoomValue})`
+  const textOpacity = useTransform(progress, [from + 0.035, from + 0.08], [0, 1])
+  const textY = useTransform(progress, [from + 0.035, from + 0.08], [24, 0])
+  const text = useMotionTemplate`translateY(${textY}px)`
+  const { count, text: unit } = kindLine(places, kind)
 
   return (
-    <div className={styles.chapter} aria-hidden={!active}>
-      <m.div className={styles.scene} // A CSS variable for the furniture layer inside the scene (story.module.css).
-        style={{ opacity, transform: sceneTransform, '--depth': depth } as MotionStyle}>
-        <SpaceScene kind={kind} decorative />
-      </m.div>
-      <m.div className={styles.chapterText} style={{ opacity, transform: textTransform }}>
-        <p className={styles.eyebrow}>{KIND_LABELS[kind]}</p>
+    // Above the opening's panel (z-index 6), each room above the one before.
+    <m.div className={styles.layer} style={{ transform: layer, zIndex: 7 + index }}>
+      <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + ENTER} />
+      <div className={styles.shade} />
+      <m.div className={styles.roomText} style={{ opacity: textOpacity, transform: text }}>
+        <h2 className={styles.eyebrowLight}>{KIND_LABELS[kind]}</h2>
         <p className={styles.bigLine}>
-          <span className={styles.number}>{count}</span> {text}
+          <span className={styles.number}>{count}</span> {unit}
         </p>
         <p className={styles.lineText}>{line}</p>
       </m.div>
-    </div>
+      <m.div className={styles.dim} style={{ opacity: back.dim }} />
+    </m.div>
   )
 }
 
-function useChapterOpacity(progress: MotionValue<number>, index: number): MotionValue<number> {
-  const from = ROOMS_FROM + index * ROOM_SPAN
-  const to = from + ROOM_SPAN
-  const fadeOut = index === ROOMS.length - 1 ? [to + 0.02, to + 0.06] : [to - 0.015, to + 0.015]
-  return useTransform(progress, [from - 0.015, from + 0.015, fadeOut[0], fadeOut[1]], [0, 1, 1, 0])
+// A photo that covers the stage, in a box with the photo's own shape, so
+// the pin can stand on a point of the picture (percentages of it) and
+// zoom with it.
+function Scene({ name, zoom, pinProgress, pinFrom, priority = false }: { name: PhotoName; zoom: MotionValue<string>; pinProgress: MotionValue<number>; pinFrom: number; priority?: boolean }) {
+  const { wide, tall } = PHOTOS[name].pin
+  const spot = { '--wx': `${wide.x}%`, '--wy': `${wide.y}%`, '--tx': `${tall.x}%`, '--ty': `${tall.y}%` } as CSSProperties
+  return (
+    <m.div className={styles.cover} style={{ transform: zoom, ...spot } as MotionStyle}>
+      {/* The "illustration" mark is on the stage, not here: this box is cropped. */}
+      <Photo name={name} priority={priority} label={false} className={styles.fill} />
+      <LandingPin progress={pinProgress} from={pinFrom} />
+    </m.div>
+  )
 }
 
-// "Reduce motion": the same story, still. The campus, then the four rooms.
+// "Your spot": drops onto the point and settles.
+function LandingPin({ progress, from }: { progress: MotionValue<number>; from: number }) {
+  const opacity = useTransform(progress, [from, from + 0.025], [0, 1])
+  const drop = useTransform(progress, [from, from + 0.04], [-60, 0])
+  const transform = useMotionTemplate`translateY(${drop}px)`
+  return (
+    <m.div className={styles.pin} style={{ opacity, transform }} aria-hidden="true">
+      <Pin size={52} />
+    </m.div>
+  )
+}
+
+// "Reduce motion": the same story, still. The campus, then the four places.
 function StillStory({ buildings, places, onToFinder }: StoryProps) {
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
   return (
     <section className={styles.still} aria-label="סיפור: המקום שלך בקמפוס">
-      <div className={styles.stillHead}>
-        <p className={styles.eyebrow}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
-        <h1 className={styles.title}>יש לך מקום בקמפוס.</h1>
-        <p className={styles.bigLine}>
-          <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו
-        </p>
-        <Button size="lg" onClick={onToFinder}>
-          לחיפוש מקום
-        </Button>
-      </div>
-      <div className={styles.stillCampus}>
-        <CampusModel buildings={buildings} pinAt={pinBuilding(buildings) ?? undefined} />
+      <div className={styles.stillHero}>
+        <Photo name="hero" priority className={styles.fill} />
+        <div className={styles.shade} />
+        <div className={styles.stillHead}>
+          <p className={styles.eyebrowLight}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
+          <h1 className={styles.stillTitle}>יש לך מקום בקמפוס.</h1>
+          <p className={styles.bigLine}>
+            <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו
+          </p>
+          <Button size="lg" onClick={onToFinder}>
+            לחיפוש מקום
+          </Button>
+        </div>
       </div>
       <ul className={styles.stillRooms}>
         {ROOMS.map(({ kind, line }) => {
           const { count, text } = kindLine(places, kind)
           return (
             <li key={kind}>
-              <SpaceScene kind={kind} decorative />
-              <p className={styles.eyebrow}>{KIND_LABELS[kind]}</p>
+              <Photo name={KIND_PHOTO[kind]} variant="card" className={styles.stillPhoto} />
+              <h2 className={styles.eyebrow}>{KIND_LABELS[kind]}</h2>
               <p className={styles.bigLineSmall}>
                 <span className={styles.number}>{count}</span> {text}
               </p>
-              <p className={styles.lineText}>{line}</p>
+              <p className={styles.lineDark}>{line}</p>
             </li>
           )
         })}
       </ul>
+    </section>
+  )
+}
+
+// Before the live data arrives: the story's first frame, so nothing jumps
+// when it appears. The photo starts loading at once.
+export function StoryPlaceholder() {
+  return (
+    <section className={styles.placeholder} aria-busy="true" aria-label="סיפור: המקום שלך בקמפוס">
+      <div className={styles.placeholderFrame}>
+        <Photo name="hero" priority className={styles.fill} />
+      </div>
+      <h1 className={styles.title}>
+        <span>יש לך</span> <span>מקום בקמפוס.</span>
+      </h1>
     </section>
   )
 }
