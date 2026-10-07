@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -50,8 +50,20 @@ describe('Finder', () => {
   it('filters as you type, and keeps the search in the address', async () => {
     const { router } = renderFinder()
     await userEvent.type(await screen.findByRole('searchbox', { name: 'חיפוש מקום' }), 'לוח')
+    expect(cards()).toEqual(['EM107']) // the results follow at once
+    // The address follows after a short pause in typing.
+    expect(router.state.location.search).toBe('')
+    await waitFor(() => expect(router.state.location.search).toBe(`?q=${encodeURIComponent('לוח')}`))
+  })
+
+  it('un-starring the last favourite turns "my favourites" off, not into an empty list', async () => {
+    localStorage.setItem('studyspot:favorites', JSON.stringify([3]))
+    renderFinder()
+    await userEvent.click(await screen.findByRole('button', { name: 'המועדפים שלי' }))
     expect(cards()).toEqual(['EM107'])
-    expect(router.state.location.search).toBe(`?q=${encodeURIComponent('לוח')}`)
+    await userEvent.click(screen.getByRole('button', { name: 'מועדף: EM107' }))
+    expect(screen.queryByRole('button', { name: 'המועדפים שלי' })).not.toBeInTheDocument()
+    expect(cards()).toEqual(['M206', 'EM107'])
   })
 
   it('opens with the filters of a shared link', async () => {

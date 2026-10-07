@@ -2,9 +2,10 @@
 // when it is booked. Read right to left, like Hebrew; a line marks now.
 // The bar is a picture; the same facts are in a list for screen readers.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { getAvailability } from '../../api/student'
 import type { BookingRules, PlaceDetail } from '../../api/types'
+import { REFRESH_INTERVAL_MS } from '../../config'
 import { useApi } from '../../hooks/useApi'
 import { daySlots, type SlotState } from '../../logic/slots'
 import { formatTime } from '../../logic/time'
@@ -18,11 +19,13 @@ interface Props {
   seatId: number | null // a lab station; null for the whole place
   rules: BookingRules
   timeZone: string
+  // Changes when the student books here, so today's bar shows it at once.
+  bookedId?: number | null
 }
 
 const MINUTE = 60_000
 
-export function AvailabilityTimeline({ place, seatId, rules, timeZone }: Props) {
+export function AvailabilityTimeline({ place, seatId, rules, timeZone, bookedId = null }: Props) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), MINUTE)
@@ -30,7 +33,17 @@ export function AvailabilityTimeline({ place, seatId, rules, timeZone }: Props) 
   }, [])
   const today = dateInZone(now, timeZone)
   // Walk-in places have no bookings: their day is just open or closed.
-  const availability = useApi(() => getAvailability(place.id, today), place.bookable ? `availability-${place.id}-${today}` : null)
+  // Refreshed like the rest of the page, so other students' bookings show too.
+  const availability = useApi(
+    () => getAvailability(place.id, today),
+    place.bookable ? `availability-${place.id}-${today}` : null,
+    REFRESH_INTERVAL_MS,
+  )
+  const { reload } = availability
+  const reloadOnBooking = useEffectEvent(reload)
+  useEffect(() => {
+    if (bookedId !== null) reloadOnBooking()
+  }, [bookedId])
   const busy = place.bookable ? (availability.data?.busy ?? null) : []
 
   if (place.bookable && !availability.data && availability.error) {

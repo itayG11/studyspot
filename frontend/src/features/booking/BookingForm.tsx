@@ -53,7 +53,9 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
   const day = chosenDay && days.includes(chosenDay) ? chosenDay : (days[0] ?? null)
   const [picked, setSlot] = useState<Slot | null>(null)
   const [minutes, setMinutes] = useState<number | null>(null)
-  const [clash, setClash] = useState<{ from: string; minutes: number } | null>(null)
+  // seen: the times on screen when the clash happened. They are stale (the
+  // taken time still looks free), so nothing is offered until fresh ones come.
+  const [clash, setClash] = useState<{ from: string; minutes: number; seen: unknown } | null>(null)
   const action = useAction()
 
   const availability = useApi(() => getAvailability(place.id, day!), day ? `availability-${place.id}-${day}` : null)
@@ -67,7 +69,8 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
   const slot = picked ? (slots.find((s) => s.start === picked.start && s.state === 'free') ?? null) : null
   const lengths = slot ? durationsFrom(slot, rules) : []
   const upcoming = slots.filter((s) => s.state !== 'past')
-  const suggestion = clash && !availability.loading ? nearestFree(slots, clash.from, clash.minutes) : null
+  const checking = clash !== null && availability.data === clash.seen
+  const suggestion = clash && !checking ? nearestFree(slots, clash.from, clash.minutes) : null
   const endOf = (start: string, length: number) => new Date(Date.parse(start) + length * MINUTE).toISOString()
 
   function choose(next: Slot | null, length: number | null = null) {
@@ -84,7 +87,7 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
       () => createBooking(request),
       (code) => {
         if (code !== 'slot_taken') return
-        setClash({ from: slot.start, minutes })
+        setClash({ from: slot.start, minutes, seen: availability.data })
         setSlot(null)
         availability.reload()
       },
@@ -162,7 +165,7 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
       {clash && (
         <div className={styles.clash} role="alert">
           <strong>מישהו הזמין את הזמן הזה ממש עכשיו.</strong>
-          {availability.loading ? (
+          {checking ? (
             <span>בודק מה עוד פנוי…</span>
           ) : suggestion ? (
             <Button

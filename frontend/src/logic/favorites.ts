@@ -37,7 +37,7 @@ export function toggleFavorite(placeId: number): void {
 export function subscribeFavorites(listener: Listener): () => void {
   listeners.add(listener)
   const onStorage = (event: StorageEvent) => {
-    if (event.key === FAVORITES_KEY) listener()
+    if (event.key === FAVORITES_KEY || event.key === null) listener() // null: storage was cleared
   }
   window.addEventListener('storage', onStorage)
   return () => {

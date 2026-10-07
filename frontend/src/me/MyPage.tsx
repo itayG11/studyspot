@@ -15,7 +15,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useInstitution } from '../institution'
 import { formatDay, formatTime } from '../logic/time'
 import { KIND_PHOTO } from '../media/photos'
-import { Button, ButtonLink, ConfirmButton, EmptyState, ErrorState, LoadingRegion, Notice, Photo, Skeleton } from '../ui'
+import { Button, ButtonLink, ConfirmButton, EmptyState, ErrorState, LoadingRegion, Notice, Photo, Skeleton, useToast } from '../ui'
 import styles from './me.module.css'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -112,6 +112,7 @@ export function MyPage() {
 // The check-in that is running: a dark card with a live dot.
 function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) {
   const { timezone } = useInstitution()
+  const toast = useToast()
   const leave = useAction()
   return (
     <>
@@ -133,6 +134,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
           onClick={() =>
             void leave.run(async () => {
               await checkOut(checkIn.id)
+              toast(`יצאת מ-${checkIn.place_name}. המקום פנוי לאחרים.`, 'success')
               onLeft()
             })
           }
@@ -147,6 +149,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
 
 function BookingRow({ booking, place, onChange }: { booking: Booking; place: Place | undefined; onChange: () => void }) {
   const { timezone } = useInstitution()
+  const toast = useToast()
   const action = useAction()
   const day = formatDay(booking.starts_at, timezone)
   const time = `${formatTime(booking.starts_at, timezone)}–${formatTime(booking.ends_at, timezone)}`
@@ -176,7 +179,8 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
             busy={action.busy}
             onClick={() =>
               void action.run(async () => {
-                await extendBooking(booking.id)
+                const longer = await extendBooking(booking.id)
+                toast(`הוארך עד ${formatTime(longer.ends_at, timezone)}.`, 'success')
                 onChange()
               })
             }
@@ -193,6 +197,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
             onConfirm={() =>
               void action.run(async () => {
                 await cancelBooking(booking.id)
+                toast(`ההזמנה ל-${where} בוטלה.`, 'success')
                 onChange()
               })
             }

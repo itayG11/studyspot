@@ -24,7 +24,7 @@ import {
   type MotionStyle,
   type MotionValue,
 } from 'motion/react'
-import { useRef, useState, type CSSProperties } from 'react'
+import { memo, useRef, useState, type CSSProperties } from 'react'
 import type { Building, Place, PlaceKind } from '../../api/types'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { KIND_LABELS } from '../../i18n/labels'
@@ -50,11 +50,13 @@ interface StoryProps {
   onToFinder: () => void
 }
 
-export function StoryScroller(props: StoryProps) {
+// memo: the finder below changes the address on each keystroke, which
+// draws the page again; the story only changes when its data does.
+export const StoryScroller = memo(function StoryScroller(props: StoryProps) {
   // Follows MotionConfig (src/design/MotionProvider.tsx), which follows the device.
   const reduce = useReducedMotionConfig()
   return reduce ? <StillStory {...props} /> : <ScrollStory {...props} />
-}
+})
 
 function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const section = useRef<HTMLElement>(null)
@@ -63,7 +65,14 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   // One state change when the opening is covered, so its buttons stop
   // taking clicks and keyboard focus once nobody can see them.
   const [opening, setOpening] = useState(true)
-  useMotionValueEvent(p, 'change', (v) => setOpening(v < ROOMS_FROM + ENTER))
+  // The rooms' photos wait for the first scroll: on a phone their downloads
+  // would share the slow connection with the opening photo, the largest
+  // thing on the first screen. The first room rises only at ROOMS_FROM.
+  const [roomsNear, setRoomsNear] = useState(false)
+  useMotionValueEvent(p, 'change', (v) => {
+    setOpening(v < ROOMS_FROM + ENTER)
+    if (v > 0.02) setRoomsNear(true)
+  })
 
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
 
@@ -115,7 +124,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         </m.div>
 
         {ROOMS.map((room, i) => (
-          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} places={places} />
+          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} places={places} near={roomsNear} />
         ))}
 
         <span className={styles.simLabel}>הדמיה</span>
@@ -137,7 +146,7 @@ function useStepBack(progress: MotionValue<number>, from: number) {
   return { transform: useMotionTemplate`scale(${scale})`, dim }
 }
 
-function Room({ progress, index, kind, line, places }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; places: Place[] }) {
+function Room({ progress, index, kind, line, places, near }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; places: Place[]; near: boolean }) {
   const from = ROOMS_FROM + index * ROOM_SPAN
   const rise = useTransform(progress, [from, from + ENTER], [100, 0])
   const back = useStepBack(progress, from + ROOM_SPAN)
@@ -152,7 +161,7 @@ function Room({ progress, index, kind, line, places }: { progress: MotionValue<n
   return (
     // Above the opening's panel (z-index 6), each room above the one before.
     <m.div className={styles.layer} style={{ transform: layer, zIndex: 7 + index }}>
-      <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + ENTER} />
+      <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + ENTER} load={near} />
       <div className={styles.shade} />
       <m.div className={styles.roomText} style={{ opacity: textOpacity, transform: text }}>
         <h2 className={styles.eyebrowLight}>{KIND_LABELS[kind]}</h2>
@@ -169,13 +178,13 @@ function Room({ progress, index, kind, line, places }: { progress: MotionValue<n
 // A photo that covers the stage, in a box with the photo's own shape, so
 // the pin can stand on a point of the picture (percentages of it) and
 // zoom with it.
-function Scene({ name, zoom, pinProgress, pinFrom, priority = false }: { name: PhotoName; zoom: MotionValue<string>; pinProgress: MotionValue<number>; pinFrom: number; priority?: boolean }) {
+function Scene({ name, zoom, pinProgress, pinFrom, priority = false, load = true }: { name: PhotoName; zoom: MotionValue<string>; pinProgress: MotionValue<number>; pinFrom: number; priority?: boolean; load?: boolean }) {
   const { wide, tall } = PHOTOS[name].pin
   const spot = { '--wx': `${wide.x}%`, '--wy': `${wide.y}%`, '--tx': `${tall.x}%`, '--ty': `${tall.y}%` } as CSSProperties
   return (
     <m.div className={styles.cover} style={{ transform: zoom, ...spot } as MotionStyle}>
       {/* The "illustration" mark is on the stage, not here: this box is cropped. */}
-      <Photo name={name} priority={priority} label={false} className={styles.fill} />
+      {load && <Photo name={name} priority={priority} label={false} className={styles.fill} />}
       <LandingPin progress={pinProgress} from={pinFrom} />
     </m.div>
   )
@@ -235,13 +244,18 @@ function StillStory({ buildings, places, onToFinder }: StoryProps) {
 // when it appears. The photo starts loading at once.
 export function StoryPlaceholder() {
   return (
-    <section className={styles.placeholder} aria-busy="true" aria-label="סיפור: המקום שלך בקמפוס">
-      <div className={styles.placeholderFrame}>
-        <Photo name="hero" priority className={styles.fill} />
+    // As tall as the story that replaces it, so the finder below does not
+    // move when the data arrives (no layout shift, also for a shared link
+    // that opens straight on the finder).
+    <section className={`${styles.story} ${styles.placeholder}`} aria-busy="true" aria-label="סיפור: המקום שלך בקמפוס">
+      <div className={styles.stage}>
+        <div className={styles.placeholderFrame}>
+          <Photo name="hero" priority className={styles.fill} />
+        </div>
+        <h1 className={styles.title}>
+          <span>יש לך</span> <span>מקום בקמפוס.</span>
+        </h1>
       </div>
-      <h1 className={styles.title}>
-        <span>יש לך</span> <span>מקום בקמפוס.</span>
-      </h1>
     </section>
   )
 }

@@ -16,7 +16,7 @@ export default defineConfig({
   preview: { headers: SECURITY_HEADERS },
   build: {
     // The main bundle is about 450 kB (147 kB gzipped): React, the router,
-    // the small core of Motion and the illustrations. Split off, loaded only
+    // the small core of Motion, and the site's own code (about 10%). Split off, loaded only
     // when needed: the map with Leaflet (src/features/finder/FinderMap.tsx),
     // Motion's animation features (src/design/MotionProvider.tsx) and the
     // admin page (src/admin/LazyAdminPage.tsx).

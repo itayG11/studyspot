@@ -1,6 +1,6 @@
 import { MapPin, Star } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import type { Place } from '../../api/types'
 import { useFavorites } from '../../hooks/useFavorites'
 import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS } from '../../i18n/labels'
@@ -33,6 +33,7 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
   const status = spaceStatus(place, timezone)
   const favorite = isFavorite(place.id)
   const amenities = topAmenities(place.amenities)
+  const { search } = useLocation()
 
   return (
     <li className={styles.card}>
@@ -46,7 +47,7 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
           {place.details_are_demo && <span className={styles.demo}>נתוני דמו</span>}
         </div>
         <h3 className={styles.title}>
-          <Link to={`/spaces/${place.id}`} className={styles.link} viewTransition>
+          <Link to={`/spaces/${place.id}`} state={{ finder: search }} className={styles.link} viewTransition>
             {place.name}
           </Link>
         </h3>

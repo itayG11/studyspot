@@ -177,6 +177,9 @@
 .art {
   aspect-ratio: 3 / 2;
   overflow: hidden;
+  /* A new card (after a filter is cleared) shows stone, not white, for the
+     moment its lazy picture takes to decode. */
+  background: var(--stone-2);
 }
 
 .artPhoto {

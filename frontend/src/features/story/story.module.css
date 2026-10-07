@@ -228,17 +228,18 @@
   padding: 2px 10px;
   font: 600 12px / 1.5 var(--font-body);
   color: #fff;
-  background: rgb(12 19 36 / 55%);
+  background: rgb(12 19 36 / 82%); /* readable (AA) even over the sky */
   border-radius: var(--r-pill);
 }
 
 /* --- Before data arrives --------------------------------------------- */
 
-.placeholder {
-  position: relative;
-  height: calc(100dvh - var(--header-h, 0px));
-  overflow: hidden;
-  background: var(--stone-1);
+/* Its height comes from .story; with reduced motion the still story is
+   short, so the placeholder is one screen. */
+@media (prefers-reduced-motion: reduce) {
+  .story.placeholder {
+    height: calc(100dvh - var(--header-h, 0px));
+  }
 }
 
 .placeholderFrame {

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import styles from './Button.module.css'
 
@@ -16,7 +16,7 @@ function lookClass({ variant = 'primary', size = 'md', block = false }: Look, ex
   return [styles.button, styles[variant], styles[size], block && styles.block, extra].filter(Boolean).join(' ')
 }
 
-type ButtonProps = Look & ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean }
+type ButtonProps = Look & ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean; ref?: Ref<HTMLButtonElement> }
 
 // busy: the action is on its way. The button stays focusable (aria-disabled,
 // not disabled), so a screen reader does not lose its place, but clicks and

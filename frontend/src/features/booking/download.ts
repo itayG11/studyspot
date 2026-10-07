@@ -17,6 +17,10 @@ export function downloadBooking(booking: Booking, floor: number | null): void {
   const link = document.createElement('a')
   link.href = url
   link.download = `studyspot-${booking.id}.ics`
+  // In the page for the click (some browsers ignore a detached link), and
+  // the file's address is freed a moment later, after the download began.
+  document.body.append(link)
   link.click()
-  URL.revokeObjectURL(url)
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

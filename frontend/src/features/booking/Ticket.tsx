@@ -3,6 +3,7 @@
 // simply fades in.
 
 import { m, useReducedMotionConfig } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { CalendarPlus } from 'lucide-react'
 import type { Booking } from '../../api/types'
 import { EASE_OUT } from '../../design/motion'
@@ -21,16 +22,22 @@ interface TicketProps {
 
 export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother }: TicketProps) {
   const reduce = useReducedMotionConfig()
+  // The "book" button that had the keyboard is gone: the ticket's heading
+  // takes it, so a keyboard or screen-reader user stays in place.
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => heading.current?.focus({ preventScroll: true }), [])
   return (
-    <div className={styles.ticketWrap} role="status">
+    <div className={styles.ticketWrap}>
       <m.article
         className={styles.ticket}
         initial={reduce ? { opacity: 0 } : { clipPath: 'inset(0% 0% 100% 0%)' }}
         animate={reduce ? { opacity: 1 } : { clipPath: 'inset(0% 0% 0% 0%)' }}
         transition={{ duration: 0.6, ease: EASE_OUT }}
       >
-        <p className={styles.ticketEyebrow}>ההזמנה נקלטה</p>
-        <h3 className={styles.ticketPlace}>
+        <p className={styles.ticketEyebrow} role="status">
+          ההזמנה נקלטה
+        </p>
+        <h3 className={styles.ticketPlace} ref={heading} tabIndex={-1}>
           {booking.place_name}
           {booking.seat_label && <span> · תא {booking.seat_label}</span>}
         </h3>

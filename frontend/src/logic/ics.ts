@@ -13,8 +13,17 @@ interface CalendarEvent {
 
 const utc = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
-// Text values escape backslash, comma, semicolon and line breaks.
-const text = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
+// Text values escape backslash, comma, semicolon and line breaks (any of
+// CRLF, LF or a lone CR). Other control characters are dropped, so no
+// value can ever start a line of its own in the file.
+const text = (value: string) =>
+  value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n|\r|\n/g, '\\n')
+    // oxlint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '')
 
 // Lines longer than 75 bytes are folded: broken, and the next part starts
 // with a space. A Hebrew letter is 2 bytes in UTF-8, so this comes quickly.

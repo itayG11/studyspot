@@ -30,6 +30,8 @@ let fetchMock: ReturnType<typeof vi.fn>
 let bookingBody: unknown = null
 // The next answers to POST /bookings; when empty, the booking succeeds.
 let bookingAnswers: (() => Response)[] = []
+// When set, the availability answer waits until it is released.
+let holdAvailability: Promise<void> | null = null
 let busy = [{ seat_id: null, starts_at: '2026-10-11T06:00:00Z', ends_at: '2026-10-11T07:00:00Z' }]
 
 const BOOKED = {
@@ -43,12 +45,15 @@ beforeEach(() => {
   bookingBody = null
   bookingAnswers = []
   busy = [{ seat_id: null, starts_at: '2026-10-11T06:00:00Z', ends_at: '2026-10-11T07:00:00Z' }]
+  holdAvailability = null
   fetchMock = vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (path === '/auth/refresh')
       return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
-    if (path === '/places/3/availability')
-      return Promise.resolve(jsonResponse({ place_id: 3, date: '2026-10-11', busy }))
+    if (path === '/places/3/availability') {
+      const answer = () => jsonResponse({ place_id: 3, date: '2026-10-11', busy })
+      return holdAvailability ? holdAvailability.then(answer) : Promise.resolve(answer())
+    }
     if (path === '/bookings') {
       bookingBody = JSON.parse(String(init.body))
       const answer = bookingAnswers.shift()
@@ -98,6 +103,7 @@ describe('BookingForm', () => {
     expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
     expect(screen.getByText('10:00–11:30')).toBeInTheDocument()
     expect(screen.getByText('הזמנה מספר 9')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /EM107/ })).toHaveFocus() // the keyboard stays on the ticket
     expect(bookingBody).toEqual({
       place_id: 3,
       seat_id: null,
@@ -109,7 +115,9 @@ describe('BookingForm', () => {
   it('after a clash, says so and offers the nearest free time of the same length', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     // Someone books 10:00-11:30 a moment before us.
+    let release = () => {}
     bookingAnswers.push(() => {
+      holdAvailability = new Promise((resolve) => (release = resolve))
       busy = [...busy, { seat_id: null, starts_at: '2026-10-11T07:00:00Z', ends_at: '2026-10-11T08:30:00Z' }]
       return jsonResponse({ detail: 'slot_taken' }, 409)
     })
@@ -118,6 +126,11 @@ describe('BookingForm', () => {
     await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
     await user.click(screen.getByRole('button', { name: 'להזמין' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('מישהו הזמין את הזמן הזה ממש עכשיו.')
+    // Until the fresh times arrive, the taken time is never offered back.
+    expect(screen.queryByRole('button', { name: /הזמן הפנוי הקרוב/ })).not.toBeInTheDocument()
+    expect(screen.getByText('בודק מה עוד פנוי…')).toBeInTheDocument()
+    holdAvailability = null
+    release()
     const offer = await screen.findByRole('button', { name: /הזמן הפנוי הקרוב: 11:30–13:00/ })
     expect(screen.getByRole('button', { name: '10:00' })).toBeDisabled()
     await user.click(offer)

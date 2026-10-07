@@ -23,6 +23,14 @@ describe('ConfirmButton', () => {
     expect(onConfirm).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'כן, לבטל' })).not.toBeInTheDocument()
   })
+
+  it('keeps the keyboard in place: focus moves to the question and back', async () => {
+    render(<ConfirmButton label="לבטל" confirmLabel="כן, לבטל" onConfirm={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: 'לבטל' }))
+    expect(screen.getByRole('button', { name: 'כן, לבטל' })).toHaveFocus()
+    await userEvent.click(screen.getByRole('button', { name: 'לא' }))
+    expect(screen.getByRole('button', { name: 'לבטל' })).toHaveFocus()
+  })
 })
 
 describe('Notice', () => {

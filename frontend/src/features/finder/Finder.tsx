@@ -37,6 +37,8 @@ const FLAG_LABELS: Record<Flag, string> = {
   outlets: 'שקעים',
 }
 
+const TYPING_PAUSE_MS = 300
+
 const FLAG_ICONS = { free: CircleDot, quiet: Volume1, group: Users, computers: Computer, outlets: Plug }
 
 interface FinderProps {
@@ -67,11 +69,21 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
   const { favorites } = useFavorites()
   const [selected, setSelected] = useState<string | null>(null)
 
-  const update = (next: Filters) => {
+  // Typing changes the results at once, but the address only after a short
+  // pause: writing it is a navigation that draws the page again, and Safari
+  // refuses more than 100 address changes in 10 seconds.
+  const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(pending.current), [])
+  const update = (next: Filters, wait = 0) => {
     written.current = next.q
     setText(next.q)
-    setParams(writeFilters(next), { replace: true, preventScrollReset: true })
+    clearTimeout(pending.current)
+    const write = () => setParams(writeFilters(next), { replace: true, preventScrollReset: true })
+    if (wait > 0) pending.current = setTimeout(write, wait)
+    else write()
   }
+  // Un-starring the last favourite hides the chip: its filter goes off too.
+  const favoritesOn = onlyFavorites && favorites.length > 0
 
   return (
     <section id="finder" className={styles.finder} aria-labelledby="finder-title" tabIndex={-1}>
@@ -82,7 +94,7 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
         <SearchField
           label="חיפוש מקום"
           value={filters.q}
-          onChange={(q) => update({ ...filters, q })}
+          onChange={(q) => update({ ...filters, q }, TYPING_PAUSE_MS)}
           placeholder="שם, בניין, סוג או ציוד"
         />
         <div className={styles.chips} role="group" aria-label="סינון">
@@ -93,7 +105,7 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
                 key={flag}
                 selected={filters.flags.includes(flag)}
                 icon={<Icon aria-hidden="true" />}
-                count={places ? countWith(places, filters, flag) : undefined}
+                count={places ? countWith(places, filters, flag) : null}
                 onClick={() => update(toggleFlag(filters, flag))}
               >
                 {FLAG_LABELS[flag]}
@@ -101,7 +113,7 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
             )
           })}
           {favorites.length > 0 && (
-            <Chip selected={onlyFavorites} icon={<Star aria-hidden="true" />} onClick={() => setOnlyFavorites(!onlyFavorites)}>
+            <Chip selected={favoritesOn} icon={<Star aria-hidden="true" />} onClick={() => setOnlyFavorites(!favoritesOn)}>
               המועדפים שלי
             </Chip>
           )}
@@ -121,7 +133,7 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
         onRetry={onRetry}
         filters={filters}
         update={update}
-        favorites={onlyFavorites ? favorites : null}
+        favorites={favoritesOn ? favorites : null}
         clearFavorites={() => setOnlyFavorites(false)}
         selected={selected}
         setSelected={setSelected}

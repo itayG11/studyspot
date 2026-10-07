@@ -1,7 +1,7 @@
 // The home page: the scroll story, then the finder. Both read the same
 // live data, refreshed every 30 seconds.
 
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
@@ -20,6 +20,10 @@ function toFinder(smooth: boolean) {
   finder.focus({ preventScroll: true })
 }
 
+// One function for the life of the page, so the story is not drawn again
+// on every keystroke in the search below it (it is memo'd).
+const smoothToFinder = () => toFinder(true)
+
 export function HomePage() {
   const buildings = useApi(getBuildings, 'buildings', REFRESH_INTERVAL_MS)
   const places = useApi(() => getPlaces(), 'places', REFRESH_INTERVAL_MS)
@@ -30,7 +34,10 @@ export function HomePage() {
   // whoever sent it wants the list, not the story. Decided once, on arrival;
   // later typing in the search must not move the page.
   const skipStory = useRef(location.hash === '#finder' || hasFilters(readFilters(new URLSearchParams(location.search))))
-  useEffect(() => {
+  // A layout effect: the jump happens before the browser paints the story
+  // that just arrived above the finder, so the reader never sees it push
+  // the results down (no layout shift).
+  useLayoutEffect(() => {
     // Once the data is in, so the page has its full height.
     if (ready && skipStory.current) {
       skipStory.current = false
@@ -41,7 +48,7 @@ export function HomePage() {
   return (
     <>
       {buildings.data && places.data ? (
-        <StoryScroller buildings={buildings.data} places={places.data} onToFinder={() => toFinder(true)} />
+        <StoryScroller buildings={buildings.data} places={places.data} onToFinder={smoothToFinder} />
       ) : (
         <StoryPlaceholder />
       )}

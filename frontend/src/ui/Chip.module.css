@@ -52,6 +52,10 @@
   opacity: 0.75;
 }
 
+.countWaiting {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chip:active {
     transform: none;

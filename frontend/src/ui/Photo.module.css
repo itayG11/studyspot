@@ -23,7 +23,7 @@
   padding: 2px 8px;
   font: 600 11px / 1.4 var(--font-body);
   color: #fff;
-  background: rgb(20 32 58 / 55%);
+  background: rgb(20 32 58 / 82%); /* readable (AA) even over a bright photo */
   border-radius: var(--r-pill);
   backdrop-filter: blur(6px);
   pointer-events: none;

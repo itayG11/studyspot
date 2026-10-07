@@ -1,22 +1,32 @@
 import { useSyncExternalStore } from 'react'
 import { readFavorites, subscribeFavorites, toggleFavorite } from '../logic/favorites'
 
-// The list is read again only when it changes. useSyncExternalStore needs
-// the same array back while nothing changed, so the last read is cached by
-// its text.
-let cachedText = ''
+// The list is read from storage only when it may have changed, not on every
+// render of every card: React asks for the snapshot often, and it must get
+// the same array back while nothing changed.
+let stale = true
 let cached: number[] = []
+
 function snapshot(): number[] {
-  const list = readFavorites()
-  const text = list.join(',')
-  if (text !== cachedText) {
-    cachedText = text
-    cached = list
+  if (stale) {
+    const list = readFavorites()
+    if (list.join(',') !== cached.join(',')) cached = list // same contents, same array
+    stale = false
   }
   return cached
 }
 
+function subscribe(listener: () => void): () => void {
+  // Storage may have changed while nobody was listening: React reads the
+  // snapshot again right after subscribing, and this makes that a real read.
+  stale = true
+  return subscribeFavorites(() => {
+    stale = true
+    listener()
+  })
+}
+
 export function useFavorites(): { favorites: number[]; isFavorite: (id: number) => boolean; toggle: (id: number) => void } {
-  const favorites = useSyncExternalStore(subscribeFavorites, snapshot, () => cached)
+  const favorites = useSyncExternalStore(subscribe, snapshot, snapshot)
   return { favorites, isFavorite: (id) => favorites.includes(id), toggle: toggleFavorite }
 }

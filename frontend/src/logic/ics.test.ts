@@ -30,6 +30,14 @@ describe('calendarFile', () => {
     expect(text).toContain('DESCRIPTION:סרוק את הקוד שבמקום\\nכשתגיע')
   })
 
+  it('a lone carriage return or other control character cannot start a new line', () => {
+    const file = calendarFile({ ...event, title: 'X\rATTENDEE:mailto:x@example.com\u0000' })
+    expect(file).toContain('SUMMARY:X\\nATTENDEE:mailto:x@example.com\r\n')
+    expect(file.split('\r\n').some((line) => line.startsWith('ATTENDEE'))).toBe(false)
+    // oxlint-disable-next-line no-control-regex
+    expect(file.replace(/\r\n/g, '')).not.toMatch(/[\u0000-\u001f]/)
+  })
+
   it('folds long lines at 75 bytes, continuing with a space', () => {
     const long = calendarFile({ ...event, description: 'א'.repeat(100) })
     const lines = long.split('\r\n')

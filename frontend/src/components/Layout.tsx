@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { Pin } from '../illustrations/Pin'
 import type { UserRole } from '../api/types'
@@ -20,9 +20,13 @@ export function Layout() {
 
   // The sticky header's height, as --header-h, so full-screen sections can
   // start below it. It changes when the header wraps on a narrow screen.
-  useEffect(() => {
+  // A layout effect, so the first paint already has it: set later, the
+  // full-screen story would jump by the header's height (a layout shift).
+  useLayoutEffect(() => {
     const element = header.current
-    if (!element || typeof ResizeObserver === 'undefined') return
+    if (!element) return
+    document.documentElement.style.setProperty('--header-h', `${element.offsetHeight}px`)
+    if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => {
       document.documentElement.style.setProperty('--header-h', `${element.offsetHeight}px`)
     })

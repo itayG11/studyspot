@@ -6,6 +6,7 @@ import { resetSessionForTests } from '../api/client'
 import type { Booking, CheckIn } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { InstitutionProvider } from '../institution'
+import { ToastProvider } from '../ui'
 import { FAVORITES_KEY } from '../logic/favorites'
 import { jsonResponse, place } from '../test/fixtures'
 import { MyPage } from './MyPage'
@@ -75,7 +76,9 @@ function renderMe() {
   render(
     <AuthProvider>
       <InstitutionProvider>
-        <RouterProvider router={router} />
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
       </InstitutionProvider>
     </AuthProvider>,
   )
@@ -98,6 +101,7 @@ describe('MyPage', () => {
     await userEvent.click(within(room).getByRole('button', { name: 'לבטל' }))
     await userEvent.click(within(room).getByRole('button', { name: 'כן, לבטל' }))
     expect(calls).toContain('/bookings/7/cancel')
+    expect(await screen.findByText('ההזמנה ל-EM107 בוטלה.')).toBeInTheDocument() // a toast
     await waitFor(() => expect(screen.getAllByRole('listitem', { name: /הזמנה/ })).toHaveLength(1))
   })
 

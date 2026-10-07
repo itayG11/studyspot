@@ -5,7 +5,7 @@
 
 import { ArrowRight, Star, Users, Volume1 } from 'lucide-react'
 import { useState, type CSSProperties } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
 import type { Booking, PlaceDetail, Seat } from '../../api/types'
 import { SeatGrid } from '../../components/SeatGrid'
@@ -24,6 +24,7 @@ import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
 import { Timetable } from './Timetable'
 import { artTransitionName } from './transition'
+import { backToFinder } from './backLink'
 import styles from './space.module.css'
 
 export function SpacePage() {
@@ -54,6 +55,10 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   const tall = useMediaQuery(TALL_QUERY)
   const [seatId, setSeatId] = useState<number | null>(null)
   const [sheet, setSheet] = useState(false)
+  // On a phone the form (and its request for times) waits for the first
+  // open of the sheet; after that it stays, so closing keeps the choices.
+  const [sheetUsed, setSheetUsed] = useState(false)
+  const back = backToFinder(useLocation().state, place.building_code)
   const [booked, setBooked] = useState<Booking | null>(null)
   const seat: Seat | null = place.seats?.find((s) => s.id === seatId) ?? null
   const isLab = place.kind === 'computer_lab'
@@ -66,7 +71,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
 
   return (
     <article className={styles.page}>
-      <Link to={`/?near=${encodeURIComponent(place.building_code)}#finder`} className={styles.back} viewTransition>
+      <Link to={back} className={styles.back} viewTransition>
         <ArrowRight aria-hidden="true" /> חזרה לחיפוש
       </Link>
 
@@ -139,7 +144,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             {isLab && !seat ? (
               <p className={styles.muted}>בחר תא במפה למטה, ותראה מתי הוא פנוי היום.</p>
             ) : (
-              <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} />
+              <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
             )}
             {!place.bookable && (
               <p className={styles.walkIn}>
@@ -189,12 +194,15 @@ function SpaceView({ place }: { place: PlaceDetail }) {
       {place.bookable && tall && (
         <>
           <div className={styles.bookBar}>
-            <Button size="lg" block disabled={!canBook} onClick={() => setSheet(true)}>
+            <Button size="lg" block disabled={!canBook} onClick={() => {
+                setSheet(true)
+                setSheetUsed(true)
+              }}>
               {canBook ? (seat ? `להזמין את תא ${seat.label}` : 'להזמין') : 'בחר תא כדי להזמין'}
             </Button>
           </div>
           <Sheet open={sheet} onClose={() => setSheet(false)} title={`הזמנה · ${place.name}${seat ? `, תא ${seat.label}` : ''}`}>
-            {form}
+            {sheetUsed && canBook && form}
           </Sheet>
         </>
       )}

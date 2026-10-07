@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import type { PlaceDetail } from '../../api/types'
 import { formatClock, todayWeekday, weekdayName, WEEK_ORDER } from '../../logic/time'
 import styles from './space.module.css'
 
 // The week's opening hours, today first in the reader's eye (highlighted).
 export function Timetable({ place, timeZone }: { place: PlaceDetail; timeZone: string }) {
-  // Read the clock once when the table first appears, not on every render.
-  const [today] = useState(() => todayWeekday(timeZone))
+  // Read on every render: the page refreshes every 30 seconds, so after
+  // midnight the highlight moves with the server's "open all day today".
+  const today = todayWeekday(timeZone)
   return (
     <table className={styles.timetable}>
       <caption className={styles.h2}>שעות פתיחה</caption>
