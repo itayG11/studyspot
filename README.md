@@ -38,10 +38,26 @@ or rely on expensive occupancy sensors.
 
 - [Project plan](docs/PLAN.md) (Hebrew)
 - [Competitive analysis](docs/COMPETITIVE_ANALYSIS.md) (Hebrew)
+- [Interview report](docs/INTERVIEW_REPORT.md) (Hebrew, updated every stage)
+- [Campus data](docs/CAMPUS_DATA.md) (Hebrew, filled in by hand)
+
+## Running locally
+
+```bash
+cp .env.example .env              # then set a real POSTGRES_PASSWORD
+docker compose up -d              # PostgreSQL 16
+cd backend
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scriptsctivate
+pip install -e ".[dev]"
+pytest
+uvicorn app.main:app --reload     # http://localhost:8000/health, docs at /docs
+```
 
 ## Status
 
 - [x] Planning and research
+- [x] Project skeleton (FastAPI health check, PostgreSQL in Docker)
+- [ ] Campus data
 - [ ] Data model
 - [ ] Core API (spaces, check-in, bookings)
 - [ ] Authentication
