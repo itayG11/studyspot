@@ -8,6 +8,8 @@
 - GET  /me                        who am I
 - GET  /auth/providers            which sign-in buttons to show
 - POST /auth/demo/login           demo sign-in, only when DEMO_LOGIN_ENABLED
+- POST /auth/email/start          email a one-time code to a college address
+- POST /auth/email/verify         the code -> signed in
 """
 
 import hmac
@@ -30,11 +32,21 @@ from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.demo import demo_still_allowed, demo_user
+from app.email_codes import (
+    CODE_LIFETIME,
+    check_code,
+    code_key,
+    domain_is_supported,
+    identity_for,
+    issue_code,
+    normalize_email,
+)
 from app.errors import Refusal
+from app.mailer import BrevoMailer, LogMailer, Mailer
 from app.models import AuthProvider, AuthSession, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
-from app.ratelimit import refresh_limit, sign_in_limit, write_limit
-from app.schemas import DemoLoginIn, MeOut, ProvidersOut, TokenOut
+from app.ratelimit import email_start_limit, refresh_limit, sign_in_limit, write_limit
+from app.schemas import DemoLoginIn, EmailStartIn, EmailStartOut, EmailVerifyIn, MeOut, ProvidersOut, TokenOut
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
     SESSION_LIFETIME,
@@ -122,7 +134,80 @@ def _to_frontend(settings: Settings, error: str | None = None) -> RedirectRespon
 def list_providers(
     settings: SettingsDep, providers: Annotated[dict[str, Provider], Depends(get_providers)]
 ):
-    return ProvidersOut(providers=sorted(providers), demo=settings.demo_login_enabled)
+    return ProvidersOut(
+        providers=sorted(providers), demo=settings.demo_login_enabled, email=settings.email_login_enabled()
+    )
+
+
+def get_mailer(
+    settings: SettingsDep, http: Annotated[httpx.Client, Depends(get_http_client)]
+) -> Mailer | None:
+    if settings.brevo_api_key is not None:
+        return BrevoMailer(http, settings.brevo_api_key.get_secret_value(), settings.email_sender)
+    if settings.email_login_dev_log:
+        return LogMailer()
+    return None
+
+
+@router.post(
+    "/auth/email/start",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=EmailStartOut,
+    dependencies=[Depends(email_start_limit)],
+)
+def email_start(
+    body: EmailStartIn,
+    request: Request,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+    mailer: Annotated[Mailer | None, Depends(get_mailer)],
+):
+    """The same answer for a new and a known address: it never says who has
+    an account. Only whether the domain is supported, which is public."""
+    if not settings.email_login_enabled() or mailer is None:
+        raise HTTPException(404, "email_login_disabled")
+    _require_allowed_origin(request, settings)  # a page elsewhere cannot send mail through us
+    try:
+        email = normalize_email(body.email)
+        if not domain_is_supported(db, email):
+            raise Refusal(403, "email_domain_not_supported")
+        code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
+        mailer.send_code(email, code)  # before the commit: a failed email leaves no code
+    except Refusal as refusal:
+        db.rollback()
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
+
+
+@router.post("/auth/email/verify", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
+def email_verify(
+    body: EmailVerifyIn,
+    request: Request,
+    response: Response,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+):
+    if not settings.email_login_enabled():
+        raise HTTPException(404, "email_login_disabled")
+    _require_allowed_origin(request, settings)  # it sets the refresh cookie
+    try:
+        email = normalize_email(body.email)
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        try:
+            with db.begin_nested():  # a refusal below undoes only this sign-in's writes
+                user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now)
+                issued = start_session(db, user, now)
+        except IntegrityError:
+            raise Refusal(409, "concurrent_sign_in") from None
+    except Refusal as refusal:
+        db.commit()  # keep the counted wrong try, or the used code
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    _set_refresh_cookie(response, issued.refresh_token, settings)
+    return _token_out(db, user, issued.session, now, settings)
 
 
 @router.post("/auth/demo/login", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
@@ -219,7 +304,7 @@ def callback(
         claims = provider.verify_id_token(http, id_token, expected["nonce"])
         try:
             with db.begin_nested():  # a refusal below undoes only this sign-in's writes
-                user = sign_in(db, provider, provider.identity(claims), now, settings.open_sign_in_institution)
+                user = sign_in(db, provider.name, provider.identity(claims), now, settings.open_sign_in_institution)
                 issued = start_session(db, user, now)
         except IntegrityError:
             # The same first sign-in finished in another tab a moment ago.

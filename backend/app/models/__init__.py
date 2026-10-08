@@ -21,6 +21,7 @@ from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
 from app.models.people import (
     AuthProvider,
     AuthSession,
+    EmailSignInCode,
     InstitutionLoginRule,
     User,
     UserIdentity,
@@ -39,6 +40,7 @@ __all__ = [
     "BuildingStatus",
     "CheckIn",
     "CheckInEndReason",
+    "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
     "OpeningHours",

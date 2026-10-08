@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     UniqueConstraint,
     func,
@@ -27,6 +28,7 @@ class AuthProvider(enum.StrEnum):
     MICROSOFT = "microsoft"
     GOOGLE = "google"
     DEMO = "demo"  # the demo sign-in (app/demo.py); never in a login rule
+    EMAIL = "email"  # a one-time code sent to the address (app/email_codes.py)
 
 
 class User(Base):
@@ -77,7 +79,8 @@ class InstitutionLoginRule(Base):
     """Which sign-ins belong to an institution.
 
     Microsoft: a tenant id (the "tid" claim, signed by Microsoft).
-    Google: a Workspace domain (the "hd" claim). One rule, one institution.
+    Google: a Workspace domain (the "hd" claim). Email: the exact domain of
+    the address a one-time code was sent to. One rule, one institution.
     """
 
     __tablename__ = "institution_login_rules"
@@ -85,7 +88,7 @@ class InstitutionLoginRule(Base):
         UniqueConstraint("provider", "value"),
         CheckConstraint("value = lower(value) AND btrim(value) <> ''", name="value_lowercase"),
         # Demo users are placed in their institution directly, never by a rule.
-        CheckConstraint("provider IN ('microsoft', 'google')", name="real_provider"),
+        CheckConstraint("provider IN ('microsoft', 'google', 'email')", name="real_provider"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -117,3 +120,27 @@ class AuthSession(Base):
     replaced_by_id: Mapped[int | None] = mapped_column(
         ForeignKey("sessions.id", ondelete="SET NULL")
     )
+
+
+class EmailSignInCode(Base):
+    """A one-time sign-in code sent by email (app/email_codes.py).
+
+    Only an HMAC of the code is kept, keyed with a server secret: six digits
+    are a million values, so a plain hash would be reversed in a moment.
+    """
+
+    __tablename__ = "email_sign_in_codes"
+    __table_args__ = (
+        CheckConstraint("email = lower(email)", name="email_lowercase"),
+        CheckConstraint("expires_at > created_at", name="expires_after_creation"),
+        CheckConstraint("attempts >= 0", name="attempts_not_negative"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Wrong codes typed for this one; at MAX_ATTEMPTS it stops working.
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

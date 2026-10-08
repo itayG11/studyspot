@@ -121,11 +121,13 @@ def test_seed_rejects_a_place_on_a_floor_the_building_does_not_have(session: Ses
 
 
 
-def test_braude_sign_in_rules_are_its_two_microsoft_tenants(braude: Institution):
+def test_braude_sign_in_rules_are_its_microsoft_tenants_and_email_domains(braude: Institution):
     rules = {(r.provider.value, r.value) for r in braude.login_rules}
     assert rules == {
         ("microsoft", "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"),
         ("microsoft", "d4b0e69c-5394-4005-977c-7817ac32ca5e"),
+        ("email", "e.braude.ac.il"),
+        ("email", "braude.ac.il"),
     }
 
 
@@ -133,7 +135,7 @@ def test_seeding_again_adds_missing_login_rules(session: Session, braude: Instit
     braude.login_rules.clear()
     session.flush()
     again = seed_braude(session)
-    assert len(again.login_rules) == 2
+    assert len(again.login_rules) == 4
 
 
 def test_every_braude_building_is_on_the_map(braude: Institution):

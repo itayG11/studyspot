@@ -210,9 +210,28 @@ class ProvidersOut(BaseModel):
 
     providers: list[str]
     demo: bool
+    email: bool = False  # sign-in with a one-time code by email
 
 
 class DemoLoginIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     persona: Persona
+
+
+class EmailStartIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(max_length=320)
+
+
+class EmailStartOut(BaseModel):
+    expires_in: int  # seconds the code is valid
+
+
+class EmailVerifyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(max_length=320)
+    # [0-9], not \d: \d would also take digits of other scripts.
+    code: str = Field(pattern=r"^[0-9]{6}$")

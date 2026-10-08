@@ -176,11 +176,11 @@ def test_demo_sign_in_refuses_a_real_institution(make_client):
 
 
 def test_providers_lists_what_is_switched_on(make_client):
-    assert make_client().get("/auth/providers").json() == {"providers": [], "demo": False}
+    assert make_client().get("/auth/providers").json() == {"providers": [], "demo": False, "email": False}
     on = make_client(
         demo_login_enabled=True, microsoft_client_id="id", microsoft_client_secret="secret"
     )
-    assert on.get("/auth/providers").json() == {"providers": ["microsoft"], "demo": True}
+    assert on.get("/auth/providers").json() == {"providers": ["microsoft"], "demo": True, "email": False}
 
 
 def test_two_first_demo_sign_ins_at_once_get_a_clear_answer(demo_client, monkeypatch):

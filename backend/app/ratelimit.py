@@ -135,5 +135,8 @@ def per_user(name: str, limit: int, window_seconds: float) -> Callable:
 # backstop for the whole site (one small server): 600 sign-ins a minute is
 # far above a campus at its busiest hour.
 sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, total_limit=600)
+# Each start sends an email, so it is far stricter than sign-in. Per address
+# and per day there are limits in the database too (app/email_codes.py).
+email_start_limit = per_ip("email-start", limit=30, window_seconds=600, total_limit=200)
 refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seconds=60)
 write_limit = per_user("writes", limit=30, window_seconds=60)

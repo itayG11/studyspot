@@ -6,8 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import Institution, InstitutionLoginRule, User, UserIdentity
-from app.oidc import Provider, ProviderIdentity
+from app.models import AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity
+from app.oidc import ProviderIdentity
 
 # Anyone with a Google account can join the open campus, so new users there
 # are capped per day: a flood of sign-ins cannot fill the free database.
@@ -26,7 +26,7 @@ def _open_institution(db: Session, slug: str | None) -> Institution | None:
 
 
 def sign_in(
-    db: Session, provider: Provider, identity: ProviderIdentity, now: datetime, open_slug: str | None = None
+    db: Session, provider: AuthProvider, identity: ProviderIdentity, now: datetime, open_slug: str | None = None
 ) -> User:
     """Find or create the user. A sign-in that matches an institution's
     login rule joins that institution; any other joins the open campus, if
@@ -36,7 +36,7 @@ def sign_in(
     if identity.institution_key:
         rule = db.scalars(
             select(InstitutionLoginRule).where(
-                InstitutionLoginRule.provider == provider.name,
+                InstitutionLoginRule.provider == provider,
                 InstitutionLoginRule.value == identity.institution_key,
             )
         ).first()
@@ -49,7 +49,7 @@ def sign_in(
 
     link = db.scalars(
         select(UserIdentity).where(
-            UserIdentity.provider == provider.name, UserIdentity.subject == identity.subject
+            UserIdentity.provider == provider, UserIdentity.subject == identity.subject
         )
     ).first()
     if link is None:
@@ -68,7 +68,7 @@ def sign_in(
         )
         db.add(user)
         db.flush()
-        db.add(UserIdentity(user_id=user.id, provider=provider.name, subject=identity.subject))
+        db.add(UserIdentity(user_id=user.id, provider=provider, subject=identity.subject))
     else:
         user = db.get(User, link.user_id)
         if user.institution_id != institution_id:

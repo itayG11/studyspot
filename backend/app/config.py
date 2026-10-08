@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     # sign-in rules can be open (app/accounts.py), never Braude. Off when unset.
     open_sign_in_institution: str | None = None
 
+    # Sign-in with a one-time code by email (app/email_codes.py). On when a
+    # Brevo API key is set; EMAIL_SENDER is the From address, on a domain
+    # verified at Brevo. EMAIL_LOGIN_DEV_LOG prints codes to the server log
+    # instead, for development only: it is refused on a deployed site.
+    brevo_api_key: SecretStr | None = None
+    email_sender: str | None = None
+    email_login_dev_log: bool = False
+
     # Where the API and the web app live; used for redirect URLs and CORS.
     public_api_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
@@ -87,6 +95,23 @@ class Settings(BaseSettings):
             self.frontend_url = site
             self.public_api_url = f"{site}/api"
         return self
+
+    @field_validator("brevo_api_key", "email_sender", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value):
+        """BREVO_API_KEY= copied empty from .env.example means "not set"."""
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _email_sign_in(self) -> "Settings":
+        if self.email_login_dev_log and self.site_url:
+            raise ValueError("EMAIL_LOGIN_DEV_LOG would print sign-in codes to a deployed site's log")
+        if self.brevo_api_key is not None and not self.email_sender:
+            raise ValueError("BREVO_API_KEY needs EMAIL_SENDER, the address the codes are sent from")
+        return self
+
+    def email_login_enabled(self) -> bool:
+        return self.brevo_api_key is not None or self.email_login_dev_log
 
     def allowed_origins(self) -> list[str]:
         extra = [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]

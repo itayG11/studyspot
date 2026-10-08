@@ -138,6 +138,9 @@ BRAUDE = {
     "login_rules": [
         {"provider": "microsoft", "value": STUDENTS_TENANT},
         {"provider": "microsoft", "value": STAFF_TENANT},
+        # A one-time code sent to the college address: students, then staff.
+        {"provider": "email", "value": "e.braude.ac.il"},
+        {"provider": "email", "value": "braude.ac.il"},
     ],
     "default_hours": WEEK_AND_FRIDAY,
     "special_periods": [
