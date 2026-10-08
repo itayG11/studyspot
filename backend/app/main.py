@@ -9,17 +9,21 @@ import logging
 import os
 from collections.abc import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.activity import Activity
 from app.api import admin, auth, bookings, campus, checkins
 from app.config import Settings, get_settings
-from app.sweeper import run_forever
+from app.sweeper import run_forever, run_once, sweep_safely
 
 # Seconds between background sweeps; 0 turns the sweep off (tests do this).
 SWEEP_INTERVAL = float(os.environ.get("SWEEP_INTERVAL_SECONDS", "60"))
 
 logger = logging.getLogger("studyspot")
+
+# Real visits, so the sweep can rest while the site is quiet (app/activity.py).
+activity = Activity()
 
 
 def demo_warning(settings: Settings) -> str | None:
@@ -39,8 +43,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Start the background sweep with the server, stop it on shutdown."""
     if warning := demo_warning(get_settings()):
         logger.warning(warning)
-    task = asyncio.create_task(run_forever(SWEEP_INTERVAL)) if SWEEP_INTERVAL > 0 else None
+    task = None
+    if SWEEP_INTERVAL > 0:
+        task = asyncio.create_task(run_forever(SWEEP_INTERVAL, activity))
+    app.state.sweeping = task is not None
     yield
+    app.state.sweeping = False
     if task is not None:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -52,6 +60,19 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+app.state.sweeping = False  # until the lifespan starts the sweep
+
+
+@app.middleware("http")
+async def count_visits(request: Request, call_next) -> Response:
+    """Every request but the uptime monitor's is a visit. The visit that
+    ends a quiet spell first catches up on the sweep, so a booking whose
+    holder never came is already released when this visitor looks."""
+    if not request.url.path.endswith("/health") and activity.visit() and app.state.sweeping:
+        await sweep_safely(run_once)
+    return await call_next(request)
 
 
 @app.get("/health", tags=["system"])

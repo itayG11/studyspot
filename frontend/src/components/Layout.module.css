@@ -103,34 +103,60 @@
   border-radius: var(--r-pill);
 }
 
-.themeButton {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  color: var(--ink-2);
-  background: none;
-  border: 0;
-  border-radius: 50%;
+.themeSwitch {
+  /* A track with the sun at its start and the moon at its end. The thumb
+     sits under the theme on screen, whose icon turns light on it. */
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 60px;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--ink-3);
+  background: var(--stone-2);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-pill);
   cursor: pointer;
-  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
 }
 
-.themeButton svg {
-  width: 18px;
-  height: 18px;
+.themeSwitch svg {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  transition: color var(--dur-ui) ease;
 }
 
-.themeButton:focus-visible {
+.themeThumb {
+  position: absolute;
+  inset-block: 2px;
+  inset-inline-start: 3px;
+  width: 26px;
+  background: var(--ink);
+  border-radius: 50%;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-ui) var(--ease-out);
+}
+
+/* The page is right to left: the end of the track is to the left. */
+.themeSwitch[aria-checked='true'] .themeThumb {
+  transform: translateX(-26px);
+}
+
+.themeSwitch[aria-checked='false'] .themeSun,
+.themeSwitch[aria-checked='true'] .themeMoon {
+  color: var(--on-ink);
+}
+
+.themeSwitch:active .themeThumb {
+  scale: 0.92;
+}
+
+.themeSwitch:focus-visible {
   outline: 3px solid var(--ink);
-}
-
-@media (hover: hover) {
-  .themeButton:hover {
-    color: var(--ink);
-    background: var(--stone-2);
-  }
+  outline-offset: 2px;
 }
 
 .logout {

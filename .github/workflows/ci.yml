@@ -112,6 +112,13 @@ jobs:
         env:
           PYTHON: python
         run: npx playwright test
+      # The edge cases on a computer, a tablet and a phone, against the
+      # production build served the way it is deployed (app.site).
+      - name: Playwright, edge cases on three devices
+        working-directory: frontend
+        env:
+          PYTHON: python
+        run: npx playwright test -c playwright.edge.config.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

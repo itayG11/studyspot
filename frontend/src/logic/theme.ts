@@ -42,7 +42,15 @@ export function applyTheme(theme: Theme): void {
   }
 }
 
-// The header's button steps through the three, in this order.
-export function nextTheme(theme: Theme): Theme {
-  return CHOICES[(CHOICES.indexOf(theme) + 1) % CHOICES.length]
+// Is the theme on screen dark: the visitor's choice, or else the device's.
+export function shownDark(theme: Theme, deviceDark: boolean): boolean {
+  return theme === 'system' ? deviceDark : theme === 'dark'
+}
+
+// The header's switch shows the other theme. When that is what the device
+// shows anyway, the choice is dropped ("like the device"), so the site keeps
+// following the device, say when it turns dark at night.
+export function flipTheme(theme: Theme, deviceDark: boolean): Theme {
+  const wantDark = !shownDark(theme, deviceDark)
+  return wantDark === deviceDark ? 'system' : wantDark ? 'dark' : 'light'
 }

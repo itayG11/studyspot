@@ -280,6 +280,11 @@
     border-top-width: 24px;
   }
 
+  /* No break after the last one: it would print an empty sheet. */
+  .sign:last-child {
+    break-after: auto;
+  }
+
   .signName {
     font-size: 4.5rem;
   }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyTheme, nextTheme, readTheme, saveTheme, THEME_KEY } from './theme'
+import { applyTheme, flipTheme, shownDark, readTheme, saveTheme, THEME_KEY } from './theme'
 
 afterEach(() => {
   localStorage.clear()
@@ -52,9 +52,19 @@ describe('theme choice', () => {
     expect(colours()).toEqual(['#f5f2eb', '#131823'])
   })
 
-  it('the button goes round: like the device, light, dark', () => {
-    expect(nextTheme('system')).toBe('light')
-    expect(nextTheme('light')).toBe('dark')
-    expect(nextTheme('dark')).toBe('system')
+  it('a press shows the other theme, and saves "like the device" when that is it', () => {
+    expect(flipTheme('system', false)).toBe('dark')
+    expect(flipTheme('system', true)).toBe('light')
+    expect(flipTheme('dark', false)).toBe('system')
+    expect(flipTheme('dark', true)).toBe('light')
+    expect(flipTheme('light', true)).toBe('system')
+    expect(flipTheme('light', false)).toBe('dark')
+  })
+
+  it('what is shown: the choice, or else the device', () => {
+    expect(shownDark('dark', false)).toBe(true)
+    expect(shownDark('light', true)).toBe(false)
+    expect(shownDark('system', true)).toBe(true)
+    expect(shownDark('system', false)).toBe(false)
   })
 })

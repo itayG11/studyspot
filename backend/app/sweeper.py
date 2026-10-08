@@ -12,12 +12,14 @@ Usage, for a scheduled job:  python -m app.sweeper
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
+from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason
 
@@ -70,15 +72,22 @@ def run_once() -> SweepResult:
     return result
 
 
-async def run_forever(interval_seconds: float) -> None:
-    """Started by the app's lifespan. A failed round is logged and retried."""
+async def sweep_safely(sweep: Callable[[], object] = run_once) -> None:
+    """One round, in a worker thread. A failed round is logged, not raised."""
+    try:
+        result = await asyncio.to_thread(sweep)
+        if isinstance(result, SweepResult) and result != SweepResult(0, 0, 0, 0):
+            log.info("sweep: %s", result)
+    except Exception:
+        log.exception("sweep failed; retrying next round")
+
+
+async def run_forever(interval_seconds: float, activity: Activity, sweep: Callable[[], object] = run_once) -> None:
+    """Started by the app's lifespan. Sweeps only while the site is in use
+    (app/activity.py), so a quiet site leaves the database asleep."""
     while True:
-        try:
-            result = await asyncio.to_thread(run_once)
-            if result != SweepResult(0, 0, 0, 0):
-                log.info("sweep: %s", result)
-        except Exception:
-            log.exception("sweep failed; retrying next round")
+        if activity.busy():
+            await sweep_safely(sweep)
         await asyncio.sleep(interval_seconds)
 
 
