@@ -67,6 +67,8 @@ async function chooseLastDayFirstTime(form: Locator, length: string) {
   const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
   for (let i = (await days.count()) - 1; i >= 0; i--) {
     await days.nth(i).click()
+    // Count only once the form shows this day, not the one before it.
+    await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
     if ((await starts.count()) > 0) break
   }
   await starts.first().click()
