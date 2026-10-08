@@ -158,6 +158,7 @@ class MeOut(BaseModel):
     display_name: str
     role: UserRole
     institution_slug: str
+    is_demo: bool = False  # a shared demo user: no e-mail of its own, cannot be deleted
 
 
 class TokenOut(BaseModel):

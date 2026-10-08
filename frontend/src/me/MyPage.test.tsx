@@ -11,7 +11,7 @@ import { FAVORITES_KEY } from '../logic/favorites'
 import { jsonResponse, place } from '../test/fixtures'
 import { MyPage } from './MyPage'
 
-const ME = { id: 1, email: 'demo.student@studyspot.invalid', display_name: 'סטודנט לדוגמה', role: 'student', institution_slug: 'braude' }
+let ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
   booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
@@ -36,6 +36,7 @@ let calls: string[]
 
 beforeEach(() => {
   resetSessionForTests()
+  ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
   bookings = [LAB, ROOM]
   checkIn = CHECK_IN
   calls = []
@@ -89,7 +90,7 @@ function renderMe() {
 describe('MyPage', () => {
   it('shows who is signed in, the check-in and the bookings', async () => {
     renderMe()
-    expect(await screen.findByText('סטודנט לדוגמה')).toBeInTheDocument()
+    expect(await screen.findByText('נועה')).toBeInTheDocument()
     const current = screen.getByRole('region', { name: 'עכשיו' })
     expect(await within(current).findByText(/M206/)).toBeInTheDocument()
     expect(within(current).getByText(/עד 11:00/)).toBeInTheDocument()
@@ -138,6 +139,15 @@ describe('MyPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'כן, למחוק את כל המידע שלי' }))
     expect(calls).toContain('/me/delete')
     expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('the shared demo student: no delete button, and no made-up e-mail', async () => {
+    ME = { id: 2, email: 'demo.student@studyspot.invalid', display_name: 'סטודנט לדוגמה', role: 'student', institution_slug: 'braude', is_demo: true }
+    renderMe()
+    const account = await screen.findByRole('region', { name: 'החשבון' })
+    expect(within(account).queryByRole('button', { name: 'מחיקת החשבון שלי' })).not.toBeInTheDocument()
+    expect(screen.queryByText('demo.student@studyspot.invalid')).not.toBeInTheDocument()
+    expect(screen.getByText(/משתמש לדוגמה, משותף לכל המבקרים/)).toBeInTheDocument()
   })
 
   it('links to the privacy page from the account', async () => {

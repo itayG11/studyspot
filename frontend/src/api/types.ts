@@ -93,6 +93,7 @@ export interface Me {
   display_name: string
   role: UserRole
   institution_slug: string
+  is_demo: boolean // a shared demo user: no e-mail of its own, cannot be deleted
 }
 
 export interface TokenResponse {

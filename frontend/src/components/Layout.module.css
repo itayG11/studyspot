@@ -206,7 +206,20 @@
     display: none;
   }
 
+  /* Two rows, not three: the name, switch and sign-in/out on the first, the
+     links on the second. The user's name is in "my area" anyway. */
   .account {
+    order: 1;
+    gap: var(--s-2);
     font-size: 0.85rem;
+  }
+
+  .accountName {
+    display: none;
+  }
+
+  .nav {
+    order: 2;
+    flex-basis: 100%;
   }
 }

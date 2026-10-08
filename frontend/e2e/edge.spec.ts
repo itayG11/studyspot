@@ -44,7 +44,8 @@ async function signIn(page: Page, persona: 'student' | 'admin') {
   await page.goto('/login')
   const button = persona === 'student' ? 'כניסה כסטודנט לדוגמה' : 'כניסה כמנהל מוסד לדוגמה'
   await page.getByRole('button', { name: button }).click()
-  await expect(page.getByText(persona === 'student' ? 'סטודנט לדוגמה' : 'מנהל לדוגמה')).toBeVisible()
+  // Signed in: the header offers to sign out (on a phone it shows no name).
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
 }
 
 // Narrow screens book in a sheet from the bottom; wider ones in a side panel.

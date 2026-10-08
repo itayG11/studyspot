@@ -43,9 +43,13 @@ export function MyPage() {
         <div>
           <p className={styles.eyebrow}>האזור שלי</p>
           <h1 className={styles.name}>{user.display_name}</h1>
-          <span className={styles.email} dir="ltr">
-            {user.email}
-          </span>
+          {user.is_demo ? (
+            <span className={styles.email}>משתמש לדוגמה, משותף לכל המבקרים. להזמנות משלך, התחבר עם החשבון שלך.</span>
+          ) : (
+            <span className={styles.email} dir="ltr">
+              {user.email}
+            </span>
+          )}
         </div>
         <ButtonLink to="/scan" icon={<ScanLine aria-hidden="true" />} viewTransition>
           לסרוק קוד
@@ -240,7 +244,7 @@ function Favorites({ places }: { places: Place[] | null }) {
 }
 
 function Account() {
-  const { logout, logoutAll, deleteAccount } = useAuth()
+  const { user, logout, logoutAll, deleteAccount } = useAuth()
   const navigate = useNavigate()
   const account = useAction()
   return (
@@ -271,20 +275,24 @@ function Account() {
             })
           }
         />
-        <ConfirmButton
-          label="מחיקת החשבון שלי"
-          confirmLabel="כן, למחוק את כל המידע שלי"
-          busy={account.busy}
-          onConfirm={() =>
-            void account.run(async () => {
-              await deleteAccount()
-              navigate('/', { replace: true })
-            })
-          }
-        />
+        {/* The demo users are shared by every visitor: not theirs to delete. */}
+        {!user?.is_demo && (
+          <ConfirmButton
+            label="מחיקת החשבון שלי"
+            confirmLabel="כן, למחוק את כל המידע שלי"
+            busy={account.busy}
+            onConfirm={() =>
+              void account.run(async () => {
+                await deleteAccount()
+                navigate('/', { replace: true })
+              })
+            }
+          />
+        )}
       </div>
       <p className={styles.privacyNote}>
-        המחיקה כוללת את ההזמנות והכניסות שלך, ואי אפשר לבטל אותה. <Link to="/privacy">מדיניות הפרטיות</Link>
+        {!user?.is_demo && 'המחיקה כוללת את ההזמנות והכניסות שלך, ואי אפשר לבטל אותה. '}
+        <Link to="/privacy">מדיניות הפרטיות</Link>
       </p>
       {account.error && <Notice tone="error">{account.error}</Notice>}
     </section>

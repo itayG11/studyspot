@@ -488,3 +488,16 @@ def test_the_shared_demo_users_cannot_be_deleted(auth_client, session):
 
 def test_deleting_needs_a_signed_in_user(auth_client):
     assert auth_client.post("/me/delete").status_code == 401
+
+
+def test_me_says_whether_this_is_a_shared_demo_user(auth_client, fake, session):
+    from app.models import Institution
+
+    token = sign_in(auth_client, fake)
+    assert auth_client.get("/me", headers={"Authorization": f"Bearer {token}"}).json()["is_demo"] is False
+    session.add(Institution(name="קמפוס הדגמה", slug="demo"))
+    session.flush()
+    settings = app.dependency_overrides[get_settings]()
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(update={"demo_login_enabled": True})
+    demo = auth_client.post("/auth/demo/login", json={"persona": "student"}).json()["access_token"]
+    assert auth_client.get("/me", headers={"Authorization": f"Bearer {demo}"}).json()["is_demo"] is True

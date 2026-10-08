@@ -331,10 +331,7 @@ def delete_account(
     database removes what is theirs with it (ON DELETE CASCADE): sign-in
     identities, sessions, bookings and check-ins. The demo users are shared
     by every visitor, so they stay."""
-    is_demo = db.scalars(
-        select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
-    ).first()
-    if is_demo is not None:
+    if _is_demo(db, user):
         raise HTTPException(403, "demo_account")
     db.execute(delete(User).where(User.id == user.id))
     db.commit()
@@ -346,6 +343,12 @@ def me(user: Annotated[User, Depends(get_current_user)], db: SessionDep):
     return _me(db, user)
 
 
+def _is_demo(db: Session, user: User) -> bool:
+    return db.scalars(
+        select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
+    ).first() is not None
+
+
 def _me(db: Session, user: User) -> MeOut:
     institution = db.get(Institution, user.institution_id)
     return MeOut(
@@ -354,4 +357,5 @@ def _me(db: Session, user: User) -> MeOut:
         display_name=user.display_name,
         role=user.role,
         institution_slug=institution.slug,
+        is_demo=_is_demo(db, user),
     )
