@@ -102,13 +102,13 @@ def check_code(db: Session, email: str, code: str, now: datetime, key: bytes) ->
         .with_for_update()  # two tabs with the same code: the second waits, then sees it used
     ).first()
     if row is None or row.used_at is not None or row.expires_at <= now:
-        raise Refusal(400, "invalid_code")
+        raise Refusal(400, "email_code_invalid")
     if row.attempts >= MAX_ATTEMPTS:
-        raise Refusal(400, "too_many_attempts")
+        raise Refusal(400, "email_code_locked")
     if not hmac.compare_digest(row.code_hash, hash_code(key, email, code)):
         row.attempts += 1
         db.flush()
-        raise Refusal(400, "invalid_code")
+        raise Refusal(400, "email_code_invalid")
     row.used_at = now
     db.flush()
 

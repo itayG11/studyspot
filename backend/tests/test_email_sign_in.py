@@ -286,7 +286,7 @@ def test_a_code_works_once(client, mailer):
     assert verify(client, code).status_code == 200
     response = verify(client, code)
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid_code"
+    assert response.json()["detail"] == "email_code_invalid"
 
 
 def test_a_code_expires_after_ten_minutes(client, mailer):
@@ -294,7 +294,7 @@ def test_a_code_expires_after_ten_minutes(client, mailer):
     client.clock.now += CODE_LIFETIME
     response = verify(client, mailer.last_code())
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid_code"
+    assert response.json()["detail"] == "email_code_invalid"
 
 
 def test_only_the_newest_code_counts(client, mailer):
@@ -312,7 +312,7 @@ def test_a_wrong_code_is_refused(client, mailer):
     wrong = "000000" if mailer.last_code() != "000000" else "111111"
     response = verify(client, wrong)
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid_code"
+    assert response.json()["detail"] == "email_code_invalid"
 
 
 def test_after_five_wrong_tries_even_the_right_code_is_refused(client, mailer):
@@ -323,20 +323,20 @@ def test_after_five_wrong_tries_even_the_right_code_is_refused(client, mailer):
         assert verify(client, wrong).status_code == 400
     response = verify(client, right)
     assert response.status_code == 400
-    assert response.json()["detail"] == "too_many_attempts"
+    assert response.json()["detail"] == "email_code_locked"
 
 
 def test_a_code_belongs_to_its_address(client, mailer):
     start(client, "a@e.braude.ac.il")
     response = verify(client, mailer.last_code(), "b@e.braude.ac.il")
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid_code"
+    assert response.json()["detail"] == "email_code_invalid"
 
 
 def test_no_code_was_asked_for(client):
     response = verify(client, "123456")
     assert response.status_code == 400
-    assert response.json()["detail"] == "invalid_code"
+    assert response.json()["detail"] == "email_code_invalid"
 
 
 @pytest.mark.parametrize("code", ["12345", "1234567", "abcdef", "12 456", ""])
