@@ -144,7 +144,7 @@ def test_emails_are_trimmed_and_lowercased(raw, clean):
 
 
 @pytest.mark.parametrize(
-    "raw", ["", "no-at-sign", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
+    "raw", ["", "no-at-sign", "itay+2@e.braude.ac.il", '"a"@e.braude.ac.il', "itáy@e.braude.ac.il", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
 )
 def test_malformed_emails_are_refused(raw):
     with pytest.raises(Refusal) as refused:
@@ -412,3 +412,26 @@ def test_codes_are_never_printed_to_a_deployed_sites_log():
 def test_empty_mail_settings_mean_email_sign_in_is_off():
     settings = make_settings(email_login_dev_log=False, brevo_api_key="", email_sender=" ")
     assert settings.email_login_enabled() is False
+
+
+def test_codes_per_address_are_limited_per_day_too(client, mailer):
+    for _ in range(2):
+        for _ in range(5):
+            assert start(client).status_code == 202
+        client.clock.now += timedelta(hours=1, seconds=1)
+    response = start(client)
+    assert response.status_code == 429
+    assert response.json()["detail"] == "too_many_codes"
+    client.clock.now += timedelta(days=1)
+    assert start(client).status_code == 202
+
+
+def test_one_ip_address_cannot_use_up_the_daily_email_quota(client, mailer, monkeypatch):
+    # Made-up mailboxes at a real domain: each passes the per-address limit.
+    from app.ratelimit import LIMITERS
+
+    monkeypatch.setattr(LIMITERS["email-start-day"], "limit", 2)
+    assert start(client, "a@e.braude.ac.il").status_code == 202
+    assert start(client, "b@e.braude.ac.il").status_code == 202
+    assert start(client, "c@e.braude.ac.il").status_code == 429
+    assert len(mailer.sent) == 2

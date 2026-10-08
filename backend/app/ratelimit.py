@@ -137,6 +137,16 @@ def per_user(name: str, limit: int, window_seconds: float) -> Callable:
 sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, total_limit=600)
 # Each start sends an email, so it is far stricter than sign-in. Per address
 # and per day there are limits in the database too (app/email_codes.py).
-email_start_limit = per_ip("email-start", limit=30, window_seconds=600, total_limit=200)
+# The daily one keeps a single address from using up the site's daily email
+# quota (made-up mailboxes at a real domain); a campus behind one address
+# still has room, since a session lasts a week.
+_email_start_10_minutes = per_ip("email-start", limit=30, window_seconds=600, total_limit=200)
+_email_start_day = per_ip("email-start-day", limit=50, window_seconds=86_400)
+
+
+def email_start_limit(
+    _ten: Annotated[None, Depends(_email_start_10_minutes)], _day: Annotated[None, Depends(_email_start_day)]
+) -> None:
+    """Both limits, short and daily."""
 refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seconds=60)
 write_limit = per_user("writes", limit=30, window_seconds=60)

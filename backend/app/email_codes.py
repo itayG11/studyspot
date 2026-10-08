@@ -9,7 +9,8 @@
    constant time. Then the usual sign-in (app/accounts.py) runs, with the
    address as the identity and its domain as the institution key.
 
-Limits: CODES_PER_ADDRESS_PER_HOUR keeps one inbox from being flooded;
+Limits: CODES_PER_ADDRESS_PER_HOUR and _PER_DAY keep one inbox from being
+flooded and bound the guesses at one address;
 CODES_PER_DAY keeps the whole site under the free email plan's quota.
 """
 
@@ -29,12 +30,14 @@ from app.oidc import ProviderIdentity
 CODE_LIFETIME = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
 CODES_PER_ADDRESS_PER_HOUR = 5
+CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address
 CODES_PER_DAY = 250  # Brevo's free plan sends 300 a day
 KEEP_FOR = timedelta(days=1)  # older rows are deleted; the daily count needs one day
 
-# Plain on purpose: one @, no spaces, a domain with at least one dot.
-# The real check is that the email arrives.
-_EMAIL = re.compile(r"[^\s@]+@(?:[a-z0-9-]+\.)+[a-z0-9-]{2,}")
+# Plain on purpose: a domain with at least one dot. The real check is that
+# the email arrives. The part before the @ is letters, digits, dots, dashes
+# and underscores only: no "+tag", which would give one inbox many accounts.
+_EMAIL = re.compile(r"[a-z0-9._-]+@(?:[a-z0-9-]+\.)+[a-z0-9-]{2,}")
 
 
 def normalize_email(raw: str) -> str:
@@ -74,7 +77,12 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> str:
         .select_from(EmailSignInCode)
         .where(EmailSignInCode.email == email, EmailSignInCode.created_at > now - timedelta(hours=1))
     )
-    if recent >= CODES_PER_ADDRESS_PER_HOUR:
+    in_a_day = db.scalar(
+        select(func.count())
+        .select_from(EmailSignInCode)
+        .where(EmailSignInCode.email == email, EmailSignInCode.created_at > now - timedelta(days=1))
+    )
+    if recent >= CODES_PER_ADDRESS_PER_HOUR or in_a_day >= CODES_PER_ADDRESS_PER_DAY:
         raise Refusal(429, "too_many_codes")
     today = db.scalar(
         select(func.count()).select_from(EmailSignInCode).where(EmailSignInCode.created_at > now - timedelta(days=1))
