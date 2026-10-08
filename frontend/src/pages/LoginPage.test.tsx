@@ -170,8 +170,43 @@ describe('LoginPage email code', () => {
     await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     await userEvent.click(await screen.findByRole('button', { name: 'שליחת קוד חדש' }))
-    expect(await screen.findByText(/שלחנו קוד חדש אל/)).toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent(/שלחנו קוד חדש/)
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/email/start'))).toHaveLength(2)
+  })
+
+  it('says so when a new code is refused, and keeps the code step', async () => {
+    renderLogin()
+    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    await screen.findByLabelText('הקוד מהמייל')
+    const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      String(url).endsWith('/auth/email/start')
+        ? Promise.resolve(jsonResponse({ detail: 'too_many_codes' }, 429))
+        : base(url, init),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד חדש' }))
+    expect(await screen.findByText(/נשלחו כבר כמה קודים/)).toBeInTheDocument()
+    expect(screen.getByLabelText('הקוד מהמייל')).toBeInTheDocument()
+  })
+
+  it('shows the spinner only on the button whose action is running', async () => {
+    renderLogin()
+    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    await screen.findByLabelText('הקוד מהמייל')
+    let release!: () => void
+    const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      String(url).endsWith('/auth/email/start')
+        ? new Promise<Response>((done) => (release = () => done(jsonResponse({ expires_in: 600 }, 202))))
+        : base(url, init),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד חדש' }))
+    expect(screen.getByRole('button', { name: 'שליחת קוד חדש' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'כניסה' })).not.toHaveAttribute('aria-busy')
+    release()
+    expect(await screen.findByRole('status')).toHaveTextContent(/שלחנו קוד חדש/)
   })
 
   it('is hidden when the server has it off', async () => {

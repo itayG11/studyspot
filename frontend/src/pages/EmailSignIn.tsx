@@ -19,28 +19,32 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
+  // Which action is on its way: only its own button shows the spinner.
+  const [busy, setBusy] = useState<'send' | 'verify' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [resent, setResent] = useState(false)
+  // Read out by screen readers; always in the page, so every change is heard.
+  const [status, setStatus] = useState('')
+  const [changedAddress, setChangedAddress] = useState(false)
   const id = useId()
 
-  async function run(action: () => Promise<void>) {
-    setBusy(true)
+  async function run(action: 'send' | 'verify', work: () => Promise<void>) {
+    setBusy(action)
     setError(null)
     try {
-      await action()
+      await work()
     } catch (reason) {
       setError(errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error'))
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   function sendCode(event?: FormEvent) {
     event?.preventDefault()
-    void run(async () => {
+    const again = step === 'code'
+    void run('send', async () => {
       await emailStart(email.trim())
-      setResent(step === 'code')
+      setStatus(again ? `שלחנו קוד חדש. השעה: ${new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'שלחנו קוד')
       setStep('code')
       setCode('')
     })
@@ -48,7 +52,7 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
 
   function checkCode(event: FormEvent) {
     event.preventDefault()
-    void run(async () => {
+    void run('verify', async () => {
       await emailVerify(email.trim(), code)
       onSignedIn()
     })
@@ -76,16 +80,17 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
             maxLength={254}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            // Back from the code step: the field to fix is ready to type in.
+            autoFocus={changedAddress}
           />
-          <Button type="submit" block busy={busy}>
+          <Button type="submit" block busy={busy === 'send'}>
             שליחת קוד
           </Button>
         </form>
       ) : (
         <form className={styles.emailForm} onSubmit={checkCode}>
-          <p className={styles.demoText} aria-live="polite">
-            {resent ? 'שלחנו קוד חדש אל' : 'שלחנו קוד בן 6 ספרות אל'}{' '}
-            <bdi dir="ltr">{email.trim().toLowerCase()}</bdi>. הקוד תקף ל-10 דקות.
+          <p className={styles.demoText}>
+            שלחנו קוד בן 6 ספרות אל <bdi dir="ltr">{email.trim().toLowerCase()}</bdi>. הקוד תקף ל-10 דקות.
           </p>
           <label htmlFor={`${id}-code`} className={styles.fieldLabel}>
             הקוד מהמייל
@@ -106,23 +111,24 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
             autoFocus
           />
           <span id={`${id}-code-hint`} className={styles.fieldHint}>
-            6 ספרות. לא הגיע? כדאי לבדוק גם בתיקיית הספאם.
+            קוד בן 6 ספרות. לא הגיע? כדאי לבדוק גם בתיקיית הספאם.
           </span>
-          <Button type="submit" block busy={busy} disabled={code.length !== 6}>
+          <Button type="submit" block busy={busy === 'verify'} disabled={code.length !== 6 || busy === 'send'}>
             כניסה
           </Button>
           <div className={styles.emailActions}>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => sendCode()}>
+            <Button variant="ghost" size="sm" busy={busy === 'send'} disabled={busy === 'verify'} onClick={() => sendCode()}>
               שליחת קוד חדש
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              disabled={busy}
+              disabled={busy !== null}
               onClick={() => {
+                setChangedAddress(true)
                 setStep('email')
                 setError(null)
-                setResent(false)
+                setStatus('')
               }}
             >
               שינוי כתובת
@@ -131,6 +137,9 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
         </form>
       )}
 
+      <p className="visually-hidden" role="status">
+        {status}
+      </p>
       {error && <Notice tone="error">{error}</Notice>}
     </div>
   )

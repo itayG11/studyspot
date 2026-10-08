@@ -43,7 +43,7 @@ from app.email_codes import (
 )
 from app.errors import Refusal
 from app.mailer import BrevoMailer, LogMailer, Mailer
-from app.models import AuthProvider, AuthSession, Institution, User, UserIdentity
+from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.ratelimit import email_start_limit, refresh_limit, sign_in_limit, write_limit
 from app.schemas import DemoLoginIn, EmailStartIn, EmailStartOut, EmailVerifyIn, MeOut, ProvidersOut, TokenOut
@@ -165,19 +165,27 @@ def email_start(
 ):
     """The same answer for a new and a known address: it never says who has
     an account. Only whether the domain is supported, which is public."""
+    _require_allowed_origin(request, settings)  # a page elsewhere cannot send mail through us
     if not settings.email_login_enabled() or mailer is None:
         raise HTTPException(404, "email_login_disabled")
-    _require_allowed_origin(request, settings)  # a page elsewhere cannot send mail through us
     try:
         email = normalize_email(body.email)
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
-        code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
-        mailer.send_code(email, code)  # before the commit: a failed email leaves no code
+        code_id, code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
     except Refusal as refusal:
         db.rollback()
         raise HTTPException(refusal.status, refusal.code) from None
+    # Committed before the email goes out: no database connection or lock
+    # waits on the mail service, which may take seconds.
     db.commit()
+    try:
+        mailer.send_code(email, code)
+    except Refusal as refusal:
+        # A code that never arrived does not count against the limits.
+        db.execute(delete(EmailSignInCode).where(EmailSignInCode.id == code_id))
+        db.commit()
+        raise HTTPException(refusal.status, refusal.code) from None
     return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
 
 
@@ -190,9 +198,9 @@ def email_verify(
     settings: SettingsDep,
     now: NowDep,
 ):
+    _require_allowed_origin(request, settings)  # it sets the refresh cookie
     if not settings.email_login_enabled():
         raise HTTPException(404, "email_login_disabled")
-    _require_allowed_origin(request, settings)  # it sets the refresh cookie
     try:
         email = normalize_email(body.email)
         check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
@@ -201,7 +209,10 @@ def email_verify(
                 user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now)
                 issued = start_session(db, user, now)
         except IntegrityError:
-            raise Refusal(409, "concurrent_sign_in") from None
+            # The same first sign-in finished in another tab a moment ago.
+            # Undo everything, the used code too: "try again" must work.
+            db.rollback()
+            raise HTTPException(409, "concurrent_sign_in") from None
     except Refusal as refusal:
         db.commit()  # keep the counted wrong try, or the used code
         raise HTTPException(refusal.status, refusal.code) from None

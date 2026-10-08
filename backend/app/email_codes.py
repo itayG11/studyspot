@@ -20,7 +20,7 @@ import re
 import secrets
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
@@ -69,8 +69,11 @@ def domain_is_supported(db: Session, email: str) -> bool:
     ).first() is not None
 
 
-def issue_code(db: Session, email: str, now: datetime, key: bytes) -> str:
-    """Store a new code for the address and return it, to be emailed."""
+def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int, str]:
+    """Store a new code for the address; return its row id and the code, to
+    be emailed. Requests for one address wait for each other here (a lock
+    held until commit), so ten at once cannot all pass the counts below."""
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:email))"), {"email": email})
     db.execute(delete(EmailSignInCode).where(EmailSignInCode.created_at < now - KEEP_FOR))
     recent = db.scalar(
         select(func.count())
@@ -90,13 +93,12 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> str:
     if today >= CODES_PER_DAY:
         raise Refusal(429, "email_daily_limit")
     code = f"{secrets.randbelow(1_000_000):06d}"
-    db.add(
-        EmailSignInCode(
-            email=email, code_hash=hash_code(key, email, code), created_at=now, expires_at=now + CODE_LIFETIME
-        )
+    row = EmailSignInCode(
+        email=email, code_hash=hash_code(key, email, code), created_at=now, expires_at=now + CODE_LIFETIME
     )
+    db.add(row)
     db.flush()
-    return code
+    return row.id, code
 
 
 def check_code(db: Session, email: str, code: str, now: datetime, key: bytes) -> None:

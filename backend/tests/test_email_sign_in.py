@@ -14,13 +14,22 @@ from conftest import SUNDAY_10AM, Clock
 from factories import assert_rejected
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from app.api.auth import get_mailer
 from app.api.deps import get_session
 from app.clock import get_now
 from app.config import Settings, get_settings
-from app.email_codes import CODE_LIFETIME, MAX_ATTEMPTS, hash_code, normalize_email
+from app.email_codes import (
+    CODE_LIFETIME,
+    CODES_PER_ADDRESS_PER_HOUR,
+    MAX_ATTEMPTS,
+    check_code,
+    hash_code,
+    issue_code,
+    normalize_email,
+)
 from app.errors import Refusal
 from app.mailer import BrevoMailer
 from app.main import app
@@ -435,3 +444,84 @@ def test_one_ip_address_cannot_use_up_the_daily_email_quota(client, mailer, monk
     assert start(client, "b@e.braude.ac.il").status_code == 202
     assert start(client, "c@e.braude.ac.il").status_code == 429
     assert len(mailer.sent) == 2
+
+
+def test_verify_is_off_without_a_mail_service(make_client):
+    response = verify(make_client(email_login_dev_log=False), "123456")
+    assert response.status_code == 404
+
+
+def test_a_lost_sign_in_race_keeps_the_code_for_the_retry(client, mailer, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+
+    from app.api import auth
+
+    start(client)
+    code = mailer.last_code()
+
+    def lost_the_race(*_args, **_kwargs):
+        raise IntegrityError("INSERT INTO user_identities", {}, Exception("duplicate key"))
+
+    monkeypatch.setattr(auth, "sign_in", lost_the_race)
+    response = verify(client, code)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "concurrent_sign_in"
+    monkeypatch.undo()
+    assert verify(client, code).status_code == 200
+
+
+# --- At the same moment, through separate connections (real commits) --------------
+
+RACE_KEY = b"race-key"
+
+
+def _race(engine, count, work):
+    """Runs work(session) in `count` threads that start together."""
+    import threading
+
+    start_together = threading.Barrier(count)
+    outcomes: list[str] = []
+    lock = threading.Lock()
+
+    def run():
+        with Session(engine) as db:
+            start_together.wait()
+            try:
+                work(db)
+                db.commit()
+                outcome = "ok"
+            except Refusal as refusal:
+                db.rollback()
+                outcome = refusal.code
+        with lock:
+            outcomes.append(outcome)
+
+    threads = [threading.Thread(target=run) for _ in range(count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    return outcomes
+
+
+@pytest.fixture
+def race_email(engine):
+    email = "race@e.braude.ac.il"
+    yield email
+    with Session(engine) as db:
+        db.execute(delete(EmailSignInCode).where(EmailSignInCode.email == email))
+        db.commit()
+
+
+def test_ten_code_requests_at_once_stay_within_the_hourly_limit(engine, race_email):
+    outcomes = _race(engine, 10, lambda db: issue_code(db, race_email, SUNDAY_10AM, RACE_KEY))
+    assert outcomes.count("ok") == CODES_PER_ADDRESS_PER_HOUR
+    assert outcomes.count("too_many_codes") == 10 - CODES_PER_ADDRESS_PER_HOUR
+
+
+def test_one_code_typed_in_two_tabs_at_once_signs_in_once(engine, race_email):
+    with Session(engine) as db:
+        _, code = issue_code(db, race_email, SUNDAY_10AM, RACE_KEY)
+        db.commit()
+    outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY))
+    assert sorted(outcomes) == ["email_code_invalid", "ok"]
