@@ -34,13 +34,18 @@ async function firstPlace(page: Page, name: string): Promise<number> {
 for (const [label, viewport, colorScheme] of [
   ['computer', { width: 1280, height: 860 }, 'light'],
   ['phone', { width: 390, height: 844 }, 'light'],
-  // The dark theme has its own colours, so its contrast is checked too
+  // The dark theme has its own colours, so its contrast is checked too:
+  // once by the device's setting, once by the visitor's own choice
   ['computer, dark', { width: 1280, height: 860 }, 'dark'],
-  ['phone, dark', { width: 390, height: 844 }, 'dark'],
+  ['phone, dark by choice', { width: 390, height: 844 }, 'chosen dark'],
 ] as const) {
   test(`no automatic accessibility problems, ${label}`, async ({ page }) => {
     await page.setViewportSize(viewport)
-    await page.emulateMedia({ colorScheme })
+    if (colorScheme === 'chosen dark') {
+      await page.addInitScript("localStorage.setItem('studyspot:theme', 'dark')")
+    } else {
+      await page.emulateMedia({ colorScheme })
+    }
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await check(page, 'home')
@@ -72,5 +77,13 @@ for (const [label, viewport, colorScheme] of [
 
     await page.goto('/nowhere')
     await check(page, 'not found')
+
+    // The admin's signs: paper-white in both themes, with screen-only buttons
+    await page.context().clearCookies() // the demo student signs out
+    await page.goto('/login')
+    await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
+    await page.getByRole('link', { name: 'ניהול' }).click()
+    await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(10)
+    await check(page, 'admin signs')
   })
 }

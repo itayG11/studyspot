@@ -41,7 +41,7 @@
 }
 
 .sheet[open]::backdrop {
-  background: rgb(20 32 58 / 40%);
+  background: var(--backdrop);
   transition-duration: var(--dur-sheet);
 }
 

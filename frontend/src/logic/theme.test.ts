@@ -39,6 +39,19 @@ describe('theme choice', () => {
     expect(document.documentElement.dataset.theme).toBeUndefined()
   })
 
+  it("the browser bar's colour follows the choice, and the device again after", () => {
+    document.head.innerHTML =
+      '<meta name="theme-color" content="#f5f2eb" media="(prefers-color-scheme: light)">' +
+      '<meta name="theme-color" content="#131823" media="(prefers-color-scheme: dark)">'
+    const colours = () => [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((m) => m.content)
+    applyTheme('dark')
+    expect(colours()).toEqual(['#131823', '#131823'])
+    applyTheme('light')
+    expect(colours()).toEqual(['#f5f2eb', '#f5f2eb'])
+    applyTheme('system')
+    expect(colours()).toEqual(['#f5f2eb', '#131823'])
+  })
+
   it('the button goes round: like the device, light, dark', () => {
     expect(nextTheme('system')).toBe('light')
     expect(nextTheme('light')).toBe('dark')

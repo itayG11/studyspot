@@ -99,10 +99,22 @@
   gap: var(--s-3);
   padding: var(--s-6) var(--s-5) var(--s-5);
   text-align: center;
-  /* Paper: white with dark ink in both themes, on screen as when printed. */
+  /* Paper: white with dark ink in both themes, on screen as when printed.
+     The light values of every token used inside it, buttons included. */
+  color-scheme: light;
+  --stone-0: #fdfcf9;
+  --stone-1: #f5f2eb;
+  --stone-2: #ebe6da;
+  --stone-3: #d9d2c2;
   --ink: #14203a;
+  --ink-2: #46506a;
   --ink-3: #666e82;
   --on-ink: #fdfcf9;
+  --full: #b42f25;
+  --full-tint: #fbe5e1;
+  --on-full: #fff;
+  --ring: 0 0 0 3px rgb(20 32 58 / 22%);
+  --hairline: rgb(20 32 58 / 8%);
   color: var(--ink);
   background: #fff;
   border-radius: var(--r-lg);

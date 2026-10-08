@@ -85,6 +85,7 @@
   --shadow-3: 0 4px 8px rgb(20 32 58 / 6%), 0 28px 56px -20px rgb(20 32 58 / 32%);
   --ring: 0 0 0 3px rgb(20 32 58 / 22%);
   --hairline: rgb(20 32 58 / 8%);
+  --backdrop: rgb(20 32 58 / 40%); /* behind a sheet */
   --shimmer: rgb(255 255 255 / 55%); /* the light passing over a skeleton */
   --map-tiles: none; /* a filter on the map's pictures */
 
@@ -142,6 +143,7 @@
     --shadow-3: 0 4px 8px rgb(0 0 0 / 30%), 0 28px 56px -20px rgb(0 0 0 / 60%);
     --ring: 0 0 0 3px rgb(232 236 243 / 30%);
     --hairline: rgb(232 236 243 / 10%);
+    --backdrop: rgb(0 0 0 / 60%);
     --shimmer: rgb(255 255 255 / 7%);
     --map-tiles: brightness(0.78) contrast(1.08);
   }
@@ -174,6 +176,7 @@
   --shadow-3: 0 4px 8px rgb(0 0 0 / 30%), 0 28px 56px -20px rgb(0 0 0 / 60%);
   --ring: 0 0 0 3px rgb(232 236 243 / 30%);
   --hairline: rgb(232 236 243 / 10%);
+  --backdrop: rgb(0 0 0 / 60%);
   --shimmer: rgb(255 255 255 / 7%);
   --map-tiles: brightness(0.78) contrast(1.08);
 }

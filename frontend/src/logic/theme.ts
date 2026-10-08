@@ -28,10 +28,18 @@ export function saveTheme(theme: Theme): void {
   }
 }
 
+// The browser bar's colour, as the page background (index.html has one meta
+// for each device setting; a choice sets both to its own colour).
+const BAR = { light: '#f5f2eb', dark: '#131823' } as const
+
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement
   if (theme === 'system') delete root.dataset.theme
   else root.dataset.theme = theme
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    const device = meta.getAttribute('media')?.includes('dark') ? 'dark' : 'light'
+    meta.content = BAR[theme === 'system' ? device : theme]
+  }
 }
 
 // The header's button steps through the three, in this order.

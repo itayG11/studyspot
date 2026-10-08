@@ -16,8 +16,8 @@ import { router } from './router'
 import { ToastProvider } from './ui/Toast'
 import { applyTheme, readTheme } from './logic/theme'
 
-// The visitor's own light or dark choice, before the first paint. (Not a
-// script in index.html: the security policy allows no inline scripts.)
+// The visitor's own light or dark choice. public/theme-init.js already set
+// it before the first paint; this also sets the browser bar's colour.
 applyTheme(readTheme())
 
 createRoot(document.getElementById('root')!).render(
