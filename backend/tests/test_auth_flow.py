@@ -368,3 +368,64 @@ def test_non_json_token_response_is_refused_cleanly(auth_client, fake):
     )
     response = finish_login(auth_client, fake, microsoft_claims())
     assert redirect_error(response) == "token_exchange_failed"
+
+
+# --- An open campus: any Google account, as a student ------------------------
+# The live demo lets visitors sign in with their own account, so each has
+# their own bookings. Only an institution with no sign-in rules can be open:
+# Braude can never be reached this way.
+
+
+def personal_google(sub="g-personal-1", **extra) -> dict:
+    return {"iss": "https://accounts.google.com", "sub": sub, "name": "Visitor", "email": "visitor@gmail.com", "email_verified": True, **extra}
+
+
+@pytest.fixture
+def open_campus(session, auth_client):
+    from app.models import Institution
+
+    demo = Institution(name="קמפוס הדגמה", slug="demo")
+    session.add(demo)
+    session.flush()
+    settings = app.dependency_overrides[get_settings]()
+    open_settings = settings.model_copy(update={"open_sign_in_institution": "demo"})
+    app.dependency_overrides[get_settings] = lambda: open_settings
+    return demo
+
+
+def test_a_personal_google_account_joins_the_open_campus_as_a_student(auth_client, fake, session, open_campus):
+    from app.models import UserRole
+
+    response = finish_login(auth_client, fake, personal_google(), provider="google")
+    assert redirect_error(response) is None
+    user = session.scalars(select(User).where(User.email == "visitor@gmail.com")).one()
+    assert user.institution_id == open_campus.id
+    assert user.role == UserRole.STUDENT
+
+
+def test_two_visitors_are_two_users(auth_client, fake, session, open_campus):
+    finish_login(auth_client, fake, personal_google(sub="g-a", email="a@gmail.com"), provider="google")
+    finish_login(auth_client, fake, personal_google(sub="g-b", email="b@gmail.com"), provider="google")
+    emails = set(session.scalars(select(User.email).where(User.institution_id == open_campus.id)))
+    assert emails == {"a@gmail.com", "b@gmail.com"}
+
+
+def test_an_institution_with_sign_in_rules_is_never_open(auth_client, fake, session, braude):
+    # Pointed at Braude by mistake: refused, and nobody is created.
+    settings = app.dependency_overrides[get_settings]()
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(update={"open_sign_in_institution": braude.slug})
+    before = users_count(session)
+    response = finish_login(auth_client, fake, personal_google(), provider="google")
+    assert redirect_error(response) == "institution_not_supported"
+    assert users_count(session) == before
+
+
+def test_a_braude_sign_in_still_goes_to_braude_when_a_campus_is_open(auth_client, fake, session, braude, open_campus):
+    sign_in(auth_client, fake)
+    user = session.scalars(select(User).order_by(User.id.desc())).first()
+    assert user.institution_id == braude.id
+
+
+def test_no_open_campus_unless_configured(auth_client, fake):
+    response = finish_login(auth_client, fake, personal_google(), provider="google")
+    assert redirect_error(response) == "institution_not_supported"

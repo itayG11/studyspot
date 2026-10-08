@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # The demo campus (app/seed/demo.py). Demo sign-in refuses an institution
     # with real sign-in rules, so it can never be pointed at Braude.
     demo_institution: str = "demo"
+    # An open campus: a Google or Microsoft account that matches no
+    # institution's sign-in rule joins this one as a student, so visitors of
+    # the live demo each get a user of their own. Only an institution with no
+    # sign-in rules can be open (app/accounts.py), never Braude. Off when unset.
+    open_sign_in_institution: str | None = None
 
     # Where the API and the web app live; used for redirect URLs and CORS.
     public_api_url: str = "http://localhost:8000"

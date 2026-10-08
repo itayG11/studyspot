@@ -218,7 +218,7 @@ def callback(
         claims = provider.verify_id_token(http, id_token, expected["nonce"])
         try:
             with db.begin_nested():  # a refusal below undoes only this sign-in's writes
-                user = sign_in(db, provider, provider.identity(claims), now)
+                user = sign_in(db, provider, provider.identity(claims), now, settings.open_sign_in_institution)
                 issued = start_session(db, user, now)
         except IntegrityError:
             # The same first sign-in finished in another tab a moment ago.
