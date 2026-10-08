@@ -20,6 +20,16 @@ function toFinder(smooth: boolean) {
   finder.focus({ preventScroll: true })
 }
 
+// The header's ask is done once acted on: taken out of this history entry
+// (React Router keeps it in history.state.usr), so a reload starts at the
+// story again and Back/Forward do not glide. Directly on history, not as a
+// navigation, which would scroll the page back to the top.
+function forgetToFinder() {
+  const entry = window.history.state as { usr?: { toFinder?: number } } | null
+  if (entry?.usr?.toFinder === undefined) return
+  window.history.replaceState({ ...entry, usr: undefined }, '')
+}
+
 // One function for the life of the page, so the story is not drawn again
 // on every keystroke in the search below it (it is memo'd).
 const smoothToFinder = () => toFinder(true)
@@ -46,6 +56,7 @@ export function HomePage() {
     if (ready && skipStory.current) {
       skipStory.current = false
       toFinder(false)
+      forgetToFinder()
     }
   }, [ready])
 
@@ -55,6 +66,7 @@ export function HomePage() {
   useEffect(() => {
     if (toFinderAsked === undefined || toFinderAsked === firstAsk.current) return
     smoothToFinder()
+    forgetToFinder()
   }, [toFinderAsked])
 
   return (

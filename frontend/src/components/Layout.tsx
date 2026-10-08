@@ -52,6 +52,8 @@ export function Layout() {
             end
             className={styles.navLink}
             onClick={(event) => {
+              // Ctrl, Cmd or Shift: the browser's own new tab or window.
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
               event.preventDefault()
               navigate('/', { state: { toFinder: Date.now() }, viewTransition: true })
             }}

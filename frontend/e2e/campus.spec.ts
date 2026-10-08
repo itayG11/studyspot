@@ -63,3 +63,16 @@ test('"search for a place" in the header takes you to the search, from the top o
   await page.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'חיפוש מקום' }).click()
   await expect(search).toBeInViewport()
 })
+
+test('the header link keeps the browser\'s own ways: ctrl-click opens a tab, and a reload starts at the story', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const link = page.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'חיפוש מקום' })
+  const [tab] = await Promise.all([page.context().waitForEvent('page'), link.click({ modifiers: ['ControlOrMeta'] })])
+  await tab.close()
+
+  await link.click()
+  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1 })).toBeInViewport()
+})

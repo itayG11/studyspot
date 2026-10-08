@@ -66,10 +66,13 @@ async function openBookingForm(page: Page): Promise<Locator> {
 async function chooseLastDayFirstTime(form: Locator, length: string) {
   const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
   const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  await expect(days.first()).toBeVisible() // the form loads its days first
   for (let i = (await days.count()) - 1; i >= 0; i--) {
     await days.nth(i).click()
     // Count only once the form shows this day, not the one before it.
     await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
+    // The day's times load after the click: wait for them, free or not.
+    await expect(form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button').first()).toBeVisible()
     if ((await starts.count()) > 0) break
   }
   await starts.first().click()
