@@ -3,7 +3,7 @@
   padding: var(--s-5) var(--s-4);
   /* A dotted floor plan under the stations. */
   background:
-    radial-gradient(circle, rgb(20 32 58 / 14%) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    radial-gradient(circle, color-mix(in srgb, var(--ink) 14%, transparent) 1px, transparent 1.5px) 0 0 / 14px 14px,
     var(--stone-0);
   border: 1px solid var(--stone-3);
   border-radius: var(--r-lg);
@@ -102,7 +102,7 @@ button.seat:focus-visible {
 .taken {
   --seat: var(--full);
   --seat-tint: var(--full-tint);
-  background-image: repeating-linear-gradient(45deg, transparent 0 4px, rgb(180 47 37 / 14%) 4px 8px);
+  background-image: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in srgb, var(--full) 16%, transparent) 4px 8px);
 }
 
 .held {

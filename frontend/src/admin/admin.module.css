@@ -99,6 +99,11 @@
   gap: var(--s-3);
   padding: var(--s-6) var(--s-5) var(--s-5);
   text-align: center;
+  /* Paper: white with dark ink in both themes, on screen as when printed. */
+  --ink: #14203a;
+  --ink-3: #666e82;
+  --on-ink: #fdfcf9;
+  color: var(--ink);
   background: #fff;
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-2);
@@ -208,6 +213,11 @@
   font: 500 var(--text-xs) var(--font-mono);
   color: var(--ink-2);
   direction: ltr;
+}
+
+/* Dimmed at night, like the finder's map. */
+.pickMap :global(.leaflet-tile-pane) {
+  filter: var(--map-tiles);
 }
 
 .pickMap {

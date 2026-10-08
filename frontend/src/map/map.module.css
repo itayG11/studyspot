@@ -30,8 +30,8 @@
   gap: 0.45rem;
   padding: 0.3rem 0.7rem;
   font: 600 var(--text-xs) var(--font-body);
-  color: var(--on-ink);
-  background: var(--ink);
+  color: var(--on-night);
+  background: var(--night);
   border-radius: var(--r-pill);
   direction: rtl;
 }
@@ -111,4 +111,26 @@
   .frame :global(.marker-selected) {
     animation: none;
   }
+}
+
+/* At night the map's pictures are dimmed a little, so a bright map does
+   not glare in a dark page (--map-tiles is "none" in the light theme). */
+.frame :global(.leaflet-tile-pane) {
+  filter: var(--map-tiles);
+}
+
+/* Leaflet's own zoom buttons and credit line, in the site's colours. */
+.frame :global(.leaflet-bar a) {
+  color: var(--ink);
+  background: var(--stone-0);
+  border-color: var(--stone-3);
+}
+
+.frame :global(.leaflet-control-attribution) {
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--stone-0) 85%, transparent);
+}
+
+.frame :global(.leaflet-control-attribution a) {
+  color: var(--ink);
 }

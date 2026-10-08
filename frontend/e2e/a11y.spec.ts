@@ -14,10 +14,12 @@ test.beforeEach(async ({ page }) => {
 
 async function check(page: Page, what: string) {
   // Text that is still fading in is measured as faint: wait for the
-  // entrance animations (the endless ones, like a live dot, never end).
+  // entrance animations. Two kinds never end and are skipped: the endless
+  // ones, like a live dot, and the story's scroll-driven ones, which follow
+  // the scroll bar rather than the clock and so always read as running.
   // (A string: it runs in the page, and this file is typed without the DOM.)
   await page.waitForFunction(
-    "document.getAnimations().every((a) => a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
+    "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
   )
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
   const problems = result.violations.map((v) => `${what}: ${v.id} (${v.impact}) ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`)
@@ -29,12 +31,16 @@ async function firstPlace(page: Page, name: string): Promise<number> {
   return places.find((p: { name: string }) => p.name === name).id
 }
 
-for (const [label, viewport] of [
-  ['computer', { width: 1280, height: 860 }],
-  ['phone', { width: 390, height: 844 }],
+for (const [label, viewport, colorScheme] of [
+  ['computer', { width: 1280, height: 860 }, 'light'],
+  ['phone', { width: 390, height: 844 }, 'light'],
+  // The dark theme has its own colours, so its contrast is checked too
+  ['computer, dark', { width: 1280, height: 860 }, 'dark'],
+  ['phone, dark', { width: 390, height: 844 }, 'dark'],
 ] as const) {
   test(`no automatic accessibility problems, ${label}`, async ({ page }) => {
     await page.setViewportSize(viewport)
+    await page.emulateMedia({ colorScheme })
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await check(page, 'home')

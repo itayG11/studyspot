@@ -21,7 +21,7 @@
   color: var(--ink);
   background: color-mix(in srgb, var(--stone-1) 86%, transparent);
   backdrop-filter: blur(14px) saturate(1.2);
-  border-bottom: 1px solid rgb(20 32 58 / 8%);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .brand {
@@ -101,6 +101,36 @@
   color: var(--ink-2);
   background: var(--stone-2);
   border-radius: var(--r-pill);
+}
+
+.themeButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
+}
+
+.themeButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.themeButton:focus-visible {
+  outline: 3px solid var(--ink);
+}
+
+@media (hover: hover) {
+  .themeButton:hover {
+    color: var(--ink);
+    background: var(--stone-2);
+  }
 }
 
 .logout {

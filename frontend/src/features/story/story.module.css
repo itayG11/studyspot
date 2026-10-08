@@ -26,10 +26,14 @@
   background: var(--ink);
   border-radius: var(--r-pill);
   transform: translateY(-200%);
+  /* Hidden above the stage, but the header's frosted glass would show it
+     through as a blur, so it is also see-through until focused */
+  opacity: 0;
 }
 
 .skip:focus-visible {
   transform: none;
+  opacity: 1;
   outline: 3px solid var(--accent);
 }
 

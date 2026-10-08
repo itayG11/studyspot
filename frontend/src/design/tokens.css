@@ -21,6 +21,10 @@
   --ink-2: #46506a; /* secondary text */
   --ink-3: #666e82; /* hints and meta, on stone-0 and stone-1 only */
   --on-ink: #fdfcf9;
+  /* Night: surfaces that are dark on purpose, in both themes (the live
+     check-in card, toasts, the map's live tag) */
+  --night: #14203a;
+  --on-night: #fdfcf9;
 
   /* Occupancy: text colour, and a light tint for the badge behind it */
   --free: #11714f;
@@ -29,6 +33,7 @@
   --busy-tint: #fbefd9;
   --full: #b42f25;
   --full-tint: #fbe5e1;
+  --on-full: #fff; /* text on a full-red button */
   --closed: #6b6a64;
   --closed-tint: #ecebe7;
 
@@ -79,6 +84,9 @@
   --shadow-2: 0 2px 4px rgb(20 32 58 / 5%), 0 12px 24px -10px rgb(20 32 58 / 18%);
   --shadow-3: 0 4px 8px rgb(20 32 58 / 6%), 0 28px 56px -20px rgb(20 32 58 / 32%);
   --ring: 0 0 0 3px rgb(20 32 58 / 22%);
+  --hairline: rgb(20 32 58 / 8%);
+  --shimmer: rgb(255 255 255 / 55%); /* the light passing over a skeleton */
+  --map-tiles: none; /* a filter on the map's pictures */
 
   /* Layers */
   --z-header: 50;
@@ -95,4 +103,77 @@
   --dur-ui: 220ms;
   --dur-exit: 160ms; /* leaving is quicker than arriving */
   --dur-sheet: 380ms;
+}
+
+/* --- Dark ---------------------------------------------------------------
+   The same roles at night: deep blue-grey stone, light ink. Every text
+   colour passes AA (4.5:1) on every surface it is used on, measured like
+   the light ones. Photos are unchanged; the map's tiles are dimmed.
+
+   Two selectors for one set of values: the device's setting, unless the
+   visitor chose light (data-theme="light"), and the visitor's own choice of
+   dark. CSS cannot share one block between a media query and a selector,
+   so the values are written twice; keep them the same. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --stone-0: #1c2230;
+    --stone-1: #131823;
+    --stone-2: #252c3b;
+    --stone-3: #384157;
+    --ink: #e8ecf3;
+    --ink-2: #b5bdcc;
+    --ink-3: #939cae;
+    --on-ink: #131823;
+    --night: #232c40;
+    --on-night: #f3f5f9;
+    --free: #5cd29c;
+    --free-tint: #123328;
+    --busy: #efb453;
+    --busy-tint: #38290f;
+    --full: #ff8b7e;
+    --full-tint: #3c1c19;
+    --on-full: #1a0c0a;
+    --closed: #a7aab2;
+    --closed-tint: #2a2d34;
+    --accent: #e2604f;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 35%);
+    --shadow-2: 0 2px 4px rgb(0 0 0 / 30%), 0 12px 24px -10px rgb(0 0 0 / 50%);
+    --shadow-3: 0 4px 8px rgb(0 0 0 / 30%), 0 28px 56px -20px rgb(0 0 0 / 60%);
+    --ring: 0 0 0 3px rgb(232 236 243 / 30%);
+    --hairline: rgb(232 236 243 / 10%);
+    --shimmer: rgb(255 255 255 / 7%);
+    --map-tiles: brightness(0.78) contrast(1.08);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --stone-0: #1c2230;
+  --stone-1: #131823;
+  --stone-2: #252c3b;
+  --stone-3: #384157;
+  --ink: #e8ecf3;
+  --ink-2: #b5bdcc;
+  --ink-3: #939cae;
+  --on-ink: #131823;
+  --night: #232c40;
+  --on-night: #f3f5f9;
+  --free: #5cd29c;
+  --free-tint: #123328;
+  --busy: #efb453;
+  --busy-tint: #38290f;
+  --full: #ff8b7e;
+  --full-tint: #3c1c19;
+  --on-full: #1a0c0a;
+  --closed: #a7aab2;
+  --closed-tint: #2a2d34;
+  --accent: #e2604f;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 35%);
+  --shadow-2: 0 2px 4px rgb(0 0 0 / 30%), 0 12px 24px -10px rgb(0 0 0 / 50%);
+  --shadow-3: 0 4px 8px rgb(0 0 0 / 30%), 0 28px 56px -20px rgb(0 0 0 / 60%);
+  --ring: 0 0 0 3px rgb(232 236 243 / 30%);
+  --hairline: rgb(232 236 243 / 10%);
+  --shimmer: rgb(255 255 255 / 7%);
+  --map-tiles: brightness(0.78) contrast(1.08);
 }

@@ -68,13 +68,13 @@
 
 .danger {
   --bg: var(--full);
-  --fg: #fff;
+  --fg: var(--on-full);
 }
 
 /* Hover only where there is a mouse: on a phone, a tap would leave it stuck. */
 @media (hover: hover) {
   .primary:hover:not(:disabled) {
-    --bg: #23325a;
+    --bg: color-mix(in srgb, var(--ink) 88%, var(--stone-1));
     box-shadow: var(--shadow-2);
   }
   .secondary:hover:not(:disabled) {
@@ -84,7 +84,7 @@
     --bg: var(--stone-2);
   }
   .danger:hover:not(:disabled) {
-    --bg: #96251c;
+    --bg: color-mix(in srgb, var(--full) 85%, var(--ink));
   }
 }
 

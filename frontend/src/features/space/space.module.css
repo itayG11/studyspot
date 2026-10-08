@@ -90,7 +90,7 @@
   height: 44px;
   padding: 0;
   color: var(--ink);
-  background: rgb(253 252 249 / 90%);
+  background: color-mix(in srgb, var(--stone-0) 90%, transparent);
   border: 0;
   border-radius: 50%;
   box-shadow: var(--shadow-1);
@@ -263,7 +263,7 @@
 
 /* Booked is striped, not only another colour. */
 .seg_busy {
-  background: repeating-linear-gradient(-45deg, var(--full) 0 6px, #d4574d 6px 12px);
+  background: repeating-linear-gradient(-45deg, var(--full) 0 6px, color-mix(in srgb, var(--full) 78%, var(--stone-0)) 6px 12px);
 }
 
 .seg_past {

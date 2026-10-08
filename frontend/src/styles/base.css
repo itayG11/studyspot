@@ -8,7 +8,7 @@
 }
 
 html {
-  color-scheme: light;
+  color-scheme: light; /* dark in tokens.css, when the dark theme is on */
 }
 
 body {

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { Pin } from '../illustrations/Pin'
+import { ThemeButton } from './ThemeButton'
 import type { UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
@@ -52,6 +53,7 @@ export function Layout() {
           )}
         </nav>
         <div className={styles.account}>
+          <ThemeButton />
           {status === 'signed-in' && user && (
             <>
               <span className={styles.accountName}>

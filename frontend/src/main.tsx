@@ -14,6 +14,11 @@ import { MotionProvider } from './design/MotionProvider'
 import { InstitutionProvider } from './institution'
 import { router } from './router'
 import { ToastProvider } from './ui/Toast'
+import { applyTheme, readTheme } from './logic/theme'
+
+// The visitor's own light or dark choice, before the first paint. (Not a
+// script in index.html: the security policy allows no inline scripts.)
+applyTheme(readTheme())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
