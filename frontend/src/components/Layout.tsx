@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
-import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { Pin } from '../illustrations/Pin'
 import { ThemeSwitch } from './ThemeSwitch'
 import type { UserRole } from '../api/types'
@@ -16,6 +16,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export function Layout() {
   const { status, user, logout } = useAuth()
   const institution = useInstitution()
+  const navigate = useNavigate()
   const header = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
 
@@ -44,7 +45,19 @@ export function Layout() {
           <span className={styles.brandInstitution}>{institution.name}</span>
         </Link>
         <nav className={styles.nav} aria-label="ניווט ראשי">
-          <NavLink to="/" end className={styles.navLink} viewTransition>חיפוש מקום</NavLink>
+          {/* To the search itself, not the top of the story: a fresh value each
+              click, so a second click on the home page scrolls down again. */}
+          <NavLink
+            to="/"
+            end
+            className={styles.navLink}
+            onClick={(event) => {
+              event.preventDefault()
+              navigate('/', { state: { toFinder: Date.now() }, viewTransition: true })
+            }}
+          >
+            חיפוש מקום
+          </NavLink>
           {status === 'signed-in' && (
             <NavLink to="/me" className={styles.navLink} viewTransition>האזור שלי</NavLink>
           )}

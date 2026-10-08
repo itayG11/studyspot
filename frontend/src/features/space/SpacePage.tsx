@@ -3,7 +3,7 @@
 // timeline, the seat map in a lab, and booking. On a wide screen booking
 // sits beside the page; on a phone a button at the thumb opens a sheet.
 
-import { ArrowRight, Star, Users, Volume1 } from 'lucide-react'
+import { ArrowRight, KeyRound, Star, Users, Volume1 } from 'lucide-react'
 import { useState, type CSSProperties } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
@@ -18,7 +18,7 @@ import { useInstitution } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
 import { KIND_PHOTO } from '../../media/photos'
 import { NotFoundPage } from '../../pages/NotFoundPage'
-import { Badge, Button, ErrorState, LoadingRegion, Photo, Sheet, Skeleton, TALL_QUERY } from '../../ui'
+import { Badge, Button, ButtonLink, ErrorState, LoadingRegion, Photo, Sheet, Skeleton, TALL_QUERY } from '../../ui'
 import { BookingForm } from '../booking/BookingForm'
 import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
@@ -146,13 +146,8 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             ) : (
               <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
             )}
-            {!place.bookable && (
-              <p className={styles.walkIn}>
-                {place.is_open ? `${place.available} מתוך ${place.capacity} מקומות פנויים עכשיו. ` : ''}
-                נכנסים בלי הזמנה: סורקים את הקוד שעל השלט במקום.
-              </p>
-            )}
           </section>
+          {!place.bookable && tall && <WalkIn place={place} />}
 
           {place.seats && place.lab_rows && place.lab_cols && (
             <section className={styles.card} aria-labelledby="seats">
@@ -181,6 +176,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
           </section>
         </div>
 
+        {!place.bookable && !tall && <WalkIn place={place} className={styles.aside} />}
         {place.bookable && !tall && (
           <aside className={styles.aside} aria-labelledby="book">
             <h2 id="book" className={styles.h2}>
@@ -224,5 +220,30 @@ function SpaceSkeleton({ id }: { id: number }) {
         </div>
       </div>
     </LoadingRegion>
+  )
+}
+
+// Open areas and libraries are not booked ahead: no numbered chairs, so
+// whoever comes first sits. Said plainly where the booking panel would be,
+// with what is free now and the three steps to get in.
+function WalkIn({ place, className = styles.card }: { place: PlaceDetail; className?: string }) {
+  return (
+    <section className={className} aria-labelledby="walk-in">
+      <h2 id="walk-in" className={styles.h2}>
+        בלי הזמנה מראש
+      </h2>
+      <p className={styles.walkInNow}>
+        {place.is_open ? `${place.available} מתוך ${place.capacity} מקומות פנויים עכשיו` : 'סגור עכשיו'}
+      </p>
+      <ol className={styles.walkInSteps}>
+        <li>מגיעים למקום.</li>
+        <li>סורקים את הקוד שעל השלט, במצלמה של הטלפון.</li>
+        <li>לוחצים "אני כאן", והמקום שלך.</li>
+      </ol>
+      <p className={styles.muted}>אין כאן כיסאות ממוספרים, ולכן לא מזמינים מראש: מי שמגיע ראשון יושב.</p>
+      <ButtonLink to="/scan" variant="secondary" icon={<KeyRound aria-hidden="true" />}>
+        יש לי קוד להקליד
+      </ButtonLink>
+    </section>
   )
 }

@@ -51,3 +51,15 @@ test('an old places link opens the finder with its filter', async ({ page }) => 
   // The shared link skips the story and lands on the results.
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
 })
+
+test('"search for a place" in the header takes you to the search, from the top of home and from another page', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const search = page.getByRole('searchbox', { name: 'חיפוש מקום' })
+  await page.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'חיפוש מקום' }).click()
+  await expect(search).toBeInViewport()
+
+  await page.goto('/login')
+  await page.getByRole('navigation', { name: 'ניווט ראשי' }).getByRole('link', { name: 'חיפוש מקום' }).click()
+  await expect(search).toBeInViewport()
+})

@@ -47,6 +47,15 @@ describe('Finder', () => {
     expect(screen.getByText('2 מקומות')).toBeInTheDocument()
   })
 
+  it('a card tells a walk-in place from one booked ahead', async () => {
+    const area = place({ id: 5, name: 'מתחם לימוד', building_code: 'L', kind: 'open_area', bookable: false })
+    renderFinder({ places: [LAB, area] })
+    const walkIn = (await screen.findByRole('link', { name: 'מתחם לימוד' })).closest('li')!
+    expect(within(walkIn).getByText('בלי הזמנה: נכנסים בסריקה')).toBeInTheDocument()
+    const bookable = screen.getByRole('link', { name: 'M206' }).closest('li')!
+    expect(within(bookable).queryByText('בלי הזמנה: נכנסים בסריקה')).not.toBeInTheDocument()
+  })
+
   it('filters as you type, and keeps the search in the address', async () => {
     const { router } = renderFinder()
     await userEvent.type(await screen.findByRole('searchbox', { name: 'חיפוש מקום' }), 'לוח')

@@ -1,7 +1,7 @@
 // The home page: the scroll story, then the finder. Both read the same
 // live data, refreshed every 30 seconds.
 
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
@@ -33,7 +33,11 @@ export function HomePage() {
   // A shared link with filters, or #finder, opens straight on the results:
   // whoever sent it wants the list, not the story. Decided once, on arrival;
   // later typing in the search must not move the page.
-  const skipStory = useRef(location.hash === '#finder' || hasFilters(readFilters(new URLSearchParams(location.search))))
+  // "Search for a place" in the header asks for the search too (toFinder).
+  const toFinderAsked = (location.state as { toFinder?: number } | null)?.toFinder
+  const skipStory = useRef(
+    location.hash === '#finder' || toFinderAsked !== undefined || hasFilters(readFilters(new URLSearchParams(location.search))),
+  )
   // A layout effect: the jump happens before the browser paints the story
   // that just arrived above the finder, so the reader never sees it push
   // the results down (no layout shift).
@@ -44,6 +48,14 @@ export function HomePage() {
       toFinder(false)
     }
   }, [ready])
+
+  // Asked again while already here: glide down to the search. (The first
+  // ask, on arrival, is the jump above.)
+  const firstAsk = useRef(toFinderAsked)
+  useEffect(() => {
+    if (toFinderAsked === undefined || toFinderAsked === firstAsk.current) return
+    smoothToFinder()
+  }, [toFinderAsked])
 
   return (
     <>

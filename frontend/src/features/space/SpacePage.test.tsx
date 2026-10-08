@@ -61,6 +61,16 @@ function renderAt(path: string) {
 const placeCalls = () => fetchMock.mock.calls.filter(([url]) => new URL(url).pathname.startsWith('/places'))
 
 describe('SpacePage', () => {
+  it('a walk-in place says plainly that it is not booked ahead, and how to get in', async () => {
+    const area = lab({ id: 4, kind: 'open_area', name: 'מתחם לימוד', lab_rows: null, lab_cols: null, seats: null, bookable: false, available: 38, capacity: 50, is_open: true })
+    placeResponses.push(() => jsonResponse(area))
+    renderAt('/spaces/4')
+    const panel = await screen.findByRole('region', { name: 'בלי הזמנה מראש' })
+    expect(panel).toHaveTextContent('38 מתוך 50 מקומות פנויים עכשיו')
+    expect(panel).toHaveTextContent('סורקים את הקוד שעל השלט')
+    expect(screen.queryByRole('button', { name: /להזמין/ })).not.toBeInTheDocument()
+  })
+
   it('an invalid address shows "not found" without asking the server', async () => {
     renderAt('/spaces/abc')
     expect(await screen.findByText('הדף לא נמצא')).toBeInTheDocument()

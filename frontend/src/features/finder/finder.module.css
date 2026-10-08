@@ -363,3 +363,11 @@
     transform: none;
   }
 }
+
+/* Open areas and libraries: said on the card, before anyone looks for a
+   booking button that is not there. */
+.walkIn {
+  margin: var(--s-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
