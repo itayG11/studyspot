@@ -501,3 +501,18 @@ def test_me_says_whether_this_is_a_shared_demo_user(auth_client, fake, session):
     app.dependency_overrides[get_settings] = lambda: settings.model_copy(update={"demo_login_enabled": True})
     demo = auth_client.post("/auth/demo/login", json={"persona": "student"}).json()["access_token"]
     assert auth_client.get("/me", headers={"Authorization": f"Bearer {demo}"}).json()["is_demo"] is True
+
+
+def test_new_open_campus_users_are_capped_per_day(auth_client, fake, session, open_campus, monkeypatch):
+    # Anyone with a Google account can create a user: a daily cap keeps a
+    # flood of accounts from filling the free database.
+    from app import accounts
+
+    monkeypatch.setattr(accounts, "OPEN_NEW_USERS_PER_DAY", 1)
+    first = finish_login(auth_client, fake, personal_google(sub="g-1", email="one@gmail.com"), provider="google")
+    assert redirect_error(first) is None
+    second = finish_login(auth_client, fake, personal_google(sub="g-2", email="two@gmail.com"), provider="google")
+    assert redirect_error(second) == "open_sign_in_full"
+    # Someone who already has an account still gets in.
+    again = finish_login(auth_client, fake, personal_google(sub="g-1", email="one@gmail.com"), provider="google")
+    assert redirect_error(again) is None

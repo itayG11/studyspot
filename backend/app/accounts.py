@@ -1,13 +1,17 @@
 """Turning a verified provider identity into a StudySpot user."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
 from app.models import Institution, InstitutionLoginRule, User, UserIdentity
 from app.oidc import Provider, ProviderIdentity
+
+# Anyone with a Google account can join the open campus, so new users there
+# are capped per day: a flood of sign-ins cannot fill the free database.
+OPEN_NEW_USERS_PER_DAY = 200
 
 
 def _open_institution(db: Session, slug: str | None) -> Institution | None:
@@ -49,6 +53,14 @@ def sign_in(
         )
     ).first()
     if link is None:
+        if rule is None:  # a new user of the open campus
+            joined_today = db.scalar(
+                select(func.count())
+                .select_from(User)
+                .where(User.institution_id == institution_id, User.created_at > func.now() - timedelta(days=1))
+            )
+            if joined_today >= OPEN_NEW_USERS_PER_DAY:
+                raise Refusal(429, "open_sign_in_full")
         user = User(
             institution_id=institution_id,
             email=identity.email,
