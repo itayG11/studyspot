@@ -88,3 +88,34 @@ def test_no_wake_sweep_when_the_background_sweep_is_off(monkeypatch):
     monkeypatch.setattr(main.app.state, "sweeping", False, raising=False)
     TestClient(main.app).get("/institutions/nowhere")
     assert sweeps == []
+
+
+def test_the_health_check_answers_head_too():
+    # Uptime monitors often ask with HEAD; a 405 would read as "down".
+    client = TestClient(main.app)
+    assert client.head("/health").status_code == 200
+
+
+def test_only_the_health_address_itself_is_left_out(monkeypatch):
+    # A monitor set to another address must not quietly keep the database awake.
+    activity = Activity(idle_after=600, clock=FakeClock())
+    monkeypatch.setattr(main, "activity", activity)
+    TestClient(main.app).get("/places/health")
+    assert activity.busy()
+
+
+def test_a_slow_catch_up_sweep_does_not_hold_the_visit(monkeypatch):
+    import time
+
+    activity = Activity(idle_after=600, clock=FakeClock())
+    monkeypatch.setattr(main, "activity", activity)
+    monkeypatch.setattr(main, "run_once", lambda: time.sleep(2))
+    monkeypatch.setattr(main, "WAKE_SWEEP_TIMEOUT", 0.2)
+    monkeypatch.setattr(main, "SWEEP_INTERVAL", 0)  # no background loop in this test
+    # One client for the whole test: like the real server, its event loop
+    # stays up while the slow sweep finishes in its thread.
+    with TestClient(main.app) as client:
+        main.app.state.sweeping = True
+        started = time.monotonic()
+        client.get("/institutions/nowhere")
+        assert time.monotonic() - started < 1.5

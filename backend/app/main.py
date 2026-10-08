@@ -24,6 +24,12 @@ logger = logging.getLogger("studyspot")
 
 # Real visits, so the sweep can rest while the site is quiet (app/activity.py).
 activity = Activity()
+# The uptime monitor's address, here and under the site's /api: not a visit.
+HEALTH_PATHS = {"/health", "/api/health"}
+# How long the visit that ends a quiet spell waits for the catch-up sweep.
+# A database still waking up must not hold the visitor; the sweep carries
+# on in its thread, and the next round finishes anything left.
+WAKE_SWEEP_TIMEOUT = 5.0
 
 
 def demo_warning(settings: Settings) -> str | None:
@@ -70,12 +76,16 @@ async def count_visits(request: Request, call_next) -> Response:
     """Every request but the uptime monitor's is a visit. The visit that
     ends a quiet spell first catches up on the sweep, so a booking whose
     holder never came is already released when this visitor looks."""
-    if not request.url.path.endswith("/health") and activity.visit() and app.state.sweeping:
-        await sweep_safely(run_once)
+    if request.url.path not in HEALTH_PATHS and activity.visit() and app.state.sweeping:
+        try:
+            await asyncio.wait_for(sweep_safely(run_once), WAKE_SWEEP_TIMEOUT)
+        except TimeoutError:
+            logger.warning("catch-up sweep took over %ss; answering without it", WAKE_SWEEP_TIMEOUT)
     return await call_next(request)
 
 
-@app.get("/health", tags=["system"])
+# HEAD too: uptime monitors often ask that way, and a 405 would read as down.
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["system"])
 def health() -> dict[str, str]:
     """Liveness check: returns 200 when the server is up."""
     return {"status": "ok"}

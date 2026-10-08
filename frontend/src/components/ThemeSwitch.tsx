@@ -23,6 +23,11 @@ export function ThemeSwitch() {
     const query = deviceQuery()
     if (!query) return
     const update = () => setDeviceDark(query.matches)
+    // Safari before 14 has only the older addListener.
+    if (typeof query.addEventListener !== 'function') {
+      query.addListener(update)
+      return () => query.removeListener(update)
+    }
     query.addEventListener('change', update)
     return () => query.removeEventListener('change', update)
   }, [])

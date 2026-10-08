@@ -5,6 +5,8 @@
 //
 // Run:  npx playwright test -c playwright.edge.config.ts
 // Before the first run, the database must be ready, as for the other tests.
+// It changes data: it replaces the code on building L's sign each run, so
+// run it on a development or test database, never on one with printed signs.
 
 import { defineConfig, devices } from '@playwright/test'
 

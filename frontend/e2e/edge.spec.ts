@@ -60,10 +60,16 @@ async function openBookingForm(page: Page): Promise<Locator> {
   return page.getByRole('complementary')
 }
 
-// The last day that can be booked always has its whole day ahead of it.
+// The latest day that still has a free start time. Usually the last day,
+// but between midnight and opening its times are past the 4-day limit.
 async function chooseLastDayFirstTime(form: Locator, length: string) {
-  await form.getByRole('group', { name: 'יום' }).getByRole('button').last().click()
-  await form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false }).first().click()
+  const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
+  const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  for (let i = (await days.count()) - 1; i >= 0; i--) {
+    await days.nth(i).click()
+    if ((await starts.count()) > 0) break
+  }
+  await starts.first().click()
   await form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: length, exact: true }).click()
 }
 
@@ -153,6 +159,7 @@ test('a booking, its calendar link, and the dark theme on every page', async ({ 
   }
   await page.reload()
   await expect(page.getByRole('switch', { name: 'מצב כהה' })).toHaveAttribute('aria-checked', 'true')
+  await cancelAllBookings(request)
 })
 
 test('the site can be installed: its manifest and icons are served', async ({ request }) => {
@@ -317,17 +324,19 @@ test('a building moved on the admin map moves in the API too', async ({ page, re
   const map = page.getByRole('region', { name: 'מיקום בניינים' }).locator('.leaflet-container')
   await map.scrollIntoViewIfNeeded() // below the list on a narrow screen
   const box = (await map.boundingBox())!
-  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3)
-  await expect(page.getByRole('status').filter({ hasText: 'בניין L מוקם על המפה' })).toBeVisible()
-
-  const after = (await buildings()).find((b) => b.code === 'L')!
-  expect([after.latitude, after.longitude]).not.toEqual([before.latitude, before.longitude])
-
-  // Put it back, so the other tests and devices see the campus as it was.
-  const token = await apiToken(request, 'admin')
-  const restored = await request.post(`${API}/admin/buildings/${before.id}/location`, {
-    data: { latitude: before.latitude, longitude: before.longitude },
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  expect(restored.ok()).toBeTruthy()
+  try {
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3)
+    await expect(page.getByRole('status').filter({ hasText: 'בניין L מוקם על המפה' })).toBeVisible()
+    const after = (await buildings()).find((b) => b.code === 'L')!
+    expect([after.latitude, after.longitude]).not.toEqual([before.latitude, before.longitude])
+  } finally {
+    // Put it back, even when the test failed: the other devices and runs
+    // must see the campus as it was.
+    const token = await apiToken(request, 'admin')
+    const restored = await request.post(`${API}/admin/buildings/${before.id}/location`, {
+      data: { latitude: before.latitude, longitude: before.longitude },
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(restored.ok()).toBeTruthy()
+  }
 })
