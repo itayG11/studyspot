@@ -8,8 +8,9 @@ import { CalendarPlus } from 'lucide-react'
 import type { Booking } from '../../api/types'
 import { EASE_OUT } from '../../design/motion'
 import { formatDay, formatTime } from '../../logic/time'
-import { Button, ButtonLink } from '../../ui'
-import { downloadBooking } from './download'
+import { Button, ButtonLink, ExternalButtonLink } from '../../ui'
+import { googleCalendarLink, outlookCalendarLink, type CalendarEvent } from '../../logic/calendarLinks'
+import { floorLabel } from '../../i18n/labels'
 import styles from './booking.module.css'
 
 interface TicketProps {
@@ -22,6 +23,7 @@ interface TicketProps {
 
 export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother }: TicketProps) {
   const reduce = useReducedMotionConfig()
+  const event = calendarEvent(booking, floor)
   // The "book" button that had the keyboard is gone: the ticket's heading
   // takes it, so a keyboard or screen-reader user stays in place.
   const heading = useRef<HTMLHeadingElement>(null)
@@ -61,9 +63,9 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
         </m.span>
       </m.article>
       <div className={styles.ticketActions}>
-        <Button variant="secondary" icon={<CalendarPlus aria-hidden="true" />} onClick={() => downloadBooking(booking, floor)}>
-          הוספה ליומן
-        </Button>
+        <ExternalButtonLink variant="secondary" icon={<CalendarPlus aria-hidden="true" />} href={googleCalendarLink(event)}>
+          הוספה ליומן Google
+        </ExternalButtonLink>
         <ButtonLink to="/me" variant="ghost">
           להזמנות שלי
         </ButtonLink>
@@ -71,6 +73,25 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
           הזמנה נוספת
         </Button>
       </div>
+      <p className={styles.ticketOther}>
+        יומן של המכללה?{' '}
+        <a href={outlookCalendarLink(event)} target="_blank" rel="noopener noreferrer">
+          הוספה ל-Outlook
+        </a>{' '}
+        (במחשב)
+      </p>
     </div>
   )
+}
+
+// The booking as a calendar event: what it is, where, and the one thing to
+// do on arrival.
+function calendarEvent(booking: Booking, floor: number | null): CalendarEvent {
+  return {
+    title: `${booking.place_name}${booking.seat_label ? `, תא ${booking.seat_label}` : ''} · StudySpot`,
+    location: `בניין ${booking.building_code}${floor === null ? '' : `, ${floorLabel(floor)}`}`,
+    details: 'כשתגיע, סרוק את הקוד שבמקום כדי לאשר שהגעת.',
+    start: booking.starts_at,
+    end: booking.ends_at,
+  }
 }

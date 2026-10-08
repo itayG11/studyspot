@@ -229,3 +229,14 @@
   flex-wrap: wrap;
   gap: var(--s-2);
 }
+
+.ticketOther {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.ticketOther a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}

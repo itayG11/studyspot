@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEvent, ReactNode, Ref } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import styles from './Button.module.css'
 
@@ -51,5 +51,16 @@ export function ButtonLink({ variant, size, icon, block, className, children, ..
       {icon}
       <span>{children}</span>
     </Link>
+  )
+}
+
+// A link to another site that looks like a button. It opens in a new tab;
+// noopener keeps that tab from reaching back into this page.
+export function ExternalButtonLink({ variant, size, icon, block, className, children, ...rest }: Look & AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a className={lookClass({ variant, size, block }, className)} target="_blank" rel="noopener noreferrer" {...rest}>
+      {icon}
+      <span>{children}</span>
+    </a>
   )
 }

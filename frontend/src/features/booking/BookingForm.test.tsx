@@ -139,21 +139,22 @@ describe('BookingForm', () => {
     expect(bookingBody).toMatchObject({ starts_at: '2026-10-11T08:30:00.000Z', ends_at: '2026-10-11T10:00:00.000Z' })
   })
 
-  it('offers the booking as a calendar file', async () => {
+  it('adds the booking to a calendar by a link, with no file to download', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const created: Blob[] = []
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: (b: Blob) => (created.push(b), 'blob:x'), revokeObjectURL: () => {} }))
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     renderPanel()
     await user.click(await screen.findByRole('button', { name: '10:00' }))
     await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
     await user.click(screen.getByRole('button', { name: 'להזמין' }))
-    await user.click(await screen.findByRole('button', { name: 'הוספה ליומן' }))
-    expect(click).toHaveBeenCalledOnce()
-    const text = await created[0].text()
-    expect(text).toContain('DTSTART:20261011T070000Z')
-    expect(text).toContain('UID:booking-9@studyspot')
-    click.mockRestore()
+    const google = await screen.findByRole('link', { name: /הוספה ליומן Google/ })
+    const url = new URL(google.getAttribute('href')!)
+    expect(url.hostname).toBe('calendar.google.com')
+    expect(url.searchParams.get('dates')).toBe('20261011T070000Z/20261011T083000Z') // 10:00-11:30 in Israel
+    expect(url.searchParams.get('text')).toContain('EM107')
+    // A new tab, which cannot reach back into this page.
+    expect(google).toHaveAttribute('target', '_blank')
+    expect(google.getAttribute('rel')).toContain('noopener')
+    const outlook = screen.getByRole('link', { name: /Outlook/ })
+    expect(new URL(outlook.getAttribute('href')!).hostname).toBe('outlook.office.com')
   })
 
   it('a slot just before a booking offers only the time until it', async () => {
