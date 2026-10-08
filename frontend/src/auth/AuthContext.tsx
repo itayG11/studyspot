@@ -11,6 +11,8 @@ interface AuthValue {
   status: Status
   user: Me | null
   demoLogin: (persona: DemoPersona) => Promise<void>
+  emailStart: (email: string) => Promise<void>
+  emailVerify: (email: string, code: string) => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
   deleteAccount: () => Promise<void>
@@ -36,6 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     demoLogin: async (persona) => {
       await client.demoLogin(persona)
+    },
+    emailStart: async (email) => {
+      await client.emailStart(email)
+    },
+    emailVerify: async (email, code) => {
+      await client.emailVerify(email, code)
     },
     logout: () => client.logout(),
     logoutAll: () => client.logoutAll(),

@@ -118,6 +118,62 @@
   color: var(--ink-2);
 }
 
+/* Sign-in with a code by email. */
+.emailBox {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+  padding: var(--s-5);
+  background: var(--stone-1);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+}
+
+.emailForm {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.fieldLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field {
+  min-height: 44px;
+  padding: 0 var(--s-3);
+  font: 400 var(--text-md) / 1 var(--font-body);
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-sm);
+}
+
+.field:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The code: big, spaced digits, easy to compare with the email. */
+.codeField {
+  font: 600 var(--text-xl) / 1 var(--font-mono);
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.fieldHint {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.emailActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .provider {
     transition: none;

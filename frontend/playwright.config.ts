@@ -32,6 +32,8 @@ export default defineConfig({
       url: `http://localhost:${API_PORT}/health`,
       env: {
         DEMO_LOGIN_ENABLED: 'true',
+        // Sign-in codes go to the server log, not by email (e2e/email.spec.ts).
+        EMAIL_LOGIN_DEV_LOG: 'true',
         FRONTEND_URL: `http://localhost:${WEB_PORT}`,
         PUBLIC_API_URL: `http://localhost:${API_PORT}`,
         SWEEP_INTERVAL_SECONDS: '0',

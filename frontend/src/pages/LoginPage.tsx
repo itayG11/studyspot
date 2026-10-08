@@ -10,6 +10,7 @@ import { safeNext } from '../logic/next'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
 import { Button, ButtonLink, EmptyState, Notice, Photo, Skeleton } from '../ui'
+import { EmailSignIn } from './EmailSignIn'
 import styles from './pages.module.css'
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -75,6 +76,8 @@ export function LoginPage() {
               </a>
             ))}
 
+            {available.email && <EmailSignIn onSignedIn={() => navigate(next, { replace: true })} />}
+
             {available.demo && (
               <div className={styles.demoBox}>
                 <h2 className={styles.demoTitle}>
@@ -103,7 +106,7 @@ export function LoginPage() {
               </div>
             )}
 
-            {available.providers.length === 0 && !available.demo && <Notice>אין כרגע שיטת התחברות פעילה בשרת הזה.</Notice>}
+            {available.providers.length === 0 && !available.demo && !available.email && <Notice>אין כרגע שיטת התחברות פעילה בשרת הזה.</Notice>}
           </div>
         )}
 

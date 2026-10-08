@@ -9,7 +9,7 @@
 // - After a page reload the variable is empty, and one refresh restores it.
 
 import { API_URL } from '../config'
-import type { DemoPersona, Me, TokenResponse } from './types'
+import type { DemoPersona, EmailStart, Me, TokenResponse } from './types'
 
 // A refusal from the server, with its stable English code
 // (for example "place_not_found"). src/i18n/errors.ts turns it into Hebrew.
@@ -148,6 +148,18 @@ async function doRefresh(retried = false): Promise<Me | null> {
 
 export async function demoLogin(persona: DemoPersona): Promise<Me> {
   const result = await send<TokenResponse>('/auth/demo/login', { method: 'POST', body: { persona } })
+  setSession(result.access_token, result.user)
+  return result.user
+}
+
+// Sign-in with a one-time code: the server emails it to a college address,
+// and the code typed back starts a session like any other sign-in.
+export function emailStart(email: string): Promise<EmailStart> {
+  return send<EmailStart>('/auth/email/start', { method: 'POST', body: { email } })
+}
+
+export async function emailVerify(email: string, code: string): Promise<Me> {
+  const result = await send<TokenResponse>('/auth/email/verify', { method: 'POST', body: { email, code } })
   setSession(result.access_token, result.user)
   return result.user
 }

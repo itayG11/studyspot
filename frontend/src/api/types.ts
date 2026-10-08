@@ -106,6 +106,11 @@ export interface TokenResponse {
 export interface Providers {
   providers: string[]
   demo: boolean
+  email?: boolean // a one-time code by email (absent on older servers)
+}
+
+export interface EmailStart {
+  expires_in: number // seconds the code is valid
 }
 
 export type DemoPersona = 'student' | 'admin'
