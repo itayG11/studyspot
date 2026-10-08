@@ -16,6 +16,7 @@ def built(tmp_path: Path) -> Path:
     (tmp_path / "assets" / "index-abc123.js").write_text("console.log('app')")
     (tmp_path / "images").mkdir()
     (tmp_path / "images" / "hero-800.webp").write_bytes(b"RIFF....WEBP")
+    (tmp_path / "manifest.webmanifest").write_text('{"name": "StudySpot"}')
     (tmp_path / "index.html").write_text("<!doctype html><title>StudySpot</title>")
     (tmp_path.parent / "secret.txt").write_text("not for the web")
     return tmp_path
@@ -46,6 +47,14 @@ def test_built_files_are_served_and_cached_for_a_year(site: TestClient):
     # Their names change with their content, so they can be kept forever.
     assert "immutable" in response.headers["cache-control"]
     assert site.get("/images/hero-800.webp").status_code == 200
+
+
+def test_the_install_manifest_is_served_as_a_manifest(site: TestClient):
+    # With nosniff, a file is only what its type says: text/plain would not
+    # be read as the app's install details.
+    response = site.get("/manifest.webmanifest")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/manifest+json")
 
 
 def test_a_missing_file_is_404_not_the_web_app(site: TestClient):

@@ -1,0 +1,17 @@
+{
+  "name": "StudySpot · מקום לימוד בקמפוס",
+  "short_name": "StudySpot",
+  "description": "מקום פנוי ללמוד בקמפוס: חיפוש, הזמנה מראש וכניסה בסריקה.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f2eb",
+  "theme_color": "#14203a",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
