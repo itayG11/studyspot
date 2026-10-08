@@ -165,6 +165,13 @@ export async function logoutAll(): Promise<void> {
   setSession(null, null)
 }
 
+// Deletes the signed-in user and everything that is theirs (the server's
+// POST /me/delete); signed out afterwards, like after a logout.
+export async function deleteAccount(): Promise<void> {
+  await api<void>('/me/delete', { method: 'POST', auth: true })
+  setSession(null, null)
+}
+
 // A full-page visit: the server sends the browser on to Microsoft or Google.
 export function providerLoginUrl(provider: string): string {
   return `${API_URL}/auth/${encodeURIComponent(provider)}/login`

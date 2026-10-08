@@ -13,6 +13,7 @@ interface AuthValue {
   demoLogin: (persona: DemoPersona) => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
+  deleteAccount: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     logout: () => client.logout(),
     logoutAll: () => client.logoutAll(),
+    deleteAccount: () => client.deleteAccount(),
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

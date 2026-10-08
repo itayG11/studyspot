@@ -60,6 +60,7 @@ beforeEach(() => {
       return Promise.resolve(jsonResponse({ ...CHECK_IN, ended_at: '2026-10-11T07:30:00Z', end_reason: 'checkout' }))
     }
     if (path === '/auth/logout-all') return Promise.resolve(new Response(null, { status: 204 }))
+    if (path === '/me/delete') return Promise.resolve(new Response(null, { status: 204 }))
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
   }))
 })
@@ -129,6 +130,20 @@ describe('MyPage', () => {
     expect(calls).toContain('/auth/logout-all')
     expect(await screen.findByText('מפה')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('deletes the account after asking, and goes home signed out', async () => {
+    const router = renderMe()
+    await userEvent.click(await screen.findByRole('button', { name: 'מחיקת החשבון שלי' }))
+    await userEvent.click(screen.getByRole('button', { name: 'כן, למחוק את כל המידע שלי' }))
+    expect(calls).toContain('/me/delete')
+    expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('links to the privacy page from the account', async () => {
+    renderMe()
+    const account = await screen.findByRole('region', { name: 'החשבון' })
+    expect(within(account).getByRole('link', { name: 'מדיניות הפרטיות' })).toHaveAttribute('href', '/privacy')
   })
 
   it('shows the favourite places, and says how to add one when there are none', async () => {

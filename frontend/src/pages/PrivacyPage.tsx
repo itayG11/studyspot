@@ -1,0 +1,55 @@
+// What the site keeps about a person, and how to delete it. Google asks for
+// this page before a sign-in with Google is open to everyone, and a site
+// that keeps names and e-mail addresses should have it anyway.
+
+import { Link } from 'react-router'
+import styles from './pages.module.css'
+
+export function PrivacyPage() {
+  return (
+    <article className={styles.privacy}>
+      <h1>מדיניות הפרטיות</h1>
+      <p>
+        StudySpot הוא פרויקט לימודי. הוא שומר רק את מה שהוא צריך כדי למצוא ולהזמין מקום לימוד, ולא מוכר או מעביר אותו לאף
+        אחד.
+      </p>
+
+      <h2>מה נשמר</h2>
+      <ul>
+        <li>
+          <strong>שם ומייל:</strong> כפי שגוגל או מיקרוסופט מוסרים בהתחברות. הם מוצגים בחשבון שלך, ולא משמשים לשום דבר אחר.
+        </li>
+        <li>
+          <strong>מזהה החשבון אצל הספק:</strong> כדי לזהות אותך בהתחברות הבאה. הסיסמה שלך לא מגיעה אלינו אף פעם.
+        </li>
+        <li>
+          <strong>הזמנות וכניסות:</strong> מתי ואיפה הזמנת או נכנסת. כך האתר יודע מה תפוס ומה פנוי.
+        </li>
+        <li>
+          <strong>התחברות פעילה:</strong> עוגייה אחת, כדי שלא תצטרך להתחבר בכל ביקור. בשרת נשמר רק תקציר שלה, ולא העוגייה
+          עצמה.
+        </li>
+      </ul>
+
+      <h2>מה לא נשמר</h2>
+      <ul>
+        <li>אין פרסומות, אין כלי מעקב ואין סטטיסטיקות ביקורים.</li>
+        <li>
+          <strong>המועדפים וערכת הצבעים:</strong> נשמרים רק במכשיר שלך, בדפדפן, ולא מגיעים לשרת.
+        </li>
+      </ul>
+
+      <h2>איפה המידע נמצא</h2>
+      <p>
+        השרת רץ אצל Render, ומסד הנתונים אצל Neon, שניהם בפרנקפורט. אריחי המפה מגיעים מ-OpenStreetMap, שרואים את כתובת ה-IP
+        של מי שמציג את המפה.
+      </p>
+
+      <h2>מחיקת החשבון</h2>
+      <p>
+        ב<Link to="/me">האזור שלי</Link> יש כפתור "מחיקת החשבון שלי". הוא מוחק מיד את המשתמש, את ההזמנות, את הכניסות ואת
+        ההתחברויות. אם תתחבר שוב אחר כך, ייפתח חשבון חדש וריק.
+      </p>
+    </article>
+  )
+}

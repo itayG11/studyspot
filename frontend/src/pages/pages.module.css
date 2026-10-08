@@ -123,3 +123,47 @@
     transition: none;
   }
 }
+
+/* The privacy page: a readable column of text. */
+.privacy {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding-block: var(--s-8) var(--s-16);
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+
+.privacy h1 {
+  margin: 0 0 var(--s-4);
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  color: var(--ink);
+}
+
+.privacy h2 {
+  margin: var(--s-8) 0 var(--s-2);
+  font-size: var(--text-lg);
+  color: var(--ink);
+}
+
+.privacy ul {
+  padding-inline-start: var(--s-5);
+}
+
+.privacy li + li {
+  margin-top: var(--s-2);
+}
+
+.privacy a {
+  color: var(--ink);
+}
+
+.loginPrivacy {
+  margin: var(--s-5) 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.loginPrivacy a {
+  color: var(--ink-2);
+}

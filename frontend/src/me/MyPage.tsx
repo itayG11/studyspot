@@ -2,7 +2,7 @@
 // and my account.
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
 import { cancelBooking, checkOut, extendBooking, myBookings, myCheckIn } from '../api/student'
 import type { Booking, CheckIn, Place } from '../api/types'
@@ -240,7 +240,7 @@ function Favorites({ places }: { places: Place[] | null }) {
 }
 
 function Account() {
-  const { logout, logoutAll } = useAuth()
+  const { logout, logoutAll, deleteAccount } = useAuth()
   const navigate = useNavigate()
   const account = useAction()
   return (
@@ -271,7 +271,21 @@ function Account() {
             })
           }
         />
+        <ConfirmButton
+          label="מחיקת החשבון שלי"
+          confirmLabel="כן, למחוק את כל המידע שלי"
+          busy={account.busy}
+          onConfirm={() =>
+            void account.run(async () => {
+              await deleteAccount()
+              navigate('/', { replace: true })
+            })
+          }
+        />
       </div>
+      <p className={styles.privacyNote}>
+        המחיקה כוללת את ההזמנות והכניסות שלך, ואי אפשר לבטל אותה. <Link to="/privacy">מדיניות הפרטיות</Link>
+      </p>
       {account.error && <Notice tone="error">{account.error}</Notice>}
     </section>
   )

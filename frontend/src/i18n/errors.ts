@@ -23,6 +23,7 @@ const MESSAGES: Record<string, string> = {
   institution_not_supported: 'החשבון הזה לא שייך למוסד שמחובר למערכת. התחבר עם חשבון המוסד שלך.',
   concurrent_sign_in: 'התחברות אחרת לאותו חשבון הסתיימה באותו רגע. נסה שוב.',
   demo_login_disabled: 'כניסת ההדגמה כבויה בשרת הזה.',
+  demo_account: 'את המשתמש לדוגמה אי אפשר למחוק: הוא משותף לכל המבקרים. התחבר עם החשבון שלך כדי שיהיה לך חשבון משלך.',
 
   // Campus
   institution_not_found: 'המוסד לא נמצא.',

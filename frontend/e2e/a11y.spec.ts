@@ -78,6 +78,10 @@ for (const [label, viewport, colorScheme] of [
     await page.goto('/nowhere')
     await check(page, 'not found')
 
+    await page.goto('/privacy')
+    await expect(page.getByRole('heading', { level: 1, name: 'מדיניות הפרטיות' })).toBeVisible()
+    await check(page, 'privacy')
+
     // The admin's signs: paper-white in both themes, with screen-only buttons
     await page.context().clearCookies() // the demo student signs out
     await page.goto('/login')

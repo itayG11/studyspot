@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { FlaskConical, GraduationCap, LogIn, ShieldCheck } from 'lucide-react'
 import { ApiError, providerLoginUrl } from '../api/client'
 import { getProviders } from '../api/campus'
@@ -108,6 +108,9 @@ export function LoginPage() {
         )}
 
         {error && <Notice tone="error">{error}</Notice>}
+        <p className={styles.loginPrivacy}>
+          מה נשמר עליך, ואיך מוחקים: <Link to="/privacy">מדיניות הפרטיות</Link>
+        </p>
       </section>
     </div>
   )

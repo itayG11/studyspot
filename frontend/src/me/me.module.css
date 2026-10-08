@@ -236,3 +236,13 @@
     animation: none;
   }
 }
+
+.privacyNote {
+  margin: var(--s-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.privacyNote a {
+  color: var(--ink-2);
+}

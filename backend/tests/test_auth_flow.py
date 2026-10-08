@@ -429,3 +429,62 @@ def test_a_braude_sign_in_still_goes_to_braude_when_a_campus_is_open(auth_client
 def test_no_open_campus_unless_configured(auth_client, fake):
     response = finish_login(auth_client, fake, personal_google(), provider="google")
     assert redirect_error(response) == "institution_not_supported"
+
+
+# --- Deleting one's own account ------------------------------------------------
+# The privacy page promises that anyone can delete their account themselves:
+# the user and everything that is theirs, and nothing of anyone else's.
+
+
+def test_a_user_deletes_their_account_and_everything_that_is_theirs(auth_client, fake, session, braude):
+    from conftest import place_named
+
+    from app.models import AuthSession, Booking, BookingSource, BookingStatus, Place, UserIdentity
+
+    token = sign_in(auth_client, fake)
+    headers = {"Authorization": f"Bearer {token}"}
+    me = auth_client.get("/me", headers=headers).json()
+    room: Place = place_named(braude, "EM", "EM107")
+    session.add(Booking(user_id=me["id"], institution_id=braude.id, place_id=room.id, starts_at=SUNDAY_10AM + timedelta(days=1), ends_at=SUNDAY_10AM + timedelta(days=1, hours=1), source=BookingSource.ADVANCE, status=BookingStatus.BOOKED))
+    session.flush()
+    someone_else = User(institution_id=braude.id, email="other@braude.example", display_name="Other")
+    session.add(someone_else)
+    session.flush()
+
+    response = auth_client.post("/me/delete", headers=headers)
+    assert response.status_code == 204
+    assert "studyspot_refresh" in response.headers.get("set-cookie", "")  # cleared
+    session.expire_all()
+    assert session.get(User, me["id"]) is None
+    assert session.scalars(select(Booking).where(Booking.user_id == me["id"])).first() is None
+    assert session.scalars(select(UserIdentity).where(UserIdentity.user_id == me["id"])).first() is None
+    assert session.scalars(select(AuthSession).where(AuthSession.user_id == me["id"])).first() is None
+    assert session.get(User, someone_else.id) is not None
+    # The old token is now worth nothing.
+    assert auth_client.get("/me", headers=headers).status_code == 401
+
+
+def test_signing_in_after_deleting_starts_a_fresh_account(auth_client, fake, session):
+    token = sign_in(auth_client, fake)
+    first = auth_client.get("/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
+    auth_client.post("/me/delete", headers={"Authorization": f"Bearer {token}"})
+    token = sign_in(auth_client, fake)
+    second = auth_client.get("/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
+    assert second != first
+
+
+def test_the_shared_demo_users_cannot_be_deleted(auth_client, session):
+    from app.models import Institution
+
+    session.add(Institution(name="קמפוס הדגמה", slug="demo"))
+    session.flush()
+    settings = app.dependency_overrides[get_settings]()
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(update={"demo_login_enabled": True})
+    token = auth_client.post("/auth/demo/login", json={"persona": "student"}).json()["access_token"]
+    response = auth_client.post("/me/delete", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "demo_account"
+
+
+def test_deleting_needs_a_signed_in_user(auth_client):
+    assert auth_client.post("/me/delete").status_code == 401

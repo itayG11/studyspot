@@ -20,6 +20,7 @@ import httpx
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -30,9 +31,9 @@ from app.clock import get_now
 from app.config import Settings, get_settings
 from app.demo import demo_still_allowed, demo_user
 from app.errors import Refusal
-from app.models import AuthSession, Institution, User
+from app.models import AuthProvider, AuthSession, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
-from app.ratelimit import refresh_limit, sign_in_limit
+from app.ratelimit import refresh_limit, sign_in_limit, write_limit
 from app.schemas import DemoLoginIn, MeOut, ProvidersOut, TokenOut
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
@@ -315,6 +316,27 @@ def logout_all(
     now: NowDep,
 ):
     revoke_all(db, user.id, now)
+    db.commit()
+    _clear_refresh_cookie(response, settings)
+
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)])
+def delete_account(
+    response: Response,
+    user: Annotated[User, Depends(get_current_user)],
+    db: SessionDep,
+    settings: SettingsDep,
+):
+    """The privacy page's promise: anyone can delete their own account. The
+    database removes what is theirs with it (ON DELETE CASCADE): sign-in
+    identities, sessions, bookings and check-ins. The demo users are shared
+    by every visitor, so they stay."""
+    is_demo = db.scalars(
+        select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
+    ).first()
+    if is_demo is not None:
+        raise HTTPException(403, "demo_account")
+    db.execute(delete(User).where(User.id == user.id))
     db.commit()
     _clear_refresh_cookie(response, settings)
 
