@@ -115,4 +115,7 @@ python -m app.admin grant-role --email Itay.Gabay@e.braude.ac.il institution_adm
 
 - כתובת החזרה תשתנה לכתובת האמיתית של השרת, ותצטרך להוסיף אותה גם אצל מיקרוסופט.
 - `COOKIE_SECURE` חייב להישאר `true`.
-- לסוד של מיקרוסופט יש תוקף. כשהוא פג, צריך ליצור חדש ולעדכן את `.env`.
+- לסוד של מיקרוסופט יש תוקף. כשהוא פג, הכפתור של מיקרוסופט מפסיק לעבוד. ההחלפה:
+  1. ב-`Azure`, באפליקציה, `Certificates & secrets`, ואז `New client secret`;
+  2. מעתיקים את `Value`, ומדביקים אותו ב-`Render` במקום `MICROSOFT_CLIENT_SECRET` הישן, וב-`.env` בפיתוח;
+  3. אחרי שהכניסה עובדת, מוחקים ב-`Azure` את הסוד הישן.
