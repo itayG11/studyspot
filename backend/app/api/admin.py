@@ -3,23 +3,39 @@ gets 404, exactly as if it did not exist."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_code_secret, get_session
+from app.campus_admin import create_building, create_place
 from app.codes import make_code
+from app.config import Settings, get_settings
+from app.errors import Refusal
 from app.models import Building, Institution, Place, User
 from app.permissions import can_manage, require_admin
 from app.ratelimit import write_limit
-from app.schemas import BuildingLocationIn, BuildingLocationOut
+from app.schemas import (
+    BuildingCreatedOut,
+    BuildingCreateIn,
+    BuildingLocationIn,
+    BuildingLocationOut,
+    PlaceCreatedOut,
+    PlaceCreateIn,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 AdminDep = Annotated[User, Depends(require_admin)]
 SecretDep = Annotated[bytes, Depends(get_code_secret)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def _demo_slug(settings: Settings) -> str | None:
+    """The shared demo campus, whose additions are capped and reset daily."""
+    return settings.demo_institution if settings.demo_login_enabled else None
 
 
 class PlaceCode(BaseModel):
@@ -86,4 +102,76 @@ def place_building(
     db.commit()
     return BuildingLocationOut(
         id=building.id, code=building.code, latitude=building.latitude, longitude=building.longitude
+    )
+
+
+@router.post(
+    "/institutions/{slug}/buildings",
+    status_code=status.HTTP_201_CREATED,
+    response_model=BuildingCreatedOut,
+    dependencies=[Depends(write_limit)],
+)
+def add_building(
+    slug: Annotated[str, Path(max_length=64)],
+    body: BuildingCreateIn,
+    admin: AdminDep,
+    db: SessionDep,
+    settings: SettingsDep,
+):
+    """A new building of the institution. Its position is optional: it can
+    be placed on the map afterwards, like any other building."""
+    institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
+    if institution is None or not can_manage(admin, institution):
+        raise HTTPException(404, "institution_not_found")
+    position = (body.latitude, body.longitude) if body.latitude is not None else None
+    try:
+        building = create_building(
+            db,
+            institution,
+            code=body.code,
+            name=body.name or None,
+            floors_count=body.floors_count,
+            status=body.status,
+            position=position,
+            demo_slug=_demo_slug(settings),
+        )
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    return BuildingCreatedOut(
+        id=building.id,
+        code=building.code,
+        name=building.name,
+        floors_count=building.floors_count,
+        latitude=building.latitude,
+        longitude=building.longitude,
+    )
+
+
+@router.post(
+    "/buildings/{building_id}/places",
+    status_code=status.HTTP_201_CREATED,
+    response_model=PlaceCreatedOut,
+    dependencies=[Depends(write_limit)],
+)
+def add_place(
+    building_id: Annotated[int, Path(gt=0)],
+    body: PlaceCreateIn,
+    admin: AdminDep,
+    db: SessionDep,
+    settings: SettingsDep,
+):
+    """A new place, open at the campus's usual hours, with its sign ready
+    to print. A computer lab gets one station per row and column."""
+    building = db.get(Building, building_id)
+    institution = db.get(Institution, building.institution_id) if building else None
+    if building is None or not can_manage(admin, institution):
+        raise HTTPException(404, "building_not_found")
+    try:
+        place = create_place(db, building, body.model_dump(), demo_slug=_demo_slug(settings))
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    return PlaceCreatedOut(
+        id=place.id, building_id=building.id, name=place.name, kind=place.kind, capacity=place.capacity
     )

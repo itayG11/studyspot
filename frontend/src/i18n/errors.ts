@@ -36,6 +36,10 @@ const MESSAGES: Record<string, string> = {
   demo_account: 'את המשתמש לדוגמה אי אפשר למחוק: הוא משותף לכל המבקרים. התחבר עם החשבון שלך כדי שיהיה לך חשבון משלך.',
 
   // Campus
+  building_code_taken: 'כבר יש בניין עם הקוד הזה. בחר קוד אחר.',
+  place_name_taken: 'כבר יש מקום בשם הזה בבניין הזה.',
+  floor_not_in_building: 'אין קומה כזו בבניין.',
+  demo_campus_full: 'בקמפוס ההדגמה כבר נוספו היום הרבה בניינים ומקומות. התוספות נמחקות פעם ביום, אז נסה שוב מחר.',
   institution_not_found: 'המוסד לא נמצא.',
   place_not_found: 'המקום לא נמצא.',
   other_institution: 'המקום הזה שייך למוסד אחר.',

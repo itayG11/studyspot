@@ -2,7 +2,7 @@
 
 import { INSTITUTION } from '../config'
 import { api } from './client'
-import type { BuildingLocation, PlaceCode } from './types'
+import type { BuildingCreated, BuildingLocation, NewBuilding, NewPlace, PlaceCode, PlaceCreated } from './types'
 
 export const getCodes = () => api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(INSTITUTION)}/codes`, { auth: true })
 export const revokeCode = (placeId: number) =>
@@ -15,3 +15,15 @@ export const placeBuilding = (buildingId: number, latitude: number, longitude: n
     auth: true,
     body: { latitude: Number(latitude.toFixed(6)), longitude: Number(longitude.toFixed(6)) },
   })
+
+// New buildings and places. A new place opens at the campus's usual hours,
+// and its sign is ready in the signs tab.
+export const addBuilding = (building: NewBuilding) =>
+  api<BuildingCreated>(`/admin/institutions/${encodeURIComponent(INSTITUTION)}/buildings`, {
+    method: 'POST',
+    auth: true,
+    body: building,
+  })
+
+export const addPlace = (buildingId: number, place: NewPlace) =>
+  api<PlaceCreated>(`/admin/buildings/${buildingId}/places`, { method: 'POST', auth: true, body: place })

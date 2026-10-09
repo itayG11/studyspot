@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { resolve } from 'node:path'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
 // The API the test servers run on (see playwright.config.ts).
@@ -90,4 +92,43 @@ test('the admin page shows a sign for every place', async ({ page }) => {
   await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
   await page.getByRole('link', { name: 'ניהול' }).click()
   await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(10)
+})
+
+// Puts the demo campus back to its seed data (e2e/reset_demo.py).
+function resetDemoCampus() {
+  const backend = resolve(import.meta.dirname, '../../backend')
+  execFileSync(process.env.PYTHON ?? 'python', [`${import.meta.dirname}/reset_demo.py`], {
+    cwd: backend,
+    env: { ...process.env, PYTHONPATH: backend },
+  })
+}
+
+test('the admin adds a building and a room, and students find the room', async ({ page }) => {
+  try {
+    await page.goto('/login')
+    await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
+    await page.getByRole('link', { name: 'ניהול' }).click()
+    await page.getByRole('button', { name: 'הוספה' }).click()
+
+    await page.getByLabel('קוד הבניין').fill('QA')
+    await page.getByLabel('מספר קומות').fill('2')
+    await page.getByRole('button', { name: 'הוספת בניין' }).click()
+    await expect(page.getByText('בניין QA נוסף')).toBeVisible()
+
+    await page.getByLabel('בניין', { exact: true }).selectOption({ label: 'בניין QA' })
+    await page.getByLabel('סוג המקום').selectOption('group_room')
+    await page.getByLabel('שם המקום').fill('QA101')
+    await page.getByLabel('קומה').selectOption({ label: 'קומה 1' })
+    await page.getByLabel('כמה אנשים').fill('6')
+    await page.getByRole('button', { name: 'הוספת מקום' }).click()
+    await expect(page.getByText('QA101 נוסף לבניין QA')).toBeVisible()
+
+    // Its sign is ready, and the finder shows the room.
+    await page.getByRole('button', { name: 'שלטים להדפסה' }).click()
+    await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(11)
+    await page.goto('/?q=QA101')
+    await expect(page.getByRole('link', { name: /QA101/ })).toBeVisible()
+  } finally {
+    resetDemoCampus()
+  }
 })

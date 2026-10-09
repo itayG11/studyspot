@@ -164,6 +164,40 @@ export interface PlaceCode {
   code: string
 }
 
+export interface NewBuilding {
+  code: string
+  name?: string
+  floors_count: number
+}
+
+export interface BuildingCreated {
+  id: number
+  code: string
+  name: string | null
+  floors_count: number
+  latitude: string | null
+  longitude: string | null
+}
+
+// A computer lab gives rows and columns of stations; the others a capacity.
+export interface NewPlace {
+  kind: PlaceKind
+  name: string
+  floor: number
+  capacity?: number
+  lab_rows?: number
+  lab_cols?: number
+  location_note?: string
+}
+
+export interface PlaceCreated {
+  id: number
+  building_id: number
+  name: string
+  kind: PlaceKind
+  capacity: number
+}
+
 export interface BuildingLocation {
   id: number
   code: string

@@ -45,6 +45,13 @@ beforeEach(() => {
       return Promise.resolve(jsonResponse([{ place_id: 5, building_code: 'L', place_name: 'מתחם לימוד', code: `p5.v1.${SIG}` }]))
     if (path === '/admin/places/5/revoke-code')
       return Promise.resolve(jsonResponse({ place_id: 5, building_code: 'L', place_name: 'מתחם לימוד', code: `p5.v2.${SIG}` }))
+    if (path === '/admin/institutions/braude/buildings') {
+      const body = JSON.parse(String(init.body))
+      if (body.code === 'M') return Promise.resolve(jsonResponse({ detail: 'building_code_taken' }, 409))
+      return Promise.resolve(jsonResponse({ id: 9, code: body.code, name: null, floors_count: body.floors_count, latitude: null, longitude: null }, 201))
+    }
+    if (path === '/admin/buildings/6/places')
+      return Promise.resolve(jsonResponse({ id: 30, building_id: 6, name: 'NX101', kind: 'group_room', capacity: 8 }, 201))
     if (path === '/admin/buildings/6/location')
       return Promise.resolve(jsonResponse({ id: 6, code: 'NX', latitude: '32.914579', longitude: '35.280015' }))
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
@@ -98,5 +105,52 @@ describe('AdminPage', () => {
     await waitFor(() => expect(posts.map((p) => p.path)).toContain('/admin/buildings/6/location'))
     expect(posts.find((p) => p.path === '/admin/buildings/6/location')!.body).toEqual({ latitude: 32.914579, longitude: 35.280015 })
     expect(await screen.findByRole('status')).toHaveTextContent('בניין NX מוקם על המפה')
+  })
+
+  it('adds a building, then offers to place it on the map', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.type(screen.getByLabelText('קוד הבניין'), 'zz')
+    await userEvent.clear(screen.getByLabelText('מספר קומות'))
+    await userEvent.type(screen.getByLabelText('מספר קומות'), '3')
+    await userEvent.click(screen.getByRole('button', { name: 'הוספת בניין' }))
+    await waitFor(() => expect(posts.map((p) => p.path)).toContain('/admin/institutions/braude/buildings'))
+    expect(posts.find((p) => p.path === '/admin/institutions/braude/buildings')!.body).toEqual({ code: 'ZZ', floors_count: 3 })
+    expect(await screen.findByText(/בניין ZZ נוסף/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'למיקום על המפה' }))
+    expect(await screen.findByRole('button', { name: 'מיקום בניינים' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('says so in Hebrew when the building code is taken', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.type(screen.getByLabelText('קוד הבניין'), 'M')
+    await userEvent.click(screen.getByRole('button', { name: 'הוספת בניין' }))
+    expect(await screen.findByText(/כבר יש בניין עם הקוד הזה/)).toBeInTheDocument()
+  })
+
+  it('adds a place in a chosen building, with only that building\'s floors', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.selectOptions(await screen.findByLabelText('בניין'), '6')
+    await userEvent.selectOptions(screen.getByLabelText('סוג המקום'), 'group_room')
+    await userEvent.type(screen.getByLabelText('שם המקום'), 'NX101')
+    expect(within(screen.getByLabelText('קומה')).getAllByRole('option')).toHaveLength(3)
+    await userEvent.type(screen.getByLabelText('כמה אנשים'), '8')
+    await userEvent.click(screen.getByRole('button', { name: 'הוספת מקום' }))
+    await waitFor(() => expect(posts.map((p) => p.path)).toContain('/admin/buildings/6/places'))
+    expect(posts.find((p) => p.path === '/admin/buildings/6/places')!.body).toEqual({
+      kind: 'group_room', name: 'NX101', floor: 0, capacity: 8,
+    })
+    expect(await screen.findByText(/NX101 נוסף/)).toBeInTheDocument()
+  })
+
+  it('asks a computer lab for rows and columns instead of a capacity', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.selectOptions(await screen.findByLabelText('סוג המקום'), 'computer_lab')
+    expect(screen.queryByLabelText('כמה אנשים')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('שורות של עמדות')).toBeInTheDocument()
+    expect(screen.getByLabelText('עמדות בכל שורה')).toBeInTheDocument()
   })
 })

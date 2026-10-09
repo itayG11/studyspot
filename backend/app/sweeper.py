@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
+from app.campus_admin import DEMO_TIMEZONE, DailyDemoReset
 from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason
 
 log = logging.getLogger(__name__)
@@ -62,12 +63,25 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     )
 
 
+# The live demo's shared admin may add buildings and places; once a day the
+# demo campus goes back to its seed data (app/campus_admin.py).
+_demo_reset = DailyDemoReset()
+
+
 def run_once() -> SweepResult:
     from app.clock import get_now
+    from app.config import get_settings
     from app.db import SessionLocal, get_engine
 
+    settings = get_settings()
+    now = get_now()
     with SessionLocal(bind=get_engine()) as session:
-        result = sweep(session, get_now())
+        result = sweep(session, now)
+        if settings.demo_login_enabled:
+            today = now.astimezone(DEMO_TIMEZONE).date()
+            removed = _demo_reset.maybe_run(session, settings.demo_institution, today)
+            if removed and any(removed):
+                log.info("demo campus reset: %s buildings, %s places removed", *removed)
         session.commit()
     return result
 

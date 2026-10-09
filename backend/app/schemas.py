@@ -9,7 +9,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from app.demo import Persona
 from app.models import (
@@ -49,6 +49,67 @@ class BuildingLocationIn(BaseModel):
 
     latitude: Decimal = Field(ge=-90, le=90, max_digits=9, decimal_places=6)
     longitude: Decimal = Field(ge=-180, le=180, max_digits=9, decimal_places=6)
+
+
+class BuildingCreateIn(BaseModel):
+    """A new building, from the admin page."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    code: str = Field(min_length=1, max_length=16)
+    name: str | None = Field(default=None, max_length=200)
+    floors_count: int = Field(ge=1, le=50)
+    status: BuildingStatus = BuildingStatus.ACTIVE
+    latitude: Decimal | None = Field(default=None, ge=-90, le=90, max_digits=9, decimal_places=6)
+    longitude: Decimal | None = Field(default=None, ge=-180, le=180, max_digits=9, decimal_places=6)
+
+    @model_validator(mode="after")
+    def _both_or_neither(self) -> "BuildingCreateIn":
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("a position needs both latitude and longitude")
+        self.code = self.code.upper()
+        return self
+
+
+class BuildingCreatedOut(BaseModel):
+    id: int
+    code: str
+    name: str | None
+    floors_count: int
+    latitude: Decimal | None
+    longitude: Decimal | None
+
+
+class PlaceCreateIn(BaseModel):
+    """A new place in a building. A computer lab gives rows and columns of
+    stations; every other kind gives its capacity."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    kind: PlaceKind
+    name: str = Field(min_length=1, max_length=100)
+    floor: int = Field(ge=0, le=49)
+    capacity: int | None = Field(default=None, ge=1, le=1000)
+    lab_rows: int | None = Field(default=None, ge=1, le=20)
+    lab_cols: int | None = Field(default=None, ge=1, le=20)
+    location_note: str | None = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def _size(self) -> "PlaceCreateIn":
+        if self.kind == PlaceKind.COMPUTER_LAB:
+            if self.lab_rows is None or self.lab_cols is None:
+                raise ValueError("a computer lab needs lab_rows and lab_cols")
+        elif self.capacity is None:
+            raise ValueError("capacity is required")
+        return self
+
+
+class PlaceCreatedOut(BaseModel):
+    id: int
+    building_id: int
+    name: str
+    kind: PlaceKind
+    capacity: int
 
 
 class BuildingLocationOut(BaseModel):

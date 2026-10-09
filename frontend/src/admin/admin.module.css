@@ -305,3 +305,45 @@
     font-size: 3rem;
   }
 }
+
+/* Adding buildings and places: two short forms, one under the other. */
+.adder {
+  display: grid;
+  gap: var(--s-6);
+  max-width: 34rem;
+}
+
+.form {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-5);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+}
+
+.formTitle {
+  margin: 0 0 var(--s-2);
+  font: 600 var(--text-lg) / 1.2 var(--font-heading);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field {
+  min-height: 44px;
+  padding: 0 var(--s-3);
+  font: 400 var(--text-md) / 1 var(--font-body);
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-sm);
+}
+
+.field:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}

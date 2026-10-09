@@ -10,9 +10,9 @@ import { ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
 
-export function Placer() {
+export function Placer({ initial = null }: { initial?: string | null }) {
   const buildings = useApi(getBuildings, 'admin-buildings')
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initial)
   const [done, setDone] = useState<string | null>(null)
   const action = useAction()
 
