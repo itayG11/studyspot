@@ -111,8 +111,12 @@ def per_cookie(name: str, cookie: str, limit: int, window_seconds: float) -> Cal
 
     def dependency(request: Request) -> None:
         value = request.cookies.get(cookie)
-        key = hashlib.sha256(value.encode()).hexdigest() if value else "no-cookie"
-        if not window.allow(key):
+        # No cookie: the endpoint answers 401 at once, without the database.
+        # Counting every such visitor in one shared bucket would refuse the
+        # whole site after a few page loads a minute.
+        if not value:
+            return
+        if not window.allow(hashlib.sha256(value.encode()).hexdigest()):
             raise _too_many(window)
 
     return dependency

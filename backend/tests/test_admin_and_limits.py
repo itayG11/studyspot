@@ -145,6 +145,17 @@ def test_refresh_is_limited_per_session_not_per_ip(client):
     assert client.post("/auth/refresh").status_code != 429
 
 
+def test_visitors_without_a_session_never_share_one_limit(client):
+    # Every page load asks /auth/refresh. Visitors who never signed in have no
+    # cookie; counting them all in one bucket would answer 429 to the whole
+    # site after a few page loads a minute.
+    client.cookies.clear()
+    statuses = {
+        client.post("/auth/refresh", headers={"Origin": "http://localhost:5173"}).status_code for _ in range(30)
+    }
+    assert statuses == {401}
+
+
 # --- Placing buildings on the map -------------------------------------------------
 
 
