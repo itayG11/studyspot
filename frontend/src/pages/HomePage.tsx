@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
+import { InstallTip } from '../components/InstallTip'
 import { Finder } from '../features/finder/Finder'
 import { FinderReveal } from '../features/finder/FinderReveal'
 import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
@@ -87,6 +88,7 @@ export function HomePage() {
           }}
         />
       </FinderReveal>
+      <InstallTip variant="card" />
     </>
   )
 }

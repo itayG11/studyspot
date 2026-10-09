@@ -2,6 +2,7 @@
 // and my account.
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
+import { InstallTip } from '../components/InstallTip'
 import { Link, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
 import { cancelBooking, checkOut, extendBooking, myBookings, myCheckIn } from '../api/student'
@@ -107,6 +108,8 @@ export function MyPage() {
       </section>
 
       <Favorites places={places.data} />
+
+      <InstallTip variant="section" />
 
       <Account />
     </div>
