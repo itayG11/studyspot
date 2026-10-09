@@ -2,19 +2,20 @@
 
 The demo admin of the live site is shared by every visitor, so the demo
 campus takes at most a few additions, and once a day it is put back to its
-seed data (app/seed/demo.py). A real institution has neither limit.
+seed data (app/seed/demo.py): additions removed, moved buildings and
+revoked codes put back. A real institution has neither.
 """
 
 from datetime import date
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
 from app.models import Building, BuildingStatus, Institution, Place, PlaceKind, floor_exists
-from app.seed import _make_place
+from app.seed import _make_place, _position
 from app.seed.braude import WEEK_AND_FRIDAY
 from app.seed.demo import DEMO
 
@@ -26,6 +27,7 @@ _DEMO_SLUG = DEMO["institution"]["slug"]
 DEMO_TIMEZONE = ZoneInfo(DEMO["institution"]["timezone"])  # "once a day" by the campus's clock
 _SEED_BUILDINGS = {b["code"] for b in DEMO["buildings"]}
 _SEED_PLACES = {(b["code"], p["name"]) for b in DEMO["buildings"] for p in b["places"]}
+_SEED_POSITIONS = {b["code"]: b["position"] for b in DEMO["buildings"] if "position" in b}
 
 
 def _is_demo(institution: Institution, demo_slug: str | None) -> bool:
@@ -83,10 +85,11 @@ def create_place(db: Session, building: Building, details: dict, *, demo_slug: s
 
 
 def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
-    """Delete what visitors added to the demo campus: buildings and places
-    that are not in its seed data. Returns (buildings, places) removed.
-    The database removes their seats, hours, bookings and check-ins with
-    them (ON DELETE CASCADE)."""
+    """Put the demo campus back to its seed data: delete the buildings and
+    places visitors added, and put back seed buildings they moved and seed
+    codes they revoked. Returns (buildings, places) removed. The database
+    removes the seats, hours, bookings and check-ins of what is deleted
+    (ON DELETE CASCADE)."""
     if slug != _DEMO_SLUG:
         return (0, 0)
     institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
@@ -108,20 +111,27 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
         db.execute(delete(Place).where(Place.id.in_(extra_places)))
     if extra_buildings:
         db.execute(delete(Building).where(Building.id.in_(extra_buildings)))
+    for code, position in _SEED_POSITIONS.items():
+        latitude, longitude = _position(position)
+        db.execute(
+            update(Building)
+            .where(Building.institution_id == institution.id, Building.code == code)
+            .values(latitude=latitude, longitude=longitude)
+        )
+    db.execute(update(Place).where(Place.institution_id == institution.id).values(code_version=1))
     db.flush()
     db.expire_all()
     return (len(extra_buildings), len(extra_places))
 
 
-class DailyDemoReset:
-    """Runs reset_demo_extras at most once per calendar day, from the
-    background sweep. Kept in memory: a restart only means one extra reset."""
-
-    def __init__(self) -> None:
-        self.last: date | None = None
-
-    def maybe_run(self, db: Session, slug: str, today: date) -> tuple[int, int] | None:
-        if self.last == today:
-            return None
-        self.last = today
-        return reset_demo_extras(db, slug)
+def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | None:
+    """Once a day, from the background sweep. The day is kept on the
+    institution row, written in the same transaction as the reset: a
+    restart does not reset twice, and a reset that failed is tried again.
+    The row lock keeps two servers from resetting at once."""
+    institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
+    if institution is None or institution.demo_reset_on == today:
+        return None
+    removed = reset_demo_extras(db, slug)
+    db.execute(update(Institution).where(Institution.id == institution.id).values(demo_reset_on=today))
+    return removed

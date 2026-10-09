@@ -21,9 +21,9 @@ describe('InstallTip', () => {
   it('shows an iPhone the steps by hand', () => {
     asDevice(IPHONE)
     render(<InstallTip variant="card" />)
-    expect(screen.getByRole('heading', { name: /במסך הבית/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /למסך הבית/ })).toBeInTheDocument()
     expect(screen.getByText(/הוספה למסך הבית/)).toBeInTheDocument()
-    expect(screen.getByLabelText('שיתוף')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'שיתוף' })).toBeInTheDocument()
   })
 
   it('gives Android one install button when Chrome offers it', async () => {
@@ -38,6 +38,19 @@ describe('InstallTip', () => {
     })
     await userEvent.click(screen.getByRole('button', { name: 'התקנה' }))
     expect(prompt).toHaveBeenCalled()
+  })
+
+  it('a failed install prompt does not leave a dead button', async () => {
+    asDevice(ANDROID)
+    const { listenForInstallPrompt } = await import('../logic/install')
+    listenForInstallPrompt()
+    render(<InstallTip variant="card" />)
+    const prompt = vi.fn(() => Promise.reject(new Error('already shown')))
+    act(() => {
+      window.dispatchEvent(Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: Promise.resolve({ outcome: 'dismissed' }) }))
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'התקנה' }))
+    expect(await screen.findByText(/התפריט של הדפדפן/)).toBeInTheDocument()
   })
 
   it('is not shown once the site opens from the home screen', () => {
@@ -55,7 +68,7 @@ describe('InstallTip', () => {
     expect(render(<InstallTip variant="card" />).container).toBeEmptyDOMElement()
     // The personal area still has it.
     render(<InstallTip variant="section" />)
-    expect(screen.getByRole('heading', { name: /במסך הבית/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /למסך הבית/ })).toBeInTheDocument()
   })
 
   it('a computer sees it only in the personal area', () => {
@@ -63,5 +76,6 @@ describe('InstallTip', () => {
     expect(render(<InstallTip variant="card" />).container).toBeEmptyDOMElement()
     render(<InstallTip variant="section" />)
     expect(screen.getByText(/התקנת אפליקציה/)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'שלוש הנקודות' })).toBeInTheDocument()
   })
 })

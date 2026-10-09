@@ -7,10 +7,12 @@ building's, so one institution can never write into another's campus.
 """
 
 import enum
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
@@ -110,6 +112,9 @@ class Institution(Base):
     name: Mapped[str] = mapped_column(String(200))
     slug: Mapped[str] = mapped_column(String(64), unique=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Jerusalem")
+    # The demo campus only: the day it was last put back to its seed data
+    # (app/campus_admin.py). In the database, so a restart does not reset it.
+    demo_reset_on: Mapped[date | None] = mapped_column(Date)
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

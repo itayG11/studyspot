@@ -272,14 +272,53 @@ def test_braude_is_never_reset(session, braude):
     assert campus_admin.reset_demo_extras(session, "braude") == (0, 0)
 
 
-def test_the_reset_runs_once_a_day(session, demo, monkeypatch):
-    calls: list[str] = []
-    monkeypatch.setattr(campus_admin, "reset_demo_extras", lambda db, slug: calls.append(slug) or (0, 0))
-    daily = campus_admin.DailyDemoReset()
-    daily.maybe_run(session, "demo", date(2026, 10, 9))
-    daily.maybe_run(session, "demo", date(2026, 10, 9))
-    daily.maybe_run(session, "demo", date(2026, 10, 10))
-    assert calls == ["demo", "demo"]
+def test_the_reset_runs_once_a_day_even_across_restarts(session, demo, demo_admin, client, demo_on):
+    # The day is kept in the database, so a restarted server does not reset
+    # again, and a reset that failed is retried.
+    client.user = demo_admin
+    assert campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 9)) == (0, 0)
+    add_building(client, "demo", code="X1")
+    assert campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 9)) is None
+    assert session.scalars(select(Building).where(Building.code == "X1")).first() is not None
+    assert campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 10)) == (1, 0)
+
+
+def test_the_reset_also_puts_back_moved_buildings_and_revoked_codes(client, session, demo, demo_admin, demo_on):
+    from decimal import Decimal
+
+    client.user = demo_admin
+    m = next(b for b in demo.buildings if b.code == "M")
+    lab = next(p for p in m.places if p.name == "M206")
+    client.post(f"/admin/buildings/{m.id}/location", json={"latitude": 31.0, "longitude": 34.0})
+    client.post(f"/admin/places/{lab.id}/revoke-code")
+    campus_admin.reset_demo_extras(session, "demo")
+    m, lab = session.get(Building, m.id), session.get(Place, lab.id)
+    assert (m.latitude, m.longitude) == (Decimal("32.912751"), Decimal("35.282293"))
+    assert lab.code_version == 1
+
+
+def test_the_reset_removes_bookings_and_check_ins_of_added_places(client, session, demo, demo_admin, demo_on):
+    from datetime import timedelta
+
+    from conftest import SUNDAY_10AM
+
+    from app.models import Booking, BookingSource, BookingStatus, CheckIn
+
+    client.user = demo_admin
+    building_id = add_building(client, "demo", code="X1").json()["id"]
+    lab_id = add_place(client, building_id, kind="computer_lab", name="X", lab_rows=1, lab_cols=2, capacity=None).json()["id"]
+    room_id = add_place(client, building_id, name="R").json()["id"]
+    seat = session.scalars(select(Seat).where(Seat.place_id == lab_id)).first()
+    session.add(CheckIn(user_id=demo_admin.id, institution_id=demo.id, place_id=lab_id, seat_id=seat.id,
+                        started_at=SUNDAY_10AM, expires_at=SUNDAY_10AM + timedelta(hours=1)))
+    session.add(Booking(user_id=demo_admin.id, institution_id=demo.id, place_id=room_id,
+                        starts_at=SUNDAY_10AM + timedelta(days=1), ends_at=SUNDAY_10AM + timedelta(days=1, hours=1),
+                        source=BookingSource.ADVANCE, status=BookingStatus.BOOKED))
+    session.flush()
+    assert campus_admin.reset_demo_extras(session, "demo") == (1, 2)
+    assert session.scalar(select(func.count()).select_from(CheckIn).where(CheckIn.place_id == lab_id)) == 0
+    assert session.scalar(select(func.count()).select_from(Booking).where(Booking.place_id == room_id)) == 0
+
 
 
 def test_hidden_direction_characters_are_removed_from_names(client, admin, session):

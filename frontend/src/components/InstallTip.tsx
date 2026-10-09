@@ -3,7 +3,7 @@
 // prompt for websites). Nothing when the site is already open from the
 // home screen.
 
-import { useState, useSyncExternalStore } from 'react'
+import { useId, useState, useSyncExternalStore } from 'react'
 import { MoreVertical, Share, Smartphone } from 'lucide-react'
 import {
   currentDevice,
@@ -23,20 +23,26 @@ export function InstallTip({ variant }: { variant: 'card' | 'section' }) {
   const prompt = useSyncExternalStore(subscribeInstallPrompt, installPrompt, () => null)
   const [platform] = useState(() => detectPlatform(currentDevice()))
   const [hidden, setHidden] = useState(() => variant === 'card' && installTipDismissed())
+  const titleId = useId()
 
   if (platform === 'installed' || hidden) return null
   if (variant === 'card' && platform === 'other') return null // a computer: the personal area has it
 
   async function install() {
     if (!prompt) return
-    await prompt.prompt()
-    forgetInstallPrompt() // a prompt can be shown only once
+    try {
+      await prompt.prompt()
+    } catch {
+      // Already shown, or refused by the browser: the steps below remain.
+    } finally {
+      forgetInstallPrompt() // a prompt can be shown only once, even when it failed
+    }
   }
 
   return (
-    <section className={variant === 'card' ? styles.card : styles.section} aria-labelledby="install-title">
-      <h2 id="install-title" className={styles.title}>
-        <Smartphone aria-hidden="true" /> StudySpot במסך הבית
+    <section className={variant === 'card' ? styles.card : styles.section} aria-labelledby={titleId}>
+      <h2 id={titleId} className={styles.title}>
+        <Smartphone aria-hidden="true" /> להוסיף את StudySpot למסך הבית
       </h2>
       <p className={styles.text}>האתר נפתח מהאייקון כמו אפליקציה, בלי שורת כתובת. בלי הורדה מחנות.</p>
 
@@ -45,7 +51,7 @@ export function InstallTip({ variant }: { variant: 'card' | 'section' }) {
       ) : platform === 'ios' ? (
         <ol className={styles.steps}>
           <li>
-            בספארי, לוחצים על כפתור השיתוף <Share aria-label="שיתוף" className={styles.icon} />
+            לוחצים על כפתור השיתוף <Share role="img" aria-label="שיתוף" className={styles.icon} />
           </li>
           <li>גוללים ובוחרים "הוספה למסך הבית"</li>
           <li>לוחצים "הוספה"</li>
@@ -53,9 +59,9 @@ export function InstallTip({ variant }: { variant: 'card' | 'section' }) {
       ) : (
         <ol className={styles.steps}>
           <li>
-            בכרום, פותחים את התפריט <MoreVertical aria-label="שלוש הנקודות" className={styles.icon} />
+            פותחים את התפריט של הדפדפן, למשל <MoreVertical role="img" aria-label="שלוש הנקודות" className={styles.icon} />
           </li>
-          <li>בוחרים "הוספה למסך הבית" או "התקנת אפליקציה"</li>
+          <li>בוחרים "הוספה למסך הבית", "התקנת אפליקציה" או "התקנה"</li>
         </ol>
       )}
 

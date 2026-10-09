@@ -89,7 +89,7 @@ function BuildingForm({ onAdded, onPlace }: { onAdded: () => void; onPlace: (cod
           </Notice>
         )}
       </div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <div role="alert">{action.error && <Notice tone="error">{action.error}</Notice>}</div>
     </form>
   )
 }
@@ -244,7 +244,7 @@ function PlaceForm({ buildings }: { buildings: BuildingChoice[] }) {
         הוספת מקום
       </Button>
       <div role="status">{added && <Notice tone="success">{added}</Notice>}</div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <div role="alert">{action.error && <Notice tone="error">{action.error}</Notice>}</div>
     </form>
   )
 }

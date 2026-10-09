@@ -27,14 +27,17 @@ export function AdminPage() {
           about what they are. */}
       <div className={styles.tabs} role="group" aria-label="ניהול">
         {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-          <button key={t} type="button" className={styles.tab} aria-pressed={tab === t} onClick={() => setTab(t)}>
+          <button key={t} type="button" className={styles.tab} aria-pressed={tab === t} onClick={() => {
+              setTab(t)
+              setToPlace(null) // a building chosen once is not chosen again later
+            }}>
             {TAB_LABELS[t]}
           </button>
         ))}
       </div>
       <section aria-label={TAB_LABELS[tab]}>
         {tab === 'signs' && <Signs />}
-        {tab === 'placing' && <Placer initial={toPlace} />}
+        {tab === 'placing' && <Placer key={toPlace ?? ''} initial={toPlace} />}
         {tab === 'adding' && (
           <Adder
             onPlace={(code) => {
