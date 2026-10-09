@@ -102,6 +102,8 @@ def test_codes_are_trimmed_and_upper_case(client, admin):
         {"code": ""},
         {"code": "   "},
         {"code": "X" * 17},
+        {"code": "A B"},
+        {"code": "<b>"},
         {"floors_count": 0},
         {"floors_count": 51},
         {"status": "demolished"},
@@ -278,3 +280,36 @@ def test_the_reset_runs_once_a_day(session, demo, monkeypatch):
     daily.maybe_run(session, "demo", date(2026, 10, 9))
     daily.maybe_run(session, "demo", date(2026, 10, 10))
     assert calls == ["demo", "demo"]
+
+
+def test_hidden_direction_characters_are_removed_from_names(client, admin, session):
+    client.user = admin
+    building_id = add_building(client, name="\u202eבניין").json()["id"]
+    assert session.get(Building, building_id).name == "בניין"
+    place_id = add_place(client, building_id, name="Z\u202e101\u0000").json()["id"]
+    assert session.get(Place, place_id).name == "Z101"
+
+
+def test_a_name_of_only_hidden_characters_is_refused(client, admin):
+    client.user = admin
+    building_id = add_building(client).json()["id"]
+    assert add_place(client, building_id, name="\u202e\u200f").status_code == 422
+
+
+def test_two_tabs_adding_the_same_code_get_409_not_500(client, admin, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+
+    def lost_the_race(*_args, **_kwargs):
+        raise IntegrityError("INSERT INTO buildings", {}, Exception("duplicate key"))
+
+    monkeypatch.setattr("app.api.admin.create_building", lost_the_race)
+    client.user = admin
+    response = add_building(client)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "building_code_taken"
+
+
+def test_a_campus_with_real_sign_in_rules_is_never_reset_even_if_named_demo(session, braude):
+    braude.slug = "demo"
+    session.flush()
+    assert campus_admin.reset_demo_extras(session, "demo") == (0, 0)

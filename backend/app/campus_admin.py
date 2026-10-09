@@ -90,7 +90,8 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
     if slug != _DEMO_SLUG:
         return (0, 0)
     institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
-    if institution is None:
+    # A campus with real sign-in rules is never the demo one, whatever its slug.
+    if institution is None or institution.login_rules:
         return (0, 0)
     rows = db.execute(
         select(Place.id, Building.code, Place.name).join(Place.building).where(Place.institution_id == institution.id)

@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_code_secret, get_session
@@ -135,9 +136,13 @@ def add_building(
             position=position,
             demo_slug=_demo_slug(settings),
         )
+        db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    db.commit()
+    except IntegrityError:
+        # The same code added in another tab a moment ago.
+        db.rollback()
+        raise HTTPException(409, "building_code_taken") from None
     return BuildingCreatedOut(
         id=building.id,
         code=building.code,
@@ -169,9 +174,12 @@ def add_place(
         raise HTTPException(404, "building_not_found")
     try:
         place = create_place(db, building, body.model_dump(), demo_slug=_demo_slug(settings))
+        db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "place_name_taken") from None
     return PlaceCreatedOut(
         id=place.id, building_id=building.id, name=place.name, kind=place.kind, capacity=place.capacity
     )

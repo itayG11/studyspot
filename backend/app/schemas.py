@@ -5,11 +5,12 @@ route runs, and response models make sure only the listed fields leave
 the server.
 """
 
+import unicodedata
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.demo import Persona
 from app.models import (
@@ -51,13 +52,28 @@ class BuildingLocationIn(BaseModel):
     longitude: Decimal = Field(ge=-180, le=180, max_digits=9, decimal_places=6)
 
 
+def _plain_text(value: str | None) -> str | None:
+    """Names shown to every visitor and printed on signs: no control or
+    direction-override characters, which could hide or reorder the text."""
+    if value is None:
+        return None
+    cleaned = "".join(ch for ch in value if unicodedata.category(ch) not in ("Cc", "Cf"))
+    return cleaned.strip()
+
+
 class BuildingCreateIn(BaseModel):
     """A new building, from the admin page."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    code: str = Field(min_length=1, max_length=16)
+    # Letters, digits and dashes, like the codes painted on the buildings.
+    code: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9-]+$")
     name: str | None = Field(default=None, max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str | None) -> str | None:
+        return _plain_text(value) or None
     floors_count: int = Field(ge=1, le=50)
     status: BuildingStatus = BuildingStatus.ACTIVE
     latitude: Decimal | None = Field(default=None, ge=-90, le=90, max_digits=9, decimal_places=6)
@@ -94,8 +110,15 @@ class PlaceCreateIn(BaseModel):
     lab_cols: int | None = Field(default=None, ge=1, le=20)
     location_note: str | None = Field(default=None, max_length=300)
 
+    @field_validator("name", "location_note")
+    @classmethod
+    def _clean(cls, value: str | None) -> str | None:
+        return _plain_text(value)
+
     @model_validator(mode="after")
     def _size(self) -> "PlaceCreateIn":
+        if not self.name:
+            raise ValueError("name is empty")
         if self.kind == PlaceKind.COMPUTER_LAB:
             if self.lab_rows is None or self.lab_cols is None:
                 raise ValueError("a computer lab needs lab_rows and lab_cols")
