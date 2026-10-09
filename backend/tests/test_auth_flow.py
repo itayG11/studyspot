@@ -426,6 +426,40 @@ def test_a_braude_sign_in_still_goes_to_braude_when_a_campus_is_open(auth_client
     assert user.institution_id == braude.id
 
 
+# Personal Microsoft accounts (outlook.com, hotmail.com) all sign in under
+# one fixed tenant, Microsoft's "consumers" tenant.
+CONSUMERS_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad"
+
+
+def test_a_personal_microsoft_account_joins_the_open_campus(auth_client, fake, session, open_campus):
+    from app.models import UserRole
+
+    claims = microsoft_claims(tenant=CONSUMERS_TENANT, oid="msa-1", preferred_username="visitor@outlook.com")
+    response = finish_login(auth_client, fake, claims)
+    assert redirect_error(response) is None
+    user = session.scalars(select(User).where(User.email == "visitor@outlook.com")).one()
+    assert (user.institution_id, user.role) == (open_campus.id, UserRole.STUDENT)
+
+
+def test_a_personal_microsoft_account_never_reaches_braude(auth_client, fake, braude):
+    # Even with a Braude-looking address: the tenant decides, not the email.
+    claims = microsoft_claims(tenant=CONSUMERS_TENANT, preferred_username="Itay.Gabay@e.braude.ac.il")
+    assert redirect_error(finish_login(auth_client, fake, claims)) == "institution_not_supported"
+
+
+def test_microsoft_sign_in_takes_work_school_and_personal_accounts():
+    from app.oidc import configured_providers
+
+    settings = Settings(
+        database_url="postgresql+psycopg://unused@localhost/unused",
+        microsoft_client_id="id",
+        microsoft_client_secret="secret",
+        _env_file=None,
+    )
+    microsoft = configured_providers(settings)["microsoft"]
+    assert microsoft.authorize_url == "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+
+
 def test_no_open_campus_unless_configured(auth_client, fake):
     response = finish_login(auth_client, fake, personal_google(), provider="google")
     assert redirect_error(response) == "institution_not_supported"

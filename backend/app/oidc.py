@@ -152,7 +152,11 @@ class Provider:
 
 @dataclass
 class MicrosoftProvider(Provider):
-    """Work and school accounts only (the "organizations" endpoint)."""
+    """Work and school accounts, and personal ones (the "common" endpoint).
+
+    A personal account (outlook.com) signs in under Microsoft's fixed
+    "consumers" tenant, which no institution's rule names, so it can only
+    join the open campus. A Braude account carries Braude's own tenant."""
 
     name: AuthProvider = AuthProvider.MICROSOFT
 
@@ -217,7 +221,7 @@ def configured_providers(settings) -> dict[str, Provider]:
     """Providers that have a client id and secret. The others are switched off."""
     providers: dict[str, Provider] = {}
     if settings.microsoft_client_id and settings.microsoft_client_secret:
-        base = "https://login.microsoftonline.com/organizations"
+        base = "https://login.microsoftonline.com/common"
         providers["microsoft"] = MicrosoftProvider(
             client_id=settings.microsoft_client_id,
             client_secret=settings.microsoft_client_secret.get_secret_value(),

@@ -21,22 +21,26 @@
 
 ## חלק א: רישום אצל מיקרוסופט
 
-1. **כניסה לפורטל:** היכנס ל-`https://entra.microsoft.com` עם חשבון מיקרוסופט פרטי. אם אין לך ארגון משלך, פתח חשבון חינמי של `Azure`, שיוצר ארגון כזה.
-2. **רישום חדש:** בתפריט, תחת `Applications`, בחר `App registrations`, ואז `New registration`.
-3. **שם:** כתוב `StudySpot`.
-4. **סוגי חשבונות:** בחר את האפשרות של חשבונות מכל ארגון. השם שלה בערך `Accounts in any organizational directory`, או `Multitenant`.
-   - **למה:** הסטודנטים נמצאים בארגון של בראודה, ולא בארגון שלך.
-   - **מה לא לבחור:** אפשרות שכוללת גם חשבונות אישיים כמו `outlook.com`. הקוד שלנו מקבל רק חשבונות של ארגונים.
-5. **כתובת חזרה:** בשדה `Redirect URI` בחר את הסוג `Web`, והדבק:
+1. **ארגון משלך, בחינם:** רישום אפליקציה דורש מנוי `Azure`. מנוי רגיל דורש כרטיס אשראי לאימות. `Azure for Students` לא דורש כרטיס, ומאמת דרך המייל של המכללה. נבדק בתיעוד הרשמי ב-9 באוקטובר 2026.
+   - **עם איזה חשבון:** חשבון מיקרוסופט אישי, כמו `outlook.com`, ולא חשבון בראודה. בראודה חוסמת לסטודנטים רישום אפליקציות בארגון שלה.
+   - **ההרשמה:** `https://azure.microsoft.com/free/students`, ושם אימות במייל של בראודה.
+2. **כניסה לפורטל:** `https://entra.microsoft.com`, עם אותו חשבון אישי.
+3. **רישום חדש:** בתפריט, תחת `Applications`, בחר `App registrations`, ואז `New registration`.
+4. **שם:** כתוב `StudySpot`.
+5. **סוגי חשבונות:** בחר את האפשרות של כל ארגון וגם חשבונות אישיים. השם שלה בערך `Accounts in any organizational directory and personal Microsoft accounts`.
+   - **למה כל ארגון:** הסטודנטים נמצאים בארגון של בראודה, ולא בארגון שלך.
+   - **למה גם אישיים:** חשבון `outlook.com` נכנס לקמפוס ההדגמה, כמו חשבון גוגל. לבראודה הוא לא מגיע אף פעם, כי הכלל של בראודה הוא מזהה הארגון שלה.
+6. **כתובת חזרה:** בשדה `Redirect URI` בחר את הסוג `Web`, והדבק את כתובת האתר החי:
 
    ```text
-   http://localhost:8000/auth/microsoft/callback
+   https://studyspot-yetb.onrender.com/api/auth/microsoft/callback
    ```
 
-6. **שמירה:** לחץ `Register`.
-7. **מזהה האפליקציה:** בדף שנפתח, העתק את `Application (client) ID`.
-8. **סוד:** עבור ל-`Certificates & secrets`, ואז `New client secret`. בחר תוקף, ולחץ `Add`.
-9. **העתקת הסוד:** העתק את העמודה `Value` מיד. אחרי שיוצאים מהדף אי אפשר לראות אותה שוב. אל תעתיק את `Secret ID`, זה ערך אחר.
+   - **לפיתוח במחשב:** אפשר להוסיף גם `http://localhost:8000/auth/microsoft/callback`.
+7. **שמירה:** לחץ `Register`.
+8. **מזהה האפליקציה:** בדף שנפתח, העתק את `Application (client) ID`.
+9. **סוד:** עבור ל-`Certificates & secrets`, ואז `New client secret`. בחר תוקף, ולחץ `Add`.
+10. **העתקת הסוד:** העתק את העמודה `Value` מיד. אחרי שיוצאים מהדף אי אפשר לראות אותה שוב. אל תעתיק את `Secret ID`, זה ערך אחר.
 
 ---
 
@@ -62,8 +66,8 @@
 פתח את הקובץ `.env` בשורש הפרויקט. אל תשים את הערכים האלה בשום קובץ אחר, ובטח לא בגיט.
 
 ```text
-MICROSOFT_CLIENT_ID=הערך-מצעד-7
-MICROSOFT_CLIENT_SECRET=הערך-מצעד-9
+MICROSOFT_CLIENT_ID=הערך-מצעד-8
+MICROSOFT_CLIENT_SECRET=הערך-מצעד-10
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 PUBLIC_API_URL=http://localhost:8000

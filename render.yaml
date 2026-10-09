@@ -32,6 +32,12 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # From Microsoft Entra (docs/AUTH_SETUP.md), also entered in Render's
+      # dashboard only. Without them the Microsoft button stays hidden.
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
       # Render's proxy adds the visitor's address at the end of
       # X-Forwarded-For. If there are in fact more hops, the limits count
       # by a proxy's address instead: stricter, never fooled by the visitor.
