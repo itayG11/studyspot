@@ -12,5 +12,11 @@ from copy import deepcopy
 from app.seed.braude import BRAUDE
 
 DEMO = deepcopy(BRAUDE)
-DEMO["institution"] = {"name": "קמפוס הדגמה", "slug": "demo", "timezone": BRAUDE["institution"]["timezone"]}
+DEMO["institution"] = {
+    "name": "קמפוס הדגמה",
+    "slug": "demo",
+    "timezone": BRAUDE["institution"]["timezone"],
+    # Listed for every visitor. Braude stays hidden until the college agrees.
+    "active": True,
+}
 DEMO["login_rules"] = []

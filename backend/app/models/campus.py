@@ -115,6 +115,9 @@ class Institution(Base):
     # The demo campus only: the day it was last put back to its seed data
     # (app/campus_admin.py). In the database, so a restart does not reset it.
     demo_reset_on: Mapped[date | None] = mapped_column(Date)
+    # Shown in the public list of institutions. A new institution starts
+    # hidden; its admin turns this on when the campus is ready.
+    is_active: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

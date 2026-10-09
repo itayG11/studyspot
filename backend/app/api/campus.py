@@ -28,6 +28,7 @@ from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_pla
 from app.schemas import (
     BookingRules,
     BuildingOut,
+    InstitutionListItem,
     InstitutionOut,
     OpeningHoursOut,
     PlaceDetail,
@@ -39,7 +40,7 @@ router = APIRouter(tags=["campus"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(get_now)]
-Slug = Annotated[str, Path(max_length=64, pattern=r"^[a-z0-9-]+$")]
+Slug = Annotated[str, Path(max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]  # as slug_format
 
 
 def _institution(session: Session, slug: str) -> Institution:
@@ -47,6 +48,15 @@ def _institution(session: Session, slug: str) -> Institution:
     if institution is None:
         raise HTTPException(404, "institution_not_found")
     return institution
+
+
+@router.get("/institutions", response_model=list[InstitutionListItem])
+def list_institutions(session: SessionDep):
+    """The institutions a visitor can pick. One being set up stays hidden
+    until its admin marks it active, but still opens by its address."""
+    return session.scalars(
+        select(Institution).where(Institution.is_active).order_by(Institution.name)
+    ).all()
 
 
 @router.get("/institutions/{slug}", response_model=InstitutionOut)
@@ -268,6 +278,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
         seats = _seat_map(session, place, now)
     return PlaceDetail(
         **view.model_dump(),
+        institution_slug=institution.slug,
         opening_hours=[OpeningHoursOut.model_validate(h) for h in place.opening_hours],
         open_all_day_today=place.id in all_day,
         lab_rows=place.lab_rows,

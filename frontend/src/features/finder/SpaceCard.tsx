@@ -28,7 +28,7 @@ interface SpaceCardProps {
 // the star and "on the map" are separate buttons above it (a button inside
 // a link is not valid HTML, and a screen reader could not tell them apart).
 export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
-  const { timezone } = useInstitution()
+  const { slug, timezone } = useInstitution()
   const { isFavorite, toggle } = useFavorites()
   const status = spaceStatus(place, timezone)
   const favorite = isFavorite(place.id)
@@ -47,7 +47,7 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
           {place.details_are_demo && <span className={styles.demo}>נתוני דמו</span>}
         </div>
         <h3 className={styles.title}>
-          <Link to={`/spaces/${place.id}`} state={{ finder: search }} className={styles.link} viewTransition>
+          <Link to={`/${slug}/spaces/${place.id}`} state={{ finder: search }} className={styles.link} viewTransition>
             {place.name}
           </Link>
         </h3>

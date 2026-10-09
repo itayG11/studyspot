@@ -10,7 +10,7 @@ test('a demo student finds a computer lab through the story and the search', asy
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
 
   // The home page opens on the story; its button leads down to the finder.
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL('/demo') // the visitor's institution, at its own address
   await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('יש לך מקום בקמפוס.')
   await page.getByRole('button', { name: 'לחיפוש מקום' }).click()
@@ -25,7 +25,7 @@ test('a demo student finds a computer lab through the story and the search', asy
   await expect(page.getByText('4 מקומות')).toBeVisible()
   await search.fill('m206')
   await expect(page.getByText('מקום אחד')).toBeVisible()
-  await expect(page).toHaveURL('/?q=m206')
+  await expect(page).toHaveURL('/demo?q=m206')
   await page.getByRole('link', { name: 'M206' }).click()
 
   await expect(page.getByRole('heading', { name: 'M206' })).toBeVisible()
@@ -44,12 +44,22 @@ test('a demo student finds a computer lab through the story and the search', asy
 
 test('an old places link opens the finder with its filter', async ({ page }) => {
   await page.goto('/places?kind=library')
-  await expect(page).toHaveURL('/?kind=library#finder')
+  await expect(page).toHaveURL('/demo?kind=library#finder')
   await expect(page.getByRole('button', { name: 'ספרייה' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('link', { name: 'ספרייה' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'M206' })).toHaveCount(0)
   // The shared link skips the story and lands on the results.
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
+})
+
+test('an old place link, from before every institution had its own address, opens the place at its institution', async ({ page }) => {
+  await page.goto('/places?q=M206')
+  await page.getByRole('link', { name: 'M206' }).first().click()
+  await expect(page).toHaveURL(/\/demo\/spaces\/\d+$/)
+  const id = new URL(page.url()).pathname.split('/').pop()
+  await page.goto(`/spaces/${id}`) // what a link shared before this change looks like
+  await expect(page).toHaveURL(`/demo/spaces/${id}`)
+  await expect(page.getByRole('heading', { name: 'M206' })).toBeVisible()
 })
 
 test('"search for a place" in the header takes you to the search, from the top of home and from another page', async ({ page }) => {

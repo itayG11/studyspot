@@ -77,7 +77,7 @@ function renderMe() {
   })
   render(
     <AuthProvider>
-      <InstitutionProvider>
+      <InstitutionProvider slug="braude">
         <ToastProvider>
           <RouterProvider router={router} />
         </ToastProvider>
@@ -167,7 +167,7 @@ describe('MyPage', () => {
     renderMe()
     const favorites = await screen.findByRole('region', { name: 'המועדפים' })
     const link = await within(favorites).findByRole('link', { name: 'EM107' })
-    expect(link).toHaveAttribute('href', '/spaces/3')
+    expect(link).toHaveAttribute('href', '/braude/spaces/3')
     await userEvent.click(within(favorites).getByRole('button', { name: 'מועדף: EM107' }))
     expect(await within(favorites).findByText('אין עדיין מועדפים.')).toBeInTheDocument()
   })

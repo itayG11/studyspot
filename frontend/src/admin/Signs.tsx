@@ -13,9 +13,11 @@ import { Printer } from 'lucide-react'
 import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { useQrImage } from './useQrImage'
+import { useInstitution } from '../institution'
 
 export function Signs() {
-  const codes = useApi(getCodes, 'admin-codes')
+  const { slug } = useInstitution()
+  const codes = useApi(() => getCodes(slug), `admin-codes-${slug}`)
   // Codes replaced on this visit, by place, shown instead of the old ones.
   const [replaced, setReplaced] = useState<Record<number, PlaceCode>>({})
 

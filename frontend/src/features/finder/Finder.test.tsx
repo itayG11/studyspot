@@ -25,11 +25,11 @@ afterEach(() => {
 function renderFinder({ path = '/', places = PLACES as Place[] | null, buildings = BUILDINGS as Building[] | null, error = null as ApiError | null } = {}) {
   const onRetry = vi.fn()
   const router = createMemoryRouter(
-    [{ path: '/', element: <Finder places={places} buildings={buildings} error={error} onRetry={onRetry} /> }, { path: '/spaces/:id', element: <p>דף המקום</p> }],
+    [{ path: '/', element: <Finder places={places} buildings={buildings} error={error} onRetry={onRetry} /> }, { path: '/braude/spaces/:id', element: <p>דף המקום</p> }],
     { initialEntries: [path] },
   )
   render(
-    <InstitutionProvider>
+    <InstitutionProvider slug="braude">
       <RouterProvider router={router} />
     </InstitutionProvider>,
   )
@@ -127,6 +127,6 @@ describe('Finder', () => {
   it('leads from the card to the place page', async () => {
     const { router } = renderFinder()
     await userEvent.click(await screen.findByRole('link', { name: 'M206' }))
-    expect(router.state.location.pathname).toBe('/spaces/1')
+    expect(router.state.location.pathname).toBe('/braude/spaces/1')
   })
 })

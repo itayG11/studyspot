@@ -11,6 +11,7 @@ import { FinderReveal } from '../features/finder/FinderReveal'
 import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
 import { useApi } from '../hooks/useApi'
 import { hasFilters, readFilters } from '../logic/filters'
+import { useInstitution } from '../institution'
 
 function toFinder(smooth: boolean) {
   const finder = document.getElementById('finder')
@@ -36,8 +37,9 @@ function forgetToFinder() {
 const smoothToFinder = () => toFinder(true)
 
 export function HomePage() {
-  const buildings = useApi(getBuildings, 'buildings', REFRESH_INTERVAL_MS)
-  const places = useApi(() => getPlaces(), 'places', REFRESH_INTERVAL_MS)
+  const { slug } = useInstitution()
+  const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`, REFRESH_INTERVAL_MS)
+  const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
   const location = useLocation()
   const ready = places.data !== null && buildings.data !== null
 

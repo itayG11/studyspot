@@ -18,6 +18,12 @@ export interface BookingRules {
   no_show_after_minutes: number
 }
 
+// One line of the public list of institutions (only the active ones).
+export interface InstitutionListItem {
+  slug: string
+  name: string
+}
+
 export interface Institution {
   slug: string
   name: string
@@ -80,6 +86,7 @@ export interface Seat {
 }
 
 export interface PlaceDetail extends Place {
+  institution_slug: string // old links carry no institution; the site reads it here
   opening_hours: OpeningHours[]
   open_all_day_today: boolean
   lab_rows: number | null

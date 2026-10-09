@@ -95,7 +95,12 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
         session.flush()
         return existing
 
-    institution = Institution(name=info["name"], slug=info["slug"], timezone=info["timezone"])
+    institution = Institution(
+        name=info["name"],
+        slug=info["slug"],
+        timezone=info["timezone"],
+        is_active=info.get("active", False),
+    )
     periods = {
         p["key"]: SpecialPeriod(name=p["name"], starts_on=p["starts_on"], ends_on=p["ends_on"])
         for p in data.get("special_periods", [])

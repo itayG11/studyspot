@@ -10,9 +10,11 @@ import { useApi } from '../hooks/useApi'
 import { floorLabel, KIND_LABELS, KINDS } from '../i18n/labels'
 import { Button, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
+import { useInstitution } from '../institution'
 
 export function Adder({ onPlace }: { onPlace: (code: string) => void }) {
-  const buildings = useApi(getBuildings, 'admin-buildings')
+  const { slug } = useInstitution()
+  const buildings = useApi(() => getBuildings(slug), `admin-buildings-${slug}`)
   if (buildings.error) return <ErrorState error={buildings.error} onRetry={buildings.reload} />
   if (!buildings.data) return <PageLoading />
   return (
@@ -28,6 +30,7 @@ export function Adder({ onPlace }: { onPlace: (code: string) => void }) {
 }
 
 function BuildingForm({ onAdded, onPlace }: { onAdded: () => void; onPlace: (code: string) => void }) {
+  const { slug } = useInstitution()
   const id = useId()
   const [code, setCode] = useState('')
   const [floors, setFloors] = useState('1')
@@ -37,7 +40,7 @@ function BuildingForm({ onAdded, onPlace }: { onAdded: () => void; onPlace: (cod
   async function submit(event: FormEvent) {
     event.preventDefault()
     setAdded(null)
-    const saved = await action.run(() => addBuilding({ code: code.trim().toUpperCase(), floors_count: Number(floors) }))
+    const saved = await action.run(() => addBuilding(slug, { code: code.trim().toUpperCase(), floors_count: Number(floors) }))
     if (saved) {
       setAdded(saved.code)
       setCode('')

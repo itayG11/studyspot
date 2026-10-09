@@ -40,6 +40,9 @@ for (const [label, viewport, colorScheme] of [
   ['phone, dark by choice', { width: 390, height: 844 }, 'chosen dark'],
 ] as const) {
   test(`no automatic accessibility problems, ${label}`, async ({ page }) => {
+    // Nine screens, each waiting for its animations: about 26 s alone on a
+    // fast machine, past the default 30 s on a slower CI runner.
+    test.setTimeout(90_000)
     await page.setViewportSize(viewport)
     if (colorScheme === 'chosen dark') {
       await page.addInitScript("localStorage.setItem('studyspot:theme', 'dark')")

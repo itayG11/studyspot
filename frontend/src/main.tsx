@@ -11,7 +11,6 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
 import { AuthProvider } from './auth/AuthContext'
 import { MotionProvider } from './design/MotionProvider'
-import { InstitutionProvider } from './institution'
 import { router } from './router'
 import { ToastProvider } from './ui/Toast'
 import { listenForInstallPrompt } from './logic/install'
@@ -26,13 +25,11 @@ listenForInstallPrompt()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <InstitutionProvider>
-        <MotionProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </MotionProvider>
-      </InstitutionProvider>
+      <MotionProvider>
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </MotionProvider>
     </AuthProvider>
   </StrictMode>,
 )

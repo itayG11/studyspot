@@ -12,7 +12,8 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# The API is on the same address, under /api. Which campus the site shows
+# The API is on the same address, under /api. The campus a visitor who is
+# not signed in sees first (each campus also has its own address, /demo)
 # is public, so it is a build setting, not a secret.
 ARG VITE_INSTITUTION=demo
 # The aerial photo layer needs an ArcGIS account under Esri's terms

@@ -17,6 +17,7 @@ const INSTITUTION = {
 function lab(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
   return {
     ...place(),
+    institution_slug: 'braude',
     opening_hours: [{ weekday: 6, opens: '07:00:00', closes: '20:00:00' }],
     open_all_day_today: false,
     lab_rows: 1,
@@ -51,7 +52,7 @@ function renderAt(path: string) {
   resetSessionForTests()
   render(
     <AuthProvider>
-      <InstitutionProvider>
+      <InstitutionProvider slug="braude">
         <RouterProvider router={router} />
       </InstitutionProvider>
     </AuthProvider>,

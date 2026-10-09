@@ -19,6 +19,7 @@ const NOW = new Date('2026-10-11T05:00:00Z')
 
 const ROOM: PlaceDetail = {
   ...place({ id: 3, kind: 'group_room', name: 'EM107', building_code: 'EM', capacity: 15, bookable: true }),
+  institution_slug: 'braude',
   opening_hours: [6, 0, 1, 2, 3].map((weekday) => ({ weekday, opens: '07:00:00', closes: '20:00:00' })),
   open_all_day_today: false,
   lab_rows: null,
@@ -87,6 +88,17 @@ function renderPanel() {
 }
 
 describe('BookingForm', () => {
+  it('a student of another institution is told so before choosing a time', async () => {
+    ME.institution_slug = 'demo'
+    try {
+      renderPanel()
+      expect(await screen.findByText('רק סטודנטים של המוסד הזה יכולים להזמין כאן.')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '10:00' })).not.toBeInTheDocument()
+    } finally {
+      ME.institution_slug = 'braude'
+    }
+  })
+
   it('shows booked times as unavailable', async () => {
     renderPanel()
     expect(await screen.findByRole('button', { name: '09:00' })).toBeDisabled() // 06:00 UTC

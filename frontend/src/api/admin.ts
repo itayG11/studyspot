@@ -1,10 +1,10 @@
 // What an institution admin can do. The server checks the role on every call.
 
-import { INSTITUTION } from '../config'
 import { api } from './client'
 import type { BuildingCreated, BuildingLocation, NewBuilding, NewPlace, PlaceCode, PlaceCreated } from './types'
 
-export const getCodes = () => api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(INSTITUTION)}/codes`, { auth: true })
+export const getCodes = (slug: string) =>
+  api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
 export const revokeCode = (placeId: number) =>
   api<PlaceCode>(`/admin/places/${placeId}/revoke-code`, { method: 'POST', auth: true })
 
@@ -18,8 +18,8 @@ export const placeBuilding = (buildingId: number, latitude: number, longitude: n
 
 // New buildings and places. A new place opens at the campus's usual hours,
 // and its sign is ready in the signs tab.
-export const addBuilding = (building: NewBuilding) =>
-  api<BuildingCreated>(`/admin/institutions/${encodeURIComponent(INSTITUTION)}/buildings`, {
+export const addBuilding = (slug: string, building: NewBuilding) =>
+  api<BuildingCreated>(`/admin/institutions/${encodeURIComponent(slug)}/buildings`, {
     method: 'POST',
     auth: true,
     body: building,

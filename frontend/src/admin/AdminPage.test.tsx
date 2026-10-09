@@ -67,7 +67,7 @@ function renderAdmin() {
   )
   render(
     <AuthProvider>
-      <InstitutionProvider>
+      <InstitutionProvider slug="braude">
         <RouterProvider router={router} />
       </InstitutionProvider>
     </AuthProvider>,

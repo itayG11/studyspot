@@ -9,6 +9,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     // The tests' fixtures are the Braude campus; fixed here so they do not
     // depend on a developer's own .env.local.
-    env: { VITE_INSTITUTION: 'braude', VITE_API_URL: 'http://localhost:8000' },
+    env: { VITE_INSTITUTION: 'demo', VITE_API_URL: 'http://localhost:8000' },
   },
 })

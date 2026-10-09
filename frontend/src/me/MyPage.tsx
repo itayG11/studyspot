@@ -26,10 +26,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function MyPage() {
   const { user } = useAuth()
+  const { slug } = useInstitution()
   const current = useApi(myCheckIn, 'my-check-in', REFRESH_INTERVAL_MS)
   const bookings = useApi(myBookings, 'my-bookings', REFRESH_INTERVAL_MS)
   // For each booking's picture, and for the favourites.
-  const places = useApi(() => getPlaces(), 'places', REFRESH_INTERVAL_MS)
+  const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
 
   if (!user) return null
   const byId = new Map((places.data ?? []).map((place) => [place.id, place]))
@@ -90,7 +91,7 @@ export function MyPage() {
             icon={<CalendarX2 />}
             title="אין לך הזמנות"
             action={
-              <ButtonLink to="/#finder" variant="secondary" icon={<MapPin aria-hidden="true" />}>
+              <ButtonLink to={`/${slug}#finder`} variant="secondary" icon={<MapPin aria-hidden="true" />}>
                 לחיפוש מקום
               </ButtonLink>
             }

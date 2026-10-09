@@ -39,7 +39,7 @@ interface Props {
 const MINUTE = 60_000
 
 export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: Props) {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
   const location = useLocation()
   // The clock moves on: past slots close while the page is open.
   const [now, setNow] = useState(() => new Date())
@@ -110,6 +110,10 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
         onAnother={() => onBooked(null)}
       />
     )
+  }
+  // The server would refuse at the last step (other_institution); say it first.
+  if (user && user.institution_slug !== place.institution_slug) {
+    return <p className={styles.hint}>רק סטודנטים של המוסד הזה יכולים להזמין כאן.</p>
   }
   if (days.length === 0) return <p className={styles.hint}>המקום סגור בכל הימים הקרובים.</p>
 

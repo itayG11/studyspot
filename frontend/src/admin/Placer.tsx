@@ -9,9 +9,11 @@ import { AERIAL_ENABLED } from '../map/tiles'
 import { ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
+import { useInstitution } from '../institution'
 
 export function Placer({ initial = null }: { initial?: string | null }) {
-  const buildings = useApi(getBuildings, 'admin-buildings')
+  const { slug } = useInstitution()
+  const buildings = useApi(() => getBuildings(slug), `admin-buildings-${slug}`)
   const [selected, setSelected] = useState<string | null>(initial)
   const [done, setDone] = useState<string | null>(null)
   const action = useAction()

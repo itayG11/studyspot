@@ -19,6 +19,7 @@ export function Layout() {
   const navigate = useNavigate()
   const header = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
+  const home = `/${institution.slug}` // this institution's own front page
 
   // The sticky header's height, as --header-h, so full-screen sections can
   // start below it. It changes when the header wraps on a narrow screen.
@@ -39,7 +40,7 @@ export function Layout() {
   return (
     <div className={styles.app}>
       <header ref={header} className={styles.header}>
-        <Link to="/" className={styles.brand} viewTransition>
+        <Link to={home} className={styles.brand} viewTransition>
           <Pin size={18} />
           <span className={styles.brandName} lang="en">StudySpot</span>
           <span className={styles.brandInstitution}>{institution.name}</span>
@@ -48,14 +49,14 @@ export function Layout() {
           {/* To the search itself, not the top of the story: a fresh value each
               click, so a second click on the home page scrolls down again. */}
           <NavLink
-            to="/"
+            to={home}
             end
             className={styles.navLink}
             onClick={(event) => {
               // Ctrl, Cmd or Shift: the browser's own new tab or window.
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
               event.preventDefault()
-              navigate('/', { state: { toFinder: Date.now() }, viewTransition: true })
+              navigate(home, { state: { toFinder: Date.now() }, viewTransition: true })
             }}
           >
             חיפוש מקום
@@ -87,7 +88,7 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className={pathname === '/' ? styles.mainBleed : styles.main}>
+      <main className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
       {/* A new page starts at the top; "back" returns to where you were. */}

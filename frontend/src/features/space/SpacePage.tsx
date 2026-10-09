@@ -5,7 +5,7 @@
 
 import { ArrowRight, KeyRound, Star, Users, Volume1 } from 'lucide-react'
 import { useState, type CSSProperties } from 'react'
-import { Link, useLocation, useParams } from 'react-router'
+import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
 import type { Booking, PlaceDetail, Seat } from '../../api/types'
 import { SeatGrid } from '../../components/SeatGrid'
@@ -28,6 +28,7 @@ import { backToFinder } from './backLink'
 import styles from './space.module.css'
 
 export function SpacePage() {
+  const { slug } = useInstitution()
   const { spaceId } = useParams()
   const id = Number(spaceId)
   const valid = Number.isInteger(id) && id > 0
@@ -37,6 +38,11 @@ export function SpacePage() {
   if (!valid || place.error?.code === 'place_not_found') return <NotFoundPage />
   if (!place.data && place.error) return <ErrorState error={place.error} onRetry={place.reload} />
   if (!place.data) return <SpaceSkeleton id={id} />
+  // An old link (/spaces/7), or one under another institution's address:
+  // the same page at the place's own institution, whose hours and rules apply.
+  if (place.data.institution_slug !== slug) {
+    return <Navigate to={`/${place.data.institution_slug}/spaces/${id}`} replace />
+  }
   return (
     <>
       {place.error && (
@@ -50,7 +56,7 @@ export function SpacePage() {
 }
 
 function SpaceView({ place }: { place: PlaceDetail }) {
-  const { timezone, booking_rules: rules } = useInstitution()
+  const { slug, timezone, booking_rules: rules } = useInstitution()
   const { isFavorite, toggle } = useFavorites()
   const tall = useMediaQuery(TALL_QUERY)
   const [seatId, setSeatId] = useState<number | null>(null)
@@ -58,7 +64,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   // On a phone the form (and its request for times) waits for the first
   // open of the sheet; after that it stays, so closing keeps the choices.
   const [sheetUsed, setSheetUsed] = useState(false)
-  const back = backToFinder(useLocation().state, place.building_code)
+  const back = backToFinder(useLocation().state, slug, place.building_code)
   const [booked, setBooked] = useState<Booking | null>(null)
   const seat: Seat | null = place.seats?.find((s) => s.id === seatId) ?? null
   const isLab = place.kind === 'computer_lab'

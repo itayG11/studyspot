@@ -38,6 +38,13 @@ class BookingRules(BaseModel):
     no_show_after_minutes: int  # no confirmation by then: released
 
 
+class InstitutionListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    name: str
+
+
 class InstitutionOut(BaseModel):
     slug: str
     name: str
@@ -203,6 +210,7 @@ class SeatOut(BaseModel):
 
 
 class PlaceDetail(PlaceOut):
+    institution_slug: str  # old links carry no institution; the site reads it here
     opening_hours: list[OpeningHoursOut]
     open_all_day_today: bool
     lab_rows: int | None
