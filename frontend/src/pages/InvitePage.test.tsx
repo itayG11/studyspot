@@ -92,4 +92,13 @@ describe('InvitePage', () => {
     await user.click(await screen.findByRole('button', { name: 'לקבל את ההזמנה' }))
     await waitFor(() => expect(peekPendingInvite()).toBeNull())
   })
+
+  it('accepted, but the new role did not load: says so instead of a page that refuses', async () => {
+    const user = userEvent.setup()
+    renderAt('/invite#t=secret-token')
+    const button = await screen.findByRole('button', { name: 'לקבל את ההזמנה' })
+    signedIn = false // the refresh after accepting fails
+    await user.click(button)
+    expect(await screen.findByText('ההזמנה התקבלה')).toBeInTheDocument()
+  })
 })

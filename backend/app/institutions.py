@@ -110,6 +110,9 @@ def inspect_invite(db: Session, token: str, now: datetime, key: bytes) -> Instit
 
 def accept_invite(db: Session, user: User, token: str, now: datetime, key: bytes) -> Institution:
     invite = _open_invite(db, token, now, key, lock=True)
+    # Locked too: a booking made in another tab between the deletes and the
+    # move below would block the move (the keys tie it to the institution).
+    db.refresh(user, with_for_update=True)
     is_demo = db.scalars(
         select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
     ).first()
@@ -119,6 +122,9 @@ def accept_invite(db: Session, user: User, token: str, now: datetime, key: bytes
     if user.role == UserRole.SYSTEM_ADMIN:
         raise Refusal(409, "invite_system_admin")  # already manages every institution
     target = db.get(Institution, invite.institution_id)
+    if user.role == UserRole.INSTITUTION_ADMIN and user.institution_id != target.id:
+        # Their own institution would be left with no admin, silently.
+        raise Refusal(409, "invite_already_admin")
     if user.institution_id != target.id:
         current = db.get(Institution, user.institution_id)
         if current.login_rules:

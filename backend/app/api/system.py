@@ -151,7 +151,10 @@ def inspect(body: InviteTokenIn, user: UserDep, db: SessionDep, now: NowDep, set
 def accept(body: InviteTokenIn, user: UserDep, db: SessionDep, now: NowDep, settings: SettingsDep):
     try:
         institution = institutions.accept_invite(db, user, body.token, now, _key(settings))
+        db.commit()
     except Refusal as refusal:  # every refusal comes before the first write
         raise HTTPException(refusal.status, refusal.code) from None
-    db.commit()
+    except IntegrityError:  # something of theirs changed at the same moment
+        db.rollback()
+        raise HTTPException(409, "concurrent_request") from None
     return InviteInstitutionOut(slug=institution.slug, name=institution.name)

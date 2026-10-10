@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
+from app.models import AdminInvite, AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
 from app.oidc import ProviderIdentity
 
 # Anyone with a Google account can join the open campus, so new users there
@@ -45,18 +45,26 @@ def sign_in(
                 InstitutionLoginRule.value == identity.institution_key,
             )
         ).first()
-    if rule is not None:
-        institution_id = rule.institution_id
-    elif (open_campus := _open_institution(db, open_slug)) is not None:
-        institution_id = open_campus.id
-    else:
-        raise Refusal(403, "institution_not_supported")
-
     link = db.scalars(
         select(UserIdentity).where(
             UserIdentity.provider == provider, UserIdentity.subject == identity.subject
         )
     ).first()
+    existing = db.get(User, link.user_id) if link is not None else None
+
+    if rule is not None:
+        institution_id = rule.institution_id
+    elif existing is not None and invited_to_own_institution(db, existing):
+        # An admin who came by an invite (app/institutions.py) belongs to that
+        # institution, not to the open campus their account would join, and
+        # even where there is no open campus. A rule of another institution,
+        # above, still wins, as for everyone.
+        institution_id = existing.institution_id
+    elif (open_campus := _open_institution(db, open_slug)) is not None:
+        institution_id = open_campus.id
+    else:
+        raise Refusal(403, "institution_not_supported")
+
     if link is None:
         if rule is None:  # a new user of the open campus
             joined_today = db.scalar(
@@ -75,27 +83,44 @@ def sign_in(
         db.flush()
         db.add(UserIdentity(user_id=user.id, provider=provider, subject=identity.subject))
     else:
-        user = db.get(User, link.user_id)
-        # An admin who came by an invite (app/institutions.py) belongs to that
-        # institution, not to the open campus their account would join. A
-        # rule of another institution still wins, as for everyone.
-        invited_admin = rule is None and user.role == UserRole.INSTITUTION_ADMIN
-        if user.institution_id != institution_id and not invited_admin:
+        user = existing
+        if user.institution_id != institution_id:
             raise Refusal(403, "institution_not_supported")
         # Keep the shown details current; they are not used for identity.
         user.email, user.display_name = identity.email, identity.display_name[:100]
     if provider == AuthProvider.GOOGLE:
-        _sync_system_admin(user, identity, system_admins)
+        _sync_system_admin(db, user, identity, system_admins)
     user.last_login_at = now
     db.flush()
     return user
 
 
-def _sync_system_admin(user: User, identity: ProviderIdentity, system_admins: frozenset[str]) -> None:
+def invited_to_own_institution(db: Session, user: User) -> bool:
+    """Whether the user accepted an admin invite to the institution they are in."""
+    return db.scalars(
+        select(AdminInvite.id).where(AdminInvite.used_by == user.id, AdminInvite.institution_id == user.institution_id)
+    ).first() is not None
+
+
+def is_trusted_admin_address(identity: ProviderIdentity) -> bool:
+    """Google's email_verified is reliable only for gmail.com, or for an
+    account of the address's own Google Workspace (hd). Anyone can open a
+    personal Google account with another address: verified long ago, or
+    an address since recycled."""
+    domain = identity.email.rsplit("@", 1)[-1]
+    return identity.email_verified and (domain == "gmail.com" or identity.institution_key == domain)
+
+
+def unlisted_role(db: Session, user: User) -> UserRole:
+    """What a system admin taken off the list goes back to."""
+    return UserRole.INSTITUTION_ADMIN if invited_to_own_institution(db, user) else UserRole.STUDENT
+
+
+def _sync_system_admin(db: Session, user: User, identity: ProviderIdentity, system_admins: frozenset[str]) -> None:
     """The one place an e-mail address decides anything: SYSTEM_ADMIN_EMAILS.
-    Only a Google sign-in counts, and only with an address Google verified.
-    Someone taken off the list is a student again at their next sign-in."""
-    if identity.email_verified and identity.email.lower() in system_admins:
+    Only a Google sign-in counts, with an address Google can vouch for.
+    (Someone taken off the list loses the role at once: app/auth.py.)"""
+    if is_trusted_admin_address(identity) and identity.email.lower() in system_admins:
         user.role = UserRole.SYSTEM_ADMIN
     elif user.role == UserRole.SYSTEM_ADMIN:
-        user.role = UserRole.STUDENT
+        user.role = unlisted_role(db, user)

@@ -61,3 +61,26 @@ def test_the_list_setting_is_read_lowercase_and_blank_means_nobody():
 
     assert make(" Owner@Gmail.com , second@gmail.com ").system_admins() == {"owner@gmail.com", "second@gmail.com"}
     assert make("").system_admins() == frozenset()
+
+
+def test_a_listed_address_outside_gmail_needs_its_own_workspace(session):
+    # Google's email_verified is reliable only for gmail.com, or when the
+    # account is the domain's own Workspace (hd). Anyone can make a personal
+    # Google account with another address, verified long ago or recycled.
+    college = "owner@college.example"
+    personal = ProviderIdentity(subject="g-2", institution_key=None, email=college, display_name="O", email_verified=True)
+    assert enter(session, personal, admins=frozenset({college})).role == UserRole.STUDENT
+    workspace = ProviderIdentity(
+        subject="g-3", institution_key="college.example", email=college, display_name="O", email_verified=True
+    )
+    user = sign_in(session, AuthProvider.GOOGLE, workspace, SUNDAY_10AM, "demo", system_admins=frozenset({college}))
+    assert user.role == UserRole.SYSTEM_ADMIN
+
+
+def test_taken_off_the_list_loses_the_role_at_once_not_only_at_the_next_sign_in(client, session):
+    owner = enter(session, google())
+    client.user = None
+    from app.auth import demote_unlisted
+
+    assert demote_unlisted(session, owner, frozenset({ME})).role == UserRole.SYSTEM_ADMIN
+    assert demote_unlisted(session, owner, frozenset()).role == UserRole.STUDENT

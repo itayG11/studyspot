@@ -214,3 +214,47 @@ def test_two_tabs_accepting_one_invite_at_once_give_one_admin(engine):
         with Session(engine) as db:
             db.execute(delete(Institution).where(Institution.id.in_(ids)))
             db.commit()
+
+
+def test_an_admin_made_without_an_invite_gets_no_exception(session, braude, demo):
+    # A Braude admin set by hand whose sign-in no longer matches Braude's
+    # rule is refused, as before: only an invite makes the exception.
+    user = visitor(session, demo, subject="g-hand")
+    user.institution_id, user.role = braude.id, UserRole.INSTITUTION_ADMIN
+    session.flush()
+    identity = ProviderIdentity(subject="g-hand", institution_key=None, email="new.admin@gmail.com", display_name="N")
+    with pytest.raises(Refusal):
+        sign_in(session, AuthProvider.GOOGLE, identity, SUNDAY_10AM, "demo")
+
+
+def test_the_invited_admin_signs_in_even_where_there_is_no_open_campus(client, session, demo, tel_hai):
+    client.user = visitor(session, demo, subject="g-visitor")
+    accept(client, invite_for(session, tel_hai))
+    identity = ProviderIdentity(subject="g-visitor", institution_key=None, email="new.admin@gmail.com", display_name="N")
+    again = sign_in(session, AuthProvider.GOOGLE, identity, SUNDAY_10AM, open_slug=None)
+    assert again.institution_id == tel_hai.id
+
+
+def test_an_admin_of_one_institution_cannot_leave_it_by_another_invite(client, session, demo, tel_hai):
+    # Their institution would be left with no admin, and nobody would know.
+    client.user = visitor(session, demo)
+    accept(client, invite_for(session, tel_hai))
+    other = Institution(name="אחר", slug="other-one", timezone="Asia/Jerusalem")
+    session.add(other)
+    session.flush()
+    assert accept(client, invite_for(session, other)).json()["detail"] == "invite_already_admin"
+
+
+def test_the_owner_who_tried_an_invite_and_then_joined_the_list_still_signs_in(client, session, demo, tel_hai):
+    client.user = visitor(session, demo, subject="g-visitor")
+    accept(client, invite_for(session, tel_hai))
+    me = ProviderIdentity(
+        subject="g-visitor", institution_key=None, email="new.admin@gmail.com", display_name="N", email_verified=True
+    )
+    listed = frozenset({"new.admin@gmail.com"})
+    for _ in range(2):  # the second sign-in is the one that used to fail
+        user = sign_in(session, AuthProvider.GOOGLE, me, SUNDAY_10AM, "demo", system_admins=listed)
+    assert user.role == UserRole.SYSTEM_ADMIN
+    # Off the list again: back to the admin of the institution they were invited to.
+    user = sign_in(session, AuthProvider.GOOGLE, me, SUNDAY_10AM, "demo", system_admins=frozenset())
+    assert (user.role, user.institution_id) == (UserRole.INSTITUTION_ADMIN, tel_hai.id)

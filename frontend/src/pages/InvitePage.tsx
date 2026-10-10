@@ -26,6 +26,7 @@ export function InvitePage() {
   const invite = useApi(() => inspectInvite(token!), status === 'signed-in' && token ? `invite-${token}` : null)
   const action = useAction()
   const [accepted, setAccepted] = useState<string | null>(null)
+  const [stale, setStale] = useState(false) // accepted, but the new role did not load
 
   useEffect(() => {
     if (!tokenFromHash(location.hash)) return
@@ -34,6 +35,13 @@ export function InvitePage() {
   }, [location.hash, navigate])
 
   if (accepted) return <Navigate to={`/${accepted}/admin`} replace />
+  if (stale) {
+    return (
+      <EmptyState icon={<KeyRound />} title="ההזמנה התקבלה">
+        טען מחדש את הדף, כדי להיכנס לדף הניהול.
+      </EmptyState>
+    )
+  }
   if (token === null) {
     return (
       <EmptyState icon={<Link2Off />} title="הקישור לא שלם">
@@ -62,8 +70,10 @@ export function InvitePage() {
     const done = await action.run(() => acceptInvite(token!))
     if (!done) return
     clearPendingInvite()
-    await refreshSession().catch(() => null) // the header shows the new role
-    setAccepted(done.slug)
+    // The admin page checks the role: wait for the new one, or say so.
+    const fresh = await refreshSession().catch(() => null)
+    if (fresh?.institution_slug === done.slug) setAccepted(done.slug)
+    else setStale(true)
   }
   return (
     <EmptyState
