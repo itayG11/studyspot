@@ -18,7 +18,14 @@ from app.config import get_settings
 from app.models import Institution
 from app.seed.history import simulate_history
 
-with Session(create_engine(get_settings().database_url)) as db:
+from sqlalchemy.engine import make_url
+
+url = get_settings().database_url
+# For the test database only: never the live site's, whatever .env says.
+if make_url(url).host not in ("localhost", "127.0.0.1"):
+    raise SystemExit(f"refusing to reset a database that is not local: {make_url(url).host}")
+
+with Session(create_engine(url)) as db:
     print(reset_demo_extras(db, "demo"))
     demo = db.scalars(select(Institution).where(Institution.slug == "demo")).one()
     simulate_history(db, demo, datetime.now(ZoneInfo(demo.timezone)).date())

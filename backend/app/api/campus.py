@@ -26,6 +26,7 @@ from app.models import (
     is_counted,
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
+from app.ratelimit import forecast_limit
 from app.schemas import (
     BookingRules,
     BuildingOut,
@@ -267,7 +268,7 @@ def list_places(
     return _place_views(session, institution, places, now)
 
 
-@router.get("/places/{place_id}/forecast", response_model=ForecastOut)
+@router.get("/places/{place_id}/forecast", response_model=ForecastOut, dependencies=[Depends(forecast_limit)])
 def get_forecast(
     place_id: Annotated[int, Path(gt=0)],
     session: SessionDep,

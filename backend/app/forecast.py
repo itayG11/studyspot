@@ -11,11 +11,12 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.history import SLOT
 from app.models import Institution, OccupancyHistory, Place, PlaceKind
+from app.occupancy import open_all_day_place_ids
 
 WEEKS = 8
 # Fewer weeks than this and an "average" is one or two random days.
@@ -36,7 +37,8 @@ class Forecast:
     simulated: bool  # some of the counts are the demo campus's made-up ones
     closed: bool  # no opening hours that day
     slots: list[SlotForecast]  # empty when closed, or with fewer than MIN_WEEKS
-    # Today only: the first quarter hour from now that is usually not full.
+    # Today only: the first quarter hour after the one under way that is
+    # usually not full.
     frees_at: time | None
 
 
@@ -46,24 +48,32 @@ def full_at(place: Place) -> int:
 
 
 def forecast(session: Session, place: Place, weekday: int, now: datetime) -> Forecast:
-    zone = ZoneInfo(session.scalar(select(Institution.timezone).where(Institution.id == place.institution_id)))
+    institution = session.get(Institution, place.institution_id)
+    zone = ZoneInfo(institution.timezone)
     local_now = now.astimezone(zone)
     today = local_now.date()
     hours = next((h for h in place.opening_hours if h.weekday == weekday), None)
 
-    first = session.scalar(select(func.min(OccupancyHistory.slot_start)).where(OccupancyHistory.place_id == place.id))
+    # From when there are counts: the counting's start (a quiet place has
+    # no rows, and is usually empty), or an older row (simulated ones).
+    first_row = session.scalar(select(func.min(OccupancyHistory.slot_start)).where(OccupancyHistory.place_id == place.id))
+    first = min((t for t in (institution.counting_since, first_row) if t is not None), default=None)
     days = _past_days(today, weekday, first.astimezone(zone).date() if first else None)
     empty = Forecast(weekday, place.capacity, len(days), False, hours is None, [], None)
     if hours is None or len(days) < MIN_WEEKS:
         return empty
 
-    start = datetime.combine(days[-1], time(0), tzinfo=zone)
-    end = datetime.combine(days[0] + timedelta(days=1), time(0), tzinfo=zone)
+    # Only the wanted days, not every day in between: one in seven rows.
+    ranges = [
+        and_(
+            OccupancyHistory.slot_start >= datetime.combine(d, time(0), tzinfo=zone),
+            OccupancyHistory.slot_start < datetime.combine(d + timedelta(days=1), time(0), tzinfo=zone),
+        )
+        for d in days
+    ]
     rows = session.execute(
         select(OccupancyHistory.slot_start, OccupancyHistory.people, OccupancyHistory.simulated).where(
-            OccupancyHistory.place_id == place.id,
-            OccupancyHistory.slot_start >= start,
-            OccupancyHistory.slot_start < end,
+            OccupancyHistory.place_id == place.id, or_(*ranges)
         )
     ).all()
     wanted = set(days)
@@ -80,11 +90,12 @@ def forecast(session: Session, place: Place, weekday: int, now: datetime) -> For
         for moment in _quarter_hours(hours.opens, hours.closes)
     ]
     frees_at = None
-    if weekday == today.weekday():
+    # Not in a special period (exams, open all day): the weekly hours, and so
+    # the usual day, do not apply then.
+    if weekday == today.weekday() and place.id not in open_all_day_place_ids(session, institution.id, today):
         current = time(local_now.hour, local_now.minute // 15 * 15)
-        frees_at = next(
-            (s.start for s in slots if s.start >= current and s.people < full_at(place) - 0.5), None
-        )
+        # After the quarter hour under way: the place is full in it right now.
+        frees_at = next((s.start for s in slots if s.start > current and s.people < full_at(place) - 0.5), None)
     return Forecast(weekday, place.capacity, len(days), simulated, False, slots, frees_at)
 
 

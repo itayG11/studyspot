@@ -33,7 +33,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-const show = (p = AREA) => render(<PlaceForecast place={p} timeZone="Asia/Jerusalem" now={NOW} />)
+const show = (p = AREA, now = NOW) => render(<PlaceForecast place={p} timeZone="Asia/Jerusalem" now={now} />)
 
 describe('PlaceForecast', () => {
   it('opens on today, and compares now with the usual', async () => {
@@ -45,7 +45,8 @@ describe('PlaceForecast', () => {
 
   it('a full place says when it usually frees up', async () => {
     show()
-    expect(await screen.findByText('בדרך כלל מתפנה ב-10:30.')).toBeInTheDocument()
+    // 10:05: 10:00 is under way; 10:15 usually has 30 of 50.
+    expect(await screen.findByText('בדרך כלל מתפנה ב-10:15.')).toBeInTheDocument()
   })
 
   it('lists each hour in words for screen readers', async () => {
@@ -61,9 +62,11 @@ describe('PlaceForecast', () => {
     const user = userEvent.setup()
     show()
     await screen.findByText(/בדרך כלל בשעה הזו/)
+    answer = (weekday) => forecast(weekday === 0 ? { weekday: 0, weeks: 5 } : {})
     await user.click(screen.getByRole('button', { name: 'יום שני' }))
     expect(asked).toContain(0)
-    await screen.findByRole('button', { name: 'יום שני', pressed: true })
+    // Monday's own answer is on screen, not the loading state in between.
+    expect(await screen.findByText(/לפי 5 השבועות/)).toBeInTheDocument()
     expect(screen.queryByText(/בדרך כלל בשעה הזו/)).not.toBeInTheDocument()
     expect(screen.queryByText(/מתפנה/)).not.toBeInTheDocument()
   })
@@ -92,5 +95,11 @@ describe('PlaceForecast', () => {
     answer = () => forecast({ capacity: 6, frees_at: null, slots: [{ start: '10:00:00', people: 0.9 }] })
     show(room)
     expect(await screen.findByText('בדרך כלל בשעה הזו: בדרך כלל תפוס.')).toBeInTheDocument()
+  })
+
+  it('"usually frees up" moves on with the clock, from the same answer', async () => {
+    show(AREA, new Date('2026-10-11T07:35:00Z')) // 10:35: 10:30 is under way
+    expect(await screen.findByText(/בדרך כלל בשעה הזו: 44/)).toBeInTheDocument()
+    expect(screen.queryByText(/מתפנה ב-10:30/)).not.toBeInTheDocument()
   })
 })

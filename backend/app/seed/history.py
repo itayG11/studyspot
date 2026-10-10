@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.forecast import WEEKS, full_at
 from app.history import SLOT
 from app.models import Institution, OccupancyHistory, Place, PlaceKind
+from app.seed.demo import DEMO
 
 FRIDAY = 4
 BATCH = 5000
@@ -35,7 +36,12 @@ def _shape(hour: float) -> float:
 
 
 def simulate_history(session: Session, institution: Institution, today: date) -> int:
-    """Replaces this institution's simulated counts. Real counts stay."""
+    """Replaces this institution's simulated counts. Real counts stay.
+    Only the demo campus: a campus with real sign-in rules gets nothing,
+    whatever calls this (its empty quarter hours would fill with made-up
+    numbers)."""
+    if institution.slug != DEMO["institution"]["slug"] or institution.login_rules:
+        return 0
     places = session.scalars(select(Place).where(Place.institution_id == institution.id)).all()
     ids = [p.id for p in places]
     session.execute(

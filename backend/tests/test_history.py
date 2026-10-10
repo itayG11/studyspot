@@ -110,3 +110,24 @@ def test_the_sweep_records_history(session, braude, student):
     stay(session, student, area, NINE, NINE + Q)
     sweep(session, SUNDAY_10AM)
     assert counts(session, area) == {0: 1}
+
+
+def test_old_bookings_go_with_the_old_check_ins(session, braude, student):
+    # A booking says who was where too: kept as long as a check-in, no longer.
+    from app.models import Booking, BookingSource, BookingStatus
+
+    room = place_named(braude, "EM", "EM107")
+    old = SUNDAY_10AM - KEEP_CHECK_INS - timedelta(days=1)
+
+    def booking(start, status):
+        row = Booking(institution_id=braude.id, user_id=student.id, place_id=room.id, starts_at=start,
+                      ends_at=start + Q, status=status, source=BookingSource.ADVANCE)
+        session.add(row)
+        session.flush()
+        return row.id
+
+    gone = [booking(old + n * Q, s) for n, s in enumerate((BookingStatus.COMPLETED, BookingStatus.CANCELLED, BookingStatus.NO_SHOW))]
+    kept = booking(NINE, BookingStatus.COMPLETED)
+    sweep(session, SUNDAY_10AM)
+    left = {b.id for b in session.scalars(select(Booking)).all()}
+    assert kept in left and not left & set(gone)

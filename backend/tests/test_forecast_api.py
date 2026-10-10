@@ -69,3 +69,12 @@ def test_a_place_with_room_has_no_frees_at(client, session, braude):
     history(session, area, {timedelta(0): 50, Q: 10})
     view = next(p for p in client.get("/institutions/braude/places").json() if p["id"] == area.id)
     assert view["usually_frees_at"] is None
+
+
+def test_the_forecast_is_rate_limited_per_address(client, braude):
+    from app.ratelimit import FORECAST_PER_MINUTE
+
+    area = place_named(braude, "L", "מתחם לימוד")
+    for _ in range(FORECAST_PER_MINUTE):
+        assert client.get(f"/places/{area.id}/forecast").status_code == 200
+    assert client.get(f"/places/{area.id}/forecast").status_code == 429

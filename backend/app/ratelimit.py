@@ -156,3 +156,8 @@ refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seco
 write_limit = per_user("writes", limit=30, window_seconds=60)
 # Place search for the admin map (app/geocode.py): a person types slowly.
 geocode_limit = per_user("geocode", limit=10, window_seconds=60)
+# The load forecast is public and reads weeks of counts: a page asks for a
+# day at a time, so a person is far below this.
+FORECAST_PER_MINUTE = 60
+forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+

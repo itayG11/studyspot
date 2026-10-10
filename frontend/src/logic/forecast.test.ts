@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Forecast } from '../api/types'
-import { byHour, forecastLimit, levelWord, usualAt } from './forecast'
+import { byHour, forecastLimit, freesAt, levelWord, usualAt } from './forecast'
 
 function make(slots: [string, number][]): Forecast {
   return {
@@ -39,5 +39,11 @@ describe('forecast', () => {
     expect(levelWord('low', 'open_area')).toBe('שקט')
     expect(levelWord('high', 'library')).toBe('עמוס')
     expect(levelWord('high', 'group_room')).toBe('בדרך כלל תפוס')
+  })
+
+  it('frees up in the first later quarter hour that is usually not full', () => {
+    const forecast = make([['10:00', 20], ['10:15', 50], ['10:30', 50], ['10:45', 30]])
+    expect(freesAt(forecast, '10:05', 50)).toBe('10:45') // 10:00 is under way: no news
+    expect(freesAt(forecast, '10:50', 50)).toBeNull()
   })
 })

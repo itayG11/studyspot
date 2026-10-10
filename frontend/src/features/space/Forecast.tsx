@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { getForecast } from '../../api/campus'
 import type { Place } from '../../api/types'
 import { useApi } from '../../hooks/useApi'
-import { byHour, forecastLimit, levelWord, usualAt } from '../../logic/forecast'
+import { byHour, forecastLimit, freesAt, levelWord, usualAt } from '../../logic/forecast'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../../logic/time'
 import { Chip, ErrorState } from '../../ui'
 import styles from './space.module.css'
@@ -32,7 +32,9 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
     return () => clearInterval(timer)
   }, [start])
   const today = todayWeekday(timeZone, now)
-  const [weekday, setWeekday] = useState(today)
+  // Today until the student picks a day: after midnight, the new today.
+  const [picked, setPicked] = useState<number | null>(null)
+  const weekday = picked ?? today
   const forecast = useApi(() => getForecast(place.id, weekday), `forecast-${place.id}-${weekday}`)
   const data = forecast.data?.weekday === weekday ? forecast.data : null
   const limit = forecastLimit(place.kind, place.capacity)
@@ -50,6 +52,8 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
     const hours = byHour(data, limit)
     const usual = isToday ? usualAt(data, clock) : null
     const currentHour = Number(clock.slice(0, 2))
+    // The server leaves it out in special periods (exams): then not here either.
+    const frees = isToday && place.is_open && place.available === 0 && data.frees_at ? freesAt(data, clock, limit) : null
     body = (
       <>
         {usual !== null && place.is_open && (
@@ -59,9 +63,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
               : `עכשיו ${place.occupied} מתוך ${place.capacity}. בדרך כלל בשעה הזו: ${Math.round(usual)}.`}
           </p>
         )}
-        {isToday && place.is_open && place.available === 0 && data.frees_at && (
-          <p className={styles.forecastNow}>בדרך כלל מתפנה ב-{data.frees_at.slice(0, 5)}.</p>
-        )}
+        {frees && <p className={styles.forecastNow}>בדרך כלל מתפנה ב-{frees}.</p>}
         <div className={styles.forecastBars} aria-hidden="true">
           {hours.map((h) => (
             <span key={h.hour} className={styles.forecastColumn}>
@@ -96,7 +98,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
       </h2>
       <div className={styles.forecastDays} role="group" aria-label="יום בשבוע">
         {WEEK_ORDER.map((day) => (
-          <Chip key={day} className={styles.forecastDay} selected={day === weekday} aria-label={weekdayName(day)} onClick={() => setWeekday(day)}>
+          <Chip key={day} className={styles.forecastDay} selected={day === weekday} aria-label={weekdayName(day)} onClick={() => setPicked(day)}>
             {SHORT[day]}
           </Chip>
         ))}

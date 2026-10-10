@@ -121,6 +121,9 @@ class Institution(Base):
     is_active: Mapped[bool] = mapped_column(default=False, server_default=false())
     # Quarter hours before this are counted in occupancy_history.
     history_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the counting began: from then on, a quarter hour with no row had
+    # no one in it, rather than no one counting (app/forecast.py).
+    counting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

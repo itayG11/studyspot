@@ -38,6 +38,15 @@ export function usualAt(forecast: Forecast, clock: string): number | null {
   return slot ? slot.people : null
 }
 
+// "Usually frees up at": the first quarter hour after the one under way at
+// a local "HH:MM" that is usually not full. Worked out here from the same
+// answer, so it moves on with the clock while the page stays open.
+export function freesAt(forecast: Forecast, clock: string, limit: number): string | null {
+  const current = Math.floor(toMinutes(clock) / 15) * 15
+  const slot = forecast.slots.find((s) => toMinutes(s.start) > current && s.people < limit - 0.5)
+  return slot ? slot.start.slice(0, 5) : null
+}
+
 const WORDS: Record<ForecastLevel, string> = { low: 'שקט', medium: 'בינוני', high: 'עמוס' }
 const ROOM_WORDS: Record<ForecastLevel, string> = {
   low: 'בדרך כלל פנוי',
