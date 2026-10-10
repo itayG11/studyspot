@@ -32,6 +32,11 @@ beforeEach(() => {
         ? jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME })
         : jsonResponse({ detail: 'not_authenticated' }, 401))
     }
+    if (path === '/invites/inspect') return Promise.resolve(jsonResponse({ slug: 'braude', name: 'מכללת בראודה' }))
+    if (path === '/invites/accept') {
+      ME = { ...ME, role: 'institution_admin', institution_slug: 'braude' } // the server moved them
+      return Promise.resolve(jsonResponse({ slug: 'braude', name: 'מכללת בראודה' }))
+    }
     if (path === '/institutions') return Promise.resolve(jsonResponse([{ slug: 'demo', name: 'קמפוס הדגמה' }]))
     if (path.startsWith('/admin/') || path.startsWith('/system/')) return Promise.resolve(jsonResponse([]))
     if (path === '/institutions/demo') return Promise.resolve(jsonResponse(DEMO))
@@ -168,5 +173,17 @@ describe('an address per institution', () => {
     renderAt('/institutions')
     expect(await screen.findByRole('link', { name: 'קמפוס הדגמה' })).toHaveAttribute('href', '/demo')
     expect((await header()).getByRole('link', { name: 'מוסדות' })).toHaveAttribute('href', '/institutions')
+  })
+
+  it('accepting an invite to another institution opens its admin page (the page is rebuilt on the way)', async () => {
+    // The visitor's home institution changes from the demo campus to Braude,
+    // so the pages with one address are drawn again from scratch.
+    signedIn = true
+    ME.institution_slug = 'demo'
+    const router = renderAt('/invite#t=secret-token')
+    const accept = await screen.findByRole('button', { name: 'לקבל את ההזמנה' })
+    accept.click()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/braude/admin'))
+    expect(screen.queryByText('הקישור לא שלם')).not.toBeInTheDocument()
   })
 })

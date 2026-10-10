@@ -33,3 +33,6 @@ desktop.ini
 *.sqlite3
 *.db
 pgdata/
+
+# uv writes this when running the tests locally; the project installs with pip.
+backend/uv.lock
