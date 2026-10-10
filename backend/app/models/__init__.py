@@ -17,6 +17,7 @@ from app.models.campus import (
     is_counted,
 )
 from app.models.checkins import CheckIn, CheckInEndReason
+from app.models.history import OccupancyHistory
 from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
 from app.models.people import (
     AdminInvite,
@@ -45,6 +46,7 @@ __all__ = [
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
+    "OccupancyHistory",
     "OpeningHours",
     "Place",
     "PlaceAmenity",

@@ -74,6 +74,8 @@ class CheckIn(Base):
             postgresql_where=text("ended_at IS NULL AND seat_id IS NOT NULL"),
         ),
         Index("ix_check_ins_open_by_place", "place_id", postgresql_where=text("ended_at IS NULL")),
+        # Counting the past, quarter hour by quarter hour (app/history.py).
+        Index("ix_check_ins_institution_started", "institution_id", "started_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

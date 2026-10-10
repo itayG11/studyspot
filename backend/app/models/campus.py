@@ -7,12 +7,13 @@ building's, so one institution can never write into another's campus.
 """
 
 import enum
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    DateTime,
     Enum,
     ForeignKey,
     ForeignKeyConstraint,
@@ -118,6 +119,8 @@ class Institution(Base):
     # Shown in the public list of institutions. A new institution starts
     # hidden; its admin turns this on when the campus is ready.
     is_active: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # Quarter hours before this are counted in occupancy_history.
+    history_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

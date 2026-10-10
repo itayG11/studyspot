@@ -1,5 +1,6 @@
 """Background sweep: release no-shows, complete ended bookings, close
-expired check-ins.
+expired check-ins, count the past quarter hours (app/history.py), and
+delete check-ins older than 90 days.
 
 Every step is a single UPDATE whose condition is the state it fixes, so
 running it twice, or in several server processes at once, does no harm.
@@ -22,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
+from app.history import delete_old_check_ins, record_history
 from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason
 
 log = logging.getLogger(__name__)
@@ -33,6 +35,7 @@ class SweepResult:
     completed: int
     expired_check_ins: int
     deleted_sessions: int = 0
+    deleted_check_ins: int = 0
 
 
 def sweep(session: Session, now: datetime) -> SweepResult:
@@ -54,12 +57,16 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     # Sessions past their 7 days can never be used again (revoked ones are
     # kept until then: reuse detection needs them).
     old_sessions = session.execute(delete(AuthSession).where(AuthSession.expires_at <= now)).rowcount
+    # After closing the expired ones: their end times count.
+    record_history(session, now)
+    old_check_ins = delete_old_check_ins(session, now)
     session.flush()
     return SweepResult(
         no_shows=no_shows,
         completed=completed,
         expired_check_ins=expired,
         deleted_sessions=old_sessions,
+        deleted_check_ins=old_check_ins,
     )
 
 
