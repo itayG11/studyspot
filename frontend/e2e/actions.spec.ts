@@ -110,10 +110,17 @@ test('the admin adds a building and a room, and students find the room', async (
     await page.getByRole('link', { name: 'ניהול' }).click()
     await page.getByRole('button', { name: 'הוספה' }).click()
 
-    await page.getByLabel('קוד הבניין').fill('QA')
+    // The building goes where the map is clicked.
+    const map = page.getByRole('region', { name: 'הוספה' }).locator('.leaflet-container')
+    await map.scrollIntoViewIfNeeded()
+    const box = (await map.boundingBox())!
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5)
+    await expect(page.getByText('נבחר מיקום על המפה.')).toBeVisible()
+    await page.getByLabel('שם הבניין').fill('בניין הבדיקות')
+    await page.getByLabel(/שם קצר/).fill('QA')
     await page.getByLabel('מספר קומות').fill('2')
     await page.getByRole('button', { name: 'הוספת בניין' }).click()
-    await expect(page.getByText('בניין QA נוסף')).toBeVisible()
+    await expect(page.getByText('בניין הבדיקות נוסף')).toBeVisible()
 
     await page.getByLabel('בניין', { exact: true }).selectOption({ label: 'בניין QA' })
     await page.getByLabel('סוג המקום').selectOption('group_room')

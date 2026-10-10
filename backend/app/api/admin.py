@@ -3,27 +3,36 @@ gets 404, exactly as if it did not exist."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import campus_setup
+from app.api.auth import get_http_client
 from app.api.deps import get_code_secret, get_session
 from app.campus_admin import create_building, create_place
 from app.codes import make_code
 from app.config import Settings, get_settings
 from app.errors import Refusal
-from app.models import Building, Institution, Place, User
+from app.geocode import SHARED, Geocoder
+from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User
 from app.permissions import can_manage, require_admin
-from app.ratelimit import write_limit
+from app.ratelimit import geocode_limit, write_limit
 from app.schemas import (
     BuildingCreatedOut,
     BuildingCreateIn,
     BuildingLocationIn,
     BuildingLocationOut,
+    GeocodeResultOut,
+    InstitutionUpdateIn,
+    LoginRuleIn,
+    LoginRuleOut,
     PlaceCreatedOut,
     PlaceCreateIn,
+    SetupOut,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -183,3 +192,104 @@ def add_place(
     return PlaceCreatedOut(
         id=place.id, building_id=building.id, name=place.name, kind=place.kind, capacity=place.capacity
     )
+
+
+# --- The institution's own setup: details, who signs in, opening it ----------
+
+
+def _managed(db: Session, admin: User, slug: str) -> Institution:
+    institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
+    if institution is None or not can_manage(admin, institution):
+        raise HTTPException(404, "institution_not_found")
+    return institution
+
+
+def _refuse_demo(institution: Institution, settings: Settings) -> None:
+    # The demo admin is shared by every visitor of the live site.
+    if institution.slug == _demo_slug(settings):
+        raise HTTPException(403, "demo_campus_locked")
+
+
+@router.get("/institutions/{slug}/setup", response_model=SetupOut)
+def get_setup(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: SessionDep, settings: SettingsDep):
+    institution = _managed(db, admin, slug)
+    buildings, located, places = campus_setup.setup_counts(db, institution)
+    return SetupOut(
+        slug=institution.slug,
+        name=institution.name,
+        timezone=institution.timezone,
+        is_active=institution.is_active,
+        locked=institution.slug == _demo_slug(settings),
+        rules=[LoginRuleOut.model_validate(r) for r in institution.login_rules],
+        buildings=buildings,
+        located_buildings=located,
+        places=places,
+        microsoft_client_id=settings.microsoft_client_id,
+    )
+
+
+@router.patch("/institutions/{slug}", response_model=SetupOut, dependencies=[Depends(write_limit)])
+def update_institution(
+    slug: Annotated[str, Path(max_length=64)], body: InstitutionUpdateIn, admin: AdminDep, db: SessionDep,
+    settings: SettingsDep,
+):
+    institution = _managed(db, admin, slug)
+    _refuse_demo(institution, settings)
+    for field, value in body.model_dump(exclude_unset=True, exclude_none=True).items():
+        setattr(institution, field, value)
+    db.commit()
+    return get_setup(slug, admin, db, settings)
+
+
+@router.post(
+    "/institutions/{slug}/login-rules",
+    status_code=status.HTTP_201_CREATED,
+    response_model=LoginRuleOut,
+    dependencies=[Depends(write_limit)],
+)
+def add_login_rule(
+    slug: Annotated[str, Path(max_length=64)], body: LoginRuleIn, admin: AdminDep, db: SessionDep,
+    settings: SettingsDep,
+):
+    institution = _managed(db, admin, slug)
+    _refuse_demo(institution, settings)
+    try:
+        created = campus_setup.add_login_rule(db, institution, AuthProvider(body.provider), body.value)
+        db.commit()
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    except IntegrityError:  # the same rule, added a moment ago elsewhere
+        db.rollback()
+        raise HTTPException(409, "login_rule_taken") from None
+    return created
+
+
+@router.delete(
+    "/login-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)]
+)
+def remove_login_rule(
+    rule_id: Annotated[int, Path(gt=0)], admin: AdminDep, db: SessionDep, settings: SettingsDep
+) -> None:
+    found = db.get(InstitutionLoginRule, rule_id)
+    institution = db.get(Institution, found.institution_id) if found else None
+    if found is None or not can_manage(admin, institution):
+        raise HTTPException(404, "login_rule_not_found")
+    _refuse_demo(institution, settings)
+    db.delete(found)
+    db.commit()
+
+
+@router.get("/geocode", response_model=list[GeocodeResultOut], dependencies=[Depends(geocode_limit)])
+def geocode(
+    q: Annotated[str, Query(min_length=2, max_length=120)],
+    admin: AdminDep,
+    settings: SettingsDep,
+    http: Annotated[httpx.Client, Depends(get_http_client)],
+):
+    """Where a place is, for the admin's map. Only on a press of "search"."""
+    site = settings.site_url or settings.frontend_url
+    geocoder = Geocoder(http, settings.geocoder_url, f"StudySpot campus finder (+{site})", shared=SHARED)
+    try:
+        return geocoder.search(q)
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None

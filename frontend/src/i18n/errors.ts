@@ -77,6 +77,14 @@ const MESSAGES: Record<string, string> = {
   // Admin
   building_not_found: 'הבניין לא נמצא.',
 
+  // An institution's own setup
+  demo_campus_locked: 'בקמפוס ההדגמה אי אפשר לשנות את זה, כי המנהל לדוגמה משותף לכל המבקרים.',
+  login_rule_taken: 'הסיומת או הארגון כבר שייכים למוסד אחר.',
+  login_rule_public_domain: 'זו כתובת ציבורית שכל אחד יכול לפתוח. צריך סיומת שרק המוסד נותן לסטודנטים שלו.',
+  login_rule_not_found: 'הכלל לא נמצא, או שכבר הוסר.',
+  geocode_busy: 'רגע, חיפוש אחד בכל שנייה. נסה שוב.',
+  geocode_unavailable: 'החיפוש לא זמין עכשיו. אפשר להזיז את המפה ידנית, או ללחוץ "המיקום שלי".',
+
   // The system admin, and admin invites
   institution_slug_reserved: 'הכתובת הזו שמורה לאתר עצמו. בחר כתובת אחרת.',
   institution_slug_taken: 'כבר יש מוסד בכתובת הזו.',

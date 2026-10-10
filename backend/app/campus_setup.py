@@ -1,0 +1,48 @@
+"""An institution's own setup, done by its admin: its details, who signs in
+(login rules), and opening it to the public list."""
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.errors import Refusal
+from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place
+
+# Microsoft's one tenant for every personal account (outlook.com, hotmail).
+# As a rule it would put every personal Microsoft account in one institution.
+MICROSOFT_CONSUMERS = "9188040d-6c67-4c5b-b112-36a304b66dad"
+
+# Domains anyone can open an address at. As a rule, any of their addresses
+# would join the institution. (Until a domain is verified, e.g. by DNS, an
+# institution could still name a domain it does not own: a known limit.)
+PUBLIC_MAIL_DOMAINS = frozenset({
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com",
+    "yahoo.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com",
+    "walla.co.il", "walla.com", "012.net.il", "bezeqint.net", "netvision.net.il",
+})
+
+
+def setup_counts(db: Session, institution: Institution) -> tuple[int, int, int]:
+    """Buildings, buildings placed on the map, and places."""
+    buildings, located = db.execute(
+        select(func.count(), func.count(Building.latitude)).where(Building.institution_id == institution.id)
+    ).one()
+    places = db.scalar(select(func.count()).select_from(Place).where(Place.institution_id == institution.id))
+    return buildings, located, places
+
+
+def add_login_rule(db: Session, institution: Institution, provider: AuthProvider, value: str) -> InstitutionLoginRule:
+    if (provider, value) in ((AuthProvider.MICROSOFT, MICROSOFT_CONSUMERS),) or (
+        provider == AuthProvider.EMAIL and value in PUBLIC_MAIL_DOMAINS
+    ):
+        raise Refusal(409, "login_rule_public_domain")
+    taken = db.scalars(
+        select(InstitutionLoginRule.id).where(
+            InstitutionLoginRule.provider == provider, InstitutionLoginRule.value == value
+        )
+    ).first()
+    if taken is not None:
+        raise Refusal(409, "login_rule_taken")  # the table's unique key holds against a race too
+    created = InstitutionLoginRule(institution_id=institution.id, provider=provider, value=value)
+    db.add(created)
+    db.flush()
+    return created

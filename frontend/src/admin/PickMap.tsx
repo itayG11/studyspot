@@ -3,7 +3,8 @@
 
 import 'leaflet/dist/leaflet.css'
 import { latLngBounds } from 'leaflet'
-import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMapEvents } from 'react-leaflet'
+import { useEffect } from 'react'
+import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { Building } from '../api/types'
 import { position } from '../logic/occupancy'
 import { SourceLayer } from '../map/CampusMap'
@@ -14,6 +15,17 @@ interface Props {
   buildings: Building[]
   selected: string | null
   onPick: (latitude: number, longitude: number) => void
+  flyTo?: [number, number] | null // a searched place, or "my location"
+  picked?: [number, number] | null // the point chosen for a new building
+}
+
+// Moves the map when a new place to look at comes in.
+function FlyTo({ target }: { target: [number, number] | null | undefined }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo(target, 17, { duration: 0.8 })
+  }, [map, target])
+  return null
 }
 
 function ClickCatcher({ onPick }: { onPick: Props['onPick'] }) {
@@ -28,7 +40,7 @@ function ClickCatcher({ onPick }: { onPick: Props['onPick'] }) {
   return null
 }
 
-export function PickMap({ buildings, selected, onPick }: Props) {
+export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
   const points = buildings.map(position).filter((p): p is [number, number] => p !== null)
   // With nothing placed yet there is no campus to frame: start on Israel.
   const view = points.length > 0 ? { bounds: latLngBounds(points).pad(0.3) } : { center: [31.5, 34.9] as [number, number], zoom: 8 }
@@ -61,6 +73,19 @@ export function PickMap({ buildings, selected, onPick }: Props) {
             </CircleMarker>
           )
         })}
+        {picked && (
+          <CircleMarker
+            center={picked}
+            radius={12}
+            interactive={false}
+            pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#ff5b14', fillOpacity: 0.95 }}
+          >
+            <Tooltip permanent direction="top" offset={[0, -10]}>
+              הבניין החדש
+            </Tooltip>
+          </CircleMarker>
+        )}
+        <FlyTo target={flyTo} />
         <ClickCatcher onPick={onPick} />
       </MapContainer>
     </div>

@@ -5,6 +5,7 @@ route runs, and response models make sure only the listed fields leave
 the server.
 """
 
+import re
 import unicodedata
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -16,6 +17,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 from app.demo import Persona
 from app.models import (
     Amenity,
+    AuthProvider,
     BookingSource,
     BookingStatus,
     BuildingStatus,
@@ -389,3 +391,80 @@ class InviteTokenIn(BaseModel):
 class InviteInstitutionOut(BaseModel):
     slug: str
     name: str
+
+
+# --- An institution's own setup (its admin) ----------------------------------
+
+
+class InstitutionUpdateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    timezone: str | None = Field(default=None, max_length=64)
+    is_active: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = _plain_text(value)
+        if not cleaned:
+            raise ValueError("a name is needed")
+        return cleaned
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, value: str | None) -> str | None:
+        if value is not None and value not in available_timezones():
+            raise ValueError("unknown time zone")
+        return value
+
+
+_DOMAIN = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+_TENANT = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+class LoginRuleIn(BaseModel):
+    """Who signs in to the institution: an e-mail domain of its students (a
+    code is sent there), or its Microsoft tenant id."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["email", "microsoft"]
+    value: str = Field(min_length=1, max_length=255)
+
+    @model_validator(mode="after")
+    def _well_formed(self) -> "LoginRuleIn":
+        self.value = self.value.strip().lower()
+        pattern = _DOMAIN if self.provider == "email" else _TENANT
+        if not pattern.fullmatch(self.value):
+            raise ValueError("an e-mail domain like college.ac.il, or a Microsoft tenant id")
+        return self
+
+
+class LoginRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    provider: AuthProvider
+    value: str
+
+
+class SetupOut(BaseModel):
+    slug: str
+    name: str
+    timezone: str
+    is_active: bool
+    locked: bool  # the shared demo campus: shown, but not changed
+    rules: list[LoginRuleOut]
+    buildings: int
+    located_buildings: int
+    places: int
+    microsoft_client_id: str | None  # public: it goes in the admin consent link
+
+
+class GeocodeResultOut(BaseModel):
+    name: str
+    latitude: float
+    longitude: float

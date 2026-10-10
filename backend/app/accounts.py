@@ -2,11 +2,21 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AdminInvite, AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
+from app.models import (
+    AdminInvite,
+    AuthProvider,
+    Booking,
+    CheckIn,
+    Institution,
+    InstitutionLoginRule,
+    User,
+    UserIdentity,
+    UserRole,
+)
 from app.oidc import ProviderIdentity
 
 # Anyone with a Google account can join the open campus, so new users there
@@ -85,7 +95,11 @@ def sign_in(
     else:
         user = existing
         if user.institution_id != institution_id:
-            raise Refusal(403, "institution_not_supported")
+            if not _moves_to_new_rule(db, user, rule):
+                raise Refusal(403, "institution_not_supported")
+            # Signed in before the institution added this rule, so put in the
+            # open campus then. Now the rule says where the account belongs.
+            move_user(db, user, institution_id)
         # Keep the shown details current; they are not used for identity.
         user.email, user.display_name = identity.email, identity.display_name[:100]
     if provider == AuthProvider.GOOGLE:
@@ -93,6 +107,23 @@ def sign_in(
     user.last_login_at = now
     db.flush()
     return user
+
+
+def move_user(db: Session, user: User, institution_id: int) -> None:
+    """Move a user of the open campus to another institution. Their bookings
+    and check-ins point at the open campus's places, and the database ties
+    each to the user's institution (a composite key): they go first."""
+    db.execute(delete(CheckIn).where(CheckIn.user_id == user.id))  # may point at a booking
+    db.execute(delete(Booking).where(Booking.user_id == user.id))
+    user.institution_id = institution_id
+
+
+def _moves_to_new_rule(db: Session, user: User, rule: InstitutionLoginRule | None) -> bool:
+    """Only a student of the open campus (an institution without rules) moves
+    by a rule. A real institution's user, or an admin, never does."""
+    if rule is None or user.role != UserRole.STUDENT:
+        return False
+    return not db.get(Institution, user.institution_id).login_rules
 
 
 def invited_to_own_institution(db: Session, user: User) -> bool:

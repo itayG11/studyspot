@@ -154,3 +154,5 @@ def email_start_limit(
     """Both limits, short and daily."""
 refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seconds=60)
 write_limit = per_user("writes", limit=30, window_seconds=60)
+# Place search for the admin map (app/geocode.py): a person types slowly.
+geocode_limit = per_user("geocode", limit=10, window_seconds=60)

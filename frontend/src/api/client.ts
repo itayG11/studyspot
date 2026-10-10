@@ -60,7 +60,7 @@ export function resetSessionForTests(): void {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
   auth?: boolean // send the access token; refresh it once if it expired
 }

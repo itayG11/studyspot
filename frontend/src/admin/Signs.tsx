@@ -23,6 +23,14 @@ export function Signs() {
 
   if (codes.error) return <ErrorState error={codes.error} onRetry={codes.reload} />
   if (!codes.data) return <PageLoading />
+  if (codes.data.length === 0) {
+    return (
+      <Notice>
+        השלטים נוצרים לבד: לכל מקום שמוסיפים יש שלט עם קוד משלו. עוד אין מקומות, אז מוסיפים אותם בלשונית "הוספה", והשלטים
+        יופיעו כאן.
+      </Notice>
+    )
+  }
 
   return (
     <>

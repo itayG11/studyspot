@@ -33,7 +33,7 @@ from app.email_codes import (
 from app.errors import Refusal
 from app.mailer import BrevoMailer
 from app.main import app
-from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule, User, UserIdentity, UserRole
+from app.models import AuthProvider, EmailSignInCode, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
 from app.seed import seed_demo
 
 FRONTEND = "https://app.example"
@@ -363,8 +363,9 @@ def test_a_page_on_another_site_cannot_verify(client, mailer):
     assert response.status_code == 403
 
 
-def test_a_user_of_another_institution_with_the_same_address_is_refused(client, mailer, session):
-    # An email identity that somehow sits in another institution is not moved.
+def test_a_user_of_the_open_campus_whose_address_now_has_a_rule_moves_to_it(client, mailer, session, braude):
+    # Signed in before the college had this rule, so put in the open campus.
+    # The code just proved the address, and the rule says it is Braude's.
     other = seed_demo(session)
     user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
     session.add(user)
@@ -372,9 +373,25 @@ def test_a_user_of_another_institution_with_the_same_address_is_refused(client, 
     session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
     session.flush()
     start(client)
+    assert verify(client, mailer.last_code()).status_code == 200
+    session.refresh(user)
+    assert user.institution_id == braude.id
+
+
+def test_a_user_of_a_real_institution_with_the_same_address_is_refused(client, mailer, session, braude):
+    # Only the open campus is left this way; a real institution keeps its users.
+    other = Institution(name="אחר", slug="other-college", timezone="Asia/Jerusalem")
+    session.add(other)
+    session.flush()
+    other.login_rules.append(InstitutionLoginRule(provider=AuthProvider.EMAIL, value="other.ac.il"))
+    user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
+    session.add(user)
+    session.flush()
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
+    session.flush()
+    start(client)
     response = verify(client, mailer.last_code())
-    assert response.status_code == 403
-    assert response.json()["detail"] == "institution_not_supported"
+    assert (response.status_code, response.json()["detail"]) == (403, "institution_not_supported")
 
 
 # --- The real mail service, with its HTTP calls faked ----------------------------------

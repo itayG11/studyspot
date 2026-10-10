@@ -11,15 +11,14 @@ import hmac
 import secrets
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.accounts import move_user
 from app.errors import Refusal
 from app.models import (
     AdminInvite,
     AuthProvider,
-    Booking,
-    CheckIn,
     Institution,
     User,
     UserIdentity,
@@ -131,11 +130,7 @@ def accept_invite(db: Session, user: User, token: str, now: datetime, key: bytes
             # A real institution's user (Braude): their account is theirs by
             # its sign-in rules, and must not leave it.
             raise Refusal(403, "invite_other_institution")
-        # Bookings and check-ins point at the open campus's places, and the
-        # database ties each to the user's institution: they go first.
-        db.execute(delete(CheckIn).where(CheckIn.user_id == user.id))  # may point at a booking
-        db.execute(delete(Booking).where(Booking.user_id == user.id))
-        user.institution_id = target.id
+        move_user(db, user, target.id)
     user.role = UserRole.INSTITUTION_ADMIN
     invite.used_at, invite.used_by = now, user.id
     db.flush()

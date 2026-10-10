@@ -347,3 +347,75 @@
   outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
+
+/* The building form's map tools: my location, and a place search. */
+.mapTools {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--s-2);
+}
+
+.search > label {
+  grid-column: 1 / -1;
+}
+
+.results {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attribution {
+  margin: 0;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--ink-3);
+}
+
+/* The setup tab. */
+.setup {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.steps {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.stepDone {
+  color: var(--free);
+}
+
+/* "Done" is a word too, not only a colour. */
+.doneTag {
+  padding: 1px var(--s-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-radius: var(--r-pill);
+  background: var(--free-tint);
+}
+
+.rules {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

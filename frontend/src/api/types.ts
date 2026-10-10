@@ -242,3 +242,30 @@ export interface Invite {
   expires_at: string
   used_at: string | null
 }
+
+// --- An institution's own setup (its admin) ---------------------------------
+
+export interface LoginRule {
+  id: number
+  provider: 'email' | 'microsoft'
+  value: string
+}
+
+export interface Setup {
+  slug: string
+  name: string
+  timezone: string
+  is_active: boolean
+  locked: boolean // the shared demo campus: shown, but not changed
+  rules: LoginRule[]
+  buildings: number
+  located_buildings: number
+  places: number
+  microsoft_client_id: string | null
+}
+
+export interface GeocodeResult {
+  name: string
+  latitude: number
+  longitude: number
+}

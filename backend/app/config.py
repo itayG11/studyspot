@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # has verified the address (app/accounts.py). Empty: nobody.
     system_admin_emails: str = ""
 
+    # Place search on the admin's map (app/geocode.py). Nominatim's public
+    # service by default; another one with the same API can replace it.
+    geocoder_url: str = "https://nominatim.openstreetmap.org/search"
+
     # Sign-in with a one-time code by email (app/email_codes.py). On when a
     # Brevo API key is set; EMAIL_SENDER is the From address, on a domain
     # verified at Brevo. EMAIL_LOGIN_DEV_LOG prints codes to the server log

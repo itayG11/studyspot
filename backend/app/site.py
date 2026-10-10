@@ -43,7 +43,7 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",  # a file is only what its type says
     "X-Frame-Options": "DENY",  # older browsers' frame-ancestors
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(self), payment=()",
     # HTTPS only, for a year. Browsers ignore it on plain http (localhost).
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 }

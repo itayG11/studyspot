@@ -113,4 +113,7 @@ def test_security_headers_on_every_answer(site: TestClient, path: str):
     assert headers["x-frame-options"] == "DENY"
     assert headers["referrer-policy"] == "strict-origin-when-cross-origin"
     assert "camera=()" in headers["permissions-policy"]
+    # Location for the admin's "my location" on the map: this site only,
+    # never a page embedded in it. The browser still asks the visitor.
+    assert "geolocation=(self)" in headers["permissions-policy"]
     assert headers["strict-transport-security"].startswith("max-age=")

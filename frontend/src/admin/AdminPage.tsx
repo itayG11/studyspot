@@ -1,5 +1,5 @@
-// The institution admin's page: printable signs, placing buildings, and
-// adding new buildings and places.
+// The institution admin's page: setting the institution up, printable
+// signs, placing buildings, and adding new buildings and places.
 // The server checks the admin role on every request; this page only hides
 // what a student could not use anyway.
 
@@ -7,14 +7,21 @@ import { useState } from 'react'
 import { Adder } from './Adder'
 import styles from './admin.module.css'
 import { Placer } from './Placer'
+import { Setup, useSetup } from './Setup'
 import { Signs } from './Signs'
 
-type Tab = 'signs' | 'placing' | 'adding'
+type Tab = 'setup' | 'signs' | 'placing' | 'adding'
 
-const TAB_LABELS: Record<Tab, string> = { signs: 'שלטים להדפסה', placing: 'מיקום בניינים', adding: 'הוספה' }
+const TAB_LABELS: Record<Tab, string> = { setup: 'הקמה', signs: 'שלטים להדפסה', placing: 'מיקום בניינים', adding: 'הוספה' }
 
 export function AdminPage() {
-  const [tab, setTab] = useState<Tab>('signs')
+  const setup = useSetup()
+  const [chosen, setTab] = useState<Tab | null>(null)
+  // The first tab, picked once when the setup loads: setting up while the
+  // institution is not open yet, the signs once it is. Picked once, so
+  // opening the institution does not move the admin to another tab.
+  if (chosen === null && setup.data) setTab(setup.data.is_active ? 'signs' : 'setup')
+  const tab: Tab = chosen ?? 'setup'
   // A building just added, to choose for placing on the map.
   const [toPlace, setToPlace] = useState<string | null>(null)
   return (
@@ -36,10 +43,12 @@ export function AdminPage() {
         ))}
       </div>
       <section aria-label={TAB_LABELS[tab]}>
+        {tab === 'setup' && <Setup setup={setup} onGo={(t) => setTab(t)} />}
         {tab === 'signs' && <Signs />}
         {tab === 'placing' && <Placer key={toPlace ?? ''} initial={toPlace} />}
         {tab === 'adding' && (
           <Adder
+            onAdded={setup.reload}
             onPlace={(code) => {
               setToPlace(code)
               setTab('placing')
