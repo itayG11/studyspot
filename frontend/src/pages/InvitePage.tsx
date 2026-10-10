@@ -18,6 +18,10 @@ function tokenFromHash(hash: string): string | null {
   return new URLSearchParams(hash.replace(/^#/, '')).get('t') || null
 }
 
+// The link itself is dead: keeping it would show it to whoever signs in
+// next in this tab.
+const DEAD = new Set(['invite_invalid', 'invite_used', 'invite_revoked', 'invite_expired'])
+
 // The institution of an invite just accepted. Accepting changes the
 // visitor's home institution, and the pages with one address (this one too)
 // are then drawn again from scratch: kept out here, it survives that.
@@ -36,6 +40,9 @@ export function InvitePage() {
   useEffect(() => {
     if (accepted) justAccepted = null // used: on the way to the admin page
   }, [accepted])
+  useEffect(() => {
+    if (invite.error && DEAD.has(invite.error.code)) clearPendingInvite()
+  }, [invite.error])
   useEffect(() => {
     if (!tokenFromHash(location.hash)) return
     rememberPendingInvite(tokenFromHash(location.hash)!) // waits here if sign-in comes first
@@ -75,7 +82,10 @@ export function InvitePage() {
   const institution = invite.data
   const moving = user?.institution_slug !== institution.slug
   async function accept() {
-    const done = await action.run(() => acceptInvite(token!))
+    const done = await action.run(
+      () => acceptInvite(token!),
+      (code) => DEAD.has(code) && clearPendingInvite(),
+    )
     if (!done) return
     clearPendingInvite()
     justAccepted = done.slug

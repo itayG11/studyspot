@@ -56,7 +56,9 @@ def create_institution(db: Session, name: str, slug: str, timezone: str) -> Inst
     return institution
 
 
-def delete_institution(db: Session, institution: Institution, kept_slugs: set[str]) -> None:
+def delete_institution(
+    db: Session, institution: Institution, kept_slugs: set[str], system_admins: frozenset[str] = frozenset()
+) -> None:
     """For an institution made for a try. The database deletes everything
     in it with it (every key to an institution is ON DELETE CASCADE): its
     buildings, places, signs, bookings, rules, invites, and its users, so
@@ -67,12 +69,15 @@ def delete_institution(db: Session, institution: Institution, kept_slugs: set[st
         raise Refusal(409, "institution_active")  # in the public list: hide it first
     if any(rule.approved for rule in institution.login_rules):
         raise Refusal(409, "institution_has_rules")  # students may sign in to it
-    system_admins = db.scalar(
+    # By role, or by address: one taken off the list and put back gets the
+    # role again only at their next Google sign-in, and is one all the same.
+    inside = db.scalar(
         select(func.count()).select_from(User).where(
-            User.institution_id == institution.id, User.role == UserRole.SYSTEM_ADMIN
+            User.institution_id == institution.id,
+            (User.role == UserRole.SYSTEM_ADMIN) | func.lower(User.email).in_(system_admins),
         )
     )
-    if system_admins:
+    if inside:
         raise Refusal(409, "institution_has_system_admin")  # it would delete you
     db.delete(institution)
     db.flush()
@@ -130,7 +135,10 @@ def inspect_invite(db: Session, token: str, now: datetime, key: bytes) -> Instit
 
 
 def accept_invite(db: Session, user: User, token: str, now: datetime, key: bytes) -> Institution:
-    invite = _open_invite(db, token, now, key, lock=True)
+    # The institution's row before the invite's, in the order deleting the
+    # institution takes them: the other order could deadlock with a delete.
+    db.get(Institution, _open_invite(db, token, now, key, lock=False).institution_id, with_for_update=True)
+    invite = _open_invite(db, token, now, key, lock=True)  # gone if the institution was deleted meanwhile
     # Locked too: a booking made in another tab between the deletes and the
     # move below would block the move (the keys tie it to the institution).
     db.refresh(user, with_for_update=True)

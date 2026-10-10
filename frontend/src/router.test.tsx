@@ -16,12 +16,14 @@ let ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'stude
 
 let signedIn: boolean
 let slowServer: boolean // the institution's details never arrive
+let braudeDeleted: boolean
 
 beforeEach(() => {
   resetSessionForTests()
   forgetVisitForTests()
   signedIn = false
   slowServer = false
+  braudeDeleted = false
   ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
   // The front page's story asks about the screen; jsdom has no answer.
   vi.stubGlobal('matchMedia', (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }))
@@ -40,6 +42,7 @@ beforeEach(() => {
     if (path === '/institutions') return Promise.resolve(jsonResponse([{ slug: 'demo', name: 'קמפוס הדגמה' }]))
     if (path.startsWith('/admin/') || path.startsWith('/system/')) return Promise.resolve(jsonResponse([]))
     if (path === '/institutions/demo') return Promise.resolve(jsonResponse(DEMO))
+    if (path === '/institutions/braude' && braudeDeleted) return Promise.resolve(jsonResponse({ detail: 'institution_not_found' }, 404))
     if (path === '/institutions/braude') return slowServer ? new Promise(() => {}) : Promise.resolve(jsonResponse(BRAUDE))
     if (path.endsWith('/buildings') || path.endsWith('/places')) return Promise.resolve(jsonResponse([]))
     if (path === '/places/7') {
@@ -185,5 +188,17 @@ describe('an address per institution', () => {
     accept.click()
     await waitFor(() => expect(router.state.location.pathname).toBe('/braude/admin'))
     expect(screen.queryByText('הקישור לא שלם')).not.toBeInTheDocument()
+  })
+
+  it('an institution deleted meanwhile says so, and is not where the front page leads', async () => {
+    const router = renderAt('/braude')
+    expect(await (await header()).findByText('מכללת בראודה')).toBeInTheDocument()
+    braudeDeleted = true
+    // A page with one address for everyone shows the last one visited:
+    // braude, which now answers "not found".
+    await act(() => router.navigate('/privacy'))
+    expect(await screen.findByText('המוסד לא נמצא')).toBeInTheDocument()
+    await act(() => router.navigate('/'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo'))
   })
 })

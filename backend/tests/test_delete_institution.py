@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from app.models import (
     AdminInvite,
     AuthProvider,
+    AuthSession,
     Building,
     Institution,
     InstitutionLoginRule,
@@ -46,6 +47,8 @@ def trial(session, owner) -> Institution:
     session.add(admin)
     session.flush()
     session.add(UserIdentity(user_id=admin.id, provider=AuthProvider.MICROSOFT, subject="t:a"))
+    session.add(AuthSession(user_id=admin.id, token_hash="s" * 64, created_at=SUNDAY_10AM,
+                            expires_at=SUNDAY_10AM + timedelta(days=30)))
     building = Building(institution_id=institution.id, code="T", name="בניין", floors_count=1)
     session.add(building)
     session.flush()
@@ -72,6 +75,8 @@ def test_a_trial_institution_goes_with_everything_in_it(staff, session, trial):
         assert count(session, model, tid) == 0
     # Its admin's sign-in goes too: the next sign-in starts afresh.
     assert session.scalar(select(func.count()).select_from(UserIdentity).where(UserIdentity.subject == "t:a")) == 0
+    # And its signed-in devices: the next request is a clean "signed out".
+    assert session.scalar(select(func.count()).select_from(AuthSession).where(AuthSession.token_hash == "s" * 64)) == 0
 
 
 def test_only_the_system_admin_deletes(client, session, trial):
@@ -119,3 +124,45 @@ def test_the_system_admins_own_institution_is_kept(staff, session, owner, trial)
     owner.institution_id = trial.id
     session.flush()
     assert refused(staff, "trial") == "institution_has_system_admin"
+
+
+def test_a_listed_system_admin_is_kept_even_while_demoted(client, session, trial):
+    # Taken off the list and back on: the role returns only at the next
+    # Google sign-in. Until then the address still marks them.
+    from app.config import get_settings
+    from app.main import app
+
+    listed = session.scalars(select(User).where(User.institution_id == trial.id)).one()
+    owner = User(institution_id=trial.id, email="other@gmail.com", display_name="O", role=UserRole.SYSTEM_ADMIN)
+    session.add(owner)
+    session.flush()
+    owner.institution_id = session.scalars(select(Institution).where(Institution.slug == "braude")).one().id
+    session.flush()
+    client.user = owner
+    previous = app.dependency_overrides.get(get_settings)
+    settings = (previous or get_settings)().model_copy(update={"system_admin_emails": f"{listed.email},{owner.email}"})
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        response = client.delete("/system/institutions/trial")
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_settings, None)
+        else:
+            app.dependency_overrides[get_settings] = previous
+    assert (response.status_code, response.json()["detail"]) == (409, "institution_has_system_admin")
+
+
+def test_the_open_campus_is_kept(staff, session, trial):
+    from app.config import get_settings
+    from app.main import app
+
+    previous = app.dependency_overrides.get(get_settings)
+    settings = (previous or get_settings)().model_copy(update={"open_sign_in_institution": "trial"})
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        assert refused(staff, "trial") == "institution_demo"
+    finally:
+        if previous is None:
+            app.dependency_overrides.pop(get_settings, None)
+        else:
+            app.dependency_overrides[get_settings] = previous

@@ -8,6 +8,7 @@
 import { MapPinOff } from 'lucide-react'
 import { createContext, useContext, useEffect, type ReactNode } from 'react'
 import { getInstitution } from './api/campus'
+import { refreshSession } from './api/client'
 import type { Institution } from './api/types'
 import { useAuth } from './auth/AuthContext'
 import { DEFAULT_INSTITUTION } from './config'
@@ -37,13 +38,24 @@ const loaded = new Map<string, Institution>()
 export function InstitutionProvider({ slug, children }: { slug: string; children: ReactNode }) {
   const valid = SLUG.test(slug) // anything else is not an institution: no need to ask
   const { data, error, reload } = useApi(() => getInstitution(slug), valid ? `institution-${slug}` : null)
-  const value = data ?? loaded.get(slug) ?? null
+  const { user } = useAuth()
+  // Deleted since it was loaded: the server's answer wins over the copy here.
+  const gone = error?.code === 'institution_not_found'
+  const value = data ?? (gone ? null : loaded.get(slug)) ?? null
   useEffect(() => {
     if (!data) return
     loaded.set(data.slug, data)
     lastVisited = data.slug // only one that exists, or "/" would lead back to an error
   }, [data])
-  if (!valid || (!value && error?.code === 'institution_not_found')) {
+  useEffect(() => {
+    if (!gone) return
+    loaded.delete(slug)
+    if (lastVisited === slug) lastVisited = null
+    // The visitor's own institution is gone, and their account with it:
+    // asking the server again signs them out.
+    if (user?.institution_slug === slug) void refreshSession().catch(() => null)
+  }, [gone, slug, user?.institution_slug])
+  if (!valid || gone) {
     return (
       <EmptyState icon={<MapPinOff />} title="המוסד לא נמצא" action={<ButtonLink to="/">לדף הראשי</ButtonLink>}>
         אולי הכתובת לא מדויקת.

@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import * as client from '../api/client'
 import type { DemoPersona, Me } from '../api/types'
+import { clearPendingInvite } from './pendingInvite'
 
 type Status = 'loading' | 'signed-in' | 'signed-out'
 
@@ -45,9 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     emailVerify: async (email, code) => {
       await client.emailVerify(email, code)
     },
-    logout: () => client.logout(),
-    logoutAll: () => client.logoutAll(),
-    deleteAccount: () => client.deleteAccount(),
+    // An invite waiting in this tab is the signed-in person's: it goes too.
+    logout: () => { clearPendingInvite(); return client.logout() },
+    logoutAll: () => { clearPendingInvite(); return client.logoutAll() },
+    deleteAccount: () => { clearPendingInvite(); return client.deleteAccount() },
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

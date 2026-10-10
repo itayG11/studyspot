@@ -100,7 +100,7 @@ def delete(slug: Slug, owner: OwnerDep, db: SessionDep, settings: SettingsDep) -
         raise HTTPException(404, "institution_not_found")
     kept = {settings.demo_institution} | ({settings.open_sign_in_institution} - {None})
     try:
-        institutions.delete_institution(db, institution, kept)
+        institutions.delete_institution(db, institution, kept, settings.system_admins())
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
     db.commit()

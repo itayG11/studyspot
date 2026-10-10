@@ -11,6 +11,7 @@ import { InvitePage } from './InvitePage'
 const ME = { id: 1, email: 'new@gmail.com', display_name: 'חדש', role: 'student', institution_slug: 'demo', is_demo: false }
 let signedIn: boolean
 let acceptAnswer: () => Response
+let inspectAnswer: () => Response
 let calls: { path: string; body: unknown }[]
 
 beforeEach(() => {
@@ -19,6 +20,7 @@ beforeEach(() => {
   signedIn = true
   calls = []
   acceptAnswer = () => jsonResponse({ slug: 'tel-hai', name: 'מכללת תל חי' })
+  inspectAnswer = () => jsonResponse({ slug: 'tel-hai', name: 'מכללת תל חי' })
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     calls.push({ path, body: init.body ? JSON.parse(String(init.body)) : null })
@@ -28,7 +30,7 @@ beforeEach(() => {
         ? jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user })
         : jsonResponse({ detail: 'not_authenticated' }, 401))
     }
-    if (path === '/invites/inspect') return Promise.resolve(jsonResponse({ slug: 'tel-hai', name: 'מכללת תל חי' }))
+    if (path === '/invites/inspect') return Promise.resolve(inspectAnswer())
     if (path === '/invites/accept') return Promise.resolve(acceptAnswer())
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
   }))
@@ -84,6 +86,22 @@ describe('InvitePage', () => {
   it('warns that bookings at the demo campus go away', async () => {
     renderAt('/invite#t=secret-token')
     expect(await screen.findByText(/ההזמנות והכניסות שלך בקמפוס ההדגמה יימחקו/)).toBeInTheDocument()
+  })
+
+  it('a link that no longer works is not kept for the next one to sign in here', async () => {
+    inspectAnswer = () => jsonResponse({ detail: 'invite_expired' }, 410)
+    renderAt('/invite#t=secret-token')
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await waitFor(() => expect(peekPendingInvite()).toBeNull())
+  })
+
+  it('a link used up meanwhile is cleared when accepting fails', async () => {
+    const user = userEvent.setup()
+    acceptAnswer = () => jsonResponse({ detail: 'invite_used' }, 410)
+    renderAt('/invite#t=secret-token')
+    await user.click(await screen.findByRole('button', { name: 'לקבל את ההזמנה' }))
+    await screen.findByRole('alert')
+    expect(peekPendingInvite()).toBeNull()
   })
 
   it('the stored link is cleared once accepted', async () => {

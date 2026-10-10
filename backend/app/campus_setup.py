@@ -64,6 +64,9 @@ def add_login_rule(
 def approve_login_rule(db: Session, rule: InstitutionLoginRule) -> None:
     """The system admin checked the value is this institution's. Others
     waiting for the same value lose it: it cannot be theirs too."""
+    # The institution's row first, as deleting it does: an approval and a
+    # delete at once then go one after the other.
+    db.get(Institution, rule.institution_id, with_for_update=True)
     rivals = db.scalars(
         select(InstitutionLoginRule).where(
             InstitutionLoginRule.provider == rule.provider,

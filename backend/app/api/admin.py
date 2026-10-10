@@ -197,8 +197,9 @@ def add_place(
 # --- The institution's own setup: details, who signs in, opening it ----------
 
 
-def _managed(db: Session, admin: User, slug: str) -> Institution:
-    institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
+def _managed(db: Session, admin: User, slug: str, lock: bool = False) -> Institution:
+    query = select(Institution).where(Institution.slug == slug)
+    institution = db.scalars(query.with_for_update() if lock else query).first()
     if institution is None or not can_manage(admin, institution):
         raise HTTPException(404, "institution_not_found")
     return institution
@@ -233,7 +234,8 @@ def update_institution(
     slug: Annotated[str, Path(max_length=64)], body: InstitutionUpdateIn, admin: AdminDep, db: SessionDep,
     settings: SettingsDep,
 ):
-    institution = _managed(db, admin, slug)
+    # Locked: waiting behind a delete of it ends in a clean 404, not a 500.
+    institution = _managed(db, admin, slug, lock=True)
     _refuse_demo(institution, settings)
     for field, value in body.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(institution, field, value)

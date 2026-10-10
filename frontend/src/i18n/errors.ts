@@ -91,7 +91,7 @@ const MESSAGES: Record<string, string> = {
   institution_slug_taken: 'כבר יש מוסד בכתובת הזו.',
   institution_active: 'המוסד פעיל. קודם מסתירים אותו, בדף הניהול שלו.',
   institution_has_rules: 'למוסד יש כלל כניסה מאושר, ואולי סטודנטים. קודם מסירים את הכללים שלו.',
-  institution_demo: 'את קמפוס ההדגמה אי אפשר למחוק.',
+  institution_demo: 'את קמפוס ההדגמה, ואת הקמפוס הפתוח לכולם, אי אפשר למחוק.',
   institution_has_system_admin: 'החשבון של מנהל המערכת שייך למוסד הזה. מחיקה תמחק גם אותו.',
   invite_invalid: 'קישור ההזמנה לא תקין. בקש קישור חדש.',
   invite_used: 'כבר השתמשו בקישור ההזמנה הזה. בקש קישור חדש.',

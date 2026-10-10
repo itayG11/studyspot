@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '../../api/client'
+import { ApiError, resetSessionForTests } from '../../api/client'
+import { AuthProvider } from '../../auth/AuthContext'
 import type { Building, Place } from '../../api/types'
 import { InstitutionProvider } from '../../institution'
 import { building, INSTITUTION, jsonResponse, place } from '../../test/fixtures'
@@ -14,7 +15,12 @@ const PLACES = [LAB, ROOM]
 const BUILDINGS = [building({ code: 'M' }), building({ id: 2, code: 'EM', latitude: '32.914079', longitude: '35.281250' })]
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(jsonResponse(INSTITUTION))))
+  resetSessionForTests()
+  vi.stubGlobal('fetch', vi.fn((url: string) =>
+    Promise.resolve(new URL(url).pathname === '/auth/refresh'
+      ? jsonResponse({ detail: 'not_authenticated' }, 401)
+      : jsonResponse(INSTITUTION)),
+  ))
 })
 
 afterEach(() => {
@@ -29,9 +35,11 @@ function renderFinder({ path = '/', places = PLACES as Place[] | null, buildings
     { initialEntries: [path] },
   )
   render(
-    <InstitutionProvider slug="braude">
-      <RouterProvider router={router} />
-    </InstitutionProvider>,
+    <AuthProvider>
+      <InstitutionProvider slug="braude">
+        <RouterProvider router={router} />
+      </InstitutionProvider>
+    </AuthProvider>,
   )
   return { router, onRetry }
 }

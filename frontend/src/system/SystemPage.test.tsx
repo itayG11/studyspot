@@ -38,6 +38,8 @@ beforeEach(() => {
       institutions = [...institutions, created]
       return Promise.resolve(jsonResponse(created, 201))
     }
+    if (path === '/system/institutions/kept' && init.method === 'DELETE')
+      return Promise.resolve(jsonResponse({ detail: 'institution_has_rules' }, 409))
     if (path === '/system/institutions/braude' && init.method === 'DELETE') {
       deletes.push(path)
       institutions = institutions.filter((i) => i.slug !== 'braude')
@@ -173,5 +175,16 @@ describe('SystemPage', () => {
     renderPage()
     const row = (await screen.findByText('מכללת בראודה')).closest('li')!
     expect(within(row).queryByRole('button', { name: 'מחיקת המוסד' })).not.toBeInTheDocument()
+  })
+
+  it('says why the server keeps an institution', async () => {
+    const user = userEvent.setup()
+    institutions = [{ ...BRAUDE, slug: 'kept', name: 'מוסד עם סטודנטים' }]
+    renderPage()
+    const row = (await screen.findByText('מוסד עם סטודנטים')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'מחיקת המוסד' }))
+    await user.type(within(row).getByLabelText(/כדי למחוק/), 'kept')
+    await user.click(within(row).getByRole('button', { name: 'למחוק לצמיתות' }))
+    expect(await within(row).findByRole('alert')).toHaveTextContent('כלל כניסה מאושר')
   })
 })

@@ -167,8 +167,9 @@ def test_a_rule_of_another_institution_still_wins_over_an_admin(session, braude,
     session.flush()
     braude_tenant = next(r.value for r in braude.login_rules if r.provider == AuthProvider.MICROSOFT)
     identity = ProviderIdentity(subject="tid:oid", institution_key=braude_tenant, email="x@braude.ac.il", display_name="X")
-    with pytest.raises(Refusal):
+    with pytest.raises(Refusal) as refused:
         sign_in(session, AuthProvider.MICROSOFT, identity, SUNDAY_10AM, "demo")
+    assert refused.value.code == "institution_not_supported"
 
 
 def test_two_tabs_accepting_one_invite_at_once_give_one_admin(engine):
@@ -223,8 +224,9 @@ def test_an_admin_made_without_an_invite_gets_no_exception(session, braude, demo
     user.institution_id, user.role = braude.id, UserRole.INSTITUTION_ADMIN
     session.flush()
     identity = ProviderIdentity(subject="g-hand", institution_key=None, email="new.admin@gmail.com", display_name="N")
-    with pytest.raises(Refusal):
+    with pytest.raises(Refusal) as refused:
         sign_in(session, AuthProvider.GOOGLE, identity, SUNDAY_10AM, "demo")
+    assert refused.value.code == "institution_not_supported"
 
 
 def test_the_invited_admin_signs_in_even_where_there_is_no_open_campus(client, session, demo, tel_hai):
