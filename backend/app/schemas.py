@@ -190,6 +190,9 @@ class PlaceOut(Occupancy):
     # if so, when it frees up, after any back-to-back bookings.
     free_now: bool | None
     free_from: datetime | None
+    # Full now, and not a room (rooms have free_from): the first quarter
+    # hour today that is usually not full, local time (app/forecast.py).
+    usually_frees_at: time | None = None
 
 
 class OpeningHoursOut(BaseModel):
@@ -210,6 +213,21 @@ class SeatOut(BaseModel):
     # closing time; None means no limit today). Helps pick a seat with time.
     free_now: bool
     free_until: datetime | None
+
+
+class SlotForecastOut(BaseModel):
+    start: time  # local
+    people: float
+
+
+class ForecastOut(BaseModel):
+    weekday: int  # Python's numbering: Monday is 0
+    capacity: int
+    weeks: int
+    simulated: bool
+    closed: bool
+    slots: list[SlotForecastOut]
+    frees_at: time | None
 
 
 class PlaceDetail(PlaceOut):

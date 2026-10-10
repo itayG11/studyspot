@@ -14,6 +14,7 @@ from app import bookings as rules
 from app.api.deps import get_session
 from app.bookings import MIN_WALK_IN, holding
 from app.clock import get_now
+from app.forecast import forecast
 from app.hours import opening_status, place_status
 from app.models import (
     Booking,
@@ -28,6 +29,7 @@ from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_pla
 from app.schemas import (
     BookingRules,
     BuildingOut,
+    ForecastOut,
     InstitutionListItem,
     InstitutionOut,
     OpeningHoursOut,
@@ -102,10 +104,12 @@ def _place_views(
     for place in places:
         taken = occupied.get(place.id, 0)
         is_open = opening_status(place.opening_hours, local_now, place.id in all_day).is_open
-        free_now = free_from = None
+        free_now = free_from = frees_at = None
         if place.kind == PlaceKind.GROUP_ROOM:
             free_from = held_until.get(place.id) if is_open else None
             free_now = is_open and free_from is None
+        elif is_open and taken >= place.capacity:
+            frees_at = forecast(session, place, local_now.weekday(), now).frees_at
         views.append(
             PlaceOut(
                 id=place.id,
@@ -126,6 +130,7 @@ def _place_views(
                 details_are_demo=place.details_are_demo,
                 free_now=free_now,
                 free_from=free_from,
+                usually_frees_at=frees_at,
             )
         )
     return views
@@ -260,6 +265,29 @@ def list_places(
         query = query.where(Place.kind == kind)
     places = session.scalars(query.order_by(Building.id, Place.id)).all()
     return _place_views(session, institution, places, now)
+
+
+@router.get("/places/{place_id}/forecast", response_model=ForecastOut)
+def get_forecast(
+    place_id: Annotated[int, Path(gt=0)],
+    session: SessionDep,
+    now: NowDep,
+    weekday: Annotated[int | None, Query(ge=0, le=6)] = None,
+):
+    """How busy the place usually is on a day of the week (today when not
+    given), quarter hour by quarter hour. Public, like the place itself."""
+    place = session.scalars(_places_query().where(Place.id == place_id)).first()
+    if place is None:
+        raise HTTPException(404, "place_not_found")
+    if weekday is None:
+        zone = ZoneInfo(session.get(Institution, place.institution_id).timezone)
+        weekday = now.astimezone(zone).weekday()
+    result = forecast(session, place, weekday, now)
+    return ForecastOut(
+        weekday=result.weekday, capacity=result.capacity, weeks=result.weeks, simulated=result.simulated,
+        closed=result.closed, slots=[{"start": s.start, "people": s.people} for s in result.slots],
+        frees_at=result.frees_at,
+    )
 
 
 @router.get("/places/{place_id}", response_model=PlaceDetail)
