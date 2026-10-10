@@ -133,5 +133,9 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
     if institution is None or institution.demo_reset_on == today:
         return None
     removed = reset_demo_extras(db, slug)
+    # The forecast's made-up past moves on with the days (app/seed/history.py).
+    from app.seed.history import simulate_history
+
+    simulate_history(db, db.get(Institution, institution.id), today)
     db.execute(update(Institution).where(Institution.id == institution.id).values(demo_reset_on=today))
     return removed
