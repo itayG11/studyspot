@@ -291,6 +291,31 @@ describe('AdminPage', () => {
     expect(geocodeCalls).toHaveLength(0)
   })
 
+  it('Enter in the search searches, and never saves the building form', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.type(screen.getByLabelText('שם הבניין'), 'בניין חדש')
+    await userEvent.type(screen.getByLabelText('חיפוש מקום על המפה'), 'כרמיאל{Enter}')
+    await waitFor(() => expect((fetch as unknown as { mock: { calls: [string][] } }).mock.calls.some(([u]) => u.includes('/geocode'))).toBe(true))
+    expect(posts.map((p) => p.path)).not.toContain('/admin/institutions/braude/buildings')
+  })
+
+  it('a rule still waiting for approval does not count as done', async () => {
+    setup = { ...SETUP, rules: [{ id: 8, provider: 'email', value: 'telhai.ac.il', approved: false }] }
+    renderAdmin()
+    const items = within(await screen.findByRole('list', { name: 'צעדי ההקמה' })).getAllByRole('listitem')
+    expect(items[1]).not.toHaveTextContent('גמור')
+  })
+
+  it('pressing remove twice sends one removal', async () => {
+    setup = { ...SETUP, rules: [{ id: 5, provider: 'email', value: 'old.ac.il', approved: true }] }
+    renderAdmin()
+    await userEvent.dblClick(await screen.findByRole('button', { name: 'הסרה' }))
+    await waitFor(() => expect(screen.queryByText('old.ac.il')).not.toBeInTheDocument())
+    const deletes = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls.filter(([, init]) => init?.method === 'DELETE')
+    expect(deletes).toHaveLength(1)
+  })
+
   it('placing a building on the map updates the setup steps', async () => {
     renderAdmin()
     await screen.findByRole('list', { name: 'צעדי ההקמה' })

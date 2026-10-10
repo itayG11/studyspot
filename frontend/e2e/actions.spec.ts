@@ -46,10 +46,16 @@ test('a student books a lab station, sees it, and cancels it', async ({ page, re
 
   await page.goto(`/places/${lab.id}`)
   await page.getByRole('button', { name: /^A1:/ }).click()
-  // The last bookable day always has the whole day ahead of it.
+  // From the last bookable day back, the first with a free start time. The
+  // booking window is 96 hours, not whole days: just after midnight the last
+  // day has only minutes left in it.
   const days = page.getByRole('group', { name: 'יום' }).getByRole('button')
-  await days.last().click()
-  await page.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false }).first().click()
+  const starts = page.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  for (let day = (await days.count()) - 1; day >= 0; day--) {
+    await days.nth(day).click()
+    if ((await starts.count()) > 0) break
+  }
+  await starts.first().click()
   await page.getByRole('button', { name: 'רבע שעה' }).click()
   await page.getByRole('button', { name: 'להזמין' }).click()
   await expect(page.getByRole('status')).toContainText('ההזמנה נקלטה')

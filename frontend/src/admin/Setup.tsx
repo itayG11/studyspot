@@ -28,7 +28,7 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
   const data = setup.data
   const steps = [
     { title: 'פרטי המוסד', done: data.name.trim() !== '' },
-    { title: 'מי נכנס', done: data.rules.length > 0 },
+    { title: 'מי נכנס', done: data.rules.some((r) => r.approved) }, // a waiting rule lets no one in yet
     { title: 'בניינים ומקומות', done: data.located_buildings > 0 && data.places > 0 },
     { title: 'שלטים ופתיחה', done: data.is_active },
   ]
@@ -123,6 +123,9 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
   const addDomain = useAction()
   const addTenant = useAction()
   const removing = useAction()
+  // Off the screen as soon as the server removed it, not after the reload:
+  // a second press in between would ask to remove it again.
+  const [gone, setGone] = useState<number[]>([])
 
   async function add(action: Action, provider: LoginRule['provider'], value: string, clear: () => void) {
     if (await action.run(() => addLoginRule(data.slug, provider, value.trim()))) {
@@ -134,10 +137,13 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
   async function remove(rule: LoginRule) {
     // The server answers "204 No Content": success is the call not failing.
     const done = await removing.run(() => removeLoginRule(rule.id).then(() => true))
-    if (done) onSaved()
+    if (!done) return
+    setGone((ids) => [...ids, rule.id])
+    onSaved()
   }
 
-  const tenants = data.rules.filter((r) => r.provider === 'microsoft')
+  const rules = data.rules.filter((r) => !gone.includes(r.id))
+  const tenants = rules.filter((r) => r.provider === 'microsoft')
   return (
     <section className={styles.form} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.formTitle}>
@@ -146,14 +152,14 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
       <p className={styles.lead}>
         סטודנט עם מייל בסיומת של המוסד מקבל קוד כניסה למייל. ארגון מיקרוסופט של המוסד מכניס את כל החשבונות שלו.
       </p>
-      {data.rules.length > 0 && (
+      {rules.length > 0 && (
         <ul className={styles.rules} aria-label="כללי הכניסה">
-          {data.rules.map((rule) => (
+          {rules.map((rule) => (
             <li key={rule.id}>
               <span>{rule.provider === 'email' ? 'סיומת מייל' : 'ארגון מיקרוסופט'}</span>{' '}
               <span dir="ltr">{rule.value}</span>{' '}
               {!rule.approved && <span className={styles.pendingTag}>ממתין לאישור מנהל המערכת</span>}{' '}
-              <Button variant="ghost" size="sm" disabled={data.locked} onClick={() => void remove(rule)}>
+              <Button variant="ghost" size="sm" disabled={data.locked || removing.busy} onClick={() => void remove(rule)}>
                 הסרה
               </Button>
             </li>

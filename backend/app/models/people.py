@@ -7,10 +7,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
     func,
+    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -86,7 +88,13 @@ class InstitutionLoginRule(Base):
 
     __tablename__ = "institution_login_rules"
     __table_args__ = (
-        UniqueConstraint("provider", "value"),
+        # One working rule per value. Pending ones do not hold it: an admin
+        # naming another college's domain must not keep it from the college.
+        Index(
+            "uq_institution_login_rules_approved_value", "provider", "value",
+            unique=True, postgresql_where=text("approved"),
+        ),
+        UniqueConstraint("institution_id", "provider", "value"),
         CheckConstraint("value = lower(value) AND btrim(value) <> ''", name="value_lowercase"),
         # Demo users are placed in their institution directly, never by a rule.
         CheckConstraint("provider IN ('microsoft', 'google', 'email')", name="real_provider"),

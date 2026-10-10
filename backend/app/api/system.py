@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import institutions
+from app import campus_setup, institutions
 from app.api.deps import get_session
 from app.auth import get_current_user
 from app.clock import get_now
@@ -186,9 +186,15 @@ def pending_rules(owner: OwnerDep, db: SessionDep):
 def approve_rule(rule_id: Annotated[int, Path(gt=0)], owner: OwnerDep, db: SessionDep):
     """After checking the domain or tenant is the institution's own. To
     refuse one, the system admin removes it (DELETE /admin/login-rules/{id})."""
-    found = db.get(InstitutionLoginRule, rule_id)
+    found = db.get(InstitutionLoginRule, rule_id, with_for_update=True)
     if found is None:
         raise HTTPException(404, "login_rule_not_found")
-    found.approved = True
-    db.commit()
+    try:
+        campus_setup.approve_login_rule(db, found)
+        db.commit()
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    except IntegrityError:  # approved elsewhere at the same moment
+        db.rollback()
+        raise HTTPException(409, "login_rule_taken") from None
     return found

@@ -135,6 +135,8 @@ describe('SystemPage', () => {
     const list = await screen.findByRole('list', { name: 'כללי כניסה שממתינים לאישור' })
     const second = within(list).getAllByRole('listitem')[1]
     await user.click(within(second).getByRole('button', { name: 'דחייה' }))
+    expect(deletes).toEqual([]) // one press only asks: a misclick deletes nothing
+    await user.click(within(second).getByRole('button', { name: 'כן, לדחות' }))
     expect(deletes).toEqual(['/admin/login-rules/10'])
     await screen.findByText('telhai.ac.il')
     expect(screen.queryByText('11111111-2222-3333-4444-555555555555')).not.toBeInTheDocument()

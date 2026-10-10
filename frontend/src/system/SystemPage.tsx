@@ -11,7 +11,7 @@ import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { formatDay, formatTime } from '../logic/time'
 import { useInstitution } from '../institution'
-import { Button, ErrorState, Notice, PageLoading } from '../ui'
+import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './system.module.css'
 
@@ -78,9 +78,7 @@ function PendingRules() {
               <Button size="sm" disabled={action.busy} onClick={() => void decide(rule, true)}>
                 אישור
               </Button>{' '}
-              <Button variant="ghost" size="sm" disabled={action.busy} onClick={() => void decide(rule, false)}>
-                דחייה
-              </Button>
+              <ConfirmButton label="דחייה" confirmLabel="כן, לדחות" size="sm" busy={action.busy} onConfirm={() => void decide(rule, false)} />
             </li>
           ))}
         </ul>

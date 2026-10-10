@@ -42,8 +42,18 @@ def test_a_login_rule_belongs_to_one_institution(session: Session):
         lambda: session.add(
             InstitutionLoginRule(institution_id=second.id, provider=AuthProvider.MICROSOFT, value="tenant-a")
         ),
-        "uq_institution_login_rules_provider_value",
+        "uq_institution_login_rules_approved_value",
     )
+
+
+def test_rules_still_waiting_for_approval_may_share_a_value(session: Session):
+    # Waiting holds nothing: the system admin approves one, the others go.
+    first, second = make_institution(session, "first"), make_institution(session, "second")
+    for institution in (first, second):
+        session.add(InstitutionLoginRule(
+            institution_id=institution.id, provider=AuthProvider.MICROSOFT, value="tenant-a", approved=False
+        ))
+    session.flush()
 
 
 def test_login_rule_values_are_lowercase(session: Session):

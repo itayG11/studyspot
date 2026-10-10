@@ -26,11 +26,12 @@ OPEN_NEW_USERS_PER_DAY = 200
 
 def _open_institution(db: Session, slug: str | None) -> Institution | None:
     """The open campus, if one is set and it really is open: an institution
-    with sign-in rules (a real one, like Braude) is never open to anyone."""
+    with working sign-in rules (a real one, like Braude) is never open to
+    anyone. A rule still waiting for approval does not close it."""
     if not slug:
         return None
     institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
-    if institution is None or institution.login_rules:
+    if institution is None or any(r.approved for r in institution.login_rules):
         return None
     return institution
 

@@ -194,8 +194,9 @@ def test_no_one_moves_to_an_institution_still_being_set_up(session, tel_hai):
     session.add(InstitutionLoginRule(institution_id=tel_hai.id, provider=AuthProvider.MICROSOFT, value=TENANT))
     session.flush()
     identity = ProviderIdentity(subject=f"{TENANT}:o4", institution_key=TENANT, email="s@telhai.ac.il", display_name="S")
-    with pytest.raises(Refusal):
+    with pytest.raises(Refusal) as refused:
         sign_in(session, AuthProvider.MICROSOFT, identity, SUNDAY_10AM, "demo")
+    assert refused.value.code == "institution_not_supported"
 
 
 def test_a_user_of_a_real_institution_never_moves_by_a_rule(session, braude, tel_hai):
@@ -207,8 +208,9 @@ def test_a_user_of_a_real_institution_never_moves_by_a_rule(session, braude, tel
     session.add(InstitutionLoginRule(institution_id=tel_hai.id, provider=AuthProvider.MICROSOFT, value=TENANT))
     session.flush()
     identity = ProviderIdentity(subject=f"{TENANT}:oid2", institution_key=TENANT, email="s@braude.ac.il", display_name="S")
-    with pytest.raises(Refusal):
+    with pytest.raises(Refusal) as refused:
         sign_in(session, AuthProvider.MICROSOFT, identity, SUNDAY_10AM, "demo")
+    assert refused.value.code == "institution_not_supported"
 
 
 # --- A new rule waits for the system admin (review fixes) ------------------------
@@ -219,8 +221,9 @@ def test_a_rule_added_by_the_institution_admin_waits_for_the_system_admin(manage
     created = manager.post("/admin/institutions/tel-hai/login-rules", json=rule("microsoft", TENANT)).json()
     assert created["approved"] is False
     identity = ProviderIdentity(subject=f"{TENANT}:new", institution_key=TENANT, email="n@telhai.ac.il", display_name="N")
-    with pytest.raises(Refusal):  # no open campus here: a pending rule lets nobody in
+    with pytest.raises(Refusal) as refused:  # no open campus here: a pending rule lets nobody in
         sign_in(session, AuthProvider.MICROSOFT, identity, SUNDAY_10AM, None)
+    assert refused.value.code == "institution_not_supported"
 
 
 def test_a_pending_email_domain_gets_no_codes(manager, session):
@@ -273,6 +276,66 @@ def test_the_last_rule_cannot_be_removed_while_students_rely_on_it(manager, sess
     assert (response.status_code, response.json()["detail"]) == (409, "login_rule_last")
 
 
+def test_with_no_students_yet_even_the_last_rule_can_be_removed(manager, session, tel_hai):
+    # Only the admin is there (a typo to fix, say): no one is locked out.
+    session.add(InstitutionLoginRule(institution_id=tel_hai.id, provider=AuthProvider.EMAIL, value="telhai.ac.il"))
+    session.flush()
+    assert manager.delete(f"/admin/login-rules/{tel_hai.login_rules[0].id}").status_code == 204
+
+
+def test_a_pending_rule_does_not_keep_the_value_from_its_real_owner(client, session, braude, tel_hai, owner):
+    # An admin of one institution names another college's domain: it only
+    # waits, and the college itself can still add it, and gets it approved.
+    other_admin = User(institution_id=braude.id, email="b@gmail.com", display_name="B", role=UserRole.INSTITUTION_ADMIN)
+    tel_hai_admin = User(institution_id=tel_hai.id, email="t@gmail.com", display_name="T", role=UserRole.INSTITUTION_ADMIN)
+    session.add_all([other_admin, tel_hai_admin])
+    session.flush()
+    client.user = other_admin
+    squat = client.post("/admin/institutions/braude/login-rules", json=rule("email", "telhai.ac.il"))
+    assert squat.status_code == 201
+    client.user = tel_hai_admin
+    real = client.post("/admin/institutions/tel-hai/login-rules", json=rule("email", "telhai.ac.il"))
+    assert real.status_code == 201
+    client.user = owner
+    assert client.post(f"/system/login-rules/{real.json()['id']}/approve").status_code == 200
+    # Approving one leaves no rival waiting for the same value.
+    assert client.get("/system/login-rules").json() == []
+    session.expire_all()
+    assert session.get(InstitutionLoginRule, squat.json()["id"]) is None
+
+
+def test_a_value_approved_elsewhere_cannot_be_added(manager, braude):
+    taken = braude.login_rules[0]
+    response = manager.post("/admin/institutions/tel-hai/login-rules", json=rule(taken.provider.value, taken.value))
+    assert (response.status_code, response.json()["detail"]) == (409, "login_rule_taken")
+
+
+def test_a_pending_rule_whose_value_was_approved_elsewhere_cannot_be_approved(client, session, braude, tel_hai, owner):
+    taken = braude.login_rules[0]
+    late = InstitutionLoginRule(institution_id=tel_hai.id, provider=taken.provider, value=taken.value, approved=False)
+    session.add(late)
+    session.flush()
+    client.user = owner
+    response = client.post(f"/system/login-rules/{late.id}/approve")
+    assert (response.status_code, response.json()["detail"]) == (409, "login_rule_taken")
+
+
+def test_the_same_institution_cannot_add_the_same_rule_twice(manager):
+    assert manager.post("/admin/institutions/tel-hai/login-rules", json=rule("email", "telhai.ac.il")).status_code == 201
+    again = manager.post("/admin/institutions/tel-hai/login-rules", json=rule("email", "telhai.ac.il"))
+    assert (again.status_code, again.json()["detail"]) == (409, "login_rule_taken")
+
+
+def test_a_pending_rule_does_not_close_the_open_campus(session):
+    from app.accounts import _open_institution
+
+    demo = seed_demo(session)
+    session.add(InstitutionLoginRule(institution_id=demo.id, provider=AuthProvider.EMAIL, value="x.ac.il", approved=False))
+    session.flush()
+    session.refresh(demo)
+    assert _open_institution(session, "demo") is not None
+
+
 def test_removing_a_rule_from_the_screen_is_allowed_when_another_remains(manager, session, tel_hai):
     for value in ("telhai.ac.il", "students.telhai.ac.il"):
         session.add(InstitutionLoginRule(institution_id=tel_hai.id, provider=AuthProvider.EMAIL, value=value))
@@ -295,5 +358,6 @@ def test_only_the_real_open_campus_gives_up_students_and_only_to_an_open_institu
     seed_demo(session)
     session.flush()
     identity = ProviderIdentity(subject=f"{TENANT}:o3", institution_key=TENANT, email="s@x.ac.il", display_name="S")
-    with pytest.raises(Refusal):
+    with pytest.raises(Refusal) as refused:
         sign_in(session, AuthProvider.MICROSOFT, identity, SUNDAY_10AM, "demo")
+    assert refused.value.code == "institution_not_supported"
