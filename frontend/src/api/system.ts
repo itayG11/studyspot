@@ -24,3 +24,7 @@ export const acceptInvite = (token: string) =>
 export const getPendingRules = () => api<PendingRule[]>('/system/login-rules', { auth: true })
 export const approveRule = (id: number) =>
   api<LoginRule>(`/system/login-rules/${id}/approve`, { method: 'POST', auth: true })
+// The server refuses an institution in use: open, with a working login
+// rule, the demo campus, or the system admin's own.
+export const deleteInstitution = (slug: string) =>
+  api<void>(institution(slug), { method: 'DELETE', auth: true })

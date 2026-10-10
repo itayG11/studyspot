@@ -91,6 +91,21 @@ def create(body: InstitutionCreateIn, owner: OwnerDep, db: SessionDep):
     )
 
 
+@router.delete(
+    "/system/institutions/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)]
+)
+def delete(slug: Slug, owner: OwnerDep, db: SessionDep, settings: SettingsDep) -> None:
+    institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
+    if institution is None:
+        raise HTTPException(404, "institution_not_found")
+    kept = {settings.demo_institution} | ({settings.open_sign_in_institution} - {None})
+    try:
+        institutions.delete_institution(db, institution, kept)
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+
+
 @router.post(
     "/system/institutions/{slug}/invites",
     status_code=status.HTTP_201_CREATED,

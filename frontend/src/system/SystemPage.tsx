@@ -4,7 +4,7 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { removeLoginRule } from '../api/admin'
-import { approveRule, createInstitution, createInvite, getAllInstitutions, getPendingRules } from '../api/system'
+import { approveRule, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getPendingRules } from '../api/system'
 import type { InviteCreated, PendingRule, SystemInstitution } from '../api/types'
 import { SITE_URL } from '../config'
 import { useAction } from '../hooks/useAction'
@@ -33,7 +33,7 @@ export function SystemPage() {
       ) : (
         <ul className={styles.list}>
           {institutions.data.map((institution) => (
-            <InstitutionRow key={institution.slug} institution={institution} />
+            <InstitutionRow key={institution.slug} institution={institution} onDeleted={institutions.reload} />
           ))}
         </ul>
       )}
@@ -143,7 +143,7 @@ function NewInstitutionForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function InstitutionRow({ institution }: { institution: SystemInstitution }) {
+function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitution; onDeleted: () => void }) {
   const { timezone } = useInstitution()
   const action = useAction()
   const [invite, setInvite] = useState<InviteCreated | null>(null)
@@ -191,6 +191,51 @@ function InstitutionRow({ institution }: { institution: SystemInstitution }) {
         </div>
       )}
       {action.error && <Notice tone="error">{action.error}</Notice>}
+      {!institution.is_active && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
     </li>
+  )
+}
+
+// Only a hidden one is offered: an open institution is hidden first. To
+// delete, its address is typed, so a misclick deletes nothing.
+function DeleteInstitution({ slug, onDeleted }: { slug: string; onDeleted: () => void }) {
+  const id = useId()
+  const action = useAction()
+  const [asking, setAsking] = useState(false)
+  const [typed, setTyped] = useState('')
+
+  async function remove(event: FormEvent) {
+    event.preventDefault()
+    if (await action.run(() => deleteInstitution(slug).then(() => true))) onDeleted()
+  }
+
+  if (!asking) {
+    return (
+      <div className={styles.actions}>
+        <Button variant="ghost" size="sm" onClick={() => setAsking(true)}>
+          מחיקת המוסד
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <form className={styles.invite} onSubmit={(event) => void remove(event)}>
+      <p className={styles.note}>
+        נמחק הכול: בניינים, מקומות, שלטים, הזמנות, כללי כניסה, והחשבונות של המשתמשים שלו. אי אפשר לבטל.
+      </p>
+      <label htmlFor={id} className={admin.label}>
+        כדי למחוק, הקלד את הכתובת של המוסד: <span dir="ltr">{slug}</span>
+      </label>
+      <input id={id} className={admin.field} dir="ltr" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
+      <div className={styles.actions}>
+        <Button type="submit" variant="danger" size="sm" busy={action.busy} disabled={typed.trim() !== slug}>
+          למחוק לצמיתות
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => { setAsking(false); setTyped('') }}>
+          ביטול
+        </Button>
+      </div>
+      {action.error && <Notice tone="error">{action.error}</Notice>}
+    </form>
   )
 }

@@ -89,6 +89,10 @@ const MESSAGES: Record<string, string> = {
   // The system admin, and admin invites
   institution_slug_reserved: 'הכתובת הזו שמורה לאתר עצמו. בחר כתובת אחרת.',
   institution_slug_taken: 'כבר יש מוסד בכתובת הזו.',
+  institution_active: 'המוסד פעיל. קודם מסתירים אותו, בדף הניהול שלו.',
+  institution_has_rules: 'למוסד יש כלל כניסה מאושר, ואולי סטודנטים. קודם מסירים את הכללים שלו.',
+  institution_demo: 'את קמפוס ההדגמה אי אפשר למחוק.',
+  institution_has_system_admin: 'החשבון של מנהל המערכת שייך למוסד הזה. מחיקה תמחק גם אותו.',
   invite_invalid: 'קישור ההזמנה לא תקין. בקש קישור חדש.',
   invite_used: 'כבר השתמשו בקישור ההזמנה הזה. בקש קישור חדש.',
   invite_revoked: 'קישור ההזמנה בוטל. בקש קישור חדש.',

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -37,6 +37,11 @@ beforeEach(() => {
       const created = { ...body, is_active: false, buildings: 0, admins: 0 }
       institutions = [...institutions, created]
       return Promise.resolve(jsonResponse(created, 201))
+    }
+    if (path === '/system/institutions/braude' && init.method === 'DELETE') {
+      deletes.push(path)
+      institutions = institutions.filter((i) => i.slug !== 'braude')
+      return Promise.resolve(new Response(null, { status: 204 }))
     }
     if (path === '/system/login-rules') return Promise.resolve(jsonResponse(pending))
     if (path === '/system/login-rules/9/approve') {
@@ -146,5 +151,27 @@ describe('SystemPage', () => {
     pending = []
     renderPage()
     expect(await screen.findByText('אין כללי כניסה שממתינים לאישור.')).toBeInTheDocument()
+  })
+
+  it('deletes a hidden institution only after its address is typed', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'מחיקת המוסד' }))
+    const sure = within(row).getByRole('button', { name: 'למחוק לצמיתות' })
+    expect(sure).toBeDisabled()
+    await user.type(within(row).getByLabelText(/כדי למחוק/), 'braud')
+    expect(sure).toBeDisabled()
+    await user.type(within(row).getByLabelText(/כדי למחוק/), 'e')
+    await user.click(sure)
+    expect(deletes).toEqual(['/system/institutions/braude'])
+    await waitFor(() => expect(screen.queryByText('מכללת בראודה')).not.toBeInTheDocument())
+  })
+
+  it('an open institution offers no delete', async () => {
+    institutions = [{ ...BRAUDE, is_active: true }]
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    expect(within(row).queryByRole('button', { name: 'מחיקת המוסד' })).not.toBeInTheDocument()
   })
 })

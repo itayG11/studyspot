@@ -11,7 +11,7 @@ import hmac
 import secrets
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.accounts import move_user
@@ -54,6 +54,28 @@ def create_institution(db: Session, name: str, slug: str, timezone: str) -> Inst
     db.add(institution)
     db.flush()
     return institution
+
+
+def delete_institution(db: Session, institution: Institution, kept_slugs: set[str]) -> None:
+    """For an institution made for a try. The database deletes everything
+    in it with it (every key to an institution is ON DELETE CASCADE): its
+    buildings, places, signs, bookings, rules, invites, and its users, so
+    each of them signs in afresh next time. Refused for anything in use."""
+    if institution.slug in kept_slugs:
+        raise Refusal(409, "institution_demo")  # the shared demo campus, or the open one
+    if institution.is_active:
+        raise Refusal(409, "institution_active")  # in the public list: hide it first
+    if any(rule.approved for rule in institution.login_rules):
+        raise Refusal(409, "institution_has_rules")  # students may sign in to it
+    system_admins = db.scalar(
+        select(func.count()).select_from(User).where(
+            User.institution_id == institution.id, User.role == UserRole.SYSTEM_ADMIN
+        )
+    )
+    if system_admins:
+        raise Refusal(409, "institution_has_system_admin")  # it would delete you
+    db.delete(institution)
+    db.flush()
 
 
 def create_invite(
