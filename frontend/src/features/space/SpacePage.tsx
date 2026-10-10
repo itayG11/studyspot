@@ -22,6 +22,7 @@ import { Badge, Button, ButtonLink, ErrorState, LoadingRegion, Photo, Sheet, Ske
 import { BookingForm } from '../booking/BookingForm'
 import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
+import { PlaceForecast } from './Forecast'
 import { Timetable } from './Timetable'
 import { artTransitionName } from './transition'
 import { backToFinder } from './backLink'
@@ -154,6 +155,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             )}
           </section>
           {!place.bookable && tall && <WalkIn place={place} />}
+          <PlaceForecast place={place} timeZone={timezone} />
 
           {place.seats && place.lab_rows && place.lab_cols && (
             <section className={styles.card} aria-labelledby="seats">

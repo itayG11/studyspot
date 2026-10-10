@@ -394,3 +394,68 @@
     padding: var(--s-4);
   }
 }
+
+/* The load forecast: a column per hour, right to left. Seven days on one
+   line, also on a phone. */
+.forecastDays {
+  display: flex;
+  gap: var(--s-1);
+}
+
+.forecastDay {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding-inline: 0;
+}
+
+.forecastNow {
+  margin: 0;
+  color: var(--ink);
+}
+
+.forecastBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+}
+
+.forecastColumn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 4px;
+}
+
+.forecastBar {
+  border-radius: 4px 4px 2px 2px;
+}
+
+.forecast_low {
+  background: var(--free);
+}
+
+.forecast_medium {
+  background: var(--busy);
+}
+
+/* Full is striped, not only another colour. */
+.forecast_high {
+  background: repeating-linear-gradient(-45deg, var(--full) 0 6px, color-mix(in srgb, var(--full) 78%, var(--stone-0)) 6px 12px);
+}
+
+.forecastCurrent {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.forecastHour {
+  min-height: 1em;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,7 +1,7 @@
 // The campus endpoints. All of them are public: no sign-in needed.
 
 import { api } from './client'
-import type { Building, Institution, InstitutionListItem, Place, PlaceDetail, PlaceKind, Providers } from './types'
+import type { Building, Forecast, Institution, InstitutionListItem, Place, PlaceDetail, PlaceKind, Providers } from './types'
 
 const base = (slug: string) => `/institutions/${encodeURIComponent(slug)}`
 
@@ -9,6 +9,8 @@ export const getInstitutions = () => api<InstitutionListItem[]>('/institutions')
 export const getInstitution = (slug: string) => api<Institution>(base(slug))
 export const getBuildings = (slug: string) => api<Building[]>(`${base(slug)}/buildings`)
 export const getPlace = (id: number) => api<PlaceDetail>(`/places/${id}`)
+// How busy a place usually is on a day of the week (Python's numbering).
+export const getForecast = (id: number, weekday: number) => api<Forecast>(`/places/${id}/forecast?weekday=${weekday}`)
 export const getProviders = () => api<Providers>('/auth/providers')
 
 export function getPlaces(slug: string, filter: { kind?: PlaceKind; building?: string } = {}) {

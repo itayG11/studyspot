@@ -69,6 +69,9 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
           {ATMOSPHERE_LABELS[place.atmosphere]} · עד {place.capacity} {UNIT[place.kind]}
         </p>
         {!place.bookable && <p className={styles.walkIn}>בלי הזמנה: נכנסים בסריקה</p>}
+        {place.available === 0 && place.usually_frees_at && (
+          <p className={styles.facts}>בדרך כלל מתפנה ב-{place.usually_frees_at.slice(0, 5)}</p>
+        )}
       </div>
       <div className={styles.actions}>
         {onShowOnMap && (

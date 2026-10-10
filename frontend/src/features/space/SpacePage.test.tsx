@@ -36,6 +36,9 @@ beforeEach(() => {
     const path = new URL(url).pathname
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path.startsWith('/auth/')) return Promise.resolve(jsonResponse({ detail: 'not_authenticated' }, 401))
+    // The load forecast has its own tests (Forecast.test.tsx): no history here.
+    if (path.endsWith('/forecast'))
+      return Promise.resolve(jsonResponse({ weekday: 6, capacity: 2, weeks: 0, simulated: false, closed: false, slots: [], frees_at: null }))
     const next = placeResponses.shift()
     return next ? Promise.resolve(next()) : Promise.reject(new TypeError('Failed to fetch'))
   })

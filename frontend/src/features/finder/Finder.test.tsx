@@ -55,6 +55,15 @@ describe('Finder', () => {
     expect(screen.getByText('2 מקומות')).toBeInTheDocument()
   })
 
+  it('a full card says when it usually frees up', async () => {
+    const full = place({ id: 6, name: 'ספרייה', building_code: 'L', kind: 'library', bookable: false, occupied: 40, available: 0, usually_frees_at: '14:30:00' })
+    renderFinder({ places: [LAB, full] })
+    const card = (await screen.findByRole('link', { name: 'ספרייה' })).closest('li')!
+    expect(within(card).getByText('בדרך כלל מתפנה ב-14:30')).toBeInTheDocument()
+    const lab = screen.getByRole('link', { name: 'M206' }).closest('li')!
+    expect(within(lab).queryByText(/מתפנה/)).not.toBeInTheDocument()
+  })
+
   it('a card tells a walk-in place from one booked ahead', async () => {
     const area = place({ id: 5, name: 'מתחם לימוד', building_code: 'L', kind: 'open_area', bookable: false })
     renderFinder({ places: [LAB, area] })

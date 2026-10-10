@@ -67,6 +67,9 @@ export interface Place extends Occupancy {
   // Group rooms only (null elsewhere): free right now, and if not, from when.
   free_now: boolean | null
   free_from: string | null
+  // Full now and not a room: the first quarter hour today that is usually
+  // not full, local "HH:MM:SS" (the load forecast).
+  usually_frees_at?: string | null
 }
 
 export interface OpeningHours {
@@ -83,6 +86,21 @@ export interface Seat {
   occupied: boolean
   free_now: boolean
   free_until: string | null // ISO time; null when not free, or free all day
+}
+
+export interface SlotForecast {
+  start: string // local "HH:MM:SS"
+  people: number
+}
+
+export interface Forecast {
+  weekday: number // Python's numbering: Monday is 0
+  capacity: number
+  weeks: number // how many past days the averages come from
+  simulated: boolean // some counts are the demo campus's made-up ones
+  closed: boolean
+  slots: SlotForecast[] // empty when closed, or with too little history
+  frees_at: string | null // today only, local "HH:MM:SS"
 }
 
 export interface PlaceDetail extends Place {
