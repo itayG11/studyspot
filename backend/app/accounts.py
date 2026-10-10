@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity
+from app.models import AuthProvider, Institution, InstitutionLoginRule, User, UserIdentity, UserRole
 from app.oidc import ProviderIdentity
 
 # Anyone with a Google account can join the open campus, so new users there
@@ -26,7 +26,12 @@ def _open_institution(db: Session, slug: str | None) -> Institution | None:
 
 
 def sign_in(
-    db: Session, provider: AuthProvider, identity: ProviderIdentity, now: datetime, open_slug: str | None = None
+    db: Session,
+    provider: AuthProvider,
+    identity: ProviderIdentity,
+    now: datetime,
+    open_slug: str | None = None,
+    system_admins: frozenset[str] = frozenset(),
 ) -> User:
     """Find or create the user. A sign-in that matches an institution's
     login rule joins that institution; any other joins the open campus, if
@@ -71,10 +76,26 @@ def sign_in(
         db.add(UserIdentity(user_id=user.id, provider=provider, subject=identity.subject))
     else:
         user = db.get(User, link.user_id)
-        if user.institution_id != institution_id:
+        # An admin who came by an invite (app/institutions.py) belongs to that
+        # institution, not to the open campus their account would join. A
+        # rule of another institution still wins, as for everyone.
+        invited_admin = rule is None and user.role == UserRole.INSTITUTION_ADMIN
+        if user.institution_id != institution_id and not invited_admin:
             raise Refusal(403, "institution_not_supported")
         # Keep the shown details current; they are not used for identity.
         user.email, user.display_name = identity.email, identity.display_name[:100]
+    if provider == AuthProvider.GOOGLE:
+        _sync_system_admin(user, identity, system_admins)
     user.last_login_at = now
     db.flush()
     return user
+
+
+def _sync_system_admin(user: User, identity: ProviderIdentity, system_admins: frozenset[str]) -> None:
+    """The one place an e-mail address decides anything: SYSTEM_ADMIN_EMAILS.
+    Only a Google sign-in counts, and only with an address Google verified.
+    Someone taken off the list is a student again at their next sign-in."""
+    if identity.email_verified and identity.email.lower() in system_admins:
+        user.role = UserRole.SYSTEM_ADMIN
+    elif user.role == UserRole.SYSTEM_ADMIN:
+        user.role = UserRole.STUDENT

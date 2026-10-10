@@ -9,6 +9,7 @@ import unicodedata
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal
+from zoneinfo import available_timezones
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -327,3 +328,64 @@ class EmailVerifyIn(BaseModel):
     email: str = Field(max_length=320)
     # [0-9], not \d: \d would also take digits of other scripts.
     code: str = Field(pattern=r"^[0-9]{6}$")
+
+
+# --- The system admin: institutions and their admins' invites ---------------
+
+
+class InstitutionCreateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=200)
+    # The address: /tel-hai. As the table's slug_format check.
+    slug: str = Field(min_length=2, max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
+    timezone: str = Field(default="Asia/Jerusalem", max_length=64)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str) -> str:
+        cleaned = _plain_text(value)
+        if not cleaned:
+            raise ValueError("a name is needed")
+        return cleaned
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        if value not in available_timezones():
+            raise ValueError("unknown time zone")
+        return value
+
+
+class SystemInstitutionOut(BaseModel):
+    slug: str
+    name: str
+    timezone: str
+    is_active: bool
+    buildings: int
+    admins: int
+
+
+class InviteCreatedOut(BaseModel):
+    id: int
+    token: str  # shown this once; the server keeps only its HMAC
+    expires_at: datetime
+
+
+class InviteOut(BaseModel):
+    id: int
+    status: Literal["open", "used", "revoked", "expired"]
+    created_at: datetime
+    expires_at: datetime
+    used_at: datetime | None
+
+
+class InviteTokenIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=100)
+
+
+class InviteInstitutionOut(BaseModel):
+    slug: str
+    name: str

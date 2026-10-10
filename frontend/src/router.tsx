@@ -3,7 +3,7 @@
 
 import { createBrowserRouter } from 'react-router'
 import { LazyAdminPage } from './admin/LazyAdminPage'
-import { RequireAdmin, RequireAuth } from './auth/guards'
+import { RequireAdmin, RequireAuth, RequireSystemAdmin } from './auth/guards'
 import { HomeInstitutionRoute, InstitutionRoute, ToHomeInstitution } from './institutionRoutes'
 import { MyPage } from './me/MyPage'
 import { LoginPage } from './pages/LoginPage'
@@ -14,6 +14,9 @@ import { SpacePage } from './features/space/SpacePage'
 import { SignedInPage } from './pages/SignedInPage'
 import { ScanPage } from './scan/ScanPage'
 import { PrivacyPage } from './pages/PrivacyPage'
+import { InstitutionsPage } from './pages/InstitutionsPage'
+import { InvitePage } from './pages/InvitePage'
+import { SystemPage } from './system/SystemPage'
 
 export const routes = [
   // The front page: the visitor's own institution, or the demo campus.
@@ -26,14 +29,10 @@ export const routes = [
       // The scan page asks for sign-in itself, keeping the code out of the address.
       { path: 'scan', Component: ScanPage },
       { path: 'me', element: <RequireAuth><MyPage /></RequireAuth> },
-      {
-        path: 'admin',
-        element: (
-          <RequireAdmin>
-            <LazyAdminPage />
-          </RequireAdmin>
-        ),
-      },
+      // The system admin's page, and the link a new institution's admin gets.
+      { path: 'system', element: <RequireSystemAdmin><SystemPage /></RequireSystemAdmin> },
+      { path: 'invite', Component: InvitePage },
+      { path: 'institutions', Component: InstitutionsPage },
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', Component: SignedInPage },
       { path: 'privacy', Component: PrivacyPage },
@@ -48,6 +47,8 @@ export const routes = [
   { path: 'places', Component: PlacesRedirect },
   { path: 'places/:placeId', Component: PlaceRedirect },
   { path: 'spaces/:placeId', Component: PlaceRedirect },
+  // The admin page is at the institution's address now: /braude/admin.
+  { path: 'admin', element: <ToHomeInstitution path="/admin" /> },
   // Each institution's own pages: /demo, /braude/spaces/12. A fixed address
   // above wins over a short name, so no institution may be called "scan".
   {
@@ -56,6 +57,14 @@ export const routes = [
     children: [
       { index: true, Component: HomePage },
       { path: 'spaces/:spaceId', Component: SpacePage },
+      {
+        path: 'admin',
+        element: (
+          <RequireAdmin>
+            <LazyAdminPage />
+          </RequireAdmin>
+        ),
+      },
       // An unknown page: /braude/nope. A single unknown word (/nope) is
       // taken as an institution's name, and says that no such one exists.
       { path: '*', Component: NotFoundPage },

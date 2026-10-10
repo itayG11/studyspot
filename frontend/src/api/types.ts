@@ -211,3 +211,34 @@ export interface BuildingLocation {
   latitude: string
   longitude: string
 }
+
+// --- The system admin --------------------------------------------------------
+
+export interface SystemInstitution {
+  slug: string
+  name: string
+  timezone: string
+  is_active: boolean
+  buildings: number
+  admins: number
+}
+
+export interface NewInstitution {
+  name: string
+  slug: string
+  timezone: string
+}
+
+export interface InviteCreated {
+  id: number
+  token: string // shown this once; the server keeps only its HMAC
+  expires_at: string
+}
+
+export interface Invite {
+  id: number
+  status: 'open' | 'used' | 'revoked' | 'expired'
+  created_at: string
+  expires_at: string
+  used_at: string | null
+}

@@ -65,8 +65,19 @@ export function Layout() {
             <NavLink to="/me" className={styles.navLink} viewTransition>האזור שלי</NavLink>
           )}
           {user && user.role !== 'student' && (
-            <NavLink to="/admin" className={styles.navLink} viewTransition>ניהול</NavLink>
+            // An institution's admin manages their own; the system admin, the one shown.
+            <NavLink
+              to={`/${user.role === 'system_admin' ? institution.slug : user.institution_slug}/admin`}
+              className={styles.navLink}
+              viewTransition
+            >
+              ניהול
+            </NavLink>
           )}
+          {user?.role === 'system_admin' && (
+            <NavLink to="/system" className={styles.navLink} viewTransition>ניהול המערכת</NavLink>
+          )}
+          <NavLink to="/institutions" className={styles.navLink} viewTransition>מוסדות</NavLink>
         </nav>
         <div className={styles.account}>
           <ThemeSwitch />

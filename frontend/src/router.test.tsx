@@ -12,7 +12,7 @@ import { INSTITUTION, jsonResponse, place } from './test/fixtures'
 
 const DEMO = { ...INSTITUTION, slug: 'demo', name: 'קמפוס הדגמה' }
 const BRAUDE = INSTITUTION
-const ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
+let ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
 
 let signedIn: boolean
 let slowServer: boolean // the institution's details never arrive
@@ -22,6 +22,7 @@ beforeEach(() => {
   forgetVisitForTests()
   signedIn = false
   slowServer = false
+  ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
   // The front page's story asks about the screen; jsdom has no answer.
   vi.stubGlobal('matchMedia', (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }))
   vi.stubGlobal('fetch', vi.fn((url: string) => {
@@ -31,6 +32,8 @@ beforeEach(() => {
         ? jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME })
         : jsonResponse({ detail: 'not_authenticated' }, 401))
     }
+    if (path === '/institutions') return Promise.resolve(jsonResponse([{ slug: 'demo', name: 'קמפוס הדגמה' }]))
+    if (path.startsWith('/admin/') || path.startsWith('/system/')) return Promise.resolve(jsonResponse([]))
     if (path === '/institutions/demo') return Promise.resolve(jsonResponse(DEMO))
     if (path === '/institutions/braude') return slowServer ? new Promise(() => {}) : Promise.resolve(jsonResponse(BRAUDE))
     if (path.endsWith('/buildings') || path.endsWith('/places')) return Promise.resolve(jsonResponse([]))
@@ -129,5 +132,41 @@ describe('an address per institution', () => {
     renderAt('/braude/nope')
     expect(await screen.findByText('הדף לא נמצא')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'לחיפוש מקום' })).toHaveAttribute('href', '/braude')
+  })
+
+  it('the admin page is at the institution\'s address; /admin leads to your own', async () => {
+    signedIn = true
+    ME.role = 'institution_admin'
+    const router = renderAt('/admin')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/braude/admin'))
+  })
+
+  it('an institution admin cannot open another institution\'s admin page', async () => {
+    signedIn = true
+    ME.role = 'institution_admin'
+    renderAt('/demo/admin')
+    expect(await screen.findByText('אין גישה')).toBeInTheDocument()
+  })
+
+  it('the system admin opens any institution\'s admin page, and has the system page in the header', async () => {
+    signedIn = true
+    ME.role = 'system_admin'
+    renderAt('/demo/admin')
+    const top = await header()
+    expect(await top.findByRole('link', { name: 'ניהול המערכת' })).toHaveAttribute('href', '/system')
+    expect(top.getByRole('link', { name: 'ניהול' })).toHaveAttribute('href', '/demo/admin')
+    expect(screen.queryByText('אין גישה')).not.toBeInTheDocument()
+  })
+
+  it('a student cannot open the system page', async () => {
+    signedIn = true
+    renderAt('/system')
+    expect(await screen.findByText('אין גישה')).toBeInTheDocument()
+  })
+
+  it('anyone sees the list of active institutions, each linking to its address', async () => {
+    renderAt('/institutions')
+    expect(await screen.findByRole('link', { name: 'קמפוס הדגמה' })).toHaveAttribute('href', '/demo')
+    expect((await header()).getByRole('link', { name: 'מוסדות' })).toHaveAttribute('href', '/institutions')
   })
 })

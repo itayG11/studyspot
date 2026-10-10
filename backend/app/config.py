@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # sign-in rules can be open (app/accounts.py), never Braude. Off when unset.
     open_sign_in_institution: str | None = None
 
+    # Who runs the whole service: create institutions and invite their
+    # admins. Comma-separated Google addresses, honoured only when Google
+    # has verified the address (app/accounts.py). Empty: nobody.
+    system_admin_emails: str = ""
+
     # Sign-in with a one-time code by email (app/email_codes.py). On when a
     # Brevo API key is set; EMAIL_SENDER is the From address, on a domain
     # verified at Brevo. EMAIL_LOGIN_DEV_LOG prints codes to the server log
@@ -112,6 +117,9 @@ class Settings(BaseSettings):
 
     def email_login_enabled(self) -> bool:
         return self.brevo_api_key is not None or self.email_login_dev_log
+
+    def system_admins(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in self.system_admin_emails.split(",") if e.strip())
 
     def allowed_origins(self) -> list[str]:
         extra = [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]

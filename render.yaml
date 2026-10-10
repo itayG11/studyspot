@@ -38,6 +38,10 @@ services:
         sync: false
       - key: MICROSOFT_CLIENT_SECRET
         sync: false
+      # Who runs the service (creates institutions, invites their admins):
+      # Google addresses, comma-separated. Entered in the dashboard only.
+      - key: SYSTEM_ADMIN_EMAILS
+        sync: false
       # Render's proxy adds the visitor's address at the end of
       # X-Forwarded-For. If there are in fact more hops, the limits count
       # by a proxy's address instead: stricter, never fooled by the visitor.

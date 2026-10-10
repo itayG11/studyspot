@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.activity import Activity
-from app.api import admin, auth, bookings, campus, checkins
+from app.api import admin, auth, bookings, campus, checkins, system
 from app.config import Settings, get_settings
 from app.sweeper import run_forever, run_once, sweep_safely
 
@@ -105,3 +105,4 @@ app.include_router(campus.router)
 app.include_router(checkins.router)
 app.include_router(bookings.router)
 app.include_router(admin.router)
+app.include_router(system.router)

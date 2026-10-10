@@ -76,6 +76,18 @@ const MESSAGES: Record<string, string> = {
 
   // Admin
   building_not_found: 'הבניין לא נמצא.',
+
+  // The system admin, and admin invites
+  institution_slug_reserved: 'הכתובת הזו שמורה לאתר עצמו. בחר כתובת אחרת.',
+  institution_slug_taken: 'כבר יש מוסד בכתובת הזו.',
+  invite_invalid: 'קישור ההזמנה לא תקין. בקש קישור חדש.',
+  invite_used: 'כבר השתמשו בקישור ההזמנה הזה. בקש קישור חדש.',
+  invite_revoked: 'קישור ההזמנה בוטל. בקש קישור חדש.',
+  invite_expired: 'תוקף קישור ההזמנה פג. בקש קישור חדש.',
+  invite_not_open: 'ההזמנה כבר לא פתוחה.',
+  invite_demo_account: 'אי אפשר לקבל הזמנה עם חשבון לדוגמה. התחבר עם חשבון אישי, של גוגל או של מיקרוסופט.',
+  invite_system_admin: 'אתה מנהל המערכת, ומנהל כבר את כל המוסדות.',
+  invite_other_institution: 'החשבון שלך שייך למוסד אחר. התחבר עם חשבון אישי, של גוגל או של מיקרוסופט.',
 }
 
 export function errorMessage(code: string): string {

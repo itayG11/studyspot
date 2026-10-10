@@ -19,6 +19,7 @@ from app.models.campus import (
 from app.models.checkins import CheckIn, CheckInEndReason
 from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
 from app.models.people import (
+    AdminInvite,
     AuthProvider,
     AuthSession,
     EmailSignInCode,
@@ -30,6 +31,7 @@ from app.models.people import (
 
 __all__ = [
     "ACTIVE_STATUSES",
+    "AdminInvite",
     "Amenity",
     "AuthProvider",
     "AuthSession",

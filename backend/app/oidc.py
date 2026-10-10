@@ -39,6 +39,9 @@ class ProviderIdentity:
     institution_key: str | None  # matched against institution_login_rules
     email: str
     display_name: str
+    # Only Google promises this (its email_verified claim). It makes a
+    # SYSTEM_ADMIN_EMAILS address a system admin; nothing else trusts it.
+    email_verified: bool = False
 
 
 @dataclass
@@ -197,6 +200,7 @@ class GoogleProvider(Provider):
             institution_key=domain or None,
             email=_clean_email(email),
             display_name=_clean_name(claims.get("name"), email),
+            email_verified=verified,
         )
 
 

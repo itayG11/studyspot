@@ -144,3 +144,25 @@ class EmailSignInCode(Base):
     # Wrong codes typed for this one; at MAX_ATTEMPTS it stops working.
     attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AdminInvite(Base):
+    """A link that makes whoever opens it the admin of a new institution
+    (app/institutions.py). Only an HMAC of its token is kept: the database
+    alone cannot be turned back into working links."""
+
+    __tablename__ = "admin_invites"
+    __table_args__ = (
+        CheckConstraint("expires_at > created_at", name="expires_after_creation"),
+        CheckConstraint("used_at IS NULL OR revoked_at IS NULL", name="used_or_revoked"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    institution_id: Mapped[int] = mapped_column(ForeignKey("institutions.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

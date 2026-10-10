@@ -58,7 +58,7 @@ export function InstitutionProvider({ slug, children }: { slug: string; children
 // oxlint-disable-next-line react/only-export-components
 export function useInstitution(): Institution {
   const value = useContext(InstitutionContext)
-  if (value === null) throw new Error('useInstitution must be used inside <InstitutionProvider slug="braude">')
+  if (value === null) throw new Error('useInstitution must be used inside <InstitutionProvider>')
   return value
 }
 
