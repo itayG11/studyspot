@@ -70,3 +70,12 @@ def test_a_real_campus_never_gets_made_up_counts(session, braude):
     # Braude has real sign-in rules: whatever calls it, no simulated past.
     assert simulate_history(session, braude, TODAY) == 0
     assert rows(session, braude) == []
+
+
+def test_a_demo_reset_earlier_today_still_gets_its_history(session):
+    # The day's reset ran before this version went up: no waiting a day.
+    demo = seed_demo(session)
+    demo.demo_reset_on = date(2026, 10, 11)
+    session.flush()
+    assert campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 11)) is None
+    assert rows(session, demo)

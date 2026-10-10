@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import Building, BuildingStatus, Institution, Place, PlaceKind, floor_exists
+from app.models import Building, BuildingStatus, Institution, OccupancyHistory, Place, PlaceKind, floor_exists
 from app.seed import _make_place, _position
 from app.seed.braude import WEEK_AND_FRIDAY
 from app.seed.demo import DEMO
@@ -130,12 +130,24 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
     restart does not reset twice, and a reset that failed is tried again.
     The row lock keeps two servers from resetting at once."""
     institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
-    if institution is None or institution.demo_reset_on == today:
+    if institution is None:
+        return None
+    from app.seed.history import simulate_history
+
+    if institution.demo_reset_on == today:
+        # Reset already, but with no made-up past yet (a version without it
+        # did today's reset): make it now, not tomorrow.
+        has_history = db.scalar(
+            select(OccupancyHistory.place_id)
+            .join(Place, Place.id == OccupancyHistory.place_id)
+            .where(Place.institution_id == institution.id, OccupancyHistory.simulated)
+            .limit(1)
+        )
+        if has_history is None:
+            simulate_history(db, institution, today)
         return None
     removed = reset_demo_extras(db, slug)
     # The forecast's made-up past moves on with the days (app/seed/history.py).
-    from app.seed.history import simulate_history
-
     simulate_history(db, db.get(Institution, institution.id), today)
     db.execute(update(Institution).where(Institution.id == institution.id).values(demo_reset_on=today))
     return removed
