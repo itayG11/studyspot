@@ -419,3 +419,17 @@
   padding: 0;
   list-style: none;
 }
+
+/* "Waiting" is a word too, not only a colour. */
+.pendingTag {
+  padding: 1px var(--s-2);
+  font-size: var(--text-sm);
+  border-radius: var(--r-pill);
+  background: var(--stone-2);
+  color: var(--ink-2);
+}
+
+.subform {
+  display: grid;
+  gap: var(--s-2);
+}

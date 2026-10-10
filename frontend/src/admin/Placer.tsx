@@ -11,7 +11,7 @@ import styles from './admin.module.css'
 import { PickMap } from './PickMap'
 import { useInstitution } from '../institution'
 
-export function Placer({ initial = null }: { initial?: string | null }) {
+export function Placer({ initial = null, onSaved }: { initial?: string | null; onSaved?: () => void }) {
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `admin-buildings-${slug}`)
   const [selected, setSelected] = useState<string | null>(initial)
@@ -26,6 +26,7 @@ export function Placer({ initial = null }: { initial?: string | null }) {
     if (!chosen || action.busy) return // one save at a time
     const saved = await action.run(() => placeBuilding(chosen.id, latitude, longitude))
     if (saved) {
+      onSaved?.() // the setup tab counts the buildings on the map
       setDone(`בניין ${saved.code} מוקם על המפה (${saved.latitude}, ${saved.longitude}).`)
       buildings.reload()
     }

@@ -45,7 +45,7 @@ export function AdminPage() {
       <section aria-label={TAB_LABELS[tab]}>
         {tab === 'setup' && <Setup setup={setup} onGo={(t) => setTab(t)} />}
         {tab === 'signs' && <Signs />}
-        {tab === 'placing' && <Placer key={toPlace ?? ''} initial={toPlace} />}
+        {tab === 'placing' && <Placer key={toPlace ?? ''} initial={toPlace} onSaved={setup.reload} />}
         {tab === 'adding' && (
           <Adder
             onAdded={setup.reload}

@@ -7,7 +7,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { addLoginRule, getSetup, removeLoginRule, updateInstitution } from '../api/admin'
 import type { LoginRule, Setup as SetupData } from '../api/types'
-import { useAction } from '../hooks/useAction'
+import { useAction, type Action } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { Button, ErrorState, Notice, PageLoading } from '../ui'
@@ -119,9 +119,12 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
   const id = useId()
   const [domain, setDomain] = useState('')
   const [tenant, setTenant] = useState('')
-  const action = useAction()
+  // One per button: pressing one does not make the others look busy.
+  const addDomain = useAction()
+  const addTenant = useAction()
+  const removing = useAction()
 
-  async function add(provider: LoginRule['provider'], value: string, clear: () => void) {
+  async function add(action: Action, provider: LoginRule['provider'], value: string, clear: () => void) {
     if (await action.run(() => addLoginRule(data.slug, provider, value.trim()))) {
       clear()
       onSaved()
@@ -129,7 +132,9 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
   }
 
   async function remove(rule: LoginRule) {
-    if (await action.run(() => removeLoginRule(rule.id))) onSaved()
+    // The server answers "204 No Content": success is the call not failing.
+    const done = await removing.run(() => removeLoginRule(rule.id).then(() => true))
+    if (done) onSaved()
   }
 
   const tenants = data.rules.filter((r) => r.provider === 'microsoft')
@@ -147,6 +152,7 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
             <li key={rule.id}>
               <span>{rule.provider === 'email' ? 'סיומת מייל' : 'ארגון מיקרוסופט'}</span>{' '}
               <span dir="ltr">{rule.value}</span>{' '}
+              {!rule.approved && <span className={styles.pendingTag}>ממתין לאישור מנהל המערכת</span>}{' '}
               <Button variant="ghost" size="sm" disabled={data.locked} onClick={() => void remove(rule)}>
                 הסרה
               </Button>
@@ -170,8 +176,8 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
       <Button
         size="sm"
         disabled={data.locked || domain.trim() === ''}
-        busy={action.busy}
-        onClick={() => void add('email', domain, () => setDomain(''))}
+        busy={addDomain.busy}
+        onClick={() => void add(addDomain, 'email', domain, () => setDomain(''))}
       >
         הוספת סיומת
       </Button>
@@ -192,11 +198,17 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
         size="sm"
         variant="secondary"
         disabled={data.locked || tenant.trim() === ''}
-        busy={action.busy}
-        onClick={() => void add('microsoft', tenant, () => setTenant(''))}
+        busy={addTenant.busy}
+        onClick={() => void add(addTenant, 'microsoft', tenant, () => setTenant(''))}
       >
         הוספת ארגון מיקרוסופט
       </Button>
+      {addDomain.error && <Notice tone="error">{addDomain.error}</Notice>}
+      {addTenant.error && <Notice tone="error">{addTenant.error}</Notice>}
+      {removing.error && <Notice tone="error">{removing.error}</Notice>}
+      <p className={styles.lead}>
+        כלל חדש מתחיל לעבוד אחרי שמנהל המערכת בודק שהסיומת או הארגון באמת של המוסד.
+      </p>
       {data.microsoft_client_id &&
         tenants.map((rule) => (
           <Notice key={rule.id}>
@@ -211,7 +223,6 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
             .
           </Notice>
         ))}
-      {action.error && <Notice tone="error">{action.error}</Notice>}
     </section>
   )
 }

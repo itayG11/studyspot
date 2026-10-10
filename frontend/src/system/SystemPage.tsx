@@ -3,8 +3,9 @@
 
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { createInstitution, createInvite, getAllInstitutions } from '../api/system'
-import type { InviteCreated, SystemInstitution } from '../api/types'
+import { removeLoginRule } from '../api/admin'
+import { approveRule, createInstitution, createInvite, getAllInstitutions, getPendingRules } from '../api/system'
+import type { InviteCreated, PendingRule, SystemInstitution } from '../api/types'
 import { SITE_URL } from '../config'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
@@ -23,6 +24,7 @@ export function SystemPage() {
       <p className={admin.lead}>
         מוסד חדש נוצר מוסתר. שולחים קישור הזמנה למנהל שלו, והוא מקים את המוסד ומסמן אותו "פעיל".
       </p>
+      <PendingRules />
       <NewInstitutionForm onCreated={institutions.reload} />
       {!institutions.data && institutions.error ? (
         <ErrorState error={institutions.error} onRetry={institutions.reload} />
@@ -36,6 +38,55 @@ export function SystemPage() {
         </ul>
       )}
     </div>
+  )
+}
+
+// A rule an institution admin adds works only after the system admin checks
+// the domain or tenant is really the institution's: otherwise anyone invited
+// could claim another college's students.
+function PendingRules() {
+  const id = useId()
+  const rules = useApi(getPendingRules, 'system-pending-rules')
+  const action = useAction()
+
+  async function decide(rule: PendingRule, approve: boolean) {
+    // Removing answers "204 No Content": success is the call not failing.
+    const done = await action.run(() => (approve ? approveRule(rule.id).then(() => true) : removeLoginRule(rule.id).then(() => true)))
+    if (done) rules.reload()
+  }
+
+  return (
+    <section className={admin.form} aria-labelledby={`${id}-title`}>
+      <h2 id={`${id}-title`} className={admin.formTitle}>
+        כללי כניסה לאישור
+      </h2>
+      <p className={admin.lead}>
+        לפני אישור, בודקים שהסיומת או הארגון באמת של המוסד. למשל, באתר הרשמי של המוסד, או מול מנהל המחשוב שלו.
+      </p>
+      {!rules.data && rules.error ? (
+        <ErrorState error={rules.error} onRetry={rules.reload} />
+      ) : !rules.data ? (
+        <PageLoading />
+      ) : rules.data.length === 0 ? (
+        <p className={admin.lead}>אין כללי כניסה שממתינים לאישור.</p>
+      ) : (
+        <ul className={admin.rules} aria-label="כללי כניסה שממתינים לאישור">
+          {rules.data.map((rule) => (
+            <li key={rule.id}>
+              <span>{rule.institution_name}:</span> <span>{rule.provider === 'email' ? 'סיומת מייל' : 'ארגון מיקרוסופט'}</span>{' '}
+              <span dir="ltr">{rule.value}</span>{' '}
+              <Button size="sm" disabled={action.busy} onClick={() => void decide(rule, true)}>
+                אישור
+              </Button>{' '}
+              <Button variant="ghost" size="sm" disabled={action.busy} onClick={() => void decide(rule, false)}>
+                דחייה
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {action.error && <Notice tone="error">{action.error}</Notice>}
+    </section>
   )
 }
 

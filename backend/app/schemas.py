@@ -449,6 +449,7 @@ class LoginRuleOut(BaseModel):
     id: int
     provider: AuthProvider
     value: str
+    approved: bool  # an institution admin's rule waits for the system admin
 
 
 class SetupOut(BaseModel):
@@ -468,3 +469,8 @@ class GeocodeResultOut(BaseModel):
     name: str
     latitude: float
     longitude: float
+
+
+class PendingRuleOut(LoginRuleOut):
+    institution_slug: str
+    institution_name: str

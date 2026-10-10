@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place
+from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User
 
 # Microsoft's one tenant for every personal account (outlook.com, hotmail).
 # As a rule it would put every personal Microsoft account in one institution.
@@ -18,7 +18,11 @@ PUBLIC_MAIL_DOMAINS = frozenset({
     "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com",
     "yahoo.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com",
     "walla.co.il", "walla.com", "012.net.il", "bezeqint.net", "netvision.net.il",
+    "hotmail.co.il", "outlook.co.il", "yahoo.co.il", "hotmail.co.uk", "live.co.uk", "gmx.com",
+    "gmx.net", "mail.ru", "yandex.ru", "yandex.com", "zoho.com", "tutanota.com", "pm.me", "mail.com",
 })
+# A list cannot be complete: the system admin's approval (approved, below) is
+# the real check. The list only refuses the obvious ones at once.
 
 
 def setup_counts(db: Session, institution: Institution) -> tuple[int, int, int]:
@@ -30,7 +34,9 @@ def setup_counts(db: Session, institution: Institution) -> tuple[int, int, int]:
     return buildings, located, places
 
 
-def add_login_rule(db: Session, institution: Institution, provider: AuthProvider, value: str) -> InstitutionLoginRule:
+def add_login_rule(
+    db: Session, institution: Institution, provider: AuthProvider, value: str, approved: bool
+) -> InstitutionLoginRule:
     if (provider, value) in ((AuthProvider.MICROSOFT, MICROSOFT_CONSUMERS),) or (
         provider == AuthProvider.EMAIL and value in PUBLIC_MAIL_DOMAINS
     ):
@@ -42,7 +48,25 @@ def add_login_rule(db: Session, institution: Institution, provider: AuthProvider
     ).first()
     if taken is not None:
         raise Refusal(409, "login_rule_taken")  # the table's unique key holds against a race too
-    created = InstitutionLoginRule(institution_id=institution.id, provider=provider, value=value)
+    created = InstitutionLoginRule(institution_id=institution.id, provider=provider, value=value, approved=approved)
     db.add(created)
     db.flush()
     return created
+
+
+def remove_login_rule(db: Session, rule: InstitutionLoginRule) -> None:
+    """The last working rule stays while the institution has users: without
+    it they could not sign in, and the value would be free for another
+    institution to take them with."""
+    if rule.approved:
+        others = db.scalar(
+            select(func.count()).select_from(InstitutionLoginRule).where(
+                InstitutionLoginRule.institution_id == rule.institution_id,
+                InstitutionLoginRule.approved,
+                InstitutionLoginRule.id != rule.id,
+            )
+        )
+        users = db.scalar(select(func.count()).select_from(User).where(User.institution_id == rule.institution_id))
+        if others == 0 and users > 0:
+            raise Refusal(409, "login_rule_last")
+    db.delete(rule)

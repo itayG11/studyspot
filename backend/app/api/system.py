@@ -15,7 +15,7 @@ from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.errors import Refusal
-from app.models import AdminInvite, Building, Institution, User, UserRole
+from app.models import AdminInvite, Building, Institution, InstitutionLoginRule, User, UserRole
 from app.permissions import require_role
 from app.ratelimit import write_limit
 from app.schemas import (
@@ -24,6 +24,8 @@ from app.schemas import (
     InviteInstitutionOut,
     InviteOut,
     InviteTokenIn,
+    LoginRuleOut,
+    PendingRuleOut,
     SystemInstitutionOut,
 )
 
@@ -158,3 +160,35 @@ def accept(body: InviteTokenIn, user: UserDep, db: SessionDep, now: NowDep, sett
         db.rollback()
         raise HTTPException(409, "concurrent_request") from None
     return InviteInstitutionOut(slug=institution.slug, name=institution.name)
+
+
+# --- Login rules waiting for the system admin ---------------------------------
+
+
+@router.get("/system/login-rules", response_model=list[PendingRuleOut])
+def pending_rules(owner: OwnerDep, db: SessionDep):
+    rows = db.execute(
+        select(InstitutionLoginRule, Institution)
+        .join(Institution, Institution.id == InstitutionLoginRule.institution_id)
+        .where(~InstitutionLoginRule.approved)
+        .order_by(InstitutionLoginRule.id)
+    ).all()
+    return [
+        PendingRuleOut(
+            id=r.id, provider=r.provider, value=r.value, approved=False,
+            institution_slug=i.slug, institution_name=i.name,
+        )
+        for r, i in rows
+    ]
+
+
+@router.post("/system/login-rules/{rule_id}/approve", response_model=LoginRuleOut, dependencies=[Depends(write_limit)])
+def approve_rule(rule_id: Annotated[int, Path(gt=0)], owner: OwnerDep, db: SessionDep):
+    """After checking the domain or tenant is the institution's own. To
+    refuse one, the system admin removes it (DELETE /admin/login-rules/{id})."""
+    found = db.get(InstitutionLoginRule, rule_id)
+    if found is None:
+        raise HTTPException(404, "login_rule_not_found")
+    found.approved = True
+    db.commit()
+    return found

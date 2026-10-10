@@ -64,7 +64,9 @@ def _domain(email: str) -> str:
 def domain_is_supported(db: Session, email: str) -> bool:
     return db.scalars(
         select(InstitutionLoginRule.id).where(
-            InstitutionLoginRule.provider == AuthProvider.EMAIL, InstitutionLoginRule.value == _domain(email)
+            InstitutionLoginRule.provider == AuthProvider.EMAIL,
+            InstitutionLoginRule.value == _domain(email),
+            InstitutionLoginRule.approved,
         )
     ).first() is not None
 

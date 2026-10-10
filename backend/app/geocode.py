@@ -24,6 +24,7 @@ from app.errors import Refusal
 CACHE_SECONDS = 60 * 60
 MIN_GAP_SECONDS = 1.0
 MAX_RESULTS = 5
+MAX_CACHED = 1000  # searches kept; the oldest goes first
 
 
 @dataclass
@@ -75,5 +76,10 @@ class Geocoder:
         except (httpx.HTTPError, ValueError, KeyError, TypeError):
             raise Refusal(502, "geocode_unavailable") from None
         with self.shared.lock:
-            self.shared.cache[key] = (now, found)
+            cache = self.shared.cache
+            for old in [k for k, (at, _) in cache.items() if now - at >= CACHE_SECONDS]:
+                del cache[old]
+            cache[key] = (now, found)
+            while len(cache) > MAX_CACHED:
+                del cache[next(iter(cache))]  # dicts keep insertion order: the oldest
         return found

@@ -18,7 +18,7 @@ from app.codes import make_code
 from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.geocode import SHARED, Geocoder
-from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User
+from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 from app.permissions import can_manage, require_admin
 from app.ratelimit import geocode_limit, write_limit
 from app.schemas import (
@@ -254,7 +254,9 @@ def add_login_rule(
     institution = _managed(db, admin, slug)
     _refuse_demo(institution, settings)
     try:
-        created = campus_setup.add_login_rule(db, institution, AuthProvider(body.provider), body.value)
+        # The system admin's own rule works at once; anyone else's waits for them.
+        approved = admin.role == UserRole.SYSTEM_ADMIN
+        created = campus_setup.add_login_rule(db, institution, AuthProvider(body.provider), body.value, approved)
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
@@ -275,7 +277,10 @@ def remove_login_rule(
     if found is None or not can_manage(admin, institution):
         raise HTTPException(404, "login_rule_not_found")
     _refuse_demo(institution, settings)
-    db.delete(found)
+    try:
+        campus_setup.remove_login_rule(db, found)
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
     db.commit()
 
 

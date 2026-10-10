@@ -2,7 +2,7 @@
 // The server checks the role on every call.
 
 import { api } from './client'
-import type { Invite, InviteCreated, InstitutionListItem, NewInstitution, SystemInstitution } from './types'
+import type { Invite, InviteCreated, InstitutionListItem, LoginRule, NewInstitution, PendingRule, SystemInstitution } from './types'
 
 const institution = (slug: string) => `/system/institutions/${encodeURIComponent(slug)}`
 
@@ -19,3 +19,8 @@ export const inspectInvite = (token: string) =>
   api<InstitutionListItem>('/invites/inspect', { method: 'POST', auth: true, body: { token } })
 export const acceptInvite = (token: string) =>
   api<InstitutionListItem>('/invites/accept', { method: 'POST', auth: true, body: { token } })
+
+// Login rules waiting for the system admin. To refuse one, remove it.
+export const getPendingRules = () => api<PendingRule[]>('/system/login-rules', { auth: true })
+export const approveRule = (id: number) =>
+  api<LoginRule>(`/system/login-rules/${id}/approve`, { method: 'POST', auth: true })

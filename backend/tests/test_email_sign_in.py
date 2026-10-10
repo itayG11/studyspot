@@ -363,9 +363,11 @@ def test_a_page_on_another_site_cannot_verify(client, mailer):
     assert response.status_code == 403
 
 
-def test_a_user_of_the_open_campus_whose_address_now_has_a_rule_moves_to_it(client, mailer, session, braude):
+def test_a_user_of_the_open_campus_whose_address_now_has_a_rule_moves_to_it(make_client, mailer, session, braude):
+    client = make_client(open_sign_in_institution="demo")
     # Signed in before the college had this rule, so put in the open campus.
     # The code just proved the address, and the rule says it is Braude's.
+    braude.is_active = True  # only an open institution takes students
     other = seed_demo(session)
     user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
     session.add(user)

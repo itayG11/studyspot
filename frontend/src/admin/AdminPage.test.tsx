@@ -26,7 +26,7 @@ const INSTITUTION = {
 
 const SETUP = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem', is_active: false, locked: false,
-  rules: [] as { id: number; provider: string; value: string }[], buildings: 2, located_buildings: 1, places: 0,
+  rules: [] as { id: number; provider: string; value: string; approved: boolean }[], buildings: 2, located_buildings: 1, places: 0,
   microsoft_client_id: 'client-123',
 }
 let setup = SETUP
@@ -73,9 +73,14 @@ beforeEach(() => {
     if (path === '/admin/institutions/braude/login-rules') {
       const body = JSON.parse(String(init.body))
       if (body.value === 'gmail.com') return Promise.resolve(jsonResponse({ detail: 'login_rule_public_domain' }, 409))
-      const created = { id: 77, ...body }
+      const created = { id: 77, approved: false, ...body }
       setup = { ...setup, rules: [...setup.rules, created] }
       return Promise.resolve(jsonResponse(created, 201))
+    }
+    if (path.startsWith('/admin/login-rules/') && init.method === 'DELETE') {
+      const id = Number(path.split('/').pop())
+      setup = { ...setup, rules: setup.rules.filter((r) => r.id !== id) }
+      return Promise.resolve(new Response(null, { status: 204 }))
     }
     if (path === '/admin/geocode')
       return Promise.resolve(jsonResponse([{ name: 'כרמיאל, ישראל', latitude: 32.9171, longitude: 35.305 }]))
@@ -242,11 +247,12 @@ describe('AdminPage', () => {
     await userEvent.type(screen.getByLabelText('סיומת המייל של הסטודנטים'), 'telhai.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'הוספת סיומת' }))
     expect(await screen.findByText('telhai.ac.il')).toBeInTheDocument()
+    expect(screen.getByText('ממתין לאישור מנהל המערכת')).toBeInTheDocument()
     expect(posts.at(-1)).toEqual({ path: '/admin/institutions/braude/login-rules', body: { provider: 'email', value: 'telhai.ac.il' } })
   })
 
   it('a Microsoft tenant id shows the consent link for the institution\'s IT manager', async () => {
-    setup = { ...SETUP, rules: [{ id: 3, provider: 'microsoft', value: '11111111-2222-3333-4444-555555555555' }] }
+    setup = { ...SETUP, rules: [{ id: 3, provider: 'microsoft', value: '11111111-2222-3333-4444-555555555555', approved: true }] }
     renderAdmin()
     const link = await screen.findByRole('link', { name: /קישור האישור/ })
     expect(link).toHaveAttribute('href', 'https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/adminconsent?client_id=client-123')
@@ -265,5 +271,34 @@ describe('AdminPage', () => {
     expect(await screen.findByText(/בקמפוס ההדגמה אי אפשר לשנות/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'להפעיל את המוסד' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'הוספת סיומת' })).toBeDisabled()
+  })
+
+  it('removing a rule takes it off the screen', async () => {
+    setup = { ...SETUP, rules: [{ id: 5, provider: 'email', value: 'old.ac.il', approved: true }] }
+    renderAdmin()
+    expect(await screen.findByText('old.ac.il')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'הסרה' }))
+    await waitFor(() => expect(screen.queryByText('old.ac.il')).not.toBeInTheDocument())
+  })
+
+  it('Enter in the search does not send a search shorter than two letters', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.type(screen.getByLabelText('חיפוש מקום על המפה'), 'כ{Enter}')
+    expect(screen.queryByRole('list', { name: 'תוצאות החיפוש' })).not.toBeInTheDocument()
+    for (const alert of screen.queryAllByRole('alert')) expect(alert).toBeEmptyDOMElement()
+    const geocodeCalls = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.filter(([u]) => u.includes('/geocode'))
+    expect(geocodeCalls).toHaveLength(0)
+  })
+
+  it('placing a building on the map updates the setup steps', async () => {
+    renderAdmin()
+    await screen.findByRole('list', { name: 'צעדי ההקמה' })
+    const setupCalls = () => (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.filter(([u]) => u.endsWith('/setup')).length
+    const before = setupCalls()
+    await userEvent.click(screen.getByRole('button', { name: 'מיקום בניינים' }))
+    await userEvent.click(await screen.findByRole('button', { name: /בניין NX/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'לחיצה על המפה' }))
+    await waitFor(() => expect(setupCalls()).toBeGreaterThan(before))
   })
 })

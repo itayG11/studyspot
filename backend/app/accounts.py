@@ -53,6 +53,7 @@ def sign_in(
             select(InstitutionLoginRule).where(
                 InstitutionLoginRule.provider == provider,
                 InstitutionLoginRule.value == identity.institution_key,
+                InstitutionLoginRule.approved,
             )
         ).first()
     link = db.scalars(
@@ -95,7 +96,7 @@ def sign_in(
     else:
         user = existing
         if user.institution_id != institution_id:
-            if not _moves_to_new_rule(db, user, rule):
+            if not _moves_to_new_rule(db, user, rule, open_slug):
                 raise Refusal(403, "institution_not_supported")
             # Signed in before the institution added this rule, so put in the
             # open campus then. Now the rule says where the account belongs.
@@ -118,12 +119,16 @@ def move_user(db: Session, user: User, institution_id: int) -> None:
     user.institution_id = institution_id
 
 
-def _moves_to_new_rule(db: Session, user: User, rule: InstitutionLoginRule | None) -> bool:
-    """Only a student of the open campus (an institution without rules) moves
-    by a rule. A real institution's user, or an admin, never does."""
+def _moves_to_new_rule(db: Session, user: User, rule: InstitutionLoginRule | None, open_slug: str | None) -> bool:
+    """Only a student of the open campus moves by a rule, and only to an
+    institution that is open. A real institution's user, an admin, or one of
+    an institution still being set up, never does."""
     if rule is None or user.role != UserRole.STUDENT:
         return False
-    return not db.get(Institution, user.institution_id).login_rules
+    current = db.get(Institution, user.institution_id)
+    if current.slug != open_slug or current.login_rules:
+        return False
+    return db.get(Institution, rule.institution_id).is_active
 
 
 def invited_to_own_institution(db: Session, user: User) -> bool:

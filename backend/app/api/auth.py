@@ -206,7 +206,8 @@ def email_verify(
         check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
         try:
             with db.begin_nested():  # a refusal below undoes only this sign-in's writes
-                user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now)
+                # The open campus only for a student it moves (the domain has a rule).
+                user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
                 issued = start_session(db, user, now)
         except IntegrityError:
             # The same first sign-in finished in another tab a moment ago.

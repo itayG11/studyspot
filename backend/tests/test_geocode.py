@@ -71,6 +71,16 @@ def test_only_admins_can_search(client, session, braude):
     assert client.get("/admin/geocode", params={"q": "כרמיאל"}).status_code == 403
 
 
+@pytest.fixture(autouse=True)
+def fresh_shared(monkeypatch):
+    # The endpoint keeps its cache and its last call between requests:
+    # each test starts from none, so tests do not wait on each other.
+    import app.api.admin as admin_api
+    from app.geocode import _Shared
+
+    monkeypatch.setattr(admin_api, "SHARED", _Shared())
+
+
 def test_the_endpoint_returns_places(client, session, braude):
     admin = User(institution_id=braude.id, email="a@braude.ac.il", display_name="A", role=UserRole.INSTITUTION_ADMIN)
     session.add(admin)
@@ -93,3 +103,26 @@ def test_a_search_too_short_or_too_long_is_refused(client, session, braude, q):
     session.flush()
     client.user = admin
     assert client.get("/admin/geocode", params={"q": q}).status_code == 422
+
+
+def test_the_memory_of_searches_has_a_limit(monkeypatch):
+    # Every new search adds one; without a limit they would pile up for good.
+    from app import geocode
+
+    monkeypatch.setattr(geocode, "MAX_CACHED", 3)
+    seen, clock = [], FakeClock()
+    geocoder = make(seen, clock)
+    for n in range(5):
+        geocoder.search(f"place {n}")
+        clock.now += 1.5
+    assert len(geocoder.shared.cache) == 3
+    assert "place 0" not in geocoder.shared.cache  # the oldest went first
+
+
+def test_old_results_are_dropped_when_new_ones_come(monkeypatch):
+    seen, clock = [], FakeClock()
+    geocoder = make(seen, clock)
+    geocoder.search("old")
+    clock.now += 2 * 60 * 60  # past the hour
+    geocoder.search("new")
+    assert list(geocoder.shared.cache) == ["new"]

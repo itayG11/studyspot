@@ -74,16 +74,18 @@ function BuildingForm({
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} aria-labelledby={`${id}-title`}>
+    <section className={styles.form} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.formTitle}>
         בניין חדש
       </h2>
       <p className={styles.lead}>לחץ על המפה במקום של הבניין. אפשר גם בלי, ולמקם אותו אחר כך.</p>
+      {/* Outside the form below: Enter in the search must not send it. */}
       <MapTools onFly={setFlyTo} />
       <PickMap buildings={buildings} selected={null} onPick={(lat, lng) => setPicked([lat, lng])} flyTo={flyTo} picked={picked} />
       <p className={styles.lead} role="status">
         {picked ? 'נבחר מיקום על המפה.' : 'עוד לא נבחר מיקום.'}
       </p>
+      <form className={styles.subform} onSubmit={submit} aria-label="פרטי הבניין">
       <label className={styles.label} htmlFor={`${id}-name`}>
         שם הבניין
       </label>
@@ -137,7 +139,8 @@ function BuildingForm({
         )}
       </div>
       {action.error && <Notice tone="error">{action.error}</Notice>}
-    </form>
+      </form>
+    </section>
   )
 }
 
@@ -153,6 +156,7 @@ function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
 
   async function find(event: FormEvent) {
     event.preventDefault()
+    if (query.trim().length < 2) return
     const found = await search.run(() => geocode(query.trim()))
     if (found) setResults(found)
   }
@@ -175,9 +179,7 @@ function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
       <Button type="button" variant="secondary" size="sm" icon={<LocateFixed aria-hidden="true" />} onClick={myLocation}>
         המיקום שלי
       </Button>
-      {/* A form of its own would nest inside the building form: a div with a
-          button that submits only this search. */}
-      <div className={styles.search} role="search">
+      <form className={styles.search} role="search" onSubmit={(event) => void find(event)}>
         <label className={styles.label} htmlFor={`${id}-q`}>
           חיפוש מקום על המפה
         </label>
@@ -187,14 +189,11 @@ function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
           value={query}
           maxLength={120}
           onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') void find(event)
-          }}
         />
-        <Button type="button" size="sm" busy={search.busy} disabled={query.trim().length < 2} onClick={(event) => void find(event)}>
+        <Button type="submit" size="sm" busy={search.busy} disabled={query.trim().length < 2}>
           חיפוש
         </Button>
-      </div>
+      </form>
       {results && (
         <ul className={styles.results} aria-label="תוצאות החיפוש">
           {results.length === 0 && <li>לא נמצא מקום בשם הזה.</li>}

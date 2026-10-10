@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -97,6 +98,10 @@ class InstitutionLoginRule(Base):
     )
     provider: Mapped[AuthProvider] = mapped_column(_enum_column(AuthProvider, "auth_provider"))
     value: Mapped[str] = mapped_column(String(255))
+    # Nothing proves a domain or tenant belongs to the institution that adds
+    # it, so a rule an institution admin adds waits for the system admin.
+    # Until then it lets nobody in, but it holds the value.
+    approved: Mapped[bool] = mapped_column(default=True, server_default=true())
 
 
 class AuthSession(Base):

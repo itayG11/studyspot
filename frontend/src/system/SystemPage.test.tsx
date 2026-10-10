@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetSessionForTests } from '../api/client'
-import type { SystemInstitution } from '../api/types'
+import type { PendingRule, SystemInstitution } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { InstitutionProvider } from '../institution'
 import { INSTITUTION, jsonResponse } from '../test/fixtures'
@@ -13,11 +13,18 @@ import { SystemPage } from './SystemPage'
 const OWNER = { id: 1, email: 'owner@gmail.com', display_name: 'בעלים', role: 'system_admin', institution_slug: 'demo', is_demo: false }
 const BRAUDE: SystemInstitution = { slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem', is_active: false, buildings: 7, admins: 0 }
 let institutions: SystemInstitution[]
+let pending: PendingRule[]
+let deletes: string[]
 let posts: { path: string; body: unknown }[]
 
 beforeEach(() => {
   resetSessionForTests()
   institutions = [BRAUDE]
+  pending = [
+    { id: 9, provider: 'email', value: 'telhai.ac.il', approved: false, institution_slug: 'tel-hai', institution_name: 'מכללת תל חי' },
+    { id: 10, provider: 'microsoft', value: '11111111-2222-3333-4444-555555555555', approved: false, institution_slug: 'tel-hai', institution_name: 'מכללת תל חי' },
+  ]
+  deletes = []
   posts = []
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
@@ -30,6 +37,16 @@ beforeEach(() => {
       const created = { ...body, is_active: false, buildings: 0, admins: 0 }
       institutions = [...institutions, created]
       return Promise.resolve(jsonResponse(created, 201))
+    }
+    if (path === '/system/login-rules') return Promise.resolve(jsonResponse(pending))
+    if (path === '/system/login-rules/9/approve') {
+      pending = pending.filter((r) => r.id !== 9)
+      return Promise.resolve(jsonResponse({ id: 9, provider: 'email', value: 'telhai.ac.il', approved: true }))
+    }
+    if (path === '/admin/login-rules/10' && init.method === 'DELETE') {
+      deletes.push(path)
+      pending = pending.filter((r) => r.id !== 10)
+      return Promise.resolve(new Response(null, { status: 204 }))
     }
     if (path === '/system/institutions') return Promise.resolve(jsonResponse(institutions))
     if (path === '/system/institutions/braude/invites' && init.method === 'POST')
@@ -88,5 +105,44 @@ describe('SystemPage', () => {
     const link = await within(row).findByRole('textbox', { name: 'קישור ההזמנה' })
     expect((link as HTMLInputElement).value).toMatch(/\/invite#t=tok-123$/)
     expect(within(row).getByText(/תקף עד/)).toBeInTheDocument()
+  })
+
+  it('lists the login rules waiting for approval, with their institution', async () => {
+    renderPage()
+    const list = await screen.findByRole('list', { name: 'כללי כניסה שממתינים לאישור' })
+    const items = within(list).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('מכללת תל חי')
+    expect(items[0]).toHaveTextContent('סיומת מייל')
+    expect(items[0]).toHaveTextContent('telhai.ac.il')
+    expect(items[1]).toHaveTextContent('ארגון מיקרוסופט')
+  })
+
+  it('approving a rule takes it off the list', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const list = await screen.findByRole('list', { name: 'כללי כניסה שממתינים לאישור' })
+    const first = within(list).getAllByRole('listitem')[0]
+    await user.click(within(first).getByRole('button', { name: 'אישור' }))
+    expect(posts.some((p) => p.path === '/system/login-rules/9/approve')).toBe(true)
+    await screen.findByText('11111111-2222-3333-4444-555555555555')
+    expect(screen.queryByText('telhai.ac.il')).not.toBeInTheDocument()
+  })
+
+  it('refusing a rule removes it', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const list = await screen.findByRole('list', { name: 'כללי כניסה שממתינים לאישור' })
+    const second = within(list).getAllByRole('listitem')[1]
+    await user.click(within(second).getByRole('button', { name: 'דחייה' }))
+    expect(deletes).toEqual(['/admin/login-rules/10'])
+    await screen.findByText('telhai.ac.il')
+    expect(screen.queryByText('11111111-2222-3333-4444-555555555555')).not.toBeInTheDocument()
+  })
+
+  it('says when nothing waits for approval', async () => {
+    pending = []
+    renderPage()
+    expect(await screen.findByText('אין כללי כניסה שממתינים לאישור.')).toBeInTheDocument()
   })
 })

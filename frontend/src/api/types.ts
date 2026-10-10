@@ -249,6 +249,12 @@ export interface LoginRule {
   id: number
   provider: 'email' | 'microsoft'
   value: string
+  approved: boolean // an institution admin's rule waits for the system admin
+}
+
+export interface PendingRule extends LoginRule {
+  institution_slug: string
+  institution_name: string
 }
 
 export interface Setup {
