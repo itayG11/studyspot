@@ -7,6 +7,8 @@ Find a place to study on campus: what is free right now, what is usually free la
 >
 > A portfolio project, built in October 2026 by a first-year software engineering student at Braude College.
 
+![Searching for a computer lab and opening its page](docs/screenshots/flow.gif)
+
 ## The problem
 
 Between two classes a student has, say, 50 minutes. Where to go? The library may be full, a computer lab two minutes away may have six free seats, and a group room may be free until 14:00. Today that means walking around to look.
@@ -30,6 +32,18 @@ The tools that exist each solve a part of it:
 - **No hardware.** QR signs printed from the admin page; the cost is relying on students to scan.
 - **Any institution, one site.** An institution gets its own address and sets itself up: who signs in, buildings on the map, places, signs. No code and no copy of the project.
 - **The database enforces the rules.** Two people booking the same room in the same second: a PostgreSQL exclusion constraint refuses the second, and a concurrency test proves it.
+
+## Screenshots
+
+| Finder: search, filters and today's campus load | A computer lab: details, today's load and seat map |
+|---|---|
+| ![Finder](docs/screenshots/finder.webp) | ![Place page](docs/screenshots/space.webp) |
+
+| The week, with a break's suggestions open | Phone, dark mode |
+|---|---|
+| ![Weekly timetable](docs/screenshots/timetable.webp) | ![Home on a phone](docs/screenshots/phone-home.webp) ![Place on a phone](docs/screenshots/phone-space.webp) |
+
+*Photos on the site are AI-generated illustrations, marked "הדמיה" (simulation); they are not photos of a real campus. Data on the demo campus is simulated.*
 
 ## Architecture
 
