@@ -243,3 +243,102 @@ def test_the_limit_is_per_student_not_per_campus_address(client, session, braude
     session.flush()
     client.user = other
     assert client.get("/me/between-classes").status_code == 200
+
+
+MONDAY, FRIDAY, SATURDAY = 0, 4, 5
+
+
+def test_a_gap_on_another_day_gets_places_by_the_forecast(session, braude, student):
+    # Sunday 10:00; the student looks at Monday's gap.
+    add(session, student, braude, time(8, 30), time(10), "M", weekday=MONDAY)
+    add(session, student, braude, time(11, 30), time(13), "EF", weekday=MONDAY)
+    result = suggest(session, student, SUNDAY_10AM, weekday=MONDAY)
+    assert (result.weekday, result.date.isoformat()) == (MONDAY, "2026-10-12")
+    [gap] = result.gaps
+    assert (gap.starts, gap.now) == (time(10), False)
+    assert len(gap.suggestions) == 3
+    # Not a live count: tomorrow's people are not here yet.
+    assert all(s.available is None for s in gap.suggestions)
+    assert gap.suggestions[0].sit_from.date().isoformat() == "2026-10-12"
+
+
+def test_who_is_in_a_place_now_does_not_change_another_day(session, braude, student):
+    add(session, student, braude, time(8, 30), time(10), "EF", weekday=MONDAY)
+    add(session, student, braude, time(11, 30), time(13), "EF", weekday=MONDAY)
+    before = [s.name for s in suggest(session, student, SUNDAY_10AM, weekday=MONDAY).gaps[0].suggestions]
+    library = place_named(braude, "EF", "ספרייה")
+    for n in range(library.capacity):  # full right now, on Sunday
+        user = User(institution_id=braude.id, email=f"f{n}@braude.example", display_name=f"F{n}")
+        session.add(user)
+        session.flush()
+        session.add(CheckIn(institution_id=braude.id, user_id=user.id, place_id=library.id,
+                            started_at=SUNDAY_10AM - timedelta(minutes=5), expires_at=SUNDAY_10AM + timedelta(hours=2)))
+    session.flush()
+    assert [s.name for s in suggest(session, student, SUNDAY_10AM, weekday=MONDAY).gaps[0].suggestions] == before
+    assert "ספרייה" in before
+
+
+def test_the_day_the_clocks_go_back_is_read_in_its_own_offset(session, braude, student):
+    # Israel goes back to winter time on Sunday 25 October 2026.
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    add(session, student, braude, time(8, 30), time(10), "M")
+    add(session, student, braude, time(11, 30), time(13), "EF")
+    saturday = datetime(2026, 10, 24, 12, tzinfo=ZoneInfo("Asia/Jerusalem"))
+    [gap] = suggest(session, student, saturday, weekday=SUNDAY).gaps
+    assert gap.suggestions[0].sit_from.astimezone(ZoneInfo("Asia/Jerusalem")).utcoffset() == timedelta(hours=2)
+
+
+def test_today_by_its_number_is_today(session, braude, student):
+    week(session, student, braude)
+    assert suggest(session, student, SUNDAY_10AM, weekday=SUNDAY).gaps[0].now is True
+
+
+def test_a_day_the_campus_is_closed_has_nowhere(session, braude, student):
+    add(session, student, braude, time(9), time(10), "M", weekday=SATURDAY)
+    add(session, student, braude, time(11), time(12), "M", weekday=SATURDAY)
+    [gap] = suggest(session, student, SUNDAY_10AM, weekday=SATURDAY).gaps
+    assert gap.suggestions == []
+
+
+def test_a_room_booked_on_that_date_is_not_suggested(session, braude, student):
+    add(session, student, braude, time(8, 30), time(10), "EM", weekday=MONDAY)
+    add(session, student, braude, time(11, 30), time(13), "EM", weekday=MONDAY)
+    room = place_named(braude, "EM", "EM107")
+    other = User(institution_id=braude.id, email="o@braude.example", display_name="O")
+    session.add(other)
+    session.flush()
+    monday_10 = SUNDAY_10AM + timedelta(days=1)
+    session.add(Booking(institution_id=braude.id, user_id=other.id, place_id=room.id, starts_at=monday_10,
+                        ends_at=monday_10 + timedelta(hours=1), status=BookingStatus.BOOKED, source=BookingSource.ADVANCE))
+    session.flush()
+    names = [s.name for s in suggest(session, student, SUNDAY_10AM, weekday=MONDAY).gaps[0].suggestions]
+    assert "EM107" not in names
+    # The same room is free the same hour on Sunday's own gap.
+    add(session, student, braude, time(8, 30), time(10), "EM")
+    add(session, student, braude, time(11, 30), time(13), "EM")
+    assert "EM107" in [s.name for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions]
+
+
+def test_beyond_the_booking_horizon_nothing_is_offered_as_bookable(session, braude, student):
+    # Friday is five days away: further than a booking may start.
+    add(session, student, braude, time(8), time(9), "EM", weekday=FRIDAY)
+    add(session, student, braude, time(10, 30), time(11, 30), "EM", weekday=FRIDAY)
+    [gap] = suggest(session, student, SUNDAY_10AM, weekday=FRIDAY).gaps
+    assert any(s.kind == "group_room" for s in gap.suggestions)
+    assert not any(s.bookable for s in gap.suggestions)
+    # The same week on Monday, within reach: the room is bookable.
+    add(session, student, braude, time(8), time(9), "EM", weekday=MONDAY)
+    add(session, student, braude, time(10, 30), time(11, 30), "EM", weekday=MONDAY)
+    [monday] = suggest(session, student, SUNDAY_10AM, weekday=MONDAY).gaps
+    assert any(s.bookable for s in monday.suggestions)
+
+
+def test_the_endpoint_takes_a_day(client, session, braude, student):
+    add(session, student, braude, time(8, 30), time(10), "M", weekday=MONDAY)
+    add(session, student, braude, time(11, 30), time(13), "EF", weekday=MONDAY)
+    body = client.get("/me/between-classes", params={"weekday": MONDAY}).json()
+    assert (body["weekday"], body["date"], body["gaps"][0]["now"]) == (MONDAY, "2026-10-12", False)
+    assert client.get("/me/between-classes", params={"weekday": 7}).status_code == 422
+    assert client.get("/me/between-classes").json()["date"] == "2026-10-11"

@@ -39,13 +39,23 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   // From the college's file: previewed, then added; nothing kept before.
   const file = resolve(import.meta.dirname, '../test-results/yedion.xlsx')
   execFileSync(process.env.PYTHON ?? 'python', [`${import.meta.dirname}/make_yedion.py`, file], { cwd: backend })
-  await week.getByLabel('הוספת מערכת שעות').setInputFiles(file)
+  await week.getByLabel('קובץ אקסל מהידיעון').setInputFiles(file)
   await expect(week.getByRole('checkbox', { name: /יסודות המחשוב, תרגיל/ })).toBeChecked()
   await week.getByRole('button', { name: 'להוסיף שיעור אחד' }).click()
   await expect(week.getByText(/נוסף שיעור אחד מתוך 1/)).toBeVisible()
   // The shared demo student keeps only the sample's course names: "שיעור" here.
   const imported = week.getByRole('button', { name: /יום חמישי 17:00 עד 18:30/ })
   await expect(imported).toBeVisible()
+
+  // A break on any day answers with its own places (another day: by the forecast).
+  // Another day than today: its break is never over yet.
+  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Jerusalem' }).format(new Date())
+  const other = today === 'Wednesday' ? 'יום שני' : 'יום רביעי'
+  await week.getByRole('list', { name: other }).getByRole('button', { name: /^הפסקה/ }).click()
+  const gap = week.getByRole('region', { name: 'פרטי ההפסקה' })
+  await expect(gap.getByText('טוען הצעות…')).toHaveCount(0)
+  await expect(gap.getByText(/לא הצלחנו/)).toHaveCount(0)
+  await expect(gap.getByRole('link').first()).toBeVisible()
 
   // What it says depends on the day and the hour; that it answers does not.
   await expect(page.getByRole('region', { name: 'בין שיעורים היום' })).toBeVisible()

@@ -3,7 +3,7 @@
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
 import { betweenClasses, cancelBooking, checkOut, extendBooking, myBookings, myCheckIn, myClasses } from '../api/student'
@@ -45,7 +45,9 @@ export function MyPage() {
     jumped.current = hash
     jumpTo(hash.slice(1))
   }, [ready, hash])
-  const between = useApi(betweenClasses, 'between-classes', REFRESH_INTERVAL_MS)
+  // "Between classes" shows today, or a weekday picked (there or from a break on the grid).
+  const [betweenDay, setBetweenDay] = useState<number | null>(null)
+  const between = useApi(() => betweenClasses(betweenDay ?? undefined), `between-classes-${betweenDay ?? 'today'}`, REFRESH_INTERVAL_MS)
 
   if (!user) return null
   const byId = new Map((places.data ?? []).map((place) => [place.id, place]))
@@ -90,7 +92,7 @@ export function MyPage() {
         {current.data && <NowCard checkIn={current.data} onLeft={reloadAll} />}
       </section>
 
-      <BetweenClasses between={between} classes={classes.data} />
+      <BetweenClasses between={between} classes={classes.data} day={betweenDay} onDay={setBetweenDay} />
 
       <section id="my-bookings" tabIndex={-1} aria-label="ההזמנות שלי" className={`${styles.section} ${styles.jumpTarget}`}>
         <h2 className={styles.heading}>ההזמנות שלי</h2>
@@ -128,6 +130,7 @@ export function MyPage() {
       <Classes
         classes={classes}
         between={between.data}
+        onShowBetween={setBetweenDay}
         onChanged={() => {
           classes.reload()
           between.reload()

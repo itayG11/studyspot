@@ -5,20 +5,22 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+import anyio
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app import classes, timetable_import
+from app import classes, timetable_import, timetable_photo
 from app.api.deps import get_session
 from app.auth import get_current_user
 from app.between_classes import suggest
 from app.clock import get_now
+from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.models import Building, ClassSlot, User
-from app.ratelimit import between_limit, import_limit, write_limit
+from app.ratelimit import between_limit, import_limit, photo_day, photo_minute, photo_site, write_limit
 from app.schemas import BetweenClassesOut, BulkResultOut, ClassSlotIn, ClassSlotOut, GapOut, ImportRowOut, SuggestionOut
 
 router = APIRouter(tags=["classes"])
@@ -102,27 +104,79 @@ async def preview_import(request: Request, user: UserDep, db: SessionDep):
     return [ImportRowOut(**asdict(row)) for row in rows]
 
 
-async def _limited_body(request: Request, limit: int) -> bytes:
+def get_photo_reader(settings: Annotated[Settings, Depends(get_settings)]) -> timetable_photo.Ask | None:
+    """The photo reader, or None when no Anthropic key is set (tests replace it)."""
+    key = settings.anthropic_api_key
+    return timetable_photo.claude_reader(key.get_secret_value()) if key is not None else None
+
+
+ReaderDep = Annotated[timetable_photo.Ask | None, Depends(get_photo_reader)]
+
+# A reading can take half a minute: at most this many at once, on their own
+# threads, so slow photos never hold the threads every other request needs.
+PHOTO_AT_ONCE = anyio.CapacityLimiter(3)
+
+
+def photo_on(reader: ReaderDep) -> None:
+    """First of all: no key, no photo reading (and no try counted)."""
+    if reader is None:
+        raise HTTPException(404, "import_photo_off")
+
+
+@router.get("/me/classes/import-options")
+def import_options(user: UserDep, reader: ReaderDep) -> dict[str, bool]:
+    """Which ways in the site offers: the file always, a photo with a key."""
+    return {"photo": reader is not None}
+
+
+@router.post(
+    "/me/classes/import-photo", response_model=list[ImportRowOut],
+    dependencies=[Depends(photo_on), Depends(photo_minute), Depends(photo_day), Depends(photo_site)],
+)
+async def preview_photo(request: Request, user: UserDep, db: SessionDep, reader: ReaderDep):
+    """A photo of the timetable, read by Claude: what it holds, for the
+    student to check and add. Nothing saved, the image not kept here."""
+    data = await _limited_body(request, timetable_photo.MAX_BYTES, too_big="import_photo_too_big")
+    try:
+        timetable_photo.media_type(data)  # not an image: refused before the buildings, and the paid call
+        buildings = await run_in_threadpool(
+            lambda: db.scalars(select(Building).where(Building.institution_id == user.institution_id)).all()
+        )
+        rows = await anyio.to_thread.run_sync(
+            timetable_photo.read_photo, data, list(buildings), reader, limiter=PHOTO_AT_ONCE
+        )
+    except timetable_import.ImportRefused as refused:
+        code = "import_photo_too_big" if refused.code == "import_too_big" else refused.code
+        raise HTTPException(422, code) from None
+    except timetable_photo.PhotoUnavailable:
+        raise HTTPException(503, "import_photo_unavailable") from None
+    return [ImportRowOut(**asdict(row)) for row in rows]
+
+
+async def _limited_body(request: Request, limit: int, too_big: str = "import_too_big") -> bytes:
     """The body, read only up to just over the limit: a huge upload is cut
     off instead of filling the server's memory."""
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > limit:
-        raise HTTPException(422, "import_too_big")
+        raise HTTPException(422, too_big)
     data = bytearray()
     async for chunk in request.stream():
         data.extend(chunk)
         if len(data) > limit:
-            raise HTTPException(422, "import_too_big")
+            raise HTTPException(422, too_big)
     return bytes(data)
 
 
 @router.get("/me/between-classes", response_model=BetweenClassesOut, dependencies=[Depends(between_limit)])
-def between_classes(user: UserDep, db: SessionDep, now: NowDep):
-    """Today's gaps between the student's classes, each with up to three
-    places to study, and the numbers behind each one."""
-    result = suggest(db, user, now)
+def between_classes(
+    user: UserDep, db: SessionDep, now: NowDep, weekday: Annotated[int | None, Query(ge=0, le=6)] = None
+):
+    """The gaps between the student's classes, today or on another weekday,
+    each with up to three places to study, and the numbers behind each one."""
+    result = suggest(db, user, now, weekday)
     return BetweenClassesOut(
         weekday=result.weekday,
+        date=result.date,
         gaps=[
             GapOut(
                 starts=g.starts, ends=g.ends, from_building=g.from_building, to_building=g.to_building, now=g.now,

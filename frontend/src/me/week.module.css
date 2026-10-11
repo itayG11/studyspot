@@ -235,6 +235,15 @@
   height: 14px;
 }
 
+.gapShort {
+  flex-direction: row;
+  gap: 6px;
+}
+
+.gapShort .gapWord {
+  display: none;
+}
+
 .gapMinutes {
   font-family: var(--font-mono);
   font-size: var(--text-sm);

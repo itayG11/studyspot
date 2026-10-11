@@ -5,11 +5,11 @@
 // file's words, and its admin is told how many students name it. Each class
 // goes through the usual checks: a refused one stays on the list with why.
 
-import { FileSpreadsheet } from 'lucide-react'
+import { Camera, FileSpreadsheet } from 'lucide-react'
 import { useId, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
 import { getBuildings } from '../api/campus'
-import { addClasses, previewImport } from '../api/student'
+import { addClasses, importOptions, previewImport, previewPhoto } from '../api/student'
 import type { ImportRow } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useApi } from '../hooks/useApi'
@@ -33,6 +33,24 @@ const NOT_LISTED = '-'
 // The file's words can be kept as the place: not empty, and short enough.
 const canKeep = (row: ImportRow) => row.building_text !== '' && row.building_text.length <= 40
 
+// A phone photo is often 3–6 MB: made smaller here, to a long edge of
+// 2000 px as JPEG, which is more than the reading needs. Where the browser
+// cannot (or the photo is small already), it goes as it is.
+const LONG_EDGE = 2000
+async function smaller(file: File): Promise<Blob> {
+  if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas !== 'function') return file
+  try {
+    const image = await createImageBitmap(file)
+    const scale = Math.min(1, LONG_EDGE / Math.max(image.width, image.height))
+    if (scale === 1 && file.size < 1_500_000) return file
+    const canvas = new OffscreenCanvas(Math.round(image.width * scale), Math.round(image.height * scale))
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
+    return await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 })
+  } catch {
+    return file // not an image the browser reads: the server says so
+  }
+}
+
 const count = (n: number) => (n === 1 ? 'שיעור אחד' : `${n} שיעורים`)
 
 export function ImportClasses({ onAdded }: { onAdded: () => void }) {
@@ -41,13 +59,15 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`)
   const choices = (buildings.data ?? []).filter((b) => b.status !== 'under_construction')
+  const options = useApi(importOptions, 'import-options')
   const [items, setItems] = useState<Item[] | null>(null)
+  const [fromPhoto, setFromPhoto] = useState(false) // the list was read by a model: check it
   const [reading, setReading] = useState(false)
   const [adding, setAdding] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
-  async function pick(event: ChangeEvent<HTMLInputElement>) {
+  async function pick(event: ChangeEvent<HTMLInputElement>, photo: boolean) {
     const file = event.target.files?.[0]
     event.target.value = '' // the same file can be picked again
     if (!file) return
@@ -55,7 +75,8 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
     setDone(null)
     setReading(true)
     try {
-      const rows = await previewImport(file)
+      const rows = await (photo ? previewPhoto(await smaller(file)) : previewImport(file))
+      setFromPhoto(photo)
       setItems(
         rows.map((row) => ({ row, chosen: true, building: row.building_code ?? (canKeep(row) ? NOT_LISTED : ''), refused: null })),
       )
@@ -111,18 +132,37 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className={styles.import}>
-      <label className={styles.pick}>
-        <FileSpreadsheet aria-hidden="true" />
-        <span>{reading ? 'קורא את הקובץ…' : 'הוספת מערכת שעות'}</span>
-        <input
-          type="file"
-          className="visually-hidden"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          disabled={reading || adding}
-          onChange={(event) => void pick(event)}
-        />
-      </label>
-      <p className={styles.hint}>מקובץ האקסל שהידיעון מייצא. הקובץ לא נשמר: רק השיעורים שתבחר.</p>
+      <p className={styles.lead}>{reading ? 'קורא את מערכת השעות…' : 'הוספת מערכת שעות:'}</p>
+      <div className={styles.picks}>
+        <label className={styles.pick}>
+          <FileSpreadsheet aria-hidden="true" />
+          <span>קובץ אקסל מהידיעון</span>
+          <input
+            type="file"
+            className="visually-hidden"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            disabled={reading || adding}
+            onChange={(event) => void pick(event, false)}
+          />
+        </label>
+        {options.data?.photo && (
+          <label className={styles.pick}>
+            <Camera aria-hidden="true" />
+            <span>צילום של המערכת</span>
+            <input
+              type="file"
+              className="visually-hidden"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={reading || adding}
+              onChange={(event) => void pick(event, true)}
+            />
+          </label>
+        )}
+      </div>
+      <p className={styles.hint}>
+        האקסל: כפי שהידיעון מייצא אותו. צילום: צילום מסך או תמונה של המערכת. הקובץ לא נשמר, רק השיעורים שתבחר.
+        {options.data?.photo && ' צילום נשלח לקריאה לשירות של Anthropic.'}
+      </p>
       {user?.is_demo && (
         <p className={styles.hint}>
           הסטודנט לדוגמה משותף לכל המבקרים: השעות שתוסיף ייראו גם להם עד האיפוס היומי, ושמות הקורסים לא יישמרו. למערכת משלך,
@@ -134,8 +174,9 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
       {items && (
         <section className={styles.preview} aria-labelledby={`${id}-title`}>
           <h3 id={`${id}-title`} className={admin.formTitle}>
-            מה נמצא בקובץ
+            {fromPhoto ? 'מה נמצא בצילום' : 'מה נמצא בקובץ'}
           </h3>
+          {fromPhoto && <p className={styles.hint}>נקרא בעזרת בינה מלאכותית, ויכולות להיות בו טעויות: בדוק כל שורה לפני שמוסיפים.</p>}
           <ul className={styles.rows}>
             {items.map((item, index) => {
               const { row } = item

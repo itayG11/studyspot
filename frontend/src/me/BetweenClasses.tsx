@@ -8,7 +8,8 @@ import type { ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { levelWord, type ForecastLevel } from '../logic/forecast'
 import { HIGH_FROM, MEDIUM_FROM } from '../logic/occupancy'
-import { ErrorState, JumpTo, LoadingRegion, Skeleton } from '../ui'
+import { todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
+import { Chip, ErrorState, JumpTo, LoadingRegion, Skeleton } from '../ui'
 import styles from './me.module.css'
 
 const clock = (value: string) => value.slice(0, 5)
@@ -61,10 +62,27 @@ export function SuggestionList({ suggestions }: { suggestions: Suggestion[] }) {
   )
 }
 
-export function BetweenClasses({ between, classes }: { between: ApiState<Data>; classes: ClassSlot[] | null }) {
+interface Props {
+  between: ApiState<Data>
+  classes: ClassSlot[] | null
+  day: number | null // the weekday shown; null: today
+  onDay: (weekday: number | null) => void
+}
+
+export function BetweenClasses({ between, classes, day, onDay }: Props) {
+  const { timezone } = useInstitution()
+  // "Today" as the server sees it, when it has answered for today: a device
+  // clock that is off, or the minutes around midnight, cannot hide it.
+  const today = day === null && between.data ? between.data.weekday : todayWeekday(timezone)
+  const shown = day ?? today
+  const isToday = shown === today
+  // Days with a break, to pick from; today always.
+  const days = WEEK_ORDER.filter((d) => d === today || d === shown || gapsOf(classes ?? [], d).length > 0)
+  // An answer for another day than the one picked is not shown as this one.
+  const data = between.data && (day === null || between.data.weekday === day) ? between.data : null
   let body
-  if (!between.data && between.error) body = <ErrorState error={between.error} onRetry={between.reload} compact />
-  else if (!between.data) {
+  if (!data && between.error) body = <ErrorState error={between.error} onRetry={between.reload} compact />
+  else if (!data) {
     body = (
       <LoadingRegion>
         <Skeleton height="120px" radius="var(--r-lg)" />
@@ -77,10 +95,16 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
         <p className={styles.idleText}>הוסף את השיעורים שלך <JumpTo id="my-timetable">במערכת השעות</JumpTo> למטה, ונציע לך מקום ללמוד בכל הפסקה.</p>
       </div>
     )
-  } else if (between.data.gaps.length === 0) {
+  } else if (data.gaps.length === 0 && !isToday) {
+    body = (
+      <div className={styles.idle}>
+        <p className={styles.idleTitle}>אין ב{weekdayName(shown)} הפסקות של חצי שעה ומעלה.</p>
+      </div>
+    )
+  } else if (data.gaps.length === 0) {
     // The server lists only gaps not over yet: a gap today that is gone is
     // over, not missing.
-    const over = gapsOf(classes ?? [], between.data.weekday)
+    const over = gapsOf(classes ?? [], data.weekday)
     body = over.length > 0 ? (
       <div className={styles.idle}>
         <p className={styles.idleTitle}>{over.length === 1 ? 'ההפסקה של היום כבר נגמרה:' : 'ההפסקות של היום כבר נגמרו:'}</p>
@@ -92,7 +116,9 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
             </span>
           ))}
         </p>
-        <p className={styles.idleText}>ההצעות מופיעות כאן לפני כל הפסקה ובמהלכה.</p>
+        <p className={styles.idleText}>
+          ההצעות מופיעות כאן לפני כל הפסקה ובמהלכה.{days.length > 1 && ' לימים האחרים בשבוע, בוחרים יום למעלה.'}
+        </p>
       </div>
     ) : (
       <div className={styles.idle}>
@@ -101,7 +127,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
       </div>
     )
   } else {
-    body = between.data.gaps.map((gap) => {
+    body = data.gaps.map((gap) => {
       const range = `${clock(gap.starts)}–${clock(gap.ends)}`
       return (
         <article key={gap.starts} className={styles.gap} aria-label={`הפסקה ${range}`}>
@@ -123,11 +149,26 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
       )
     })
   }
+  const title = isToday ? 'בין שיעורים היום' : `בין שיעורים, ${weekdayName(shown)}`
   return (
-    <section id={BETWEEN_ID} tabIndex={-1} aria-label="בין שיעורים היום" className={`${styles.section} ${styles.jumpTarget}`}>
-      <h2 className={styles.heading}>בין שיעורים היום</h2>
+    <section id={BETWEEN_ID} tabIndex={-1} aria-label={title} className={`${styles.section} ${styles.jumpTarget}`}>
+      <h2 className={styles.heading}>{title}</h2>
+      {days.length > 1 && (
+        <div className={styles.dayChips} role="group" aria-label="היום שמוצג">
+          {days.map((d) => (
+            <Chip key={d} selected={d === shown} onClick={() => onDay(d === today ? null : d)}>
+              {d === today ? 'היום' : weekdayName(d).replace('יום ', '')}
+            </Chip>
+          ))}
+        </div>
+      )}
+      {!isToday && data && data.gaps.length > 0 && (
+        <p className={styles.idleText}>
+          {weekdayName(shown)} הקרוב, <span dir="ltr">{data.date.slice(8, 10)}.{data.date.slice(5, 7)}</span>: לפי העומס הצפוי באותן שעות.
+        </p>
+      )}
       {body}
-      {between.data && between.data.gaps.length > 0 && (
+      {data && data.gaps.length > 0 && (
         <p className={styles.idleText}>זמני ההליכה הם הערכה לפי המפה, ולא מסלול מדויק.</p>
       )}
     </section>

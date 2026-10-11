@@ -112,3 +112,15 @@
   flex-wrap: wrap;
   gap: var(--s-2);
 }
+
+.lead {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

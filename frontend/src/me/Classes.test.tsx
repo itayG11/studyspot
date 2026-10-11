@@ -30,14 +30,20 @@ function suggestion(overrides: Partial<Suggestion> = {}): Suggestion {
 
 let classes: ClassSlot[]
 let between: BetweenClasses
+let asked: (string | null)[] = []
+let otherDay: BetweenClasses | null // what another weekday's request answers
 let sent: { method: string; path: string; body: unknown }[]
 
 beforeEach(() => {
+  // Sunday 10:05 in Israel, like the fixtures: the tests do not depend on today.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-11T07:05:00Z'))
   resetSessionForTests()
   ME = { ...ME, is_demo: false }
   classes = [DATA, MATH]
   between = {
     weekday: 6,
+    date: '2026-10-11',
     gaps: [{
       starts: '10:00:00', ends: '11:30:00', from_building: 'M', to_building: 'EF', from_listed: true, to_listed: true, now: true,
       suggestions: [
@@ -48,6 +54,8 @@ beforeEach(() => {
     }],
   }
   sent = []
+  asked = []
+  otherDay = null
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     const method = init.method ?? 'GET'
@@ -60,7 +68,12 @@ beforeEach(() => {
     if (path === '/institutions/braude/places') return Promise.resolve(jsonResponse([]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse([]))
     if (path === '/me/check-in') return Promise.resolve(jsonResponse({ detail: 'no_active_check_in' }, 404))
-    if (path === '/me/between-classes') return Promise.resolve(jsonResponse(between))
+    if (path === '/me/between-classes') {
+      // Another weekday asked for: that day's gaps (the fixture's, renumbered).
+      const day = new URL(url).searchParams.get('weekday')
+      asked.push(day)
+      return Promise.resolve(jsonResponse(day === null ? between : { ...(otherDay ?? between), weekday: Number(day), date: '2026-10-18' }))
+    }
     if (path === '/me/classes' && method === 'POST') {
       const body = JSON.parse(String(init.body))
       if (body.starts === '09:00') return Promise.resolve(jsonResponse({ detail: 'class_overlaps' }, 409))
@@ -119,21 +132,21 @@ describe('between classes', () => {
 
   it('without a timetable, says how to start', async () => {
     classes = []
-    between = { weekday: 6, gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/הוסף את השיעורים שלך/)).toBeInTheDocument()
   })
 
   it('a day without gaps says so', async () => {
     classes = [DATA]
-    between = { weekday: 6, gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/אין היום הפסקות/)).toBeInTheDocument()
   })
 
   it('a gap that is over says so, instead of "no gaps today"', async () => {
     // Today has a gap, 10:00–11:30, but the server no longer lists it.
-    between = { weekday: 6, gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [] }
     renderMe()
     const section = await betweenSection()
     expect(await within(section).findByText(/ההפסקה של היום כבר נגמרה/)).toBeInTheDocument()
@@ -142,7 +155,7 @@ describe('between classes', () => {
   })
 
   it('a gap with nowhere fitting says so', async () => {
-    between = { weekday: 6, gaps: [{ ...between.gaps[0], suggestions: [] }] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [] }] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/אין מקום פתוח ופנוי/)).toBeInTheDocument()
   })
@@ -191,9 +204,11 @@ describe('the timetable', () => {
     expect(within(week).getByLabelText('נגמר')).toHaveFocus()
   })
 
-  it('a break on another day leads to "between classes today"', async () => {
+  it('a break on another day shows its own places, and leads to that day in "between classes"', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-12T07:05:00Z')) // Monday: the Sunday break is another day
+    otherDay = between
+    between = { weekday: 0, date: '2026-10-12', gaps: [] }
     const scrolled = vi.fn()
     Element.prototype.scrollIntoView = scrolled
     const user = userEvent.setup()
@@ -201,9 +216,25 @@ describe('the timetable', () => {
     const week = await weekSection()
     await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
     const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
-    await user.click(within(details).getByRole('button', { name: 'בין שיעורים היום' }))
+    // Sunday's places, asked for that day, by the forecast.
+    expect(await within(details).findByRole('link', { name: /ספרייה/ })).toBeInTheDocument()
+    expect(asked).toContain('6')
+    await user.click(within(details).getByRole('button', { name: 'בין שיעורים ביום ראשון' }))
     expect(scrolled).toHaveBeenCalled()
-    expect(await betweenSection()).toHaveFocus()
+    const section = await screen.findByRole('region', { name: 'בין שיעורים, יום ראשון' })
+    await waitFor(() => expect(section).toHaveFocus())
+    expect(within(section).getByRole('button', { name: 'ראשון', pressed: true })).toBeInTheDocument()
+    expect(await within(section).findByRole('link', { name: /ספרייה/ })).toBeInTheDocument()
+  })
+
+  it('"between classes" can show another day of the week', async () => {
+    const user = userEvent.setup()
+    classes = [DATA, MATH, { ...DATA, id: 3, weekday: 1 }, { ...MATH, id: 4, weekday: 1 }]
+    renderMe()
+    const section = await betweenSection()
+    await user.click(await within(section).findByRole('button', { name: 'שלישי' }))
+    expect(await screen.findByRole('region', { name: 'בין שיעורים, יום שלישי' })).toBeInTheDocument()
+    expect(asked).toContain('1')
   })
 
   it('a class picked shows its details', async () => {
@@ -288,13 +319,13 @@ describe('the timetable', () => {
   })
 
   it('one minute is said in proper Hebrew', async () => {
-    between = { weekday: 6, gaps: [{ ...between.gaps[0], suggestions: [suggestion({ walk_there: 1 })] }] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [suggestion({ walk_there: 1 })] }] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/דקת הליכה אחת/)).toBeInTheDocument()
   })
 
   it('a free room with no bookings left is not offered as bookable', async () => {
-    between = { weekday: 6, gaps: [{ ...between.gaps[0], suggestions: [suggestion({ name: 'EM107', kind: 'group_room', bookable: false, available: null })] }] }
+    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [suggestion({ name: 'EM107', kind: 'group_room', bookable: false, available: null })] }] }
     renderMe()
     const section = await betweenSection()
     expect(await within(section).findByText(/החדר פנוי/)).toBeInTheDocument()

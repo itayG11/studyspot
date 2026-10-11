@@ -16,6 +16,7 @@ dependencies = [
     # with defusedxml installed, openpyxl parses the file's XML safely.
     "openpyxl>=3.1",
     "defusedxml>=0.7",
+    "anthropic>=1.13,<2",  # reading a timetable photo (app/timetable_photo.py)
 ]
 
 [project.optional-dependencies]

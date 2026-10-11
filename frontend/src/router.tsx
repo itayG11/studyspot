@@ -13,6 +13,8 @@ import { PlaceRedirect, PlacesRedirect } from './pages/PlacesRedirect'
 import { SpacePage } from './features/space/SpacePage'
 import { SignedInPage } from './pages/SignedInPage'
 import { ScanPage } from './scan/ScanPage'
+import { AccessibilityPage } from './pages/AccessibilityPage'
+import { LicensesPage } from './pages/LicensesPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { InstitutionsPage } from './pages/InstitutionsPage'
 import { InvitePage } from './pages/InvitePage'
@@ -36,6 +38,8 @@ export const routes = [
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', Component: SignedInPage },
       { path: 'privacy', Component: PrivacyPage },
+      { path: 'accessibility', Component: AccessibilityPage },
+      { path: 'licenses', Component: LicensesPage },
       // The living style guide, in development only; the build leaves it out.
       ...(import.meta.env.DEV
         ? [{ path: 'design', lazy: () => import('./design/Showcase').then((module) => ({ Component: module.Showcase })) }]

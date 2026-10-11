@@ -610,6 +610,7 @@ class GapOut(BaseModel):
 
 class BetweenClassesOut(BaseModel):
     weekday: int  # Python's numbering: Monday is 0
+    date: date  # today, or the next date of that weekday
     gaps: list[GapOut]
 
 

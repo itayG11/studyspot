@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.bookings import MAX_UPCOMING, holding
+from app.bookings import HORIZON, MAX_UPCOMING, holding
 from app.forecast import Forecast, forecast, full_at
 from app.models import (
     Booking,
@@ -115,21 +115,27 @@ class GapSuggestions:
 @dataclass(frozen=True)
 class BetweenClasses:
     weekday: int
+    date: date  # the day the gaps are on: today, or the next such weekday
     gaps: list[GapSuggestions]
 
 
-def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
+def suggest(session: Session, user: User, now: datetime, weekday: int | None = None) -> BetweenClasses:
+    """Today's gaps, or those of another weekday (its next date): there,
+    by the forecast only, as nobody is in the places yet."""
     institution = session.get(Institution, user.institution_id)
     zone = ZoneInfo(institution.timezone)
     local = now.astimezone(zone)
-    today, weekday = local.date(), local.weekday()
+    if weekday is None:
+        weekday = local.weekday()
+    live = weekday == local.weekday()
+    today = local.date() + timedelta(days=(weekday - local.weekday()) % 7)
     classes = session.scalars(
         select(ClassSlot).where(ClassSlot.user_id == user.id, ClassSlot.weekday == weekday)
         .options(selectinload(ClassSlot.building))
     ).all()
-    gaps = find_gaps(list(classes), local.time())
+    gaps = find_gaps(list(classes), local.time() if live else time(0))
     if not gaps:
-        return BetweenClasses(weekday, [])
+        return BetweenClasses(weekday, today, [])
 
     places = session.scalars(
         select(Place).join(Place.building)
@@ -141,11 +147,12 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
     occupied = occupied_by_place(session, [p.id for p in places], now)
     forecasts: dict[int, Forecast] = {}
     # Every booking that holds a room or a seat later today, in one query.
+    day_start = datetime.combine(today, time(0), tzinfo=zone)
     day_end = datetime.combine(today + timedelta(days=1), time(0), tzinfo=zone)
     held = session.execute(
         select(Booking.place_id, Booking.seat_id, Booking.starts_at, Booking.ends_at).where(
             Booking.place_id.in_([p.id for p in places]), holding(now),
-            Booking.ends_at > now, Booking.starts_at < day_end,
+            Booking.ends_at > max(now, day_start), Booking.starts_at < day_end,
         )
     ).all()
     # The student may book only so many ahead (app/bookings.py).
@@ -159,8 +166,8 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
     for gap in gaps:
         start = datetime.combine(today, gap.starts, tzinfo=zone)
         end = datetime.combine(today, gap.ends, tzinfo=zone)
-        under_way = start <= now
-        begin = max(start, now).astimezone(zone)  # local: opening hours are local times
+        under_way = live and start <= now
+        begin = (max(start, now) if live else start).astimezone(zone)  # local: opening hours are local times
         found = []
         for place in places:
             there = walk_minutes(gap.before.building, place.building)
@@ -196,7 +203,9 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
             found.append(Suggestion(
                 place.id, place.name, place.kind, place.building.code, there, after,
                 sit_from, sit_until, minutes,
-                can_book and place.kind in (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB),
+                # Bookable ahead only so far (app/bookings.py HORIZON).
+                can_book and place.kind in (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB)
+                and sit_from <= now + HORIZON,
                 place.capacity, available, usual,
             ))
         # The time to sit first: the walk costs it. The place id last, so
@@ -206,7 +215,7 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
             gap.starts, gap.ends, end, _where(gap.before), _where(gap.after), under_way,
             gap.before.building is not None, gap.after.building is not None, found[:MAX_SUGGESTIONS],
         ))
-    return BetweenClasses(weekday, out)
+    return BetweenClasses(weekday, today, out)
 
 
 def _where(row: ClassSlot) -> str:

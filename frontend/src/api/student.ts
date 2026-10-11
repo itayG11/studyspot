@@ -44,6 +44,12 @@ export const addClasses = (lessons: NewClass[]) =>
   api<{ refused: string | null }[]>('/me/classes/bulk', { method: 'POST', body: lessons, auth: true })
 // A timetable file from the college: what it holds, nothing saved yet.
 export const previewImport = (file: Blob) => api<ImportRow[]>('/me/classes/import', { method: 'POST', file, auth: true })
+// A photo of the timetable, read by Claude on the server: the same preview.
+export const previewPhoto = (file: Blob) => api<ImportRow[]>('/me/classes/import-photo', { method: 'POST', file, auth: true })
+// Which ways in the server offers (a photo needs its key).
+export const importOptions = () => api<{ photo: boolean }>('/me/classes/import-options', { auth: true })
 export const removeClass = (id: number) => api<void>(`/me/classes/${id}`, { method: 'DELETE', auth: true })
-export const betweenClasses = () => api<BetweenClasses>('/me/between-classes', { auth: true })
+// Today's gaps, or another weekday's (its next date, by the forecast).
+export const betweenClasses = (weekday?: number) =>
+  api<BetweenClasses>(`/me/between-classes${weekday === undefined ? '' : `?weekday=${weekday}`}`, { auth: true })
 

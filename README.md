@@ -1,47 +1,62 @@
 # StudySpot
 
-Real-time occupancy and booking for campus study spaces.
+Find a place to study on campus: what is free right now, what is usually free later, and where to sit between your classes.
 
-> **Live demo:** https://studyspot-yetb.onrender.com (a demo campus; sign in as the demo student or admin).
-> The free server sleeps after 15 idle minutes: the first visit then takes about a minute.
+> **Live demo:** https://studyspot-yetb.onrender.com. It opens on a demo campus; sign in as the demo student or demo admin, or with Google.
+> The free server sleeps after 15 idle minutes, so the first visit can take about a minute.
 >
-> 🚧 Work in progress. Started October 2026.
+> A portfolio project, built in October 2026 by a first-year software engineering student at Braude College.
 
 ## The problem
 
-Students waste time walking around campus looking for a free place to study.
-Existing tools either only book rooms in advance (no live picture of what is free right now),
-or rely on expensive occupancy sensors.
+Between two classes a student has, say, 50 minutes. Where to go? The library may be full, a computer lab two minutes away may have six free seats, and a group room may be free until 14:00. Today that means walking around to look.
 
-## What StudySpot does
+The tools that exist each solve a part of it:
 
-- **Live campus map** – buildings colored by how full they are right now.
-- **Four kinds of study spaces**
-  - *Group study rooms* – book the whole room for a time slot.
-  - *Open study areas* – no booking; scan in and the system counts free seats.
-  - *Library* – works like an open area, shown separately on the map.
-  - *Computer labs* – one QR code at the entrance opens a seat map of every station.
-- **QR check-in** to confirm you actually arrived.
-- **No-show release** – a booking that is not checked in within 15 minutes is released automatically, with reminders before it happens.
-- **Notifications** – web push, email, and an optional Telegram bot.
-- **Multi-campus** – any college or university can define its own campus. Braude College is the first one.
+| Kind of tool | Example | What it does well | Why it is not enough here |
+|---|---|---|---|
+| Commercial library booking | Springshare LibCal | Mature room and seat booking, check-in, SMS | Paid, built around the library; no live picture of the whole campus on a map |
+| Occupancy sensors | Waitz / Occuspace | Counts people with no effort from students | Hardware on every floor; says how busy, not which room or seat is free; no booking |
+| What colleges use today | Braude: Microsoft Bookings for group rooms; Tel Aviv University: the libraries' app | Booking a room ahead | Booking only: no live occupancy, no campus map, no release of rooms nobody came to |
+| Student projects on GitHub | many study-room booking apps | Book a slot, a QR "ticket" | Mostly booking only, often no shared server, double bookings checked in app code |
 
-## Tech stack
+*Based on the products' public pages, checked in October 2026; details and sources in [docs/COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md) (Hebrew). We did not test each product from the inside.*
 
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.13, FastAPI, SQLAlchemy 2, Alembic |
-| Database | PostgreSQL 16 (an exclusion constraint prevents double bookings) |
-| Auth | Microsoft & Google (OpenID Connect with PKCE), short JWTs, rotating refresh cookie |
-| Frontend | React 19, TypeScript, Vite, Motion, Leaflet + OpenStreetMap |
-| Tests | pytest, Vitest, Playwright, axe |
-| DevOps | Docker (one image), GitHub Actions, Render + Neon |
+## What StudySpot does differently
+
+- **Between classes.** The student enters their week once (or imports it: the college's Excel export, or a photo read by Claude). For every break, on any day, the site suggests up to three places: open the whole break, near the next class, and not full now (or not usually full then), with the reason shown: "3 minutes' walk from building M, 40 minutes to sit, usually quiet". No product we found joins a student's timetable with occupancy.
+- **Load, live and usual.** One chart per place and for the whole campus: how many people are there now, next to the average for that weekday and hour over the last eight weeks. A plain average per quarter hour, not machine learning: easy to explain and to test.
+- **Live, booking and release in one place,** for four kinds of space: group rooms (booked whole), open areas and the library (scan in, seats counted), and computer labs (one QR code at the door, a seat map of every station). A booking nobody checks in to is released after 15 minutes.
+- **No hardware.** QR signs printed from the admin page; the cost is relying on students to scan.
+- **Any institution, one site.** An institution gets its own address and sets itself up: who signs in, buildings on the map, places, signs. No code and no copy of the project.
+- **The database enforces the rules.** Two people booking the same room in the same second: a PostgreSQL exclusion constraint refuses the second, and a concurrency test proves it.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  B[Browser: React 19 + TypeScript] -- "/api, JSON" --> A[FastAPI]
+  A --> D[(PostgreSQL 16)]
+  A -- "sign-in (OIDC + PKCE)" --> I[Google / Microsoft]
+  A -- "timetable photo" --> C[Claude API]
+  S[Background sweeper, every minute while visited] --> D
+```
+
+One container serves the web app and the API from the same address. The sweeper releases no-shows, ends expired check-ins and records occupancy history; it runs only while the site has visitors, so the database can sleep.
+
+## Known limitations
+
+- Occupancy is only as good as the scanning: auto check-out, "are you still here?" and no-show release reduce the error, they do not remove it.
+- A photo of the QR sign could be scanned from home; one active check-in per person limits it.
+- Walking times are a straight-line estimate, not a route.
+- The demo campus's history and live crowd are simulated, and marked so on screen.
+- Email notifications and password sign-in are planned, not built.
 
 ## Documentation
 
 - [Project plan](docs/PLAN.md) (Hebrew)
 - [Competitive analysis](docs/COMPETITIVE_ANALYSIS.md) (Hebrew)
-- [Interview report](docs/INTERVIEW_REPORT.md) (Hebrew, updated every stage)
+- [Interview report](docs/INTERVIEW_REPORT.md) (Hebrew, updated every stage: decisions, challenges, competitors, interview Q&A)
 - [Campus data](docs/CAMPUS_DATA.md) (Hebrew, filled in by hand)
 - [Deploying the live demo](docs/DEPLOY.md) (Hebrew)
 - [Launching at Braude for real](docs/BRAUDE_LAUNCH.md) (Hebrew)
@@ -136,6 +151,7 @@ Interactive docs: http://localhost:8000/docs
 - [x] Authentication: Microsoft and Google sign-in, roles, rate limiting
 - [x] Web app, part 1: campus map, places list, place page with the lab seat map, demo sign-in
 - [x] Web app, part 2: booking, QR check-in (`/scan#c=...`), my area, admin pages (printable QR signs, building placing)
-- [ ] CI, Docker, deployment
-- [ ] Notifications
-- [ ] Real-time updates and occupancy prediction
+- [x] CI, Docker, deployment (Render + Neon)
+- [x] Many institutions on one site, with self-service setup
+- [x] Occupancy prediction, live demo occupancy, places between classes, timetable import
+- [ ] Notifications and password sign-in

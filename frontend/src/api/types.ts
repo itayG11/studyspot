@@ -363,6 +363,7 @@ export interface Gap {
 
 export interface BetweenClasses {
   weekday: number
+  date: string // "YYYY-MM-DD": today, or the next date of that weekday
   gaps: Gap[]
 }
 

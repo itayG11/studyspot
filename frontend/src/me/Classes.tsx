@@ -21,11 +21,12 @@ const NOT_LISTED = '-'
 
 interface Props {
   classes: ApiState<ClassSlot[]>
-  between: BetweenClassesData | null // today's gaps with places to go, for the grid
+  between: BetweenClassesData | null // a day's gaps with places to go, for the grid
+  onShowBetween: (weekday: number | null) => void // "between classes" on that day (null: today)
   onChanged: () => void
 }
 
-export function Classes({ classes, between, onChanged }: Props) {
+export function Classes({ classes, between, onShowBetween, onChanged }: Props) {
   const { user } = useAuth()
   const list = classes.data
   const removing = useAction()
@@ -57,6 +58,7 @@ export function Classes({ classes, between, onChanged }: Props) {
           between={between}
           removingId={removingId}
           onRemove={(id) => void remove(id)}
+          onShowBetween={onShowBetween}
           onPickTime={(weekday, starts) => setPreset({ weekday, starts, key: Date.now() })}
         />
       )}

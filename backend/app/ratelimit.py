@@ -195,3 +195,15 @@ import_limit = per_person("timetable-import", limit=10, window_seconds=60)
 BETWEEN_PER_MINUTE = 30
 between_limit = per_person("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60)
 
+
+
+# A photo costs a request to a paid service: one a minute and five a day per
+# person, and a ceiling for the whole site, whoever asks.
+photo_minute = per_person("timetable-photo-minute", limit=1, window_seconds=60)
+photo_day = per_person("timetable-photo-day", limit=5, window_seconds=24 * 3600)
+_photo_site = LIMITERS.setdefault("timetable-photo-site", SlidingWindow(200, 24 * 3600))
+
+
+def photo_site() -> None:
+    if not _photo_site.allow("all"):
+        raise _too_many(_photo_site)

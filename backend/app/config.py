@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # instead, for development only: it is refused on a deployed site.
     brevo_api_key: SecretStr | None = None
     email_sender: str | None = None
+    # Reading a timetable from a photo (app/timetable_photo.py): on when an
+    # Anthropic API key is set. Set it in the host's settings, never in code.
+    anthropic_api_key: SecretStr | None = None
     email_login_dev_log: bool = False
 
     # Where the API and the web app live; used for redirect URLs and CORS.
@@ -105,7 +108,7 @@ class Settings(BaseSettings):
             self.public_api_url = f"{site}/api"
         return self
 
-    @field_validator("brevo_api_key", "email_sender", mode="before")
+    @field_validator("brevo_api_key", "email_sender", "anthropic_api_key", mode="before")
     @classmethod
     def _blank_is_unset(cls, value):
         """BREVO_API_KEY= copied empty from .env.example means "not set"."""

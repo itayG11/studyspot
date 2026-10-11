@@ -7,9 +7,17 @@ import type { ReactNode } from 'react'
 import { jumpTo } from './jump'
 import styles from './JumpTo.module.css'
 
-export function JumpTo({ id, children }: { id: string; children: ReactNode }) {
+export function JumpTo({ id, children, onJump }: { id: string; children: ReactNode; onJump?: () => void }) {
   return (
-    <button type="button" className={styles.link} onClick={() => jumpTo(id)}>
+    <button
+      type="button"
+      className={styles.link}
+      onClick={() => {
+        if (!onJump) return jumpTo(id)
+        onJump() // e.g. the day that section should show: there once it has drawn
+        requestAnimationFrame(() => jumpTo(id))
+      }}
+    >
       {children}
     </button>
   )

@@ -356,3 +356,10 @@
 .jumpTarget:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* "Between classes": which day of the week it shows. */
+.dayChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1);
+}

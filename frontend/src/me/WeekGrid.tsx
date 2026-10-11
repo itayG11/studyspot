@@ -5,8 +5,11 @@
 // On a phone: one day at a time, chosen by tabs.
 
 import { Coffee } from 'lucide-react'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { betweenClasses } from '../api/student'
 import type { BetweenClasses as Between, ClassSlot } from '../api/types'
+import { useApi } from '../hooks/useApi'
+import { REFRESH_INTERVAL_MS } from '../config'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useInstitution } from '../institution'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
@@ -16,6 +19,8 @@ import { BETWEEN_ID, SuggestionList } from './BetweenClasses'
 import styles from './week.module.css'
 
 const SATURDAY = 5
+// A break shorter than this has room for one line: the cup and the minutes.
+const SHORT_BREAK = 45
 const MINUTE = 60_000
 const clock = (value: string) => value.slice(0, 5)
 // "בניין M", or the place as the student named it.
@@ -30,10 +35,11 @@ interface Props {
   removingId: number | null
   onRemove: (id: number) => void
   onPickTime: (weekday: number, time: string) => void
+  onShowBetween: (weekday: number | null) => void
   now?: Date // a fixed moment for the tests
 }
 
-export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, now: start }: Props) {
+export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, onShowBetween, now: start }: Props) {
   const { timezone } = useInstitution()
   const [now, setNow] = useState(() => start ?? new Date())
   useEffect(() => {
@@ -102,9 +108,11 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, n
       {pickedNow && (
         <Details
           picked={pickedNow}
+          version={classes.map((c) => `${c.id}:${c.weekday}${c.starts}${c.ends}`).join(',')}
           today={today}
           nowMinutes={nowMinutes}
           between={between}
+          onShowBetween={onShowBetween}
           removingId={removingId}
           onRemove={(id) => {
             onRemove(id)
@@ -185,14 +193,14 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
             <li key={`gap-${gap.starts}`} className={styles.place} style={{ top: `${gap.top}%`, height: `${gap.height}%` }}>
               <button
                 type="button"
-                className={`${styles.gap} ${underWay ? styles.gapNow : ''}`}
+                className={`${styles.gap} ${underWay ? styles.gapNow : ''} ${gap.minutes < SHORT_BREAK ? styles.gapShort : ''}`}
                 aria-pressed={selected}
                 aria-label={`הפסקה של ${gap.minutes} דקות, ${name} ${gap.starts} עד ${gap.ends}`}
                 onClick={() => onPick(selected ? null : { kind: 'gap', day, gap })}
               >
                 <span className={styles.gapLabel}>
                   <Coffee aria-hidden="true" />
-                  הפסקה
+                  <span className={styles.gapWord}>הפסקה</span>
                 </span>
                 <span className={styles.gapMinutes}>{gap.minutes} דק׳</span>
               </button>
@@ -205,22 +213,28 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
   )
 }
 
-// "Between classes today", as a link up the page to that section.
-function ToBetween() {
-  return <JumpTo id={BETWEEN_ID}>בין שיעורים היום</JumpTo>
+// "Between classes" on that day, as a link up the page to that section.
+function ToBetween({ day, today, onShow }: { day: number; today: number; onShow: (weekday: number | null) => void }) {
+  return (
+    <JumpTo id={BETWEEN_ID} onJump={() => onShow(day === today ? null : day)}>
+      {day === today ? 'בין שיעורים היום' : `בין שיעורים ב${weekdayName(day)}`}
+    </JumpTo>
+  )
 }
 
 interface DetailsProps {
   picked: NonNullable<Picked>
+  version: string
   today: number
   nowMinutes: number
   between: Between | null
+  onShowBetween: (weekday: number | null) => void
   removingId: number | null
   onRemove: (id: number) => void
   onClose: () => void
 }
 
-function Details({ picked, today, nowMinutes, between, removingId, onRemove, onClose }: DetailsProps) {
+function Details({ picked, version, today, nowMinutes, between, onShowBetween, removingId, onRemove, onClose }: DetailsProps) {
   // Opened: focus moves to it, so a keyboard user lands on what they picked.
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -250,11 +264,48 @@ function Details({ picked, today, nowMinutes, between, removingId, onRemove, onC
       </section>
     )
   }
-  const { day, gap } = picked
-  // Today's gaps come with places to go; other days get them on the day.
-  const todays = day === today ? between?.gaps.find((g) => clock(g.starts) === gap.starts) : undefined
   return (
-    <section ref={ref} tabIndex={-1} className={styles.details} aria-label="פרטי ההפסקה">
+    <GapDetails
+      sectionRef={ref}
+      version={version}
+      day={picked.day}
+      gap={picked.gap}
+      today={today}
+      nowMinutes={nowMinutes}
+      between={between}
+      onShowBetween={onShowBetween}
+      onClose={onClose}
+    />
+  )
+}
+
+interface GapProps {
+  sectionRef: RefObject<HTMLElement | null>
+  version: string // the timetable as it is: asked again when it changes
+  day: number
+  gap: Gap
+  today: number
+  nowMinutes: number
+  between: Between | null
+  onShowBetween: (weekday: number | null) => void
+  onClose: () => void
+}
+
+// A break's places to go: the page's own answer when it is about that day,
+// otherwise asked for that day (by the forecast, on another day).
+function GapDetails({ sectionRef, version, day, gap, today, nowMinutes, between, onShowBetween, onClose }: GapProps) {
+  const fromPage = between && between.weekday === day ? between : null
+  // Today's numbers are live: refreshed like the page's.
+  const asked = useApi(
+    () => betweenClasses(day),
+    fromPage ? null : `between-day-${day}-${version}`,
+    day === today ? REFRESH_INTERVAL_MS : undefined,
+  )
+  const data = fromPage ?? asked.data
+  const found = data?.gaps.find((g) => clock(g.starts) === gap.starts)
+  const over = day === today && nowMinutes >= minutesOf(gap.ends)
+  return (
+    <section ref={sectionRef} tabIndex={-1} className={styles.details} aria-label="פרטי ההפסקה">
       <div className={styles.detailsBody}>
         <p className={styles.detailsTitle}>
           הפסקה של {gap.minutes} דקות, {weekdayName(day)}{' '}
@@ -262,22 +313,22 @@ function Details({ picked, today, nowMinutes, between, removingId, onRemove, onC
             {gap.starts}–{gap.ends}
           </span>
         </p>
-        {todays && todays.suggestions.length > 0 && <SuggestionList suggestions={todays.suggestions} />}
-        {todays && todays.suggestions.length === 0 && <p className={styles.detailsMeta}>אין מקום פתוח ופנוי שמספיק לזמן שנשאר בהפסקה הזו.</p>}
-        {!todays && day === today && (
-          <p className={styles.detailsMeta}>
-            {nowMinutes >= minutesOf(gap.ends)
-              ? 'ההפסקה הזו כבר נגמרה.'
-              : between === null
-                ? <>ההצעות נטענות, או שלא הצלחנו לטעון אותן. הן מופיעות גם באזור <ToBetween />.</>
-                : 'אין כרגע הצעות להפסקה הזו.'}
-          </p>
+        {over && <p className={styles.detailsMeta}>ההפסקה הזו כבר נגמרה.</p>}
+        {!over && found && found.suggestions.length > 0 && (
+          <>
+            {day !== today && <p className={styles.detailsMeta}>לפי העומס הצפוי באותו יום ובאותן שעות.</p>}
+            <SuggestionList suggestions={found.suggestions} />
+          </>
         )}
-        {day !== today && (
-          <p className={styles.detailsMeta}>
-            ביום ההפסקה, כאן ובאזור <ToBetween />, יופיעו מקומות פנויים קרובים שמספיקים לזמן שלה.
-          </p>
+        {!over && found && found.suggestions.length === 0 && (
+          <p className={styles.detailsMeta}>אין מקום פתוח ופנוי שמספיק לזמן של ההפסקה הזו.</p>
         )}
+        {!over && !found && !data && !asked.error && <p className={styles.detailsMeta}>טוען הצעות…</p>}
+        {!over && !found && data && <p className={styles.detailsMeta}>אין כרגע הצעות להפסקה הזו.</p>}
+        {!over && !found && !data && asked.error && <p className={styles.detailsMeta}>לא הצלחנו לטעון הצעות להפסקה הזו.</p>}
+        <p className={styles.detailsMeta}>
+          כל ההפסקות של היום הזה: <ToBetween day={day} today={today} onShow={onShowBetween} />
+        </p>
       </div>
       <div className={styles.detailsActions}>
         <button type="button" className={styles.close} onClick={onClose}>
