@@ -293,3 +293,52 @@ export interface GeocodeResult {
   latitude: number
   longitude: number
 }
+
+// A class in the student's week (/me/classes). Times are local "HH:MM:SS".
+export interface ClassSlot {
+  id: number
+  weekday: number // Python's numbering: Monday is 0
+  starts: string
+  ends: string
+  building_code: string
+  title: string | null
+}
+
+export interface NewClass {
+  weekday: number
+  starts: string // "HH:MM"
+  ends: string
+  building_code: string
+  title: string | null
+}
+
+// A place to study in a gap between classes (/me/between-classes).
+export interface Suggestion {
+  place_id: number
+  name: string
+  kind: PlaceKind
+  building_code: string
+  walk_there: number // minutes, an estimate
+  walk_after: number
+  sit_from: string // ISO
+  sit_until: string
+  sit_minutes: number
+  bookable: boolean
+  capacity: number
+  available: number | null // now, for the gap under way (not for rooms)
+  usual: number | null // usually there then, for a gap later today
+}
+
+export interface Gap {
+  starts: string // local "HH:MM:SS"
+  ends: string
+  from_building: string
+  to_building: string
+  now: boolean
+  suggestions: Suggestion[]
+}
+
+export interface BetweenClasses {
+  weekday: number
+  gaps: Gap[]
+}

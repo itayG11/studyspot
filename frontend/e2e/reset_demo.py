@@ -1,5 +1,6 @@
 """Puts the demo campus back to its seed data, for the e2e tests that add
-buildings and places, with the made-up history of the load forecast. The
+buildings and places, with the made-up history of the load forecast and
+the demo student's sample timetable. The
 live site does the same once a day.
 
 Run from backend/: python <this file>
@@ -17,6 +18,7 @@ from app.campus_admin import reset_demo_extras
 from app.config import get_settings
 from app.models import Institution
 from app.seed.history import simulate_history
+from app.seed.timetable import demo_student, give_sample_timetable
 
 from sqlalchemy.engine import make_url
 
@@ -29,4 +31,7 @@ with Session(create_engine(url)) as db:
     print(reset_demo_extras(db, "demo"))
     demo = db.scalars(select(Institution).where(Institution.slug == "demo")).one()
     simulate_history(db, demo, datetime.now(ZoneInfo(demo.timezone)).date())
+    student = demo_student(db, demo)
+    if student is not None:
+        give_sample_timetable(db, student)
     db.commit()

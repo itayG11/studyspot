@@ -1,11 +1,11 @@
-// "My area": where I am checked in now, my bookings, my favourite places,
-// and my account.
+// "My area": where I am checked in now, where to study between my classes,
+// my bookings, my timetable, my favourite places, and my account.
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
 import { Link, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { cancelBooking, checkOut, extendBooking, myBookings, myCheckIn } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, myBookings, myCheckIn, myClasses } from '../api/student'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { REFRESH_INTERVAL_MS } from '../config'
@@ -17,6 +17,8 @@ import { useInstitution } from '../institution'
 import { formatDay, formatTime } from '../logic/time'
 import { KIND_PHOTO } from '../media/photos'
 import { Button, ButtonLink, ConfirmButton, EmptyState, ErrorState, LoadingRegion, Notice, Photo, Skeleton, useToast } from '../ui'
+import { BetweenClasses } from './BetweenClasses'
+import { Classes } from './Classes'
 import styles from './me.module.css'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -31,6 +33,8 @@ export function MyPage() {
   const bookings = useApi(myBookings, 'my-bookings', REFRESH_INTERVAL_MS)
   // For each booking's picture, and for the favourites.
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
+  const classes = useApi(myClasses, 'my-classes')
+  const between = useApi(betweenClasses, 'between-classes', REFRESH_INTERVAL_MS)
 
   if (!user) return null
   const byId = new Map((places.data ?? []).map((place) => [place.id, place]))
@@ -75,6 +79,8 @@ export function MyPage() {
         {current.data && <NowCard checkIn={current.data} onLeft={reloadAll} />}
       </section>
 
+      <BetweenClasses between={between} classes={classes.data} />
+
       <section aria-label="ההזמנות שלי" className={styles.section}>
         <h2 className={styles.heading}>ההזמנות שלי</h2>
         {bookings.error && <ErrorState error={bookings.error} onRetry={bookings.reload} compact />}
@@ -107,6 +113,14 @@ export function MyPage() {
           </ul>
         )}
       </section>
+
+      <Classes
+        classes={classes}
+        onChanged={() => {
+          classes.reload()
+          between.reload()
+        }}
+      />
 
       <Favorites places={places.data} />
 

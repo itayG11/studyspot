@@ -49,6 +49,10 @@ beforeEach(() => {
     if (path === '/institutions/braude/places')
       return Promise.resolve(jsonResponse([place({ id: 1, name: 'M206', kind: 'computer_lab' }), place({ id: 3, name: 'EM107', kind: 'group_room' })]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
+    // The timetable and its suggestions have their own tests (Classes.test.tsx).
+    if (path === '/me/classes') return Promise.resolve(jsonResponse([]))
+    if (path === '/me/between-classes') return Promise.resolve(jsonResponse({ weekday: 6, gaps: [] }))
+    if (path === '/institutions/braude/buildings') return Promise.resolve(jsonResponse([]))
     if (path === '/me/check-in')
       return Promise.resolve(checkIn ? jsonResponse(checkIn) : jsonResponse({ detail: 'no_active_check_in' }, 404))
     if (path === '/bookings/7/cancel') {

@@ -76,6 +76,9 @@ const MESSAGES: Record<string, string> = {
 
   // Admin
   building_not_found: 'הבניין לא נמצא.',
+  class_overlaps: 'השיעור חופף לשיעור אחר באותו יום.',
+  class_limit: 'הגעת למספר השיעורים המרבי. אפשר להסיר שיעורים ישנים.',
+  class_not_found: 'השיעור לא נמצא. אולי כבר הוסר.',
 
   // An institution's own setup
   demo_campus_locked: 'בקמפוס ההדגמה אי אפשר לשנות את זה, כי המנהל לדוגמה משותף לכל המבקרים.',
