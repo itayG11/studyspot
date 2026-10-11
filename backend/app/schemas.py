@@ -222,6 +222,11 @@ class SlotForecastOut(BaseModel):
     people: float
 
 
+class TodaySlotOut(BaseModel):
+    start: time
+    people: int
+
+
 class ForecastOut(BaseModel):
     weekday: int  # Python's numbering: Monday is 0
     capacity: int
@@ -230,6 +235,29 @@ class ForecastOut(BaseModel):
     closed: bool
     slots: list[SlotForecastOut]
     frees_at: time | None
+    # The weekday asked is today: today's quarter hours so far (app/load_today.py).
+    today: list[TodaySlotOut] = []
+
+
+class CampusSlotOut(BaseModel):
+    start: time
+    usual: float | None
+    today: int | None
+
+
+class PlaceNextHourOut(BaseModel):
+    place_id: int
+    next_hour: float | None  # usual share of full in the coming hour
+
+
+class CampusTodayOut(BaseModel):
+    weekday: int
+    capacity: int
+    occupied: int
+    weeks: int
+    simulated: bool
+    slots: list[CampusSlotOut]
+    places: list[PlaceNextHourOut]
 
 
 class PlaceDetail(PlaceOut):

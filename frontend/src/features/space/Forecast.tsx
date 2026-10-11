@@ -7,6 +7,9 @@ import { useEffect, useState } from 'react'
 import { getForecast } from '../../api/campus'
 import type { Place } from '../../api/types'
 import { useApi } from '../../hooks/useApi'
+import { useLiveSimulated } from '../../institution'
+import { hourly, mergeToday } from '../../logic/load'
+import { LoadChart } from '../load/LoadChart'
 import { byHour, forecastLimit, freesAt, levelWord, usualAt } from '../../logic/forecast'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../../logic/time'
 import { Chip, ErrorState } from '../../ui'
@@ -41,6 +44,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
   const clock = formatTime(now.toISOString(), timeZone)
   const isToday = weekday === today
   const room = place.kind === 'group_room'
+  const simulated = useLiveSimulated()
 
   let body
   if (!data && forecast.error) body = <ErrorState error={forecast.error} onRetry={forecast.reload} compact />
@@ -64,6 +68,17 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
           </p>
         )}
         {frees && <p className={styles.forecastNow}>בדרך כלל מתפנה ב-{frees}.</p>}
+        {isToday ? (
+          <LoadChart
+            hours={hourly(mergeToday(data.slots, data.today, clock))}
+            limit={limit}
+            currentHour={currentHour}
+            live={place.is_open && !room ? place.occupied : null}
+            simulated={simulated}
+            kind={place.kind}
+          />
+        ) : (
+          <>
         <div className={styles.forecastBars} aria-hidden="true">
           {hours.map((h) => (
             <span key={h.hour} className={styles.forecastColumn}>
@@ -83,6 +98,8 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
             </li>
           ))}
         </ul>
+          </>
+        )}
         <p className={styles.demo}>
           לפי {data.weeks} השבועות האחרונים.
           {data.simulated && ' נתוני דמו: ההיסטוריה כאן מדומה, כדי להראות איך החיזוי עובד.'}

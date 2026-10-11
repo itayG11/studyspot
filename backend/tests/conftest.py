@@ -95,6 +95,16 @@ def no_site_address(monkeypatch) -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def fresh_load_cache() -> Iterator[None]:
+    """The campus's today view is kept a minute (app/load_today.py): never across tests."""
+    from app.load_today import clear_cache
+
+    clear_cache()
+    yield
+    clear_cache()
+
+
+@pytest.fixture(autouse=True)
 def fresh_rate_limits() -> Iterator[None]:
     """Each test starts with empty rate-limit counters."""
     from app.ratelimit import LIMITERS

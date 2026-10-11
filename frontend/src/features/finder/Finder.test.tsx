@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, resetSessionForTests } from '../../api/client'
 import { AuthProvider } from '../../auth/AuthContext'
-import type { Building, Place } from '../../api/types'
+import type { Building, CampusToday, Place } from '../../api/types'
 import { InstitutionProvider } from '../../institution'
 import { building, INSTITUTION, jsonResponse, place } from '../../test/fixtures'
 import { Finder } from './Finder'
@@ -28,10 +28,10 @@ afterEach(() => {
   localStorage.clear()
 })
 
-function renderFinder({ path = '/', places = PLACES as Place[] | null, buildings = BUILDINGS as Building[] | null, error = null as ApiError | null } = {}) {
+function renderFinder({ path = '/', places = PLACES as Place[] | null, buildings = BUILDINGS as Building[] | null, error = null as ApiError | null, today = null as CampusToday | null } = {}) {
   const onRetry = vi.fn()
   const router = createMemoryRouter(
-    [{ path: '/', element: <Finder places={places} buildings={buildings} error={error} onRetry={onRetry} /> }, { path: '/braude/spaces/:id', element: <p>דף המקום</p> }],
+    [{ path: '/', element: <Finder places={places} buildings={buildings} today={today} error={error} onRetry={onRetry} /> }, { path: '/braude/spaces/:id', element: <p>דף המקום</p> }],
     { initialEntries: [path] },
   )
   render(
@@ -47,6 +47,20 @@ function renderFinder({ path = '/', places = PLACES as Place[] | null, buildings
 const cards = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
 
 describe('Finder', () => {
+  it('shows the campus today, and how busy each place usually is in an hour', async () => {
+    const first = PLACES[0] as Place
+    renderFinder({
+      today: {
+        weekday: 6, capacity: 50, occupied: 10, weeks: 8, simulated: false,
+        slots: [{ start: '09:00:00', usual: 12, today: 10 }],
+        places: [{ place_id: first.id, next_hour: 0.9 }],
+      },
+    })
+    expect(await screen.findByRole('heading', { name: 'העומס היום בקמפוס' })).toBeInTheDocument()
+    const card = screen.getByRole('link', { name: first.name }).closest('li') as HTMLElement
+    expect(within(card).getByText(/בעוד שעה: בדרך כלל/)).toBeInTheDocument()
+  })
+
   it('shows every place as a card, with its live line', async () => {
     renderFinder()
     expect(await screen.findByRole('link', { name: 'M206' })).toBeInTheDocument()

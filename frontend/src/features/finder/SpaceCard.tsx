@@ -6,6 +6,8 @@ import { useFavorites } from '../../hooks/useFavorites'
 import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS } from '../../i18n/labels'
 import { useInstitution } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
+import { levelWord } from '../../logic/forecast'
+import { HIGH_FROM, MEDIUM_FROM } from '../../logic/occupancy'
 import { KIND_PHOTO } from '../../media/photos'
 import { Badge, Photo } from '../../ui'
 import { artTransitionName } from '../space/transition'
@@ -21,13 +23,14 @@ const UNIT: Record<Place['kind'], string> = {
 
 interface SpaceCardProps {
   place: Place
+  nextHour?: number | null // usual share of full in the coming hour (the campus today)
   onShowOnMap?: (buildingCode: string) => void
 }
 
 // One place, as a card. The name is the link and it covers the whole card;
 // the star and "on the map" are separate buttons above it (a button inside
 // a link is not valid HTML, and a screen reader could not tell them apart).
-export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
+export function SpaceCard({ place, nextHour = null, onShowOnMap }: SpaceCardProps) {
   const { slug, timezone } = useInstitution()
   const { isFavorite, toggle } = useFavorites()
   const status = spaceStatus(place, timezone)
@@ -69,6 +72,9 @@ export function SpaceCard({ place, onShowOnMap }: SpaceCardProps) {
           {ATMOSPHERE_LABELS[place.atmosphere]} · עד {place.capacity} {UNIT[place.kind]}
         </p>
         {!place.bookable && <p className={styles.walkIn}>בלי הזמנה: נכנסים בסריקה</p>}
+        {nextHour !== null && place.is_open && (
+          <p className={styles.facts}>בעוד שעה: בדרך כלל {levelWord(nextHour >= HIGH_FROM ? 'high' : nextHour >= MEDIUM_FROM ? 'medium' : 'low', place.kind)}</p>
+        )}
         {place.available === 0 && place.usually_frees_at && (
           <p className={styles.facts}>בדרך כלל מתפנה ב-{place.usually_frees_at.slice(0, 5)}</p>
         )}

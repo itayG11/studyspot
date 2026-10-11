@@ -4,7 +4,7 @@ import { byHour, forecastLimit, freesAt, levelWord, usualAt } from './forecast'
 
 function make(slots: [string, number][]): Forecast {
   return {
-    weekday: 6, capacity: 50, weeks: 4, simulated: false, closed: false, frees_at: null,
+    weekday: 6, capacity: 50, weeks: 4, simulated: false, closed: false, frees_at: null, today: [],
     slots: slots.map(([start, people]) => ({ start: `${start}:00`, people })),
   }
 }

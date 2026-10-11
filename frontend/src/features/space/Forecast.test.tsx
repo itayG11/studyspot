@@ -12,7 +12,7 @@ const AREA = place({ id: 9, kind: 'open_area', name: 'מתחם לימוד', capa
 function forecast(overrides: Partial<Forecast> = {}): Forecast {
   const slots = [['09:00', 10], ['09:15', 10], ['09:30', 12], ['09:45', 12], ['10:00', 30], ['10:15', 30], ['10:30', 44], ['10:45', 46]]
   return {
-    weekday: 6, capacity: 50, weeks: 6, simulated: false, closed: false, frees_at: '10:30:00',
+    weekday: 6, capacity: 50, weeks: 6, simulated: false, closed: false, frees_at: '10:30:00', today: [],
     slots: slots.map(([start, people]) => ({ start: `${start}:00`, people: people as number })),
     ...overrides,
   }
@@ -53,8 +53,8 @@ describe('PlaceForecast', () => {
     show()
     const list = await screen.findByRole('list', { name: 'העומס לפי שעה' })
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '09:00: שקט, בערך 11 אנשים',
-      '10:00: בינוני, בערך 38 אנשים',
+      '09:00: בדרך כלל שקט, בערך 11 אנשים, היום 0',
+      '10:00: בדרך כלל בינוני, בערך 38 אנשים, עכשיו 50',
     ])
   })
 

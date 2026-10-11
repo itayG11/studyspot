@@ -3,7 +3,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
-import { getBuildings, getPlaces } from '../api/campus'
+import { getBuildings, getCampusToday, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { InstallTip } from '../components/InstallTip'
 import { Finder } from '../features/finder/Finder'
@@ -40,6 +40,7 @@ export function HomePage() {
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`, REFRESH_INTERVAL_MS)
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
+  const today = useApi(() => getCampusToday(slug), `today-${slug}`, REFRESH_INTERVAL_MS)
   const location = useLocation()
   const ready = places.data !== null && buildings.data !== null
 
@@ -83,6 +84,7 @@ export function HomePage() {
         <Finder
           places={places.data}
           buildings={buildings.data}
+          today={today.data}
           error={places.error ?? buildings.error}
           onRetry={() => {
             places.reload()

@@ -103,6 +103,18 @@ export interface Forecast {
   closed: boolean
   slots: SlotForecast[] // empty when closed, or with too little history
   frees_at: string | null // today only, local "HH:MM:SS"
+  today: SlotForecast[] // the weekday asked is today: its quarter hours so far with anyone in
+}
+
+// GET /institutions/{slug}/load/today: the campus, all but the group rooms.
+export interface CampusToday {
+  weekday: number
+  capacity: number
+  occupied: number // live, now
+  weeks: number // 0: no forecast yet
+  simulated: boolean
+  slots: { start: string; usual: number | null; today: number | null }[]
+  places: { place_id: number; next_hour: number | null }[] // usual share of full in the coming hour
 }
 
 export interface PlaceDetail extends Place {

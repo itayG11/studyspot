@@ -16,6 +16,7 @@ from app.bookings import MIN_WALK_IN, holding
 from app.clock import get_now
 from app.forecast import forecast
 from app.hours import opening_status, place_status
+from app.load_today import campus_today, today_counts
 from app.models import (
     Booking,
     Building,
@@ -30,6 +31,7 @@ from app.ratelimit import forecast_limit
 from app.schemas import (
     BookingRules,
     BuildingOut,
+    CampusTodayOut,
     ForecastOut,
     InstitutionListItem,
     InstitutionOut,
@@ -285,11 +287,28 @@ def get_forecast(
     if weekday is None:
         zone = ZoneInfo(session.get(Institution, place.institution_id).timezone)
         weekday = now.astimezone(zone).weekday()
+    zone = ZoneInfo(session.get(Institution, place.institution_id).timezone)
     result = forecast(session, place, weekday, now)
+    today = []
+    if weekday == now.astimezone(zone).weekday():
+        counts = today_counts(session, [place], zone, now)[place.id]
+        today = [{"start": start, "people": people} for start, people in sorted(counts.items())]
     return ForecastOut(
         weekday=result.weekday, capacity=result.capacity, weeks=result.weeks, simulated=result.simulated,
         closed=result.closed, slots=[{"start": s.start, "people": s.people} for s in result.slots],
-        frees_at=result.frees_at,
+        frees_at=result.frees_at, today=today,
+    )
+
+
+@router.get("/institutions/{slug}/load/today", response_model=CampusTodayOut, dependencies=[Depends(forecast_limit)])
+def get_campus_today(slug: Slug, session: SessionDep, now: NowDep):
+    """The campus today, hour by hour: usually, and so far today."""
+    result = campus_today(session, _institution(session, slug), now)
+    return CampusTodayOut(
+        weekday=result.weekday, capacity=result.capacity, occupied=result.occupied, weeks=result.weeks,
+        simulated=result.simulated,
+        slots=[{"start": s.start, "usual": s.usual, "today": s.today} for s in result.slots],
+        places=[{"place_id": pid, "next_hour": share} for pid, share in result.next_hour.items()],
     )
 
 

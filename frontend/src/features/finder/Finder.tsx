@@ -7,11 +7,11 @@ import { CircleDot, Computer, List, Map as MapIcon, Plug, Search, Star, Users, V
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { ApiError } from '../../api/client'
-import type { Building, Place } from '../../api/types'
+import type { Building, CampusToday, Place } from '../../api/types'
 import { LiveNote } from '../../components/LiveNote'
 import { useFavorites } from '../../hooks/useFavorites'
 import { KIND_LABELS, KINDS } from '../../i18n/labels'
-import { useLiveSimulated } from '../../institution'
+import { useInstitution, useLiveSimulated } from '../../institution'
 import {
   applyFilters,
   countWith,
@@ -26,6 +26,7 @@ import {
   type Flag,
 } from '../../logic/filters'
 import { Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Skeleton } from '../../ui'
+import { CampusLoad } from '../load/CampusLoad'
 import { SpaceCard } from './SpaceCard'
 import styles from './finder.module.css'
 
@@ -46,11 +47,13 @@ const FLAG_ICONS = { free: CircleDot, quiet: Volume1, group: Users, computers: C
 interface FinderProps {
   places: Place[] | null
   buildings: Building[] | null
+  today?: CampusToday | null // the campus today (the load chart); optional, the search works without it
   error: ApiError | null
   onRetry: () => void
 }
 
-export function Finder({ places, buildings, error, onRetry }: FinderProps) {
+export function Finder({ places, buildings, today = null, error, onRetry }: FinderProps) {
+  const { timezone } = useInstitution()
   const [params, setParams] = useSearchParams()
   const fromAddress = readFilters(params)
   // The search box keeps its own text, updated on every keystroke, and
@@ -128,8 +131,11 @@ export function Finder({ places, buildings, error, onRetry }: FinderProps) {
         </div>
       </div>
 
+      {today && <CampusLoad data={today} timeZone={timezone} />}
+
       <Results
         places={places}
+        today={today}
         buildings={buildings}
         error={error}
         onRetry={onRetry}
@@ -153,8 +159,9 @@ interface ResultsProps extends FinderProps {
   setSelected: (code: string | null) => void
 }
 
-function Results({ places, buildings, error, onRetry, filters, update, favorites, clearFavorites, selected, setSelected }: ResultsProps) {
+function Results({ places, buildings, today, error, onRetry, filters, update, favorites, clearFavorites, selected, setSelected }: ResultsProps) {
   const simulated = useLiveSimulated()
+  const nextHour = new Map((today?.places ?? []).map((p) => [p.place_id, p.next_hour]))
   if (!places && error) return <ErrorState error={error} onRetry={onRetry} />
   if (!places || !buildings) return <CardSkeletons />
 
@@ -228,7 +235,7 @@ function Results({ places, buildings, error, onRetry, filters, update, favorites
         ) : (
           <ul className={isMap ? styles.list : styles.grid}>
             {shown.map((place) => (
-              <SpaceCard key={place.id} place={place} onShowOnMap={isMap ? setSelected : undefined} />
+              <SpaceCard key={place.id} place={place} nextHour={nextHour.get(place.id) ?? null} onShowOnMap={isMap ? setSelected : undefined} />
             ))}
           </ul>
         )}
