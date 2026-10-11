@@ -64,6 +64,10 @@ def demo_user(db: Session, institution_slug: str, persona: Persona, now: datetim
         db.add(user)
         db.flush()
         db.add(UserIdentity(user_id=user.id, provider=AuthProvider.DEMO, subject=subject))
+        if persona == Persona.STUDENT:
+            from app.seed.timetable import give_sample_timetable
+
+            give_sample_timetable(db, user)  # "a place between classes" works at once
     else:
         user = db.get(User, link.user_id)
         user.role = profile.role  # a demo user keeps exactly its persona's role

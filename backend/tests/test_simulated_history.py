@@ -79,3 +79,32 @@ def test_a_demo_reset_earlier_today_still_gets_its_history(session):
     session.flush()
     assert campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 11)) is None
     assert rows(session, demo)
+
+
+def test_the_demo_student_starts_with_a_sample_timetable_and_the_reset_restores_it(session):
+    from datetime import UTC
+
+    from app.demo import Persona, demo_user
+    from app.models import ClassSlot
+    from app.seed.timetable import SAMPLE
+
+    seed_demo(session)
+    student = demo_user(session, "demo", Persona.STUDENT, datetime.now(UTC))
+    mine = lambda: session.query(ClassSlot).filter(ClassSlot.user_id == student.id).all()
+    assert len(mine()) == len(SAMPLE)
+    # A visitor changes it: the next day's reset puts the sample back.
+    session.delete(mine()[0])
+    session.flush()
+    campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 12))
+    assert len(mine()) == len(SAMPLE)
+
+
+def test_the_demo_admin_gets_no_timetable(session):
+    from datetime import UTC
+
+    from app.demo import Persona, demo_user
+    from app.models import ClassSlot
+
+    seed_demo(session)
+    admin = demo_user(session, "demo", Persona.ADMIN, datetime.now(UTC))
+    assert session.query(ClassSlot).filter(ClassSlot.user_id == admin.id).all() == []
