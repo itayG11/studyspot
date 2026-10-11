@@ -3,6 +3,7 @@ file): a preview only, from the file's text, never kept. Built here in code
 with the same layout as a real export, with made-up lecturers."""
 
 import io
+import time
 import zipfile
 
 import pytest
@@ -50,8 +51,9 @@ def test_reads_each_class_with_its_day_times_building_and_course(session, braude
 
 
 def test_a_building_not_on_campus_keeps_what_the_file_says(session, braude):
+    # The export writes the place twice ("אולם ספורט אולם ספורט"): that, whole.
     gym = next(r for r in read_yedion(yedion(), braude.buildings) if r.building_code is None)
-    assert gym.building_text == "ספורט"
+    assert gym.building_text == "אולם ספורט"
 
 
 def test_lecturers_and_course_numbers_are_not_read(session, braude):
@@ -60,9 +62,66 @@ def test_lecturers_and_course_numbers_are_not_read(session, braude):
         assert kept_out not in text
 
 
-def test_nothing_is_saved(session, braude):
-    read_yedion(yedion(), braude.buildings)
+def test_the_preview_saves_nothing(client, session):
+    assert client.post("/me/classes/import", content=yedion()).status_code == 200
     assert session.scalar(select(func.count()).select_from(ClassSlot)) == 0
+
+
+def cell(text):
+    return yedion(cells={("יום ראשון", "08:30"): text})
+
+
+def test_two_classes_in_one_cell_are_two_classes(session, braude):
+    both = "1-אלגברה תרגיל\tמר א 101 M M 08:30-09:30\n2-חדו\"א הרצאה\tמר ב 202 L L 10:30-12:30"
+    rows = read_yedion(cell(both), braude.buildings)
+    assert [(r.starts, r.building_code, r.title) for r in rows] == [
+        ("08:30", "M", "אלגברה, תרגיל"),
+        ("10:30", "L", 'חדו"א, הרצאה'),
+    ]
+
+
+def test_a_lecturer_named_like_a_building_is_not_the_building(session, braude):
+    [row] = read_yedion(cell("11575-ספורט הרצאה מר L כהן\tאולם ספורט אולם ספורט 10:30-12:20"), braude.buildings)
+    assert (row.building_code, row.building_text) == (None, "אולם ספורט")
+
+
+def test_a_cell_with_no_room_says_nothing_of_the_lecturer(session, braude):
+    [row] = read_yedion(cell("61774-יסודות המחשוב הרצאה\tמר ישראל ישראלי 10:30-12:20"), braude.buildings)
+    assert (row.building_code, row.building_text) == (None, "")
+
+
+def test_times_with_an_en_dash_are_read(session, braude):
+    [row] = read_yedion(cell("1-אלגברה תרגיל\t101 M M 8:30–10:00"), braude.buildings)
+    assert (row.starts, row.ends) == ("08:30", "10:00")
+
+
+def test_a_cell_built_to_slow_the_reader_is_skipped_quickly(session, braude):
+    # Many spaces between a course and its times once took the reader many
+    # seconds (catastrophic backtracking); such a cell is not a class.
+    started = time.monotonic()
+    with pytest.raises(ImportRefused):
+        read_yedion(cell("1-a" + " " * 100_000 + "x 08:30-10:30"), braude.buildings)
+    assert time.monotonic() - started < 2
+
+
+def test_a_very_wide_sheet_is_read_in_its_corner_only(session, braude):
+    # A cell far to the left (column XFD) made every row a row of 16,384 cells.
+    out = io.BytesIO()
+    book = Workbook()
+    sheet = book.active
+    sheet.append([""] + DAYS)
+    sheet.append(["08:30", "1-אלגברה תרגיל\t101 M M 08:30-10:00"])
+    for row in range(3, 400):
+        sheet.cell(row=row, column=16384, value="x")
+    book.save(out)
+    rows = read_yedion(out.getvalue(), braude.buildings)
+    assert [r.title for r in rows] == ["אלגברה, תרגיל"]
+
+
+def test_the_xml_is_read_through_defusedxml():
+    import openpyxl.xml
+
+    assert openpyxl.xml.DEFUSEDXML and not openpyxl.xml.LXML
 
 
 @pytest.mark.parametrize(
@@ -122,3 +181,20 @@ def test_the_api_needs_a_signed_in_student(client):
 def test_the_api_says_why_a_file_is_refused(client):
     response = client.post("/me/classes/import", content=b"not a file")
     assert (response.status_code, response.json()["detail"]) == (422, "import_not_xlsx")
+
+
+def test_adding_many_at_once_says_which_were_refused(client, session):
+    body = [
+        {"weekday": 6, "starts": "08:30", "ends": "10:00", "building_code": "M", "title": "א, הרצאה"},
+        {"weekday": 6, "starts": "09:00", "ends": "11:00", "building_code": "M", "title": "ב, תרגיל"},  # overlaps
+        {"weekday": 0, "starts": "08:30", "ends": "10:00", "building_code": "NOPE", "title": None},
+    ]
+    response = client.post("/me/classes/bulk", json=body)
+    assert response.status_code == 200
+    assert [r["refused"] for r in response.json()] == [None, "class_overlaps", "building_not_found"]
+    assert session.scalar(select(func.count()).select_from(ClassSlot)) == 1
+
+
+def test_adding_many_at_once_is_capped(client):
+    one = {"weekday": 6, "starts": "08:30", "ends": "09:00", "building_code": "M", "title": None}
+    assert client.post("/me/classes/bulk", json=[one] * 41).status_code == 422

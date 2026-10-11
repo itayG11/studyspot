@@ -39,6 +39,9 @@ export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })
 export const addClass = (lesson: NewClass) => api<ClassSlot>('/me/classes', { method: 'POST', body: lesson, auth: true })
+// Several classes at once (an imported timetable): each one's answer, in order.
+export const addClasses = (lessons: NewClass[]) =>
+  api<{ refused: string | null }[]>('/me/classes/bulk', { method: 'POST', body: lessons, auth: true })
 // A timetable file from the college: what it holds, nothing saved yet.
 export const previewImport = (file: Blob) => api<ImportRow[]>('/me/classes/import', { method: 'POST', file, auth: true })
 export const removeClass = (id: number) => api<void>(`/me/classes/${id}`, { method: 'DELETE', auth: true })

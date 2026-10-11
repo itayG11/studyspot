@@ -8,8 +8,9 @@ import { FileSpreadsheet } from 'lucide-react'
 import { useId, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
 import { getBuildings } from '../api/campus'
-import { addClass, previewImport } from '../api/student'
+import { addClasses, previewImport } from '../api/student'
 import type { ImportRow } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
 import { useInstitution } from '../institution'
@@ -29,6 +30,7 @@ const count = (n: number) => (n === 1 ? 'שיעור אחד' : `${n} שיעורי
 
 export function ImportClasses({ onAdded }: { onAdded: () => void }) {
   const id = useId()
+  const { user } = useAuth()
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`)
   const choices = (buildings.data ?? []).filter((b) => b.status !== 'under_construction')
@@ -66,22 +68,26 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
     if (!items) return
     setAdding(true)
     setDone(null)
-    const left: Item[] = []
-    let added = 0
-    // One at a time, in order: each is checked against the ones added before it.
-    for (const item of items) {
-      if (!item.chosen) {
-        left.push(item)
-        continue
-      }
-      try {
-        const { row } = item
-        await addClass({ weekday: row.weekday, starts: row.starts, ends: row.ends, building_code: item.building, title: row.title })
-        added += 1
-      } catch (reason) {
-        left.push({ ...item, refused: errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error') })
-      }
+    setProblem(null)
+    const picked = items.filter((item) => item.chosen)
+    // One request: the server checks each in order, against the ones before it.
+    let answers: { refused: string | null }[]
+    try {
+      answers = await addClasses(
+        picked.map(({ row, building }) => ({ weekday: row.weekday, starts: row.starts, ends: row.ends, building_code: building, title: row.title })),
+      )
+    } catch (reason) {
+      setAdding(false)
+      setProblem(errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error'))
+      return
     }
+    const left = items.filter((item) => !item.chosen)
+    let added = 0
+    picked.forEach((item, index) => {
+      const refused = answers[index]?.refused ?? null
+      if (refused === null) added += 1
+      else left.push({ ...item, refused: errorMessage(refused) })
+    })
     setAdding(false)
     setItems(left.length > 0 ? left : null)
     setDone(`נוסף ${added === 1 ? 'שיעור אחד' : `${added} שיעורים`} מתוך ${chosen.length}.`)
@@ -102,6 +108,12 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
         />
       </label>
       <p className={styles.hint}>קובץ האקסל של מערכת השעות, כפי שהידיעון מייצא אותו. הקובץ לא נשמר: רק השיעורים שתבחר.</p>
+      {user?.is_demo && (
+        <p className={styles.hint}>
+          הסטודנט לדוגמה משותף לכל המבקרים: השעות שתוסיף ייראו גם להם עד האיפוס היומי, ושמות הקורסים לא יישמרו. למערכת משלך,
+          מתחברים עם החשבון שלך.
+        </p>
+      )}
       {problem && <Notice tone="error">{problem}</Notice>}
       {done && <Notice tone="success">{done}</Notice>}
       {items && (
@@ -114,9 +126,9 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
               const { row } = item
               const name = row.title ?? 'שיעור'
               return (
-                <li key={`${row.weekday}-${row.starts}-${name}`} className={styles.row}>
+                <li key={index} className={styles.row}>
                   <label className={styles.check}>
-                    <input type="checkbox" checked={item.chosen} onChange={(e) => update(index, { chosen: e.target.checked })} />
+                    <input type="checkbox" checked={item.chosen} disabled={adding} onChange={(e) => update(index, { chosen: e.target.checked })} />
                     <span>
                       <strong>{name}</strong>
                       <span className={styles.when}>
@@ -133,6 +145,7 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
                       dir="ltr"
                       aria-label={`בניין לשיעור ${name}`}
                       value={item.building}
+                      disabled={adding}
                       onChange={(e) => update(index, { building: e.target.value })}
                     >
                       {!item.building && <option value="">בחר בניין</option>}

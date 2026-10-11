@@ -39,11 +39,10 @@ beforeEach(() => {
       sent.push({ path, body: init.body, type: headers['Content-Type'] ?? null })
       return Promise.resolve(jsonResponse(ROWS))
     }
-    if (path === '/me/classes' && init.method === 'POST') {
-      const body = JSON.parse(String(init.body))
+    if (path === '/me/classes/bulk' && init.method === 'POST') {
+      const body = JSON.parse(String(init.body)) as { starts: string }[]
       sent.push({ path, body, type: null })
-      if (refuse && body.starts === refuse) return Promise.resolve(jsonResponse({ detail: 'class_overlaps' }, 409))
-      return Promise.resolve(jsonResponse({ id: sent.length, ...body }, 201))
+      return Promise.resolve(jsonResponse(body.map((c) => ({ refused: refuse && c.starts === refuse ? 'class_overlaps' : null }))))
     }
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
   }))
@@ -95,10 +94,11 @@ describe('ImportClasses', () => {
     await user.selectOptions(await screen.findByLabelText(/בניין לשיעור אורח חיים בריא/), 'L')
     await user.click(screen.getByRole('button', { name: 'להוסיף 2 שיעורים' }))
     await waitFor(() => expect(onAdded).toHaveBeenCalled())
-    expect(sent.filter((s) => s.path === '/me/classes').map((s) => s.body)).toEqual([
+    // One request with both, in order.
+    expect(sent.filter((s) => s.path === '/me/classes/bulk').map((s) => s.body)).toEqual([[
       { weekday: 6, starts: '08:30', ends: '10:30', building_code: 'M', title: 'מבני נתונים, תרגיל' },
       { weekday: 3, starts: '10:30', ends: '12:20', building_code: 'L', title: 'אורח חיים בריא, הרצאה' },
-    ])
+    ]])
     expect(await screen.findByText(/נוסף שיעור אחד מתוך 2/)).toBeInTheDocument()
     // The refused one stays, with why.
     const left = screen.getByRole('listitem')
@@ -110,6 +110,9 @@ describe('ImportClasses', () => {
     show()
     await user.upload(await screen.findByLabelText('ייבוא מקובץ הידיעון'), xlsx())
     await user.click(await screen.findByRole('checkbox', { name: /אורח חיים בריא/ }))
-    expect(screen.getByRole('button', { name: 'להוסיף שיעור אחד' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'להוסיף שיעור אחד' }))
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/me/classes/bulk'))
+    const last = sent[sent.length - 1].body as { title: string }[]
+    expect(last.map((c) => c.title)).toEqual(['מבני נתונים, תרגיל'])
   })
 })

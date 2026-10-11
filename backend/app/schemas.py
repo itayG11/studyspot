@@ -600,3 +600,7 @@ class ImportRowOut(BaseModel):
     building_code: str | None  # None: the student picks one
     building_text: str
     title: str | None
+
+
+class BulkResultOut(BaseModel):
+    refused: str | None  # the reason code, or None when the class was added

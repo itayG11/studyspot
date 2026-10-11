@@ -190,6 +190,8 @@ def per_person(name: str, limit: int, window_seconds: float) -> Callable:
 
 # Suggestions between classes read every place, and the forecast of each:
 # a page asks every half minute, so a person is far below this.
+# Reading a timetable file is heavier than a write: a few a minute is plenty.
+import_limit = per_person("timetable-import", limit=10, window_seconds=60)
 BETWEEN_PER_MINUTE = 30
 between_limit = per_person("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60)
 

@@ -29,10 +29,17 @@ MAX_BYTES = 200 * 1024
 MAX_UNPACKED = 5 * 1024 * 1024
 MAX_ROWS = 40  # app/classes.py MAX_CLASSES
 TITLE_LENGTH = 60
+# Only the corner a timetable fills: a cell far out (column XFD) would
+# otherwise turn every row into thousands of empty cells in memory.
+READ_ROWS, READ_COLUMNS = 200, 12
+# A real class is a line or two; a longer cell is not one (and is not read).
+MAX_CELL = 400
 
 WEEKDAYS = {"ראשון": 6, "שני": 0, "שלישי": 1, "רביעי": 2, "חמישי": 3, "שישי": 4, "שבת": 5}
-_TIMES = re.compile(r"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$")
-_COURSE = re.compile(r"^\s*\d+\s*-\s*(.+?)\s+(הרצאה|תרגיל|תרגול|מעבדה|סמינר)(?=\s|$)")
+# The times at the end of a class: "08:30-10:30", also with an en dash.
+_TIMES = re.compile(r"(\d{1,2}):(\d{2}) ?[-–] ?(\d{1,2}):(\d{2})$")
+_NUMBER = re.compile(r"\d+-")  # the course number, before its name
+KINDS = ("הרצאה", "תרגיל", "תרגול", "מעבדה", "סמינר")
 
 
 class ImportRefused(Exception):
@@ -53,14 +60,14 @@ class Row:
 
 def read_yedion(data: bytes, buildings: list[Building]) -> list[Row]:
     sheet = _open(data)
-    rows = list(sheet.iter_rows(values_only=True))
+    rows = list(sheet.iter_rows(max_row=READ_ROWS, max_col=READ_COLUMNS, values_only=True))
     days, start = _day_columns(rows)
     out: list[Row] = []
     for values in rows[start:]:
         for column, weekday in days.items():
-            row = _read_cell(values[column], weekday, buildings) if column < len(values) else None
-            if row is not None and row not in out:
-                out.append(row)
+            for row in _read_cell(values[column], weekday, buildings) if column < len(values) else []:
+                if row not in out:
+                    out.append(row)
     if not out:
         raise ImportRefused("import_empty")
     if len(out) > MAX_ROWS:
@@ -99,44 +106,72 @@ def _day_columns(rows: list[tuple]) -> tuple[dict[int, int], int]:
     raise ImportRefused("import_not_yedion")
 
 
-def _read_cell(value, weekday: int, buildings: list[Building]) -> Row | None:
-    text = _clean(str(value or ""))
-    if not text or text.startswith("המשך"):
-        return None
-    times = _TIMES.search(text)
+def _read_cell(value, weekday: int, buildings: list[Building]) -> list[Row]:
+    """A cell can hold more than one class, a line each."""
+    text = str(value or "")
+    if len(text) > MAX_CELL:
+        return []
+    out = []
+    for line in _clean(text).splitlines():
+        line = line.strip()
+        if line and not line.startswith("המשך") and (row := _read_class(line, weekday, buildings)) is not None:
+            out.append(row)
+    return out
+
+
+def _read_class(line: str, weekday: int, buildings: list[Building]) -> Row | None:
+    times = _TIMES.search(" ".join(line.split()))
     if times is None:
         return None
     sh, sm, eh, em = (int(g) for g in times.groups())
     if not (0 <= sh < 24 and 0 <= eh < 24 and sm < 60 and em < 60) or (sh, sm) >= (eh, em):
         return None
-    before = text[: times.start()]
-    code, said = _building(before, buildings)
-    return Row(weekday, f"{sh:02d}:{sm:02d}", f"{eh:02d}:{em:02d}", code, said, _title(text))
+    words = " ".join(line.split()).split(" ")
+    place = words[: -len(times.group(0).split(" "))]
+    code, said = _building(place, buildings)
+    return Row(weekday, f"{sh:02d}:{sm:02d}", f"{eh:02d}:{em:02d}", code, said, _title(line))
 
 
-def _title(text: str) -> str | None:
-    """"מבני נתונים, תרגיל": the course and the kind of class, nothing about who teaches it."""
-    course = _COURSE.match(text.split("\t")[0]) or _COURSE.match(text)
-    if course is None:
+def _title(line: str) -> str | None:
+    """"מבני נתונים, תרגיל": the course and the kind of class, nothing about
+    who teaches it. Words, not a pattern: no input can make this slow."""
+    first = line.split("\t")[0].split()
+    if not first or not _NUMBER.match(first[0]):
         return None
-    return f"{course.group(1).strip()}, {course.group(2)}"[:TITLE_LENGTH]
+    words = [_NUMBER.sub("", first[0], count=1), *first[1:]]
+    for index, word in enumerate(words):
+        if word in KINDS and index > 0:
+            name = " ".join(w for w in words[:index] if w)
+            return f"{name}, {word}"[:TITLE_LENGTH] if name else None
+    return None
 
 
-def _building(before: str, buildings: list[Building]) -> tuple[str | None, str]:
-    """The campus building named last before the times: by its code as a
-    whole word ("219 M נגישות M"), else by its name."""
-    words = before.split()
+def _building(place: list[str], buildings: list[Building]) -> tuple[str | None, str]:
+    """Where the class is, from the words just before its times only (never
+    further back: that is the lecturer's name). The export writes the place
+    twice: "219 M נגישות M", "702 L L", "אולם ספורט אולם ספורט"."""
     codes = {b.code.casefold(): b.code for b in buildings}
-    for word in reversed(words):
+    for word in reversed(place[-2:]):
         if word.casefold() in codes:
             return codes[word.casefold()], word
+    said = _twice(place)
     for b in buildings:
-        if b.name and b.name in before:
-            return b.code, b.name
-    return None, words[-1] if words else ""
+        if said and b.name and b.name == said:
+            return b.code, said
+    return None, said
+
+
+def _twice(words: list[str]) -> str:
+    """The words written twice at the end ("אולם ספורט אולם ספורט" ->
+    "אולם ספורט"), or nothing: anything else could be a person's name."""
+    for size in range(min(4, len(words) // 2), 0, -1):
+        if words[-size:] == words[-2 * size : -size]:
+            return " ".join(words[-size:])
+    return ""
 
 
 def _clean(text: str) -> str:
     """No control or direction characters (they could hide or reorder text);
-    tabs stay, they split the course from the rest."""
-    return "".join(ch for ch in text if ch == "\t" or unicodedata.category(ch) not in ("Cc", "Cf")).strip()
+    tabs stay, they split the course from the rest, and line breaks, which
+    split one class from the next."""
+    return "".join(ch for ch in text if ch in "\t\n" or unicodedata.category(ch) not in ("Cc", "Cf")).strip()

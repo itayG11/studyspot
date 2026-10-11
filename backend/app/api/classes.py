@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -17,8 +18,8 @@ from app.between_classes import suggest
 from app.clock import get_now
 from app.errors import Refusal
 from app.models import Building, ClassSlot, User
-from app.ratelimit import between_limit, write_limit
-from app.schemas import BetweenClassesOut, ClassSlotIn, ClassSlotOut, GapOut, ImportRowOut, SuggestionOut
+from app.ratelimit import between_limit, import_limit, write_limit
+from app.schemas import BetweenClassesOut, BulkResultOut, ClassSlotIn, ClassSlotOut, GapOut, ImportRowOut, SuggestionOut
 
 router = APIRouter(tags=["classes"])
 
@@ -63,7 +64,25 @@ def remove_class(class_id: Annotated[int, Path(gt=0)], user: UserDep, db: Sessio
     db.commit()
 
 
-@router.post("/me/classes/import", response_model=list[ImportRowOut], dependencies=[Depends(write_limit)])
+@router.post(
+    "/me/classes/bulk", response_model=list[BulkResultOut], dependencies=[Depends(write_limit)],
+)
+def add_classes(body: Annotated[list[ClassSlotIn], Field(min_length=1, max_length=classes.MAX_CLASSES)], user: UserDep, db: SessionDep):
+    """Several classes at once (an imported timetable): each through the same
+    checks as one, in order, and each answer said; one write for the limit."""
+    results = []
+    for item in body:
+        try:
+            with db.begin_nested():
+                classes.add_class(db, user, item.weekday, item.starts, item.ends, item.building_code, item.title)
+            results.append(BulkResultOut(refused=None))
+        except Refusal as refusal:
+            results.append(BulkResultOut(refused=refusal.code))
+    db.commit()
+    return results
+
+
+@router.post("/me/classes/import", response_model=list[ImportRowOut], dependencies=[Depends(import_limit)])
 async def preview_import(request: Request, user: UserDep, db: SessionDep):
     """A timetable exported from the college, sent as the request body: what
     it holds, for the student to check and add. Nothing is saved, and the
