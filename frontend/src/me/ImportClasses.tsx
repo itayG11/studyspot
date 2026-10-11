@@ -5,7 +5,7 @@
 // file's words, and its admin is told how many students name it. Each class
 // goes through the usual checks: a refused one stays on the list with why.
 
-import { Camera, FileSpreadsheet } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { useId, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
 import { getBuildings } from '../api/campus'
@@ -51,6 +51,11 @@ async function smaller(file: File): Promise<Blob> {
   }
 }
 
+const XLSX = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+const IMAGES = 'image/png,image/jpeg,image/webp'
+const PICTURE = /\.(png|jpe?g|webp|heic|heif)$/i
+const HEIC = /heic|heif/i
+
 const count = (n: number) => (n === 1 ? 'שיעור אחד' : `${n} שיעורים`)
 
 export function ImportClasses({ onAdded }: { onAdded: () => void }) {
@@ -67,8 +72,19 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
-  async function pick(event: ChangeEvent<HTMLInputElement>, photo: boolean) {
+  async function pick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
+    // A picture goes to be read by the model; anything else is the Excel file
+    // (the server checks the bytes either way). By type, or by name: some
+    // phones give no type at all.
+    const photo = file !== undefined && (file.type.startsWith('image/') || PICTURE.test(file.name))
+    if (file && photo && (HEIC.test(file.type) || HEIC.test(file.name))) {
+      // An iPhone photo format the browser cannot redraw and the server does
+      // not read: said here, without spending one of the day's tries.
+      event.target.value = ''
+      setProblem('תמונות בפורמט HEIC לא נתמכות. שלח צילום מסך של המערכת, או תמונה בפורמט JPEG או PNG.')
+      return
+    }
     event.target.value = '' // the same file can be picked again
     if (!file) return
     setProblem(null)
@@ -133,35 +149,22 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
   return (
     <div className={styles.import}>
       <p className={styles.lead}>{reading ? 'קורא את מערכת השעות…' : 'הוספת מערכת שעות:'}</p>
-      <div className={styles.picks}>
-        <label className={styles.pick}>
-          <FileSpreadsheet aria-hidden="true" />
-          <span>קובץ אקסל מהידיעון</span>
-          <input
-            type="file"
-            className="visually-hidden"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            disabled={reading || adding}
-            onChange={(event) => void pick(event, false)}
-          />
-        </label>
-        {options.data?.photo && (
-          <label className={styles.pick}>
-            <Camera aria-hidden="true" />
-            <span>צילום של המערכת</span>
-            <input
-              type="file"
-              className="visually-hidden"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={reading || adding}
-              onChange={(event) => void pick(event, true)}
-            />
-          </label>
-        )}
-      </div>
+      <label className={styles.pick}>
+        <Upload aria-hidden="true" />
+        <span>העלאת קובץ</span>
+        <input
+          type="file"
+          className="visually-hidden"
+          accept={options.data?.photo ? `${XLSX},${IMAGES}` : XLSX}
+          disabled={reading || adding}
+          onChange={(event) => void pick(event)}
+        />
+      </label>
       <p className={styles.hint}>
-        האקסל: כפי שהידיעון מייצא אותו. צילום: צילום מסך או תמונה של המערכת. הקובץ לא נשמר, רק השיעורים שתבחר.
-        {options.data?.photo && ' צילום נשלח לקריאה לשירות של Anthropic.'}
+        {options.data?.photo
+          ? 'קובץ האקסל שהידיעון מייצא, או צילום מסך או תמונה של המערכת. צילום נשלח לקריאה לשירות של Anthropic.'
+          : 'קובץ האקסל שהידיעון מייצא.'}{' '}
+        הקובץ לא נשמר, רק השיעורים שתבחר.
       </p>
       {user?.is_demo && (
         <p className={styles.hint}>
@@ -189,7 +192,7 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
                       <strong>{name}</strong>
                       <span className={styles.when}>
                         {weekdayName(row.weekday)} ·{' '}
-                        <span dir="ltr">
+                        <span dir="ltr" className={styles.times}>
                           {row.starts}–{row.ends}
                         </span>
                       </span>

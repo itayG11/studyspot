@@ -39,7 +39,7 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   // From the college's file: previewed, then added; nothing kept before.
   const file = resolve(import.meta.dirname, '../test-results/yedion.xlsx')
   execFileSync(process.env.PYTHON ?? 'python', [`${import.meta.dirname}/make_yedion.py`, file], { cwd: backend })
-  await week.getByLabel('קובץ אקסל מהידיעון').setInputFiles(file)
+  await week.getByLabel('העלאת קובץ').setInputFiles(file)
   await expect(week.getByRole('checkbox', { name: /יסודות המחשוב, תרגיל/ })).toBeChecked()
   await week.getByRole('button', { name: 'להוסיף שיעור אחד' }).click()
   await expect(week.getByText(/נוסף שיעור אחד מתוך 1/)).toBeVisible()

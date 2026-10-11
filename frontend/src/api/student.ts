@@ -48,6 +48,8 @@ export const previewImport = (file: Blob) => api<ImportRow[]>('/me/classes/impor
 export const previewPhoto = (file: Blob) => api<ImportRow[]>('/me/classes/import-photo', { method: 'POST', file, auth: true })
 // Which ways in the server offers (a photo needs its key).
 export const importOptions = () => api<{ photo: boolean }>('/me/classes/import-options', { auth: true })
+// The whole timetable at once.
+export const removeAllClasses = () => api<{ removed: number }>('/me/classes', { method: 'DELETE', auth: true })
 export const removeClass = (id: number) => api<void>(`/me/classes/${id}`, { method: 'DELETE', auth: true })
 // Today's gaps, or another weekday's (its next date, by the forecast).
 export const betweenClasses = (weekday?: number) =>

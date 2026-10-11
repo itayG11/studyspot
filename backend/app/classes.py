@@ -2,7 +2,7 @@
 
 from datetime import time
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
@@ -92,6 +92,18 @@ def listed_building(db: Session, institution_id: int, text: str) -> Building | N
         if key in {same_place(n) for n in (building.code, building.name) if n}:
             return building
     return None
+
+
+def remove_all(db: Session, user: User) -> int:
+    """The whole timetable at once; how many classes went. The shared demo
+    student gets the sample back instead: every visitor is that student."""
+    removed = db.execute(delete(ClassSlot).where(ClassSlot.user_id == user.id)).rowcount
+    if _shared_demo(db, user):
+        from app.seed.timetable import give_sample_timetable
+
+        give_sample_timetable(db, user)
+    db.flush()
+    return removed
 
 
 def remove_class(db: Session, user: User, class_id: int) -> None:

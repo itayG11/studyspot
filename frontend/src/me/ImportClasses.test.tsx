@@ -80,7 +80,7 @@ describe('ImportClasses', () => {
   it('sends the file as it is, and shows what it holds', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('קובץ אקסל מהידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('העלאת קובץ'), xlsx())
     expect(await screen.findByRole('checkbox', { name: /מבני נתונים, תרגיל/ })).toBeChecked()
     expect(sent[0].type).toBe('application/octet-stream')
     expect(sent[0].body).toBeInstanceOf(File)
@@ -89,7 +89,7 @@ describe('ImportClasses', () => {
   it('a place the campus does not list is kept as the file names it, ready to add', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('קובץ אקסל מהידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('העלאת קובץ'), xlsx())
     expect(await screen.findByRole('button', { name: 'להוסיף 2 שיעורים' })).toBeEnabled()
     expect(screen.getByLabelText(/מקום לשיעור אורח חיים בריא/)).toHaveDisplayValue('אולם ספורט, לא ברשימה')
     expect(screen.getByText(/עוד לא ברשימת הבניינים/)).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('ImportClasses', () => {
     const user = userEvent.setup()
     rows = [...ROWS, NOWHERE]
     show()
-    await user.upload(await screen.findByLabelText('קובץ אקסל מהידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('העלאת קובץ'), xlsx())
     const add = await screen.findByRole('button', { name: 'להוסיף 3 שיעורים' })
     expect(add).toBeDisabled()
     await user.selectOptions(screen.getByLabelText(/מקום לשיעור סמינר/), 'L')
@@ -110,7 +110,7 @@ describe('ImportClasses', () => {
     const user = userEvent.setup()
     refuse = '08:30'
     const onAdded = show()
-    await user.upload(await screen.findByLabelText('קובץ אקסל מהידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('העלאת קובץ'), xlsx())
     await user.click(await screen.findByRole('button', { name: 'להוסיף 2 שיעורים' }))
     await waitFor(() => expect(onAdded).toHaveBeenCalled())
     // One request with both, in order.
@@ -128,7 +128,8 @@ describe('ImportClasses', () => {
     const user = userEvent.setup()
     show()
     const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'מערכת.png', { type: 'image/png' })
-    await user.upload(await screen.findByLabelText('צילום של המערכת'), png)
+    await waitFor(() => expect(screen.getByLabelText('העלאת קובץ')).toHaveAttribute('accept', expect.stringContaining('image/png')))
+    await user.upload(screen.getByLabelText('העלאת קובץ'), png)
     expect(await screen.findByRole('checkbox', { name: /מבני נתונים, תרגיל/ })).toBeChecked()
     expect(sent[0]).toMatchObject({ path: '/me/classes/import-photo', type: 'application/octet-stream' })
     expect(screen.getByText(/נקרא בעזרת בינה מלאכותית/)).toBeInTheDocument()
@@ -137,14 +138,28 @@ describe('ImportClasses', () => {
   it('without photo reading on the server, only the file is offered', async () => {
     photo = false
     show()
-    expect(await screen.findByLabelText('קובץ אקסל מהידיעון')).toBeInTheDocument()
-    await waitFor(() => expect(screen.queryByLabelText('צילום של המערכת')).not.toBeInTheDocument())
+    // The answer has arrived (the hint says so) and still: Excel only.
+    expect(await screen.findByText('קובץ האקסל שהידיעון מייצא.', { exact: false })).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByLabelText('העלאת קובץ')).not.toHaveAttribute('accept', expect.stringContaining('image'))
+    expect(screen.queryByText(/Anthropic/)).not.toBeInTheDocument()
+  })
+
+  it('a photo with no type goes by its name, and HEIC is refused here, before any try', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    show()
+    await waitFor(() => expect(screen.getByLabelText('העלאת קובץ')).toHaveAttribute('accept', expect.stringContaining('image/png')))
+    await user.upload(screen.getByLabelText('העלאת קובץ'), new File([new Uint8Array([1])], 'IMG_1.HEIC', { type: '' }))
+    expect(await screen.findByText(/HEIC לא נתמכות/)).toBeInTheDocument()
+    expect(sent).toEqual([])
+    await user.upload(screen.getByLabelText('העלאת קובץ'), new File([new Uint8Array([0x89, 0x50])], 'week.png', { type: '' }))
+    await waitFor(() => expect(sent[0]?.path).toBe('/me/classes/import-photo'))
   })
 
   it('unchecking a class leaves it out', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('קובץ אקסל מהידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('העלאת קובץ'), xlsx())
     await user.click(await screen.findByRole('checkbox', { name: /אורח חיים בריא/ }))
     await user.click(screen.getByRole('button', { name: 'להוסיף שיעור אחד' }))
     await waitFor(() => expect(sent.at(-1)?.path).toBe('/me/classes/bulk'))

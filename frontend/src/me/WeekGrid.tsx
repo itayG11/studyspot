@@ -2,7 +2,7 @@
 // hours, each break of half an hour or more a dashed slot. Picking a class
 // shows its details and removal; picking a break shows where to go in it
 // (today's, from "between classes"); picking an empty hour fills the form.
-// On a phone: one day at a time, chosen by tabs.
+// On a phone: the same week, scrolled sideways.
 
 import { Coffee } from 'lucide-react'
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
@@ -10,11 +10,10 @@ import { betweenClasses } from '../api/student'
 import type { BetweenClasses as Between, ClassSlot } from '../api/types'
 import { useApi } from '../hooks/useApi'
 import { REFRESH_INTERVAL_MS } from '../config'
-import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useInstitution } from '../institution'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
 import { classPlace, courseTone, dayLayout, hourRange, pickedTime, type Gap, type HourRange } from '../logic/week'
-import { Chip, ConfirmButton, JumpTo } from '../ui'
+import { ConfirmButton, JumpTo } from '../ui'
 import { BETWEEN_ID, SuggestionList } from './BetweenClasses'
 import styles from './week.module.css'
 
@@ -50,16 +49,12 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, o
   const today = todayWeekday(timezone, now)
   const nowMinutes = minutesOf(formatTime(now.toISOString(), timezone))
 
-  const phone = useMediaQuery('(max-width: 720px)')
   const days = WEEK_ORDER.filter((d) => d !== SATURDAY || classes.some((c) => c.weekday === SATURDAY))
-  const [shownDay, setShownDay] = useState<number | null>(null)
-  const firstDay = days.includes(today) ? today : (days.find((d) => classes.some((c) => c.weekday === d)) ?? days[0])
-  const phoneDay = shownDay !== null && days.includes(shownDay) ? shownDay : firstDay
   const [picked, setPicked] = useState<Picked>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const range = hourRange(classes)
   const hours = Array.from({ length: range.to - range.from }, (_, i) => range.from + i)
-  const visible = phone ? [phoneDay] : days
+  const visible = days
 
   // A class picked and then removed, or a break that a new class filled:
   // nothing to show.
@@ -67,15 +62,8 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, o
 
   return (
     <div className={styles.board}>
-      {phone && (
-        <div className={styles.tabs} role="group" aria-label="יום בשבוע">
-          {days.map((d) => (
-            <Chip key={d} selected={d === phoneDay} onClick={() => setShownDay(d)}>
-              {weekdayName(d).replace('יום ', '')}
-            </Chip>
-          ))}
-        </div>
-      )}
+      {/* On a phone the whole week too, as on a computer: it scrolls sideways. */}
+      <div className={styles.scroller} tabIndex={0} role="region" aria-label="מערכת השעות, אפשר לגלול לצדדים">
       <div ref={gridRef} tabIndex={-1} aria-label="מערכת השעות לפי ימים" role="group" className={styles.grid} style={{ ['--days' as string]: visible.length, ['--hours' as string]: hours.length }}>
         <div className={styles.corner} aria-hidden="true" />
         {visible.map((d) => (
@@ -104,6 +92,7 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, o
             onPickTime={onPickTime}
           />
         ))}
+      </div>
       </div>
       {pickedNow && (
         <Details

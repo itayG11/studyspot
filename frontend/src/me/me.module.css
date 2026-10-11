@@ -363,3 +363,10 @@
   flex-wrap: wrap;
   gap: var(--s-1);
 }
+
+/* "Remove the whole timetable": under the grid, away from the form. */
+.clearAll {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+}

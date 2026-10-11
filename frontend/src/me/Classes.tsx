@@ -3,14 +3,14 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { getBuildings } from '../api/campus'
-import { addClass, removeClass } from '../api/student'
+import { addClass, removeAllClasses, removeClass } from '../api/student'
 import type { BetweenClasses as BetweenClassesData, ClassSlot } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { WEEK_ORDER, weekdayName } from '../logic/time'
-import { ActionError, Button, ErrorState, LoadingRegion, Skeleton } from '../ui'
+import { ActionError, Button, ConfirmButton, ErrorState, LoadingRegion, Skeleton } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './me.module.css'
 import { ImportClasses } from './ImportClasses'
@@ -33,6 +33,11 @@ export function Classes({ classes, between, onShowBetween, onChanged }: Props) {
   const [removingId, setRemovingId] = useState<number | null>(null) // only that class's button spins
   // An empty hour picked on the grid: the form opens on that day and time.
   const [preset, setPreset] = useState<{ weekday: number; starts: string; key: number } | null>(null)
+
+  const clearing = useAction()
+  async function removeAll() {
+    if (await clearing.run(() => removeAllClasses().then(() => true))) onChanged()
+  }
 
   async function remove(id: number) {
     setRemovingId(id)
@@ -63,6 +68,18 @@ export function Classes({ classes, between, onShowBetween, onChanged }: Props) {
         />
       )}
       <ActionError action={removing} />
+      {list && list.length > 0 && (
+        <div className={styles.clearAll}>
+          <ConfirmButton
+            label="מחיקת כל המערכת"
+            confirmLabel="כן, למחוק את כל השיעורים"
+            size="sm"
+            busy={clearing.busy}
+            onConfirm={() => void removeAll()}
+          />
+          <ActionError action={clearing} />
+        </div>
+      )}
       <ImportClasses onAdded={onChanged} />
       <NewClassForm preset={preset} onAdded={onChanged} />
       <p className={styles.idleText}>רק אתה רואה את המערכת שלך. היא נמחקת עם החשבון.</p>

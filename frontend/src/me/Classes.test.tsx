@@ -74,6 +74,11 @@ beforeEach(() => {
       asked.push(day)
       return Promise.resolve(jsonResponse(day === null ? between : { ...(otherDay ?? between), weekday: Number(day), date: '2026-10-18' }))
     }
+    if (path === '/me/classes' && method === 'DELETE') {
+      const removed = classes.length
+      classes = []
+      return Promise.resolve(jsonResponse({ removed }))
+    }
     if (path === '/me/classes' && method === 'POST') {
       const body = JSON.parse(String(init.body))
       if (body.starts === '09:00') return Promise.resolve(jsonResponse({ detail: 'class_overlaps' }, 409))
@@ -285,6 +290,28 @@ describe('the timetable', () => {
     const sunday = await within(week).findByRole('list', { name: 'יום ראשון' })
     await user.click(await within(sunday).findByRole('button', { name: 'שיעור, יום ראשון 14:00 עד 15:30, אולם ספורט' }))
     expect(await screen.findByText(/עוד לא במפה של המוסד/)).toBeInTheDocument()
+  })
+
+  it('the whole timetable can be removed at once, after asking', async () => {
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    await within(week).findByRole('list', { name: 'יום ראשון' })
+    await user.click(within(week).getByRole('button', { name: 'מחיקת כל המערכת' }))
+    expect(sent.some((r) => r.method === 'DELETE')).toBe(false) // only asked, not yet sent
+    await user.click(within(week).getByRole('button', { name: 'כן, למחוק את כל השיעורים' }))
+    await waitFor(() => expect(sent.at(-1)).toMatchObject({ method: 'DELETE', path: '/me/classes' }))
+    await waitFor(() => expect(within(week).queryByRole('button', { name: /^מבני נתונים,/ })).not.toBeInTheDocument())
+  })
+
+  it('the whole week shows at once, a phone too (no day tabs), in a scrollable region', async () => {
+    renderMe()
+    const week = await weekSection()
+    for (const day of ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי']) {
+      expect(await within(week).findByRole('list', { name: day })).toBeInTheDocument()
+    }
+    expect(within(week).queryByRole('group', { name: 'יום בשבוע' })).not.toBeInTheDocument()
+    expect(within(week).getByRole('region', { name: /אפשר לגלול לצדדים/ })).toHaveAttribute('tabindex', '0')
   })
 
   it('a building under construction is not offered', async () => {

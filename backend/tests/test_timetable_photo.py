@@ -28,21 +28,22 @@ CAMPUS = [Building("M", "בניין מכטרוניקה"), Building("L")]
 
 def answer(*classes):
     return {"classes": [
-        {"day": day, "starts": s, "ends": e, "place": place, "course": course}
+        {"day": day, "starts": s, "ends": e, "building": place, "course": course}
         for day, s, e, place, course in classes
     ]}
 
 
 def reader(result):
-    seen = []
+    seen, known = [], []
 
-    def ask(image: bytes, media_type: str):
+    def ask(image: bytes, media_type: str, buildings: str):
         seen.append(media_type)
+        known.append(buildings)
         if isinstance(result, Exception):
             raise result
         return result
 
-    ask.seen = seen
+    ask.seen, ask.known = seen, known
     return ask
 
 
@@ -69,6 +70,37 @@ def test_classes_come_back_as_the_same_preview_as_the_file():
         (1, "14:50", "16:50", "L", "l", "ארכיטקטורה, הרצאה"),
         (3, "10:30", "12:20", None, "אולם ספורט", "אורח חיים בריא"),
     ]
+
+
+def test_the_campus_buildings_are_told_to_the_model_and_a_room_is_not_a_building():
+    # The Braude export writes "219 M נגישות M": a room, then the building.
+    ask = reader(answer(("ראשון", "08:30", "10:30", "219 M", None), ("שני", "10:30", "12:20", "317", None)))
+    rows = timetable_photo.read_photo(PNG, CAMPUS, ask)
+    assert [(r.building_code, r.building_text) for r in rows] == [("M", "219 M"), (None, "317")]
+    # Codes only: a name is written by the institution's admin, and words
+    # in the prompt could steer the model; names are matched here instead.
+    assert ask.known[0] == "M, L"
+
+
+def test_the_export_writes_the_building_twice_or_after_accessibility():
+    rows = timetable_photo.read_photo(PNG, CAMPUS, reader(answer(
+        ("ראשון", "08:30", "10:30", "702 L L", None),
+        ("שני", "08:30", "10:30", "219 M נגישות M", None),
+    )))
+    assert [r.building_code for r in rows] == ["L", "M"]  # Sunday first
+
+
+def test_a_single_word_matches_a_code_only_never_a_name():
+    # A one-word building name must not win over the code beside it.
+    campus = [Building("M"), Building("K", "כהן")]
+    [row] = timetable_photo.read_photo(PNG, campus, reader(answer(("ראשון", "08:30", "10:30", "219 M כהן", None))))
+    assert row.building_code == "M"
+
+
+def test_a_campus_with_no_buildings_says_so_in_the_prompt():
+    client = FakeClient(Response('{"classes": []}'))
+    timetable_photo.claude_reader("k6", client)(PNG, "image/png", "")
+    assert "none listed" in client.messages.sent["messages"][0]["content"][1]["text"]
 
 
 def test_a_building_by_its_full_name_is_found():
@@ -209,24 +241,25 @@ def status_error(cls, code):
 
 def test_the_request_is_one_image_held_to_the_schema():
     client = FakeClient(Response('{"classes": []}'))
-    assert timetable_photo.claude_reader("k1", client)(PNG, "image/png") == {"classes": []}
+    assert timetable_photo.claude_reader("k1", client)(PNG, "image/png", "M, L") == {"classes": []}
     sent = client.messages.sent
     assert sent["model"] == "claude-haiku-5-5"
     assert sent["output_config"]["format"] == {"type": "json_schema", "schema": timetable_photo.SCHEMA}
-    image = sent["messages"][0]["content"][0]
+    image, text = sent["messages"][0]["content"]
     assert (image["type"], image["source"]["media_type"]) == ("image", "image/png")
+    assert "M, L" in text["text"]  # the campus's buildings, to pick from
 
 
 @pytest.mark.parametrize("stop", ["max_tokens", "refusal"])
 def test_an_answer_cut_off_or_declined_is_unreadable(stop):
     with pytest.raises(ImportRefused, match="import_photo_unreadable"):
-        timetable_photo.claude_reader("k2", FakeClient(Response("{}", stop)))(PNG, "image/png")
+        timetable_photo.claude_reader("k2", FakeClient(Response("{}", stop)))(PNG, "image/png", "")
 
 
 def test_an_image_the_api_refuses_is_unreadable():
     error = status_error(anthropic.BadRequestError, 400)
     with pytest.raises(ImportRefused, match="import_photo_unreadable"):
-        timetable_photo.claude_reader("k3", FakeClient(error))(PNG, "image/png")
+        timetable_photo.claude_reader("k3", FakeClient(error))(PNG, "image/png", "")
 
 
 @pytest.mark.parametrize("cls,code", [
@@ -234,7 +267,7 @@ def test_an_image_the_api_refuses_is_unreadable():
 ])
 def test_the_service_or_the_key_failing_is_unavailable_and_logged(cls, code, caplog):
     with pytest.raises(timetable_photo.PhotoUnavailable):
-        timetable_photo.claude_reader(f"k{code}", FakeClient(status_error(cls, code)))(PNG, "image/png")
+        timetable_photo.claude_reader(f"k{code}", FakeClient(status_error(cls, code)))(PNG, "image/png", "")
     assert f"status={code}" in caplog.text
     assert f"k{code}" not in caplog.text  # never the key
 
@@ -242,7 +275,7 @@ def test_the_service_or_the_key_failing_is_unavailable_and_logged(cls, code, cap
 def test_a_timeout_is_unavailable():
     timeout = anthropic.APITimeoutError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
     with pytest.raises(timetable_photo.PhotoUnavailable):
-        timetable_photo.claude_reader("k5", FakeClient(timeout))(PNG, "image/png")
+        timetable_photo.claude_reader("k5", FakeClient(timeout))(PNG, "image/png", "")
 
 
 def test_the_reader_comes_from_the_key():

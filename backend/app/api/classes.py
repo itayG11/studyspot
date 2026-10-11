@@ -57,6 +57,14 @@ def add_class(body: ClassSlotIn, user: UserDep, db: SessionDep):
     return _out(row)
 
 
+@router.delete("/me/classes", dependencies=[Depends(write_limit)])
+def remove_all_classes(user: UserDep, db: SessionDep) -> dict[str, int]:
+    """The whole timetable at once (the site asks first)."""
+    removed = classes.remove_all(db, user)
+    db.commit()
+    return {"removed": removed}
+
+
 @router.delete(
     "/me/classes/{class_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)]
 )

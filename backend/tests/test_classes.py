@@ -120,3 +120,32 @@ def test_a_building_under_construction_is_refused(client, braude):
 @pytest.mark.parametrize("bad", [{"starts": "10:00:30"}, {"starts": "10:00+02:00"}])
 def test_times_are_whole_minutes_with_no_zone(client, bad):
     assert client.post("/me/classes", json={**lesson(), **bad}).status_code == 422
+
+
+def test_the_whole_timetable_can_be_removed_at_once_and_only_mine(client, session, braude, student):
+    client.post("/me/classes", json=lesson())
+    client.post("/me/classes", json=lesson(MONDAY))
+    other = User(institution_id=braude.id, email="o2@braude.example", display_name="O")
+    session.add(other)
+    session.flush()
+    client.user = other
+    client.post("/me/classes", json=lesson())
+    client.user = student
+    response = client.delete("/me/classes")
+    assert (response.status_code, response.json()) == (200, {"removed": 2})
+    assert client.get("/me/classes").json() == []
+    client.user = other
+    assert len(client.get("/me/classes").json()) == 1
+    client.user = None
+    assert client.delete("/me/classes").status_code == 401
+
+
+def test_the_shared_demo_student_gets_the_sample_back_instead(client, session, braude, student):
+    # Every visitor is that student: "remove all" puts the sample back.
+    from app.models import AuthProvider, UserIdentity
+
+    session.add(UserIdentity(user_id=student.id, provider=AuthProvider.DEMO, subject="braude:student"))
+    session.flush()
+    client.post("/me/classes", json=lesson(title=None))
+    assert client.delete("/me/classes").status_code == 200
+    assert len(client.get("/me/classes").json()) > 0

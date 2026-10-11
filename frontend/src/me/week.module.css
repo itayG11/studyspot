@@ -7,10 +7,17 @@
   gap: var(--s-3);
 }
 
-.tabs {
-  display: flex;
-  gap: var(--s-1);
+.scroller {
   overflow-x: auto;
+  border-radius: var(--r-lg);
+  overscroll-behavior-x: contain;
+  /* A tile reached by the keyboard is not left under the sticky hours. */
+  scroll-padding-inline-start: calc(2.75rem + 6px);
+}
+
+.scroller:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .grid {
@@ -333,10 +340,24 @@
   }
 }
 
+/* A phone: the whole week, each day wide enough to read, scrolled sideways;
+   the hours stay in view at the edge. */
 @media (max-width: 720px) {
   .grid {
-    --hour: 64px;
+    --hour: 60px;
+    grid-template-columns: 2.75rem repeat(var(--days), minmax(108px, 1fr));
+    min-width: max-content;
     padding: var(--s-3);
+  }
+
+  .gutter,
+  .corner {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 2;
+    background: var(--stone-0);
+    /* Covers the column gap too, so tiles never show beside it. */
+    box-shadow: 6px 0 0 var(--stone-0), -6px 0 0 var(--stone-0);
   }
 }
 
