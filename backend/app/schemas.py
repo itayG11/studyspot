@@ -492,3 +492,37 @@ class GeocodeResultOut(BaseModel):
 class PendingRuleOut(LoginRuleOut):
     institution_slug: str
     institution_name: str
+
+
+class ClassSlotIn(BaseModel):
+    """A class in the student's week, from the "my area" page."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    weekday: int = Field(ge=0, le=6)  # Python's numbering: Monday is 0
+    starts: time
+    ends: time
+    building_code: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9-]+$")
+    title: str | None = Field(default=None, max_length=60)
+
+    @field_validator("title")
+    @classmethod
+    def _clean_title(cls, value: str | None) -> str | None:
+        return _plain_text(value) or None
+
+    @model_validator(mode="after")
+    def _ends_after_start(self) -> "ClassSlotIn":
+        if self.ends <= self.starts:
+            raise ValueError("a class ends after it starts")
+        self.building_code = self.building_code.upper()
+        return self
+
+
+class ClassSlotOut(BaseModel):
+    id: int
+    weekday: int
+    starts: time
+    ends: time
+    building_code: str
+    title: str | None
+
