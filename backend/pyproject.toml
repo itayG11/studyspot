@@ -12,6 +12,10 @@ dependencies = [
     "pydantic-settings>=2.6",
     "pyjwt[crypto]>=2.10",
     "httpx>=0.28",
+    # Reading a timetable exported from the college (app/timetable_import.py);
+    # with defusedxml installed, openpyxl parses the file's XML safely.
+    "openpyxl>=3.1",
+    "defusedxml>=0.7",
 ]
 
 [project.optional-dependencies]

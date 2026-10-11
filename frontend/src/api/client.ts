@@ -62,12 +62,14 @@ export function resetSessionForTests(): void {
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
+  file?: Blob // sent as it is (an upload), instead of a JSON body
   auth?: boolean // send the access token; refresh it once if it expired
 }
 
 async function send<T>(path: string, options: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {}
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  if (options.file !== undefined) headers['Content-Type'] = 'application/octet-stream'
+  else if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.auth && accessToken) headers.Authorization = `Bearer ${accessToken}`
 
   let response: Response
@@ -75,7 +77,7 @@ async function send<T>(path: string, options: RequestOptions): Promise<T> {
     response = await fetch(`${API_URL}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.file ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
       // The session cookie belongs to /auth only; other requests use the token.
       credentials: path.startsWith('/auth/') ? 'include' : 'omit',
     })

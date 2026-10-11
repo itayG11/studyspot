@@ -1,7 +1,7 @@
 // What a signed-in student can do: book, check in, and manage both.
 
 import { api, ApiError } from './client'
-import type { Availability, BetweenClasses, Booking, CheckIn, ClassSlot, NewClass } from './types'
+import type { Availability, BetweenClasses, Booking, CheckIn, ClassSlot, ImportRow, NewClass } from './types'
 
 export const getAvailability = (placeId: number, date: string) =>
   api<Availability>(`/places/${placeId}/availability?date=${encodeURIComponent(date)}`)
@@ -39,6 +39,8 @@ export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })
 export const addClass = (lesson: NewClass) => api<ClassSlot>('/me/classes', { method: 'POST', body: lesson, auth: true })
+// A timetable file from the college: what it holds, nothing saved yet.
+export const previewImport = (file: Blob) => api<ImportRow[]>('/me/classes/import', { method: 'POST', file, auth: true })
 export const removeClass = (id: number) => api<void>(`/me/classes/${id}`, { method: 'DELETE', auth: true })
 export const betweenClasses = () => api<BetweenClasses>('/me/between-classes', { auth: true })
 

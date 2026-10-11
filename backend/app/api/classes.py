@@ -5,18 +5,20 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
-from app import classes
+from app import classes, timetable_import
 from app.api.deps import get_session
 from app.auth import get_current_user
 from app.between_classes import suggest
 from app.clock import get_now
 from app.errors import Refusal
-from app.models import ClassSlot, User
+from app.models import Building, ClassSlot, User
 from app.ratelimit import between_limit, write_limit
-from app.schemas import BetweenClassesOut, ClassSlotIn, ClassSlotOut, GapOut, SuggestionOut
+from app.schemas import BetweenClassesOut, ClassSlotIn, ClassSlotOut, GapOut, ImportRowOut, SuggestionOut
 
 router = APIRouter(tags=["classes"])
 
@@ -59,6 +61,36 @@ def remove_class(class_id: Annotated[int, Path(gt=0)], user: UserDep, db: Sessio
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
     db.commit()
+
+
+@router.post("/me/classes/import", response_model=list[ImportRowOut], dependencies=[Depends(write_limit)])
+async def preview_import(request: Request, user: UserDep, db: SessionDep):
+    """A timetable exported from the college, sent as the request body: what
+    it holds, for the student to check and add. Nothing is saved, and the
+    file is not kept (app/timetable_import.py)."""
+    data = await _limited_body(request, timetable_import.MAX_BYTES)
+    buildings = await run_in_threadpool(
+        lambda: db.scalars(select(Building).where(Building.institution_id == user.institution_id)).all()
+    )
+    try:
+        rows = await run_in_threadpool(timetable_import.read_yedion, data, list(buildings))
+    except timetable_import.ImportRefused as refused:
+        raise HTTPException(422, refused.code) from None
+    return [ImportRowOut(**asdict(row)) for row in rows]
+
+
+async def _limited_body(request: Request, limit: int) -> bytes:
+    """The body, read only up to just over the limit: a huge upload is cut
+    off instead of filling the server's memory."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        raise HTTPException(422, "import_too_big")
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > limit:
+            raise HTTPException(422, "import_too_big")
+    return bytes(data)
 
 
 @router.get("/me/between-classes", response_model=BetweenClassesOut, dependencies=[Depends(between_limit)])

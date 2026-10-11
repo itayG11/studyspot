@@ -13,6 +13,7 @@ import { WEEK_ORDER, weekdayName } from '../logic/time'
 import { ActionError, Button, ErrorState, LoadingRegion, Skeleton } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './me.module.css'
+import { ImportClasses } from './ImportClasses'
 import { WeekGrid } from './WeekGrid'
 
 interface Props {
@@ -57,6 +58,7 @@ export function Classes({ classes, between, onChanged }: Props) {
         />
       )}
       <ActionError action={removing} />
+      <ImportClasses onAdded={onChanged} />
       <NewClassForm preset={preset} onAdded={onChanged} />
       <p className={styles.idleText}>רק אתה רואה את המערכת שלך. היא נמחקת עם החשבון.</p>
     </section>

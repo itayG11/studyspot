@@ -590,3 +590,13 @@ class BetweenClassesOut(BaseModel):
     weekday: int  # Python's numbering: Monday is 0
     gaps: list[GapOut]
 
+
+class ImportRowOut(BaseModel):
+    """One class read from a timetable file (app/timetable_import.py)."""
+
+    weekday: int
+    starts: str  # "HH:MM"
+    ends: str
+    building_code: str | None  # None: the student picks one
+    building_text: str
+    title: str | None

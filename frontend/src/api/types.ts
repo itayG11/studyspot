@@ -356,3 +356,13 @@ export interface BetweenClasses {
   weekday: number
   gaps: Gap[]
 }
+
+// One class read from a timetable file (POST /me/classes/import).
+export interface ImportRow {
+  weekday: number
+  starts: string // "HH:MM"
+  ends: string
+  building_code: string | null // null: the student picks one
+  building_text: string // what the file says
+  title: string | null
+}
