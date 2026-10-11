@@ -141,12 +141,16 @@
 .tone4 { --tone: var(--tone-violet); }
 .tone5 { --tone: var(--ink-2); }
 
+/* Two lines at most; a long word breaks rather than leaving the card. */
 .blockTitle {
+  display: -webkit-box;
   overflow: hidden;
   font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.25;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* Wraps on a narrow day rather than cutting the building off. */
@@ -164,6 +168,21 @@
 
 .short .blockMeta {
   display: none;
+}
+
+.short .blockTitle {
+  -webkit-line-clamp: 1;
+}
+
+.details:focus,
+.grid:focus {
+  outline: none;
+}
+
+.details:focus-visible,
+.grid:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .gap {

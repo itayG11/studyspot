@@ -4,7 +4,7 @@
 // (today's, from "between classes"); picking an empty hour fills the form.
 // On a phone: one day at a time, chosen by tabs.
 
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import type { BetweenClasses as Between, ClassSlot } from '../api/types'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useInstitution } from '../institution'
@@ -45,14 +45,16 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, n
   const days = WEEK_ORDER.filter((d) => d !== SATURDAY || classes.some((c) => c.weekday === SATURDAY))
   const [shownDay, setShownDay] = useState<number | null>(null)
   const firstDay = days.includes(today) ? today : (days.find((d) => classes.some((c) => c.weekday === d)) ?? days[0])
-  const phoneDay = shownDay ?? firstDay
+  const phoneDay = shownDay !== null && days.includes(shownDay) ? shownDay : firstDay
   const [picked, setPicked] = useState<Picked>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
   const range = hourRange(classes)
   const hours = Array.from({ length: range.to - range.from }, (_, i) => range.from + i)
   const visible = phone ? [phoneDay] : days
 
-  // A class picked and then removed: nothing to show.
-  const pickedNow = picked?.kind === 'class' && !classes.some((c) => c.id === picked.slot.id) ? null : picked
+  // A class picked and then removed, or a break that a new class filled:
+  // nothing to show.
+  const pickedNow = stillThere(picked, classes, range) ? picked : null
 
   return (
     <div className={styles.board}>
@@ -65,7 +67,7 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, n
           ))}
         </div>
       )}
-      <div className={styles.grid} style={{ ['--days' as string]: visible.length, ['--hours' as string]: hours.length }}>
+      <div ref={gridRef} tabIndex={-1} aria-label="מערכת השעות לפי ימים" role="group" className={styles.grid} style={{ ['--days' as string]: visible.length, ['--hours' as string]: hours.length }}>
         <div className={styles.corner} aria-hidden="true" />
         {visible.map((d) => (
           <div key={d} className={`${styles.dayHead} ${d === today ? styles.today : ''}`} aria-hidden="true">
@@ -95,11 +97,32 @@ export function WeekGrid({ classes, between, removingId, onRemove, onPickTime, n
         ))}
       </div>
       {pickedNow && (
-        <Details picked={pickedNow} today={today} between={between} removingId={removingId} onRemove={onRemove} onClose={() => setPicked(null)} />
+        <Details
+          picked={pickedNow}
+          today={today}
+          nowMinutes={nowMinutes}
+          between={between}
+          removingId={removingId}
+          onRemove={(id) => {
+            onRemove(id)
+            gridRef.current?.focus()
+          }}
+          onClose={() => {
+            setPicked(null)
+            gridRef.current?.focus()
+          }}
+        />
       )}
       {!pickedNow && <p className={styles.hint}>לחיצה על שיעור או על הפסקה מציגה פרטים. לחיצה על שעה ריקה ממלאת את הטופס.</p>}
     </div>
   )
+}
+
+function stillThere(picked: Picked, classes: ClassSlot[], range: HourRange): boolean {
+  if (picked === null) return false
+  if (picked.kind === 'class') return classes.some((c) => c.id === picked.slot.id)
+  const { gaps } = dayLayout(classes.filter((c) => c.weekday === picked.day), range)
+  return gaps.some((g) => g.starts === picked.gap.starts && g.ends === picked.gap.ends)
 }
 
 interface DayProps {
@@ -131,7 +154,7 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
       <ul className={styles.dayList} aria-label={name}>
         {blocks.map(({ slot, top, height }) => {
           const selected = picked?.kind === 'class' && picked.slot.id === slot.id
-          const short = height < 7
+          const short = minutesOf(slot.ends) - minutesOf(slot.starts) < 60
           return (
             <li key={slot.id} className={styles.place} style={{ top: `${top}%`, height: `${height}%` }}>
               <button
@@ -179,17 +202,23 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
 interface DetailsProps {
   picked: NonNullable<Picked>
   today: number
+  nowMinutes: number
   between: Between | null
   removingId: number | null
   onRemove: (id: number) => void
   onClose: () => void
 }
 
-function Details({ picked, today, between, removingId, onRemove, onClose }: DetailsProps) {
+function Details({ picked, today, nowMinutes, between, removingId, onRemove, onClose }: DetailsProps) {
+  // Opened: focus moves to it, so a keyboard user lands on what they picked.
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    ref.current?.focus()
+  }, [picked])
   if (picked.kind === 'class') {
     const { slot } = picked
     return (
-      <section className={styles.details} aria-label="פרטי השיעור">
+      <section ref={ref} tabIndex={-1} className={styles.details} aria-label="פרטי השיעור">
         <div>
           <p className={styles.detailsTitle}>{slot.title ?? 'שיעור'}</p>
           <p className={styles.detailsMeta}>
@@ -213,7 +242,7 @@ function Details({ picked, today, between, removingId, onRemove, onClose }: Deta
   // Today's gaps come with places to go; other days get them on the day.
   const todays = day === today ? between?.gaps.find((g) => clock(g.starts) === gap.starts) : undefined
   return (
-    <section className={styles.details} aria-label="פרטי ההפסקה">
+    <section ref={ref} tabIndex={-1} className={styles.details} aria-label="פרטי ההפסקה">
       <div className={styles.detailsBody}>
         <p className={styles.detailsTitle}>
           הפסקה של {gap.minutes} דקות, {weekdayName(day)}{' '}
@@ -223,7 +252,15 @@ function Details({ picked, today, between, removingId, onRemove, onClose }: Deta
         </p>
         {todays && todays.suggestions.length > 0 && <SuggestionList suggestions={todays.suggestions} />}
         {todays && todays.suggestions.length === 0 && <p className={styles.detailsMeta}>אין מקום פתוח ופנוי שמספיק לזמן שנשאר בהפסקה הזו.</p>}
-        {!todays && day === today && <p className={styles.detailsMeta}>ההפסקה הזו כבר נגמרה.</p>}
+        {!todays && day === today && (
+          <p className={styles.detailsMeta}>
+            {nowMinutes >= minutesOf(gap.ends)
+              ? 'ההפסקה הזו כבר נגמרה.'
+              : between === null
+                ? 'ההצעות נטענות, או שלא הצלחנו לטעון אותן. הן מופיעות גם באזור "בין שיעורים היום".'
+                : 'אין כרגע הצעות להפסקה הזו.'}
+          </p>
+        )}
         {day !== today && <p className={styles.detailsMeta}>ביום ההפסקה, כאן ובאזור "בין שיעורים היום", יופיעו מקומות פנויים קרובים שמספיקים לזמן שלה.</p>}
       </div>
       <div className={styles.detailsActions}>

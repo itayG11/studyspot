@@ -1,6 +1,6 @@
 // "My area": the timetable, and the places it suggests between classes.
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -78,6 +78,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers() // a test may have frozen the clock
   vi.unstubAllGlobals()
   localStorage.clear()
 })
@@ -172,7 +173,22 @@ describe('the timetable', () => {
     await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
     const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
     expect(within(details).getByRole('link', { name: 'ספרייה' })).toBeInTheDocument()
-    vi.useRealTimers()
+  })
+
+  it('an empty hour picked fills the form with its day and half hour, and keeps what was typed', async () => {
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    const monday = await within(week).findByRole('list', { name: 'יום שני' })
+    await user.type(within(week).getByLabelText(/שם הקורס/), 'אלגוריתמים')
+    // The day's column runs 08:00–20:00 over 600px: a click at 300px is 14:00.
+    const column = monday.parentElement as HTMLElement
+    column.getBoundingClientRect = () => ({ top: 0, height: 600, left: 0, right: 100, bottom: 600, width: 100, x: 0, y: 0, toJSON: () => ({}) })
+    fireEvent.click(column, { clientY: 310 })
+    expect(within(week).getByLabelText('יום')).toHaveValue('0')
+    expect(within(week).getByLabelText('מתחיל')).toHaveValue('14:00')
+    expect(within(week).getByLabelText(/שם הקורס/)).toHaveValue('אלגוריתמים')
+    expect(within(week).getByLabelText('נגמר')).toHaveFocus()
   })
 
   it('a class picked shows its details', async () => {

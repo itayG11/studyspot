@@ -57,21 +57,28 @@ export function Classes({ classes, between, onChanged }: Props) {
         />
       )}
       {removing.error && <Notice tone="error">{removing.error}</Notice>}
-      <NewClassForm key={preset?.key} preset={preset} onAdded={onChanged} />
+      <NewClassForm preset={preset} onAdded={onChanged} />
       <p className={styles.idleText}>רק אתה רואה את המערכת שלך. היא נמחקת עם החשבון.</p>
     </section>
   )
 }
 
-function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: string } | null; onAdded: () => void }) {
+function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: string; key: number } | null; onAdded: () => void }) {
   const id = useId()
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`)
   const action = useAction()
-  const [weekday, setWeekday] = useState(preset?.weekday ?? 6)
-  const [starts, setStarts] = useState(preset?.starts ?? '')
+  const [weekday, setWeekday] = useState(6)
+  const [starts, setStarts] = useState('')
   const endsRef = useRef<HTMLInputElement>(null)
-  // Picked on the grid: straight to the end time, the one thing left to say.
+  // An empty hour picked on the grid: that day and time, and straight to the
+  // end time. What was already typed (building, course) stays.
+  const [applied, setApplied] = useState<number | null>(null)
+  if (preset && preset.key !== applied) {
+    setApplied(preset.key)
+    setWeekday(preset.weekday)
+    setStarts(preset.starts)
+  }
   useEffect(() => {
     if (preset) endsRef.current?.focus()
   }, [preset])
