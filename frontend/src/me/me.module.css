@@ -346,3 +346,13 @@
   min-width: 0;
 }
 
+
+/* Reached from the timetable's link: room under the sticky header, and no
+   ring for a mouse click (it shows for the keyboard). */
+.jumpTarget {
+  scroll-margin-top: 96px;
+}
+
+.jumpTarget:focus:not(:focus-visible) {
+  outline: none;
+}

@@ -11,7 +11,7 @@ import { useInstitution } from '../institution'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
 import { courseTone, dayLayout, hourRange, pickedTime, type Gap, type HourRange } from '../logic/week'
 import { Chip, ConfirmButton } from '../ui'
-import { SuggestionList } from './BetweenClasses'
+import { BETWEEN_ID, SuggestionList } from './BetweenClasses'
 import styles from './week.module.css'
 
 const SATURDAY = 5
@@ -199,6 +199,23 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
   )
 }
 
+// "Between classes today", as a link: up the page to that section, which
+// takes the focus so a keyboard or screen reader user lands there too.
+function ToBetween() {
+  function go() {
+    const target = document.getElementById(BETWEEN_ID)
+    if (!target) return
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
+    target.focus({ preventScroll: true })
+  }
+  return (
+    <button type="button" className={styles.inlineLink} onClick={go}>
+      בין שיעורים היום
+    </button>
+  )
+}
+
 interface DetailsProps {
   picked: NonNullable<Picked>
   today: number
@@ -257,11 +274,15 @@ function Details({ picked, today, nowMinutes, between, removingId, onRemove, onC
             {nowMinutes >= minutesOf(gap.ends)
               ? 'ההפסקה הזו כבר נגמרה.'
               : between === null
-                ? 'ההצעות נטענות, או שלא הצלחנו לטעון אותן. הן מופיעות גם באזור "בין שיעורים היום".'
+                ? <>ההצעות נטענות, או שלא הצלחנו לטעון אותן. הן מופיעות גם באזור <ToBetween />.</>
                 : 'אין כרגע הצעות להפסקה הזו.'}
           </p>
         )}
-        {day !== today && <p className={styles.detailsMeta}>ביום ההפסקה, כאן ובאזור "בין שיעורים היום", יופיעו מקומות פנויים קרובים שמספיקים לזמן שלה.</p>}
+        {day !== today && (
+          <p className={styles.detailsMeta}>
+            ביום ההפסקה, כאן ובאזור <ToBetween />, יופיעו מקומות פנויים קרובים שמספיקים לזמן שלה.
+          </p>
+        )}
       </div>
       <div className={styles.detailsActions}>
         <button type="button" className={styles.close} onClick={onClose}>

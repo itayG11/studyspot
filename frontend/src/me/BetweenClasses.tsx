@@ -37,6 +37,9 @@ function load(s: Suggestion): string {
   return `בדרך כלל ${levelWord(level, s.kind)}`
 }
 
+// The timetable grid links here (WeekGrid's ToBetween).
+export const BETWEEN_ID = 'between-classes'
+
 // A gap's places to go, each with why. Also in the timetable grid.
 export function SuggestionList({ suggestions }: { suggestions: Suggestion[] }) {
   const { slug } = useInstitution()
@@ -119,7 +122,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
     })
   }
   return (
-    <section aria-label="בין שיעורים היום" className={styles.section}>
+    <section id={BETWEEN_ID} tabIndex={-1} aria-label="בין שיעורים היום" className={`${styles.section} ${styles.jumpTarget}`}>
       <h2 className={styles.heading}>בין שיעורים היום</h2>
       {body}
       {between.data && between.data.gaps.length > 0 && (

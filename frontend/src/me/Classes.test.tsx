@@ -191,6 +191,21 @@ describe('the timetable', () => {
     expect(within(week).getByLabelText('נגמר')).toHaveFocus()
   })
 
+  it('a break on another day leads to "between classes today"', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-12T07:05:00Z')) // Monday: the Sunday break is another day
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
+    const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
+    await user.click(within(details).getByRole('button', { name: 'בין שיעורים היום' }))
+    expect(scrolled).toHaveBeenCalled()
+    expect(await betweenSection()).toHaveFocus()
+  })
+
   it('a class picked shows its details', async () => {
     const user = userEvent.setup()
     renderMe()
