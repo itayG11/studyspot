@@ -53,6 +53,8 @@ class InstitutionOut(BaseModel):
     name: str
     timezone: str  # all opening hours and bookings are in this zone
     booking_rules: BookingRules
+    # The live numbers include made-up students (the demo campus, app/seed/live.py).
+    live_simulated: bool = False
 
 
 class BuildingLocationIn(BaseModel):

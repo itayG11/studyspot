@@ -42,6 +42,14 @@ def test_institution_details(client):
     }
 
 
+def test_only_the_demo_campus_says_its_live_numbers_are_simulated(client, session):
+    from app.seed import seed_demo
+
+    seed_demo(session)
+    assert client.get("/institutions/braude").json()["live_simulated"] is False
+    assert client.get("/institutions/demo").json()["live_simulated"] is True
+
+
 def test_unknown_institution_is_404(client):
     assert client.get("/institutions/nowhere").status_code == 404
     assert client.get("/institutions/nowhere/buildings").status_code == 404

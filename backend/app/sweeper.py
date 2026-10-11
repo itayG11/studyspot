@@ -17,14 +17,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import delete, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
 from app.history import delete_old_check_ins, record_history
-from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason
+from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, Institution
+from app.seed.demo import DEMO
+from app.seed.live import simulate_live
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +61,9 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     old_sessions = session.execute(delete(AuthSession).where(AuthSession.expires_at <= now)).rowcount
     # After closing the expired ones: their end times count.
     record_history(session, now)
+    # The demo campus's made-up students come and go (app/seed/live.py).
+    for institution in session.scalars(select(Institution).where(Institution.slug == DEMO["institution"]["slug"])):
+        simulate_live(session, institution, now)
     old_check_ins = delete_old_check_ins(session, now)
     session.flush()
     return SweepResult(

@@ -29,6 +29,8 @@ export interface Institution {
   name: string
   timezone: string
   booking_rules: BookingRules
+  // The live numbers include made-up people (the demo campus).
+  live_simulated: boolean
 }
 
 // capacity, occupied and available count seats a student can walk into now.

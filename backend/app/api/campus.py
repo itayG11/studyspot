@@ -38,6 +38,7 @@ from app.schemas import (
     PlaceOut,
     SeatOut,
 )
+from app.seed.live import is_simulated_campus
 
 router = APIRouter(tags=["campus"])
 
@@ -70,6 +71,7 @@ def get_institution(slug: Slug, session: SessionDep):
         name=institution.name,
         timezone=institution.timezone,
         booking_rules=BOOKING_RULES,
+        live_simulated=is_simulated_campus(institution),
     )
 
 

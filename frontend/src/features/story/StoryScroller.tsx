@@ -31,6 +31,8 @@ import { KIND_LABELS } from '../../i18n/labels'
 import { Pin } from '../../illustrations/Pin'
 import { KIND_PHOTO, PHOTOS, type PhotoName } from '../../media/photos'
 import { Button, Photo, TALL_QUERY } from '../../ui'
+import { LiveNote } from '../../components/LiveNote'
+import { useLiveSimulated } from '../../institution'
 import { kindLine } from './storyNumbers'
 import styles from './story.module.css'
 
@@ -75,6 +77,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   })
 
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
+  const simulated = useLiveSimulated()
 
   // The opening photo grows out of a framed card (an inset clip that opens).
   const [insetY, insetX, radius] = tall ? [14, 7, 22] : [17, 23, 28]
@@ -115,6 +118,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
 
         <m.div className={styles.panel} style={{ opacity: panelOpacity, transform: panel }} inert={!opening}>
           <p className={styles.eyebrow}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
+          <LiveNote simulated={simulated} />
           <p className={styles.bigLine}>
             <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו
           </p>
@@ -204,6 +208,7 @@ function LandingPin({ progress, from }: { progress: MotionValue<number>; from: n
 
 // "Reduce motion": the same story, still. The campus, then the four places.
 function StillStory({ buildings, places, onToFinder }: StoryProps) {
+  const simulated = useLiveSimulated()
   const freeNow = buildings.reduce((sum, b) => sum + b.available, 0)
   return (
     <section className={styles.still} aria-label="סיפור: המקום שלך בקמפוס">
@@ -212,6 +217,7 @@ function StillStory({ buildings, places, onToFinder }: StoryProps) {
         <div className={styles.shade} />
         <div className={styles.stillHead}>
           <p className={styles.eyebrowLight}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
+          <LiveNote simulated={simulated} />
           <h1 className={styles.stillTitle}>יש לך מקום בקמפוס.</h1>
           <p className={styles.bigLine}>
             <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו

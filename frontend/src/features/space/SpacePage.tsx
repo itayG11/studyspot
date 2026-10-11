@@ -8,13 +8,14 @@ import { useState, type CSSProperties } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
 import type { Booking, PlaceDetail, Seat } from '../../api/types'
+import { LiveNote } from '../../components/LiveNote'
 import { SeatGrid } from '../../components/SeatGrid'
 import { REFRESH_INTERVAL_MS } from '../../config'
 import { useApi } from '../../hooks/useApi'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS, SUITED_LABELS } from '../../i18n/labels'
-import { useInstitution } from '../../institution'
+import { useInstitution, useLiveSimulated } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
 import { KIND_PHOTO } from '../../media/photos'
 import { NotFoundPage } from '../../pages/NotFoundPage'
@@ -57,6 +58,7 @@ export function SpacePage() {
 }
 
 function SpaceView({ place }: { place: PlaceDetail }) {
+  const simulated = useLiveSimulated()
   const { slug, timezone, booking_rules: rules } = useInstitution()
   const { isFavorite, toggle } = useFavorites()
   const tall = useMediaQuery(TALL_QUERY)
@@ -163,6 +165,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
                 מפת התאים
               </h2>
               <p className={styles.muted}>כדי להזמין מראש, בחר תא.</p>
+              {place.is_open && <LiveNote simulated={simulated} />}
               <SeatGrid
                 seats={place.seats}
                 rows={place.lab_rows}
@@ -235,6 +238,7 @@ function SpaceSkeleton({ id }: { id: number }) {
 // whoever comes first sits. Said plainly where the booking panel would be,
 // with what is free now and the three steps to get in.
 function WalkIn({ place, className = styles.card }: { place: PlaceDetail; className?: string }) {
+  const simulated = useLiveSimulated()
   return (
     <section className={className} aria-labelledby="walk-in">
       <h2 id="walk-in" className={styles.h2}>
@@ -243,6 +247,7 @@ function WalkIn({ place, className = styles.card }: { place: PlaceDetail; classN
       <p className={styles.walkInNow}>
         {place.is_open ? `${place.available} מתוך ${place.capacity} מקומות פנויים עכשיו` : 'סגור עכשיו'}
       </p>
+      {place.is_open && <LiveNote simulated={simulated} />}
       <ol className={styles.walkInSteps}>
         <li>מגיעים למקום.</li>
         <li>סורקים את הקוד שעל השלט, במצלמה של הטלפון.</li>

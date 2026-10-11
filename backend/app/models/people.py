@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    false,
     func,
     text,
     true,
@@ -57,6 +58,9 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # One of the demo campus's made-up students (app/seed/live.py). It has no
+    # identity, so nobody can sign in as it.
+    simulated: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class UserIdentity(Base):

@@ -66,8 +66,12 @@
 
 .count {
   margin: 0;
-  margin-inline-end: auto;
   font: 600 var(--text-md) var(--font-body);
+  color: var(--ink-2);
+}
+
+.live {
+  margin-inline-end: auto;
   color: var(--ink-2);
 }
 

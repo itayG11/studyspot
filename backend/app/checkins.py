@@ -129,7 +129,7 @@ def _counted_check_in(session, user, place, seat_id, current, now) -> CheckInRes
         return CheckInResult(current, created=False)
 
     occupied = occupied_by_place(session, [place.id], now).get(place.id, 0)
-    if occupied >= place.capacity:
+    if occupied >= place.capacity and not _make_room(session, place, now):
         raise Refusal(409, "place_full")
     _end_current(session, current, now)
     return CheckInResult(_new_check_in(session, user, place, None, None, now, expires_at), True)
@@ -160,6 +160,7 @@ def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
 
     closes_at = _closing_time_if_open(session, place, now)
     _expire(session, CheckIn.seat_id == seat.id, now)
+    _make_room(session, place, now, seat)
     if _seat_is_taken(session, seat, now):
         raise Refusal(409, "seat_taken")
     release_no_shows(session, now, place, seat.id)
@@ -203,6 +204,7 @@ def _confirm(session, user, place, booking: Booking, current, now) -> CheckInRes
         # Arriving early: the previous student may still have the seat until
         # this booking starts. Free it if their time is over; otherwise wait.
         _expire(session, CheckIn.seat_id == seat.id, now)
+        _make_room(session, place, now, seat)
         if _seat_is_taken(session, seat, now) and not (
             current is not None and current.seat_id == seat.id
         ):
@@ -301,6 +303,24 @@ def _seat_for(session: Session, place: Place, seat_id: int | None) -> Seat:
     if seat is None:
         raise Refusal(400, "seat_not_in_place")
     return seat
+
+
+def _make_room(session: Session, place: Place, now: datetime, seat: Seat | None = None) -> bool:
+    """A real student wins over the demo campus's made-up ones
+    (app/seed/live.py): the longest-staying one at the place, or the one on
+    this seat, leaves. False when there is none to send away."""
+    which = [CheckIn.place_id == place.id, CheckIn.simulated, is_active(now)]
+    if seat is not None:
+        which.append(CheckIn.seat_id == seat.id)
+    row = session.scalars(
+        select(CheckIn).where(*which).order_by(CheckIn.started_at, CheckIn.id).limit(1).with_for_update()
+    ).first()
+    if row is None:
+        return False
+    row.ended_at = now
+    row.end_reason = CheckInEndReason.MOVED
+    session.flush()  # frees the seat for the partial unique index
+    return True
 
 
 def _seat_is_taken(session: Session, seat: Seat, now: datetime) -> bool:

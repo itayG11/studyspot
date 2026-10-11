@@ -74,6 +74,12 @@ export function useInstitution(): Institution {
   return value
 }
 
+// Outside a provider (the story's own tests), the numbers are taken as real.
+// oxlint-disable-next-line react/only-export-components
+export function useLiveSimulated(): boolean {
+  return useContext(InstitutionContext)?.live_simulated ?? false
+}
+
 // oxlint-disable-next-line react/only-export-components
 export function useHomeSlug(): string | null {
   const { status, user } = useAuth()

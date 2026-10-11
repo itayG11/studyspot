@@ -8,7 +8,7 @@ spell with no sweeps loses nothing: the next sweep fills it in."""
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.models import ACTIVE_STATUSES, Booking, CheckIn, Institution
@@ -19,6 +19,8 @@ MAX_BACKFILL = timedelta(weeks=8)
 # Check-ins and bookings say who was where. Kept for this long after they
 # end, then only the counts stay.
 KEEP_CHECK_INS = timedelta(days=90)
+# The demo's made-up stays (app/seed/live.py) are not kept: a day is enough.
+KEEP_SIMULATED = timedelta(days=1)
 
 _EPOCH = datetime(2000, 1, 1, tzinfo=UTC)
 
@@ -35,6 +37,8 @@ _COUNT = text("""
         -- No stay is longer than a day: older check-ins cannot overlap.
         AND c.started_at > CAST(:first AS timestamptz) - interval '1 day'
         AND coalesce(c.ended_at, c.expires_at) > slot.start
+        -- The demo's made-up students have their own made-up past.
+        AND NOT c.simulated
     GROUP BY c.place_id, slot.start
     ON CONFLICT (place_id, slot_start) DO UPDATE SET people = excluded.people, simulated = false
 """)
@@ -73,7 +77,11 @@ def delete_old_check_ins(session: Session, now: datetime) -> int:
     stay. Returns how many check-ins went."""
     check_ins = session.execute(
         delete(CheckIn).where(
-            CheckIn.ended_at.is_not(None), CheckIn.ended_at < now - KEEP_CHECK_INS
+            CheckIn.ended_at.is_not(None),
+            or_(
+                CheckIn.ended_at < now - KEEP_CHECK_INS,
+                and_(CheckIn.simulated, CheckIn.ended_at < now - KEEP_SIMULATED),
+            ),
         )
     ).rowcount
     session.execute(

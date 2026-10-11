@@ -8,8 +8,10 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { ApiError } from '../../api/client'
 import type { Building, Place } from '../../api/types'
+import { LiveNote } from '../../components/LiveNote'
 import { useFavorites } from '../../hooks/useFavorites'
 import { KIND_LABELS, KINDS } from '../../i18n/labels'
+import { useLiveSimulated } from '../../institution'
 import {
   applyFilters,
   countWith,
@@ -152,6 +154,7 @@ interface ResultsProps extends FinderProps {
 }
 
 function Results({ places, buildings, error, onRetry, filters, update, favorites, clearFavorites, selected, setSelected }: ResultsProps) {
+  const simulated = useLiveSimulated()
   if (!places && error) return <ErrorState error={error} onRetry={onRetry} />
   if (!places || !buildings) return <CardSkeletons />
 
@@ -174,6 +177,7 @@ function Results({ places, buildings, error, onRetry, filters, update, favorites
         <p className={styles.count} aria-live="polite">
           {shown.length === 1 ? 'מקום אחד' : `${shown.length} מקומות`}
         </p>
+        <LiveNote simulated={simulated} className={styles.live} />
         <label className={styles.near}>
           <span>קרוב ל</span>
           <select value={filters.near ?? ''} onChange={(e) => update({ ...filters, near: e.target.value || null })}>

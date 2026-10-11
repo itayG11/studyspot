@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     UniqueConstraint,
+    false,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -90,6 +91,8 @@ class CheckIn(Base):
     end_reason: Mapped[CheckInEndReason | None] = mapped_column(
         _enum_column(CheckInEndReason, "check_in_end_reason")
     )
+    # A made-up student of the demo campus's live simulation (app/seed/live.py).
+    simulated: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     # Read-only links: ids are set explicitly, because the composite
     # foreign keys share columns and would fight over copying them.
