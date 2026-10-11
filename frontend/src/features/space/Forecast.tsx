@@ -8,7 +8,7 @@ import { getForecast } from '../../api/campus'
 import type { Place } from '../../api/types'
 import { useApi } from '../../hooks/useApi'
 import { useLiveSimulated } from '../../institution'
-import { hourly, mergeToday } from '../../logic/load'
+import { hourly, withToday } from '../../logic/load'
 import { LoadChart } from '../load/LoadChart'
 import { byHour, forecastLimit, freesAt, levelWord, usualAt } from '../../logic/forecast'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../../logic/time'
@@ -25,6 +25,7 @@ interface Props {
 }
 
 const MINUTE = 60_000
+const currentHourOf = (clock: string) => Number(clock.slice(0, 2))
 
 export function PlaceForecast({ place, timeZone, now: start }: Props) {
   // Kept in state and moved on every minute, like the day's bar.
@@ -51,7 +52,22 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
   else if (!data) body = <div className={styles.barSkeleton} aria-hidden="true" />
   else if (data.closed) body = <p className={styles.muted}>סגור ביום הזה.</p>
   else if (data.slots.length === 0) {
-    body = <p className={styles.muted}>עוד אין מספיק נתונים. החיזוי מופיע אחרי שבועיים של כניסות למקום.</p>
+    body = (
+      <>
+        <p className={styles.muted}>עוד אין מספיק נתונים. החיזוי מופיע אחרי שבועיים של כניסות למקום.</p>
+        {/* No usual yet, but today's people can still be shown. */}
+        {isToday && (data.today ?? []).length > 0 && (
+          <LoadChart
+            hours={withToday([], data.today ?? [], clock)}
+            limit={limit}
+            currentHour={currentHourOf(clock)}
+            live={place.is_open && !room ? place.occupied : null}
+            simulated={simulated}
+            kind={place.kind}
+          />
+        )}
+      </>
+    )
   } else {
     const hours = byHour(data, limit)
     const usual = isToday ? usualAt(data, clock) : null
@@ -70,7 +86,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
         {frees && <p className={styles.forecastNow}>בדרך כלל מתפנה ב-{frees}.</p>}
         {isToday ? (
           <LoadChart
-            hours={hourly(mergeToday(data.slots, data.today, clock))}
+            hours={withToday(hourly(data.slots.map((s) => ({ start: s.start, usual: s.people, today: null }))), data.today ?? [], clock)}
             limit={limit}
             currentHour={currentHour}
             live={place.is_open && !room ? place.occupied : null}

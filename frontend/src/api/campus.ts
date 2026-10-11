@@ -10,7 +10,7 @@ export const getInstitution = (slug: string) => api<Institution>(base(slug))
 export const getBuildings = (slug: string) => api<Building[]>(`${base(slug)}/buildings`)
 export const getPlace = (id: number) => api<PlaceDetail>(`/places/${id}`)
 // How busy a place usually is on a day of the week (Python's numbering).
-export const getCampusToday = (slug: string) => api<CampusToday>(`/institutions/${slug}/load/today`)
+export const getCampusToday = (slug: string) => api<CampusToday>(`${base(slug)}/load/today`)
 export const getForecast = (id: number, weekday: number) => api<Forecast>(`/places/${id}/forecast?weekday=${weekday}`)
 export const getProviders = () => api<Providers>('/auth/providers')
 

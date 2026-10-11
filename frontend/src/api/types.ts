@@ -103,7 +103,7 @@ export interface Forecast {
   closed: boolean
   slots: SlotForecast[] // empty when closed, or with too little history
   frees_at: string | null // today only, local "HH:MM:SS"
-  today: SlotForecast[] // the weekday asked is today: its quarter hours so far with anyone in
+  today?: SlotForecast[] // the weekday asked is today (missing from a server older than the site): its quarter hours so far with anyone in
 }
 
 // GET /institutions/{slug}/load/today: the campus, all but the group rooms.

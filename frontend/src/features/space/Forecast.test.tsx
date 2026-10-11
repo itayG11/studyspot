@@ -49,6 +49,14 @@ describe('PlaceForecast', () => {
     expect(await screen.findByText('בדרך כלל מתפנה ב-10:15.')).toBeInTheDocument()
   })
 
+  it('with no forecast yet, still shows today so far', async () => {
+    answer = () => forecast({ weeks: 1, slots: [], frees_at: null, today: [{ start: '09:00:00', people: 7 }] })
+    show()
+    expect(await screen.findByText(/עוד אין מספיק נתונים/)).toBeInTheDocument()
+    const list = screen.getByRole('list', { name: 'העומס לפי שעה' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['09:00: היום 7'])
+  })
+
   it('lists each hour in words for screen readers', async () => {
     show()
     const list = await screen.findByRole('list', { name: 'העומס לפי שעה' })

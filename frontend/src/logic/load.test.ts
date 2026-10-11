@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareToUsual, hourly, mergeToday } from './load'
+import { compareToUsual, hourly, withToday } from './load'
 
 describe('hourly', () => {
   it('averages the quarter hours of each hour, and today only so far', () => {
@@ -20,21 +20,22 @@ describe('hourly', () => {
   })
 })
 
-describe('mergeToday', () => {
-  it('puts a place\'s counts of today next to its usual quarter hours', () => {
-    const slots = mergeToday(
-      [{ start: '09:00:00', people: 3 }, { start: '09:15:00', people: 5 }],
-      [{ start: '09:00:00', people: 2 }],
-      '09:20',
+describe('withToday', () => {
+  it('puts today next to each usual hour, up to the hour under way', () => {
+    const hours = withToday(
+      [{ hour: 9, usual: 3, today: null }, { hour: 10, usual: 5, today: null }, { hour: 11, usual: 4, today: null }],
+      [{ start: '09:00:00', people: 4 }],
+      '10:20',
     )
-    expect(slots).toEqual([
-      { start: '09:00:00', usual: 3, today: 2 },
-      { start: '09:15:00', usual: 5, today: 0 }, // under way, nobody counted: 0, not "to come"
+    expect(hours).toEqual([
+      { hour: 9, usual: 3, today: 4 },
+      { hour: 10, usual: 5, today: 0 }, // under way, nobody counted (or a few): 0, not "to come"
+      { hour: 11, usual: 4, today: null },
     ])
   })
 
-  it('a quarter hour still to come has no today', () => {
-    expect(mergeToday([{ start: '10:00:00', people: 3 }], [], '09:59')).toEqual([{ start: '10:00:00', usual: 3, today: null }])
+  it('with no forecast yet, today alone', () => {
+    expect(withToday([], [{ start: '08:00:00', people: 5 }], '09:00')).toEqual([{ hour: 8, usual: null, today: 5 }])
   })
 })
 

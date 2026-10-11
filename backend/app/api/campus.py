@@ -16,7 +16,7 @@ from app.bookings import MIN_WALK_IN, holding
 from app.clock import get_now
 from app.forecast import forecast
 from app.hours import opening_status, place_status
-from app.load_today import campus_today, today_counts
+from app.load_today import campus_today, place_today
 from app.models import (
     Booking,
     Building,
@@ -291,8 +291,7 @@ def get_forecast(
     result = forecast(session, place, weekday, now)
     today = []
     if weekday == now.astimezone(zone).weekday():
-        counts = today_counts(session, [place], zone, now)[place.id]
-        today = [{"start": start, "people": people} for start, people in sorted(counts.items())]
+        today = [{"start": start, "people": people} for start, people in place_today(session, place, zone, now)]
     return ForecastOut(
         weekday=result.weekday, capacity=result.capacity, weeks=result.weeks, simulated=result.simulated,
         closed=result.closed, slots=[{"start": s.start, "people": s.people} for s in result.slots],

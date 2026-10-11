@@ -29,21 +29,15 @@ export function hourly(slots: LoadSlot[]): LoadHour[] {
   })
 }
 
-// A place's page: its usual quarter hours (forecast.slots) and today's
-// counts (forecast.today, only quarter hours someone was in). Up to the
-// quarter hour under way at a local "HH:MM", a missing count is 0.
-export function mergeToday(
-  usual: { start: string; people: number }[],
-  today: { start: string; people: number }[],
-  clock: string,
-): LoadSlot[] {
-  const counted = new Map(today.map((t) => [t.start, t.people]))
-  const current = Math.floor(toMinutes(clock) / 15) * 15
-  return usual.map((u) => ({
-    start: u.start,
-    usual: u.people,
-    today: toMinutes(u.start) <= current ? (counted.get(u.start) ?? 0) : null,
-  }))
+// A place's page: its usual hours, and today's people hour by hour
+// (forecast.today: hours only, a missing hour had nobody, or a few). Up to
+// the hour under way at a local "HH:MM"; later hours have no today yet.
+// With no forecast yet, today's hours alone.
+export function withToday(usual: LoadHour[], today: { start: string; people: number }[], clock: string): LoadHour[] {
+  const counted = new Map(today.map((t) => [Number(t.start.slice(0, 2)), t.people]))
+  const current = Number(clock.slice(0, 2))
+  const hours = usual.length > 0 ? usual : [...counted.keys()].sort((a, b) => a - b).map((hour) => ({ hour, usual: null, today: null }))
+  return hours.map((h) => ({ ...h, today: h.hour <= current ? (counted.get(h.hour) ?? 0) : null }))
 }
 
 // Busier or quieter than usual: a quarter apart, and at least a few people.
@@ -53,8 +47,4 @@ export function compareToUsual(now: number, usual: number | null): 'busier' | 'q
   if (now >= usual * 1.25) return 'busier'
   if (now <= usual * 0.75) return 'quieter'
   return 'usual'
-}
-
-function toMinutes(clock: string): number {
-  return Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5))
 }

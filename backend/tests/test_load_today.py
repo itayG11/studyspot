@@ -109,8 +109,57 @@ def test_a_place_forecast_for_today_has_todays_counts(client, session):
     client.clock.now = SUNDAY_1PM
     area = place_named(demo, "L", "מתחם לימוד")
     stay(session, demo, area, at(9), at(10))
+    for n in range(3):
+        stay(session, demo, area, at(9), at(10), n=20 + n)
     today = client.get(f"/places/{area.id}/forecast").json()["today"]
-    assert {"start": "09:00:00", "people": 1} in today
+    assert {"start": "09:00:00", "people": 4} in today
     other_day = client.get(f"/places/{area.id}/forecast?weekday=0").json()["today"]
     assert other_day == []
     assert session.scalars(select(CheckIn)).all()  # untouched
+
+
+def test_nothing_after_the_quarter_hour_under_way(session):
+    demo = seed_demo(session)
+    area = place_named(demo, "L", "מתחם לימוד")
+    stay(session, demo, area, at(12), at(15))
+    counts = today_counts(session, [area], TZ, SUNDAY_1PM)[area.id]
+    assert time(13, 0) in counts and time(13, 15) not in counts
+
+
+def test_a_place_open_all_night_for_exams_is_on_the_chart_all_day(client, session):
+    from app.models import SpecialPeriod, SpecialPeriodPlace
+
+    demo = seed_demo(session)
+    area = place_named(demo, "L", "מתחם לימוד")
+    period = SpecialPeriod(institution=demo, name="מבחנים", starts_on=SUNDAY.date(), ends_on=SUNDAY.date())
+    session.add(period)
+    session.add(SpecialPeriodPlace(period=period, place=area, institution_id=demo.id))
+    stay(session, demo, area, at(2), at(3))
+    client.clock.now = SUNDAY_1PM
+    by_start = {s["start"]: s for s in client.get("/institutions/demo/load/today").json()["slots"]}
+    assert by_start["02:00:00"]["today"] == 1
+
+
+def test_in_an_hour_says_nothing_for_a_place_that_closes_before_then(client, session):
+    demo = seed_demo(session)
+    simulate_history(session, demo, SUNDAY.date())
+    area = place_named(demo, "L", "מתחם לימוד")
+    closes = next(h.closes for h in area.opening_hours if h.weekday == 6)
+    client.clock.now = datetime.combine(SUNDAY.date(), closes, tzinfo=TZ) - timedelta(minutes=20)
+    shares = {p["place_id"]: p["next_hour"] for p in client.get("/institutions/demo/load/today").json()["places"]}
+    assert shares[area.id] is None
+
+
+def test_one_place_today_is_hourly_and_hides_a_few_people(client, session):
+    # Quarter hours of one quiet place would tell when one person came and
+    # went: hours only, and fewer than three shows as none.
+    demo = seed_demo(session)
+    client.clock.now = SUNDAY_1PM
+    area = place_named(demo, "L", "מתחם לימוד")
+    stay(session, demo, area, at(8), at(8, 30))  # one person, half an hour
+    for n in range(4):
+        stay(session, demo, area, at(10), at(11), n=10 + n)
+    today = client.get(f"/places/{area.id}/forecast").json()["today"]
+    assert {"start": "08:00:00", "people": 0} in today
+    assert {"start": "10:00:00", "people": 4} in today
+    assert all(t["start"].endswith(":00:00") for t in today)
