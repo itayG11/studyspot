@@ -1,0 +1,205 @@
+"""A place between classes: for each gap in the student's day, the places
+worth going to, and why.
+
+For every gap in today's timetable that is long enough and not over, every
+place of the institution is tried: the walk there from the class before,
+the walk on to the class after, and the time left to sit in between. A
+place is kept if that time is long enough, it is open all of it, and it is
+not full: now for the gap under way (live counts), or usually at that
+hour for a gap later today (the load forecast). The best three, by time to
+sit and then by how free, are suggested, each with its numbers.
+
+Walking times are an estimate from the map, not a route: the straight line
+times a detour factor, at a slow walking pace. Each suggestion shows them,
+so a student can judge."""
+
+import math
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
+from itertools import pairwise
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.bookings import holding
+from app.forecast import Forecast, forecast, full_at
+from app.models import (
+    Booking,
+    Building,
+    BuildingStatus,
+    ClassSlot,
+    Institution,
+    Place,
+    PlaceKind,
+    User,
+)
+from app.occupancy import occupied_by_place, open_all_day_place_ids
+
+MIN_GAP = timedelta(minutes=30)  # shorter, and there is no time to settle anywhere
+MIN_SIT = 20  # minutes left to sit, after both walks
+MAX_SUGGESTIONS = 3
+WALK_METRES_PER_MINUTE = 80  # a slow pace, with a bag
+DETOUR = 1.3  # paths are not straight lines
+SAME_BUILDING_MINUTES = 1  # stairs and corridors
+UNKNOWN_WALK_MINUTES = 5  # a building not yet placed on the map
+EARTH_METRES = 6_371_000
+
+
+def walk_minutes(a: Building, b: Building) -> int:
+    if a.id == b.id:
+        return SAME_BUILDING_MINUTES
+    if None in (a.latitude, a.longitude, b.latitude, b.longitude):
+        return UNKNOWN_WALK_MINUTES
+    lat1, lon1, lat2, lon2 = (math.radians(float(v)) for v in (a.latitude, a.longitude, b.latitude, b.longitude))
+    h = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
+    metres = 2 * EARTH_METRES * math.asin(math.sqrt(h))
+    return max(1, math.ceil(metres * DETOUR / WALK_METRES_PER_MINUTE))
+
+
+@dataclass(frozen=True)
+class Gap:
+    starts: time  # local
+    ends: time
+    before: ClassSlot
+    after: ClassSlot
+
+
+def find_gaps(classes: list[ClassSlot], now: time) -> list[Gap]:
+    """Gaps of one day's classes, at least MIN_GAP long and not over at `now`."""
+    ordered = sorted(classes, key=lambda c: c.starts)
+    gaps = []
+    for before, after in pairwise(ordered):
+        length = datetime.combine(date.min, after.starts) - datetime.combine(date.min, before.ends)
+        if length >= MIN_GAP and after.starts > now:
+            gaps.append(Gap(before.ends, after.starts, before, after))
+    return gaps
+
+
+@dataclass(frozen=True)
+class Suggestion:
+    place_id: int
+    name: str
+    kind: PlaceKind
+    building_code: str
+    walk_there: int  # minutes, from the class before
+    walk_after: int  # minutes, on to the class after
+    sit_from: datetime
+    sit_until: datetime
+    sit_minutes: int
+    bookable: bool
+    capacity: int
+    available: int | None  # now, for the gap under way (not for rooms)
+    usual: float | None  # usually there then, for a gap later today
+
+
+@dataclass(frozen=True)
+class GapSuggestions:
+    starts: time
+    ends: time
+    ends_dt: datetime
+    from_building: str
+    to_building: str
+    now: bool  # the gap is under way
+    suggestions: list[Suggestion]
+
+
+@dataclass(frozen=True)
+class BetweenClasses:
+    weekday: int
+    gaps: list[GapSuggestions]
+
+
+def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
+    institution = session.get(Institution, user.institution_id)
+    zone = ZoneInfo(institution.timezone)
+    local = now.astimezone(zone)
+    today, weekday = local.date(), local.weekday()
+    classes = session.scalars(
+        select(ClassSlot).where(ClassSlot.user_id == user.id, ClassSlot.weekday == weekday)
+        .options(selectinload(ClassSlot.building))
+    ).all()
+    gaps = find_gaps(list(classes), local.time())
+    if not gaps:
+        return BetweenClasses(weekday, [])
+
+    places = session.scalars(
+        select(Place).join(Place.building)
+        .where(Place.institution_id == institution.id, Building.status != BuildingStatus.UNDER_CONSTRUCTION)
+        .options(selectinload(Place.opening_hours), selectinload(Place.building))
+    ).all()
+    all_day = open_all_day_place_ids(session, institution.id, today)
+    occupied = occupied_by_place(session, [p.id for p in places], now)
+    forecasts: dict[int, Forecast] = {}
+
+    out = []
+    for gap in gaps:
+        start = datetime.combine(today, gap.starts, tzinfo=zone)
+        end = datetime.combine(today, gap.ends, tzinfo=zone)
+        under_way = start <= now
+        begin = max(start, now).astimezone(zone)  # local: opening hours are local times
+        found = []
+        for place in places:
+            there = walk_minutes(gap.before.building, place.building)
+            after = walk_minutes(place.building, gap.after.building)
+            sit_from = begin + timedelta(minutes=there)
+            sit_until = end - timedelta(minutes=after)
+            minutes = int((sit_until - sit_from).total_seconds() // 60)
+            if minutes < MIN_SIT or not _open_throughout(place, weekday, sit_from, sit_until, place.id in all_day):
+                continue
+            available = usual = None
+            if place.kind == PlaceKind.GROUP_ROOM:
+                if _room_held(session, place, sit_from, sit_until, now):
+                    continue
+            elif under_way:
+                available = place.capacity - occupied.get(place.id, 0)
+                if available <= 0:
+                    continue
+            if not under_way:
+                if place.id not in forecasts:
+                    forecasts[place.id] = forecast(session, place, weekday, now)
+                usual = _usual_at(forecasts[place.id], sit_from.time())
+                if usual is not None and usual >= full_at(place) - 0.5:
+                    continue  # usually full then
+            found.append(Suggestion(
+                place.id, place.name, place.kind, place.building.code, there, after,
+                sit_from, sit_until, minutes,
+                place.kind in (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB), place.capacity, available, usual,
+            ))
+        found.sort(key=lambda s: (-s.sit_minutes, _taken_share(s), s.name))
+        out.append(GapSuggestions(
+            gap.starts, gap.ends, end, gap.before.building.code, gap.after.building.code, under_way,
+            found[:MAX_SUGGESTIONS],
+        ))
+    return BetweenClasses(weekday, out)
+
+
+def _open_throughout(place: Place, weekday: int, start: datetime, end: datetime, all_day: bool) -> bool:
+    if all_day:
+        return True
+    """start and end are local times of the same day."""
+    hours = next((h for h in place.opening_hours if h.weekday == weekday), None)
+    return hours is not None and hours.opens <= start.time() and end.time() <= hours.closes
+
+
+def _room_held(session: Session, place: Place, start: datetime, end: datetime, now: datetime) -> bool:
+    return session.scalar(
+        select(Booking.id).where(
+            Booking.place_id == place.id, holding(now), Booking.starts_at < end, Booking.ends_at > start
+        ).limit(1)
+    ) is not None
+
+
+def _usual_at(result: Forecast, at: time) -> float | None:
+    if not result.slots:
+        return None  # too little history: no forecast to go by
+    quarter = time(at.hour, at.minute // 15 * 15)
+    return next((s.people for s in result.slots if s.start == quarter), 0.0)
+
+
+def _taken_share(s: Suggestion) -> float:
+    if s.available is not None:
+        return 1 - s.available / s.capacity
+    if s.usual is not None:
+        return s.usual / (1 if s.kind == PlaceKind.GROUP_ROOM else s.capacity)
+    return 0.5  # nothing known: in the middle

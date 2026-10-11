@@ -526,3 +526,33 @@ class ClassSlotOut(BaseModel):
     building_code: str
     title: str | None
 
+
+class SuggestionOut(BaseModel):
+    place_id: int
+    name: str
+    kind: PlaceKind
+    building_code: str
+    walk_there: int  # minutes, an estimate (app/between_classes.py)
+    walk_after: int
+    sit_from: datetime
+    sit_until: datetime
+    sit_minutes: int
+    bookable: bool
+    capacity: int
+    available: int | None  # now, for the gap under way (not for rooms)
+    usual: float | None  # usually there then, for a gap later today
+
+
+class GapOut(BaseModel):
+    starts: time  # local
+    ends: time
+    from_building: str
+    to_building: str
+    now: bool  # the gap is under way
+    suggestions: list[SuggestionOut]
+
+
+class BetweenClassesOut(BaseModel):
+    weekday: int  # Python's numbering: Monday is 0
+    gaps: list[GapOut]
+
