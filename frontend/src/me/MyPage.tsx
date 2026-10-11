@@ -116,6 +116,7 @@ export function MyPage() {
 
       <Classes
         classes={classes}
+        between={between.data}
         onChanged={() => {
           classes.reload()
           between.reload()

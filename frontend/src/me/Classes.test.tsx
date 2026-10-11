@@ -154,11 +154,34 @@ describe('between classes', () => {
 })
 
 describe('the timetable', () => {
-  it('lists the week by day', async () => {
+  it('shows the week as a grid: each class at its day, and the break between them', async () => {
     renderMe()
     const week = await weekSection()
     const sunday = await within(week).findByRole('list', { name: 'יום ראשון' })
-    expect(within(sunday).getAllByRole('listitem')[0]).toHaveTextContent('08:30–10:00 · בניין M · מבני נתונים')
+    expect(within(sunday).getByRole('button', { name: 'מבני נתונים, יום ראשון 08:30 עד 10:00, בניין M' })).toBeInTheDocument()
+    expect(within(sunday).getByRole('button', { name: 'שיעור, יום ראשון 11:30 עד 13:00, בניין EF' })).toBeInTheDocument()
+    expect(within(sunday).getByRole('button', { name: 'הפסקה של 90 דקות, יום ראשון 10:00 עד 11:30' })).toBeInTheDocument()
+  })
+
+  it('a break today shows where to go in it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-11T07:05:00Z')) // Sunday 10:05 in Jerusalem
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
+    const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
+    expect(within(details).getByRole('link', { name: 'ספרייה' })).toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
+  it('a class picked shows its details', async () => {
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים, יום ראשון/ }))
+    const details = within(week).getByRole('region', { name: 'פרטי השיעור' })
+    expect(details).toHaveTextContent('יום ראשון · 08:30–10:00 · בניין M')
   })
 
   it('adds a class, and the suggestions are asked for again', async () => {
@@ -179,7 +202,7 @@ describe('the timetable', () => {
       body: { weekday: 0, starts: '14:00', ends: '15:30', building_code: 'EF', title: 'אלגוריתמים' },
     }))
     const monday = await within(week).findByRole('list', { name: 'יום שני' })
-    expect(within(monday).getAllByRole('listitem')[0]).toHaveTextContent('14:00–15:30 · בניין EF · אלגוריתמים')
+    expect(await within(monday).findByRole('button', { name: 'אלגוריתמים, יום שני 14:00 עד 15:30, בניין EF' })).toBeInTheDocument()
     await waitFor(() => expect(asked()).toBeGreaterThan(before))
   })
 
@@ -204,11 +227,12 @@ describe('the timetable', () => {
   it('removes a class after asking', async () => {
     const user = userEvent.setup()
     renderMe()
-    const sunday = await within(await weekSection()).findByRole('list', { name: 'יום ראשון' })
-    const row = within(sunday).getAllByRole('listitem')[0]
-    await user.click(within(row).getByRole('button', { name: 'הסרה' }))
+    const week = await weekSection()
+    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים, יום ראשון/ }))
+    const details = within(week).getByRole('region', { name: 'פרטי השיעור' })
+    await user.click(within(details).getByRole('button', { name: 'הסרה' }))
     expect(sent).toEqual([])
-    await user.click(within(row).getByRole('button', { name: 'כן, להסיר' }))
+    await user.click(within(details).getByRole('button', { name: 'כן, להסיר' }))
     await waitFor(() => expect(sent).toEqual([{ method: 'DELETE', path: '/me/classes/1', body: null }]))
     await waitFor(() => expect(screen.queryByText(/מבני נתונים/)).not.toBeInTheDocument())
   })

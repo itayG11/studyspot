@@ -37,8 +37,26 @@ function load(s: Suggestion): string {
   return `בדרך כלל ${levelWord(level, s.kind)}`
 }
 
-export function BetweenClasses({ between, classes }: { between: ApiState<Data>; classes: ClassSlot[] | null }) {
+// A gap's places to go, each with why. Also in the timetable grid.
+export function SuggestionList({ suggestions }: { suggestions: Suggestion[] }) {
   const { slug } = useInstitution()
+  return (
+    <ol className={styles.suggestions}>
+      {suggestions.map((s) => (
+        <li key={s.place_id}>
+          <Link to={`/${slug}/spaces/${s.place_id}`} className={styles.suggestionName}>
+            {s.name}
+          </Link>
+          <span className={styles.suggestionWhy}>
+            בניין <bdi>{s.building_code}</bdi> · {walking(s.walk_there)} · {s.sit_minutes} דקות לשבת · {load(s)}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+export function BetweenClasses({ between, classes }: { between: ApiState<Data>; classes: ClassSlot[] | null }) {
   let body
   if (!between.data && between.error) body = <ErrorState error={between.error} onRetry={between.reload} compact />
   else if (!between.data) {
@@ -94,18 +112,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
           {gap.suggestions.length === 0 ? (
             <p className={styles.idleText}>אין מקום פתוח ופנוי שמספיק לזמן שנשאר בהפסקה הזו.</p>
           ) : (
-            <ol className={styles.suggestions}>
-              {gap.suggestions.map((s) => (
-                <li key={s.place_id}>
-                  <Link to={`/${slug}/spaces/${s.place_id}`} className={styles.suggestionName}>
-                    {s.name}
-                  </Link>
-                  <span className={styles.suggestionWhy}>
-                    בניין <bdi>{s.building_code}</bdi> · {walking(s.walk_there)} · {s.sit_minutes} דקות לשבת · {load(s)}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <SuggestionList suggestions={gap.suggestions} />
           )}
         </article>
       )

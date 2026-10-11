@@ -1,24 +1,40 @@
 // "My timetable": the student's week, to add to and remove from. The
 // server checks every class (app/classes.py); this form only asks.
 
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { getBuildings } from '../api/campus'
 import { addClass, removeClass } from '../api/student'
-import type { ClassSlot } from '../api/types'
+import type { BetweenClasses as BetweenClassesData, ClassSlot } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useAction } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { WEEK_ORDER, weekdayName } from '../logic/time'
-import { Button, ConfirmButton, ErrorState, LoadingRegion, Notice, Skeleton } from '../ui'
+import { Button, ErrorState, LoadingRegion, Notice, Skeleton } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './me.module.css'
+import { WeekGrid } from './WeekGrid'
 
-const clock = (value: string) => value.slice(0, 5)
+interface Props {
+  classes: ApiState<ClassSlot[]>
+  between: BetweenClassesData | null // today's gaps with places to go, for the grid
+  onChanged: () => void
+}
 
-export function Classes({ classes, onChanged }: { classes: ApiState<ClassSlot[]>; onChanged: () => void }) {
+export function Classes({ classes, between, onChanged }: Props) {
   const { user } = useAuth()
   const list = classes.data
+  const removing = useAction()
+  const [removingId, setRemovingId] = useState<number | null>(null) // only that class's button spins
+  // An empty hour picked on the grid: the form opens on that day and time.
+  const [preset, setPreset] = useState<{ weekday: number; starts: string; key: number } | null>(null)
+
+  async function remove(id: number) {
+    setRemovingId(id)
+    const done = await removing.run(() => removeClass(id).then(() => true))
+    setRemovingId(null)
+    if (done) onChanged()
+  }
   return (
     <section aria-label="מערכת השעות" className={styles.section}>
       <h2 className={styles.heading}>מערכת השעות</h2>
@@ -31,57 +47,34 @@ export function Classes({ classes, onChanged }: { classes: ApiState<ClassSlot[]>
           <Skeleton height="96px" radius="var(--r-lg)" />
         </LoadingRegion>
       )}
-      {list && <Week classes={list} onChanged={onChanged} />}
-      <NewClassForm onAdded={onChanged} />
+      {list && (
+        <WeekGrid
+          classes={list}
+          between={between}
+          removingId={removingId}
+          onRemove={(id) => void remove(id)}
+          onPickTime={(weekday, starts) => setPreset({ weekday, starts, key: Date.now() })}
+        />
+      )}
+      {removing.error && <Notice tone="error">{removing.error}</Notice>}
+      <NewClassForm key={preset?.key} preset={preset} onAdded={onChanged} />
       <p className={styles.idleText}>רק אתה רואה את המערכת שלך. היא נמחקת עם החשבון.</p>
     </section>
   )
 }
 
-function Week({ classes, onChanged }: { classes: ClassSlot[]; onChanged: () => void }) {
-  const removing = useAction()
-  const [removingId, setRemovingId] = useState<number | null>(null) // only that row's button spins
-  async function remove(id: number) {
-    setRemovingId(id)
-    const done = await removing.run(() => removeClass(id).then(() => true))
-    setRemovingId(null)
-    if (done) onChanged()
-  }
-  return (
-    <div className={styles.week}>
-      {WEEK_ORDER.filter((day) => classes.some((c) => c.weekday === day)).map((day) => (
-        <div key={day}>
-          <h3 className={styles.weekDay}>{weekdayName(day)}</h3>
-          <ul className={styles.weekList} aria-label={weekdayName(day)}>
-            {classes
-              .filter((c) => c.weekday === day)
-              .map((c) => (
-                <li key={c.id} className={styles.weekRow}>
-                  <span>
-                    <span className={styles.num} dir="ltr">
-                      {clock(c.starts)}–{clock(c.ends)}
-                    </span>{' '}
-                    · בניין <bdi>{c.building_code}</bdi>
-                    {c.title && ` · ${c.title}`}
-                  </span>
-                  <ConfirmButton label="הסרה" confirmLabel="כן, להסיר" size="sm" busy={removingId === c.id} onConfirm={() => void remove(c.id)} />
-                </li>
-              ))}
-          </ul>
-        </div>
-      ))}
-      {removing.error && <Notice tone="error">{removing.error}</Notice>}
-    </div>
-  )
-}
-
-function NewClassForm({ onAdded }: { onAdded: () => void }) {
+function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: string } | null; onAdded: () => void }) {
   const id = useId()
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`)
   const action = useAction()
-  const [weekday, setWeekday] = useState(6)
-  const [starts, setStarts] = useState('')
+  const [weekday, setWeekday] = useState(preset?.weekday ?? 6)
+  const [starts, setStarts] = useState(preset?.starts ?? '')
+  const endsRef = useRef<HTMLInputElement>(null)
+  // Picked on the grid: straight to the end time, the one thing left to say.
+  useEffect(() => {
+    if (preset) endsRef.current?.focus()
+  }, [preset])
   const [ends, setEnds] = useState('')
   const [building, setBuilding] = useState('')
   const [title, setTitle] = useState('')
@@ -128,7 +121,7 @@ function NewClassForm({ onAdded }: { onAdded: () => void }) {
           <label className={admin.label} htmlFor={`${id}-ends`}>
             נגמר
           </label>
-          <input id={`${id}-ends`} className={admin.field} type="time" required value={ends} onChange={(e) => setEnds(e.target.value)} />
+          <input ref={endsRef} id={`${id}-ends`} className={admin.field} type="time" required value={ends} onChange={(e) => setEnds(e.target.value)} />
         </div>
         <div className={styles.classField}>
           <label className={admin.label} htmlFor={`${id}-building`}>

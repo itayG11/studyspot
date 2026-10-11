@@ -1,0 +1,299 @@
+/* The timetable board. Right to left like the page: Sunday on the right,
+   the hours down the right edge. Stone paper, ink, and one tone per
+   course on the card's edge; breaks are dashed, "now" is a red line. */
+
+.board {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+  overflow-x: auto;
+}
+
+.grid {
+  --hour: 56px;
+  display: grid;
+  grid-template-columns: 3.25rem repeat(var(--days), minmax(0, 1fr));
+  grid-template-rows: auto calc(var(--hours) * var(--hour));
+  column-gap: 6px;
+  padding: var(--s-4) var(--s-4) var(--s-5);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.corner {
+  grid-row: 1;
+}
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--s-2);
+  padding-block-end: var(--s-2);
+  font: 600 var(--text-md) var(--font-heading);
+  color: var(--ink-2);
+}
+
+.today {
+  color: var(--ink);
+}
+
+.todayMark {
+  padding: 1px 8px;
+  font: 500 var(--text-xs) var(--font-body);
+  color: var(--on-ink);
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+.gutter {
+  position: relative;
+  grid-row: 2;
+}
+
+.hourLabel {
+  display: block;
+  height: var(--hour);
+  margin-top: -0.6em; /* on the line, not under it */
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--ink-3);
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.day {
+  position: relative;
+  grid-row: 2;
+  border-radius: 10px;
+  /* A hairline every hour, a fainter one every half hour. */
+  background:
+    repeating-linear-gradient(to bottom, var(--stone-3) 0 1px, transparent 1px var(--hour)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour) / 2), color-mix(in srgb, var(--stone-3) 45%, transparent) calc(var(--hour) / 2) calc(var(--hour) / 2 + 1px), transparent calc(var(--hour) / 2 + 1px) var(--hour));
+  cursor: copy;
+}
+
+/* Today: a faint wash of ink, light on a light page and on a dark one. */
+.todayColumn {
+  background-color: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.dayList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place {
+  position: absolute;
+  inset-inline: 3px;
+  padding-block: 1px;
+}
+
+.block,
+.gap {
+  width: 100%;
+  height: 100%;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+}
+
+.block {
+  --tone: var(--free);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--tone) 14%, var(--stone-0));
+  border: 0;
+  border-inline-start: 3px solid var(--tone);
+  border-radius: 8px;
+}
+
+.block:active,
+.gap:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .block:hover {
+    box-shadow: var(--shadow-1);
+  }
+}
+
+.block[aria-pressed='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.tone0 { --tone: var(--free); }
+.tone1 { --tone: var(--busy); }
+.tone2 { --tone: var(--full); }
+.tone3 { --tone: var(--tone-blue); }
+.tone4 { --tone: var(--tone-violet); }
+.tone5 { --tone: var(--ink-2); }
+
+.blockTitle {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+/* Wraps on a narrow day rather than cutting the building off. */
+.blockMeta {
+  font: 500 var(--text-xs) var(--font-mono);
+  color: var(--ink-2);
+}
+
+/* A class under an hour: one line, the name only. */
+.short {
+  flex-direction: row;
+  align-items: center;
+  padding-block: 2px;
+}
+
+.short .blockMeta {
+  display: none;
+}
+
+.gap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  background: transparent;
+  border: 1.5px dashed var(--stone-3);
+  border-radius: 8px;
+}
+
+@media (hover: hover) {
+  .gap:hover {
+    color: var(--ink);
+    border-color: var(--ink-3);
+  }
+}
+
+.gap[aria-pressed='true'] {
+  color: var(--ink);
+  border-color: var(--ink);
+  border-style: solid;
+}
+
+.gapNow {
+  color: var(--free);
+  border-color: var(--free);
+}
+
+.gapMinutes {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.nowLine {
+  position: absolute;
+  inset-inline: -3px;
+  z-index: 1;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.nowLine::before {
+  position: absolute;
+  inset-inline-start: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  content: '';
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  animation: appear 200ms var(--ease-out);
+}
+
+.detailsBody {
+  display: grid;
+  flex: 1;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.detailsTitle {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.detailsMeta {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.detailsActions {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+}
+
+.close {
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 720px) {
+  .grid {
+    --hour: 64px;
+    padding: var(--s-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .details {
+    animation: none;
+  }
+}

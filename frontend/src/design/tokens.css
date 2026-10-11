@@ -30,6 +30,8 @@
   --free: #11714f;
   --free-tint: #e3f2ea;
   --load-usual: #ddd6c6; /* the load chart's "usually" bar */
+  --tone-blue: #2f6db3; /* timetable course tones */
+  --tone-violet: #7a4fb0;
   --busy: #8f5600;
   --busy-tint: #fbefd9;
   --full: #b42f25;
@@ -132,6 +134,8 @@
     --free: #5cd29c;
     --free-tint: #123328;
   --load-usual: #56607a;
+  --tone-blue: #7fb2ec;
+  --tone-violet: #b99be6;
     --busy: #efb453;
     --busy-tint: #38290f;
     --full: #ff8b7e;
@@ -166,6 +170,8 @@
   --free: #5cd29c;
   --free-tint: #123328;
   --load-usual: #56607a;
+  --tone-blue: #7fb2ec;
+  --tone-violet: #b99be6;
   --busy: #efb453;
   --busy-tint: #38290f;
   --full: #ff8b7e;
