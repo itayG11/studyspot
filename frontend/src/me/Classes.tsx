@@ -40,8 +40,12 @@ export function Classes({ classes, onChanged }: { classes: ApiState<ClassSlot[]>
 
 function Week({ classes, onChanged }: { classes: ClassSlot[]; onChanged: () => void }) {
   const removing = useAction()
+  const [removingId, setRemovingId] = useState<number | null>(null) // only that row's button spins
   async function remove(id: number) {
-    if (await removing.run(() => removeClass(id).then(() => true))) onChanged()
+    setRemovingId(id)
+    const done = await removing.run(() => removeClass(id).then(() => true))
+    setRemovingId(null)
+    if (done) onChanged()
   }
   return (
     <div className={styles.week}>
@@ -60,7 +64,7 @@ function Week({ classes, onChanged }: { classes: ClassSlot[]; onChanged: () => v
                     · בניין <bdi>{c.building_code}</bdi>
                     {c.title && ` · ${c.title}`}
                   </span>
-                  <ConfirmButton label="הסרה" confirmLabel="כן, להסיר" size="sm" busy={removing.busy} onConfirm={() => void remove(c.id)} />
+                  <ConfirmButton label="הסרה" confirmLabel="כן, להסיר" size="sm" busy={removingId === c.id} onConfirm={() => void remove(c.id)} />
                 </li>
               ))}
           </ul>

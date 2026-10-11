@@ -115,3 +115,8 @@ def test_the_shared_demo_student_cannot_show_its_own_words_to_every_visitor(clie
 
 def test_a_building_under_construction_is_refused(client, braude):
     assert refused(client.post("/me/classes", json=lesson(building="NG")), 404, "building_not_found")
+
+
+@pytest.mark.parametrize("bad", [{"starts": "10:00:30"}, {"starts": "10:00+02:00"}])
+def test_times_are_whole_minutes_with_no_zone(client, bad):
+    assert client.post("/me/classes", json={**lesson(), **bad}).status_code == 422

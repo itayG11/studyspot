@@ -108,3 +108,19 @@ def test_the_demo_admin_gets_no_timetable(session):
     seed_demo(session)
     admin = demo_user(session, "demo", Persona.ADMIN, datetime.now(UTC))
     assert session.query(ClassSlot).filter(ClassSlot.user_id == admin.id).all() == []
+
+
+def test_a_demo_student_from_before_timetables_gets_the_sample_on_an_already_reset_day(session):
+    from datetime import UTC
+
+    from app.demo import Persona, demo_user
+    from app.models import ClassSlot
+
+    demo = seed_demo(session)
+    student = demo_user(session, "demo", Persona.STUDENT, datetime.now(UTC))
+    session.query(ClassSlot).filter(ClassSlot.user_id == student.id).delete()
+    simulate_history(session, demo, TODAY)  # the history is there already
+    demo.demo_reset_on = date(2026, 10, 11)
+    session.flush()
+    campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 11))
+    assert session.query(ClassSlot).filter(ClassSlot.user_id == student.id).count() > 0

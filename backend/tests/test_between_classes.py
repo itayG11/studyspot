@@ -152,3 +152,94 @@ def test_the_suggestions_are_rate_limited(client, session, braude, student):
     for _ in range(BETWEEN_PER_MINUTE):
         assert client.get("/me/between-classes").status_code == 200
     assert client.get("/me/between-classes").status_code == 429
+
+
+_bookers = iter(range(1, 10_000))
+
+
+def booking_for(session, braude, place, start, end, seat=None, user=None):
+    if user is None:
+        n = next(_bookers)
+        user = User(institution_id=braude.id, email=f"b{n}@braude.example", display_name=f"B{n}")
+        session.add(user)
+        session.flush()
+    session.add(Booking(institution_id=braude.id, user_id=user.id, place_id=place.id, seat_id=seat.id if seat else None,
+                        starts_at=start, ends_at=end, status=BookingStatus.BOOKED, source=BookingSource.ADVANCE))
+    session.flush()
+
+
+def test_a_lab_with_every_seat_booked_is_not_suggested(session, braude, student):
+    # Few people are in it now, but every seat is booked for the gap.
+    add(session, student, braude, time(8, 30), time(10), "M")
+    add(session, student, braude, time(11, 30), time(13), "M")
+    lab = place_named(braude, "M", "M206")
+    for seat in lab.seats:
+        booking_for(session, braude, lab, SUNDAY_10AM, SUNDAY_10AM + timedelta(hours=2), seat=seat)
+    names = [s.name for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions]
+    assert "M206" not in names
+
+
+def test_booked_seats_count_against_what_is_free(session, braude, student):
+    add(session, student, braude, time(8, 30), time(10), "M")
+    add(session, student, braude, time(11, 30), time(13), "M")
+    lab = place_named(braude, "M", "M206")
+    for seat in lab.seats[:3]:
+        booking_for(session, braude, lab, SUNDAY_10AM + timedelta(minutes=30), SUNDAY_10AM + timedelta(hours=1), seat=seat)
+    [lab_suggestion] = [s for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions if s.name == "M206"] or [None]
+    if lab_suggestion is not None:
+        assert lab_suggestion.available == lab.capacity - 3
+
+
+def test_a_place_full_for_part_of_the_time_is_not_suggested(session, braude, student):
+    # Empty at 14:30, full from 15:00: the whole stay counts, not its start.
+    add(session, student, braude, time(13), time(14, 30), "EF")
+    add(session, student, braude, time(16), time(17), "EF")
+    library = place_named(braude, "EF", "ספרייה")
+    for weeks_ago in (1, 2):
+        for minutes in range(30, 90, 15):  # 15:00 to 15:45, local
+            moment = SUNDAY_10AM - timedelta(weeks=weeks_ago) + timedelta(hours=5, minutes=minutes - 30)
+            session.add(OccupancyHistory(place_id=library.id, slot_start=moment, people=library.capacity))
+    session.flush()
+    assert "ספרייה" not in [s.name for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions]
+
+
+def test_a_room_is_judged_by_its_bookings_not_its_history(session, braude, student):
+    add(session, student, braude, time(13), time(14, 30), "EM")
+    add(session, student, braude, time(16), time(17), "EM")
+    room = place_named(braude, "EM", "EM107")
+    for weeks_ago in (1, 2):
+        for quarter in range(6):
+            moment = SUNDAY_10AM - timedelta(weeks=weeks_ago) + timedelta(hours=4, minutes=30 + 15 * quarter)
+            session.add(OccupancyHistory(place_id=room.id, slot_start=moment, people=1))
+    session.flush()
+    assert "EM107" in [s.name for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions]
+
+
+def test_with_no_bookings_left_a_free_room_is_not_offered_as_bookable(session, braude, student):
+    add(session, student, braude, time(8, 30), time(10), "EM")
+    add(session, student, braude, time(11, 30), time(13), "EM")
+    lab = place_named(braude, "M", "M206")
+    for day in (1, 2):  # two bookings already: the quota
+        booking_for(session, braude, lab, SUNDAY_10AM + timedelta(days=day), SUNDAY_10AM + timedelta(days=day, hours=1),
+                    seat=lab.seats[0], user=student)
+    rooms = [s for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions if s.kind == "group_room"]
+    assert rooms and all(not s.bookable for s in rooms)
+
+
+def test_the_order_is_the_same_every_time(session, braude, student):
+    week(session, student, braude)
+    first = [s.place_id for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions]
+    assert all([s.place_id for s in suggest(session, student, SUNDAY_10AM).gaps[0].suggestions] == first for _ in range(3))
+
+
+def test_the_limit_is_per_student_not_per_campus_address(client, session, braude, student):
+    # A whole campus can share one address: one student's limit is theirs.
+    from app.ratelimit import BETWEEN_PER_MINUTE
+
+    for _ in range(BETWEEN_PER_MINUTE):
+        client.get("/me/between-classes")
+    other = User(institution_id=braude.id, email="next@braude.example", display_name="N")
+    session.add(other)
+    session.flush()
+    client.user = other
+    assert client.get("/me/between-classes").status_code == 200

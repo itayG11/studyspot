@@ -13,6 +13,8 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.config import Settings, get_settings
@@ -160,9 +162,34 @@ geocode_limit = per_user("geocode", limit=10, window_seconds=60)
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
 forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+
+
+def per_person(name: str, limit: int, window_seconds: float) -> Callable:
+    """Per user, like per_user, except for a shared demo user: every visitor
+    is that one user, so each visitor's address counts on its own instead."""
+    from app.api.deps import get_session
+    from app.models import AuthProvider, UserIdentity
+
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
+
+    def dependency(
+        request: Request,
+        user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_session)],
+        trusted_hops: Annotated[int, Depends(_trusted_hops)],
+    ) -> None:
+        shared = db.scalars(
+            select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
+        ).first()
+        key = f"address:{client_address(request, trusted_hops)}" if shared else f"user:{user.id}"
+        if not window.allow(key):
+            raise _too_many(window)
+
+    return dependency
+
+
 # Suggestions between classes read every place, and the forecast of each:
-# a page asks every half minute. Per address, not per user: every demo
-# visitor is the same user.
+# a page asks every half minute, so a person is far below this.
 BETWEEN_PER_MINUTE = 30
-between_limit = per_ip("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60, total_limit=1200)
+between_limit = per_person("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60)
 

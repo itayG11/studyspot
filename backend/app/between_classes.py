@@ -19,13 +19,14 @@ from datetime import date, datetime, time, timedelta
 from itertools import pairwise
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.bookings import holding
+from app.bookings import MAX_UPCOMING, holding
 from app.forecast import Forecast, forecast, full_at
 from app.models import (
     Booking,
+    BookingSource,
     Building,
     BuildingStatus,
     ClassSlot,
@@ -129,10 +130,25 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
         select(Place).join(Place.building)
         .where(Place.institution_id == institution.id, Building.status != BuildingStatus.UNDER_CONSTRUCTION)
         .options(selectinload(Place.opening_hours), selectinload(Place.building))
+        .order_by(Place.id)
     ).all()
     all_day = open_all_day_place_ids(session, institution.id, today)
     occupied = occupied_by_place(session, [p.id for p in places], now)
     forecasts: dict[int, Forecast] = {}
+    # Every booking that holds a room or a seat later today, in one query.
+    day_end = datetime.combine(today + timedelta(days=1), time(0), tzinfo=zone)
+    held = session.execute(
+        select(Booking.place_id, Booking.seat_id, Booking.starts_at, Booking.ends_at).where(
+            Booking.place_id.in_([p.id for p in places]), holding(now),
+            Booking.ends_at > now, Booking.starts_at < day_end,
+        )
+    ).all()
+    # The student may book only so many ahead (app/bookings.py).
+    can_book = session.scalar(
+        select(func.count()).select_from(Booking).where(
+            Booking.user_id == user.id, Booking.source == BookingSource.ADVANCE, holding(now), Booking.ends_at > now
+        )
+    ) < MAX_UPCOMING
 
     out = []
     for gap in gaps:
@@ -150,25 +166,37 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
             if minutes < MIN_SIT or not _open_throughout(place, weekday, sit_from, sit_until, place.id in all_day):
                 continue
             available = usual = None
+            overlapping = [h for h in held if h.place_id == place.id and h.starts_at < sit_until and h.ends_at > sit_from]
             if place.kind == PlaceKind.GROUP_ROOM:
-                if _room_held(session, place, sit_from, sit_until, now):
+                if overlapping:  # a room is judged by its bookings, not its past
                     continue
+            elif place.kind == PlaceKind.COMPUTER_LAB:
+                # Seats booked at any point of the stay are not free for it
+                # (a walk-in check-in books its seat too).
+                available = place.capacity - len({h.seat_id for h in overlapping})
+                if available <= 0:
+                    continue
+                if not under_way:
+                    available = None  # not a live count: the forecast speaks
             elif under_way:
                 available = place.capacity - occupied.get(place.id, 0)
                 if available <= 0:
                     continue
-            if not under_way:
+            if not under_way and place.kind != PlaceKind.GROUP_ROOM:
                 if place.id not in forecasts:
                     forecasts[place.id] = forecast(session, place, weekday, now)
-                usual = _usual_at(forecasts[place.id], sit_from.time())
+                usual = _busiest(forecasts[place.id], sit_from.time(), sit_until.time())
                 if usual is not None and usual >= full_at(place) - 0.5:
-                    continue  # usually full then
+                    continue  # usually full at some point of the stay
             found.append(Suggestion(
                 place.id, place.name, place.kind, place.building.code, there, after,
                 sit_from, sit_until, minutes,
-                place.kind in (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB), place.capacity, available, usual,
+                can_book and place.kind in (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB),
+                place.capacity, available, usual,
             ))
-        found.sort(key=lambda s: (-s.sit_minutes, _taken_share(s), s.name))
+        # The time to sit first: the walk costs it. The place id last, so
+        # the order never changes between two looks.
+        found.sort(key=lambda s: (-s.sit_minutes, _taken_share(s), s.name, s.place_id))
         out.append(GapSuggestions(
             gap.starts, gap.ends, end, gap.before.building.code, gap.after.building.code, under_way,
             found[:MAX_SUGGESTIONS],
@@ -177,26 +205,20 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
 
 
 def _open_throughout(place: Place, weekday: int, start: datetime, end: datetime, all_day: bool) -> bool:
+    """start and end are local times of the same day."""
     if all_day:
         return True
-    """start and end are local times of the same day."""
     hours = next((h for h in place.opening_hours if h.weekday == weekday), None)
     return hours is not None and hours.opens <= start.time() and end.time() <= hours.closes
 
 
-def _room_held(session: Session, place: Place, start: datetime, end: datetime, now: datetime) -> bool:
-    return session.scalar(
-        select(Booking.id).where(
-            Booking.place_id == place.id, holding(now), Booking.starts_at < end, Booking.ends_at > start
-        ).limit(1)
-    ) is not None
-
-
-def _usual_at(result: Forecast, at: time) -> float | None:
-    if not result.slots:
-        return None  # too little history: no forecast to go by
-    quarter = time(at.hour, at.minute // 15 * 15)
-    return next((s.people for s in result.slots if s.start == quarter), 0.0)
+def _busiest(result: Forecast, start: time, end: time) -> float | None:
+    """The most usually there at any quarter hour of the stay. None with no
+    forecast: too little history, or outside the weekly hours (a special
+    period keeps it open)."""
+    first = time(start.hour, start.minute // 15 * 15)
+    during = [s.people for s in result.slots if first <= s.start < end]
+    return max(during) if during else None
 
 
 def _taken_share(s: Suggestion) -> float:

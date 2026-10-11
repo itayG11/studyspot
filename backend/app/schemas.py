@@ -512,6 +512,10 @@ class ClassSlotIn(BaseModel):
 
     @model_validator(mode="after")
     def _ends_after_start(self) -> "ClassSlotIn":
+        for value in (self.starts, self.ends):
+            # Local times, in whole minutes, as the form sends them.
+            if value.tzinfo is not None or value.second or value.microsecond:
+                raise ValueError("a class time is a local hour and minute")
         if self.ends <= self.starts:
             raise ValueError("a class ends after it starts")
         self.building_code = self.building_code.upper()

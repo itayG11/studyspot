@@ -207,4 +207,23 @@ describe('the timetable', () => {
     renderMe()
     expect(await within(await betweenSection()).findByText(/דקת הליכה אחת/)).toBeInTheDocument()
   })
+
+  it('a free room with no bookings left is not offered as bookable', async () => {
+    between = { weekday: 6, gaps: [{ ...between.gaps[0], suggestions: [suggestion({ name: 'EM107', kind: 'group_room', bookable: false, available: null })] }] }
+    renderMe()
+    const section = await betweenSection()
+    expect(await within(section).findByText(/החדר פנוי/)).toBeInTheDocument()
+    expect(within(section).queryByText(/אפשר להזמין/)).not.toBeInTheDocument()
+  })
+
+  it('the suggestions still show when the timetable fails to load', async () => {
+    const real = fetch as unknown as (url: string, init: RequestInit) => Promise<Response>
+    vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) =>
+      new URL(url).pathname === '/me/classes' && (init.method ?? 'GET') === 'GET'
+        ? Promise.resolve(jsonResponse({ detail: 'unknown_error' }, 500))
+        : real(url, init),
+    ))
+    renderMe()
+    expect(await within(await betweenSection()).findByRole('article', { name: 'הפסקה 10:00–11:30' })).toBeInTheDocument()
+  })
 })

@@ -15,7 +15,8 @@ const clock = (value: string) => value.slice(0, 5)
 const walking = (minutes: number) => (minutes === 1 ? 'דקת הליכה אחת' : `${minutes} דקות הליכה`)
 
 function load(s: Suggestion): string {
-  if (s.kind === 'group_room') return 'החדר פנוי, אפשר להזמין'
+  // Not bookable: the student has no bookings left (two ahead at most).
+  if (s.kind === 'group_room') return s.bookable ? 'החדר פנוי, אפשר להזמין' : 'החדר פנוי'
   if (s.available !== null) return `${s.available} מקומות פנויים עכשיו`
   if (s.usual === null) return 'אין עדיין חיזוי'
   const share = s.usual / s.capacity
@@ -27,13 +28,13 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
   const { slug } = useInstitution()
   let body
   if (!between.data && between.error) body = <ErrorState error={between.error} onRetry={between.reload} compact />
-  else if (!between.data || classes === null) {
+  else if (!between.data) {
     body = (
       <LoadingRegion>
         <Skeleton height="120px" radius="var(--r-lg)" />
       </LoadingRegion>
     )
-  } else if (classes.length === 0) {
+  } else if (classes?.length === 0) {
     body = (
       <div className={styles.idle}>
         <p className={styles.idleTitle}>עוד אין לך מערכת שעות.</p>
@@ -62,7 +63,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
             {gap.now && <span className={styles.gapNow}>עכשיו</span>}
           </header>
           {gap.suggestions.length === 0 ? (
-            <p className={styles.idleText}>אין מקום פתוח ופנוי שמספיק להפסקה הזו.</p>
+            <p className={styles.idleText}>אין מקום פתוח ופנוי שמספיק לזמן שנשאר בהפסקה הזו.</p>
           ) : (
             <ol className={styles.suggestions}>
               {gap.suggestions.map((s) => (

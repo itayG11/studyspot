@@ -23,7 +23,7 @@ class ClassSlot(Base):
     weekday: Mapped[int] = mapped_column(SmallInteger)  # Python's numbering: Monday is 0
     starts: Mapped[time]  # local, in the institution's time zone
     ends: Mapped[time]
-    building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id", ondelete="CASCADE"))
+    building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id", ondelete="CASCADE"), index=True)
     title: Mapped[str | None] = mapped_column(String(60))
 
     building: Mapped[Building] = relationship()

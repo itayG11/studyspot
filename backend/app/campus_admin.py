@@ -155,10 +155,10 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
         )
         if has_history is None:
             simulate_history(db, institution, today)
-            # Same version gap: a demo student from before timetables.
-            student = demo_student(db, institution)
-            if student is not None and not db.scalar(select(ClassSlot.id).where(ClassSlot.user_id == student.id).limit(1)):
-                give_sample_timetable(db, student)
+        # Same version gap: a demo student from before timetables has none.
+        student = demo_student(db, institution)
+        if student is not None and not db.scalar(select(ClassSlot.id).where(ClassSlot.user_id == student.id).limit(1)):
+            give_sample_timetable(db, student)
         return None
     removed = reset_demo_extras(db, slug)
     # The forecast's made-up past moves on with the days (app/seed/history.py).
