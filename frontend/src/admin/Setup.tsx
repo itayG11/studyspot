@@ -10,7 +10,8 @@ import type { LoginRule, Setup as SetupData } from '../api/types'
 import { useAction, type Action } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
-import { Button, ErrorState, Notice, PageLoading } from '../ui'
+import { Link } from 'react-router'
+import { ActionError, Button, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 
 type Go = (tab: 'adding' | 'placing' | 'signs') => void
@@ -110,7 +111,7 @@ function DetailsStep({ data, onSaved }: { data: SetupData; onSaved: () => void }
         שמירה
       </Button>
       <div role="status">{saved && <Notice tone="success">נשמר.</Notice>}</div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </form>
   )
 }
@@ -209,9 +210,9 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
       >
         הוספת ארגון מיקרוסופט
       </Button>
-      {addDomain.error && <Notice tone="error">{addDomain.error}</Notice>}
-      {addTenant.error && <Notice tone="error">{addTenant.error}</Notice>}
-      {removing.error && <Notice tone="error">{removing.error}</Notice>}
+      <ActionError action={addDomain} />
+      <ActionError action={addTenant} />
+      <ActionError action={removing} />
       <p className={styles.lead}>
         כלל חדש מתחיל לעבוד אחרי שמנהל המערכת בודק שהסיומת או הארגון באמת של המוסד.
       </p>
@@ -244,7 +245,7 @@ function OpenStep({ data, onSaved, onGo }: { data: SetupData; onSaved: () => voi
         4. שלטים ופתיחה
       </h2>
       <p className={styles.lead}>
-        מדפיסים את השלטים ותולים אותם. אחר כך מפעילים את המוסד, והוא מופיע ברשימת המוסדות באתר.
+        מדפיסים את השלטים ותולים אותם. אחר כך מפעילים את המוסד, והוא מופיע <Link to="/institutions">ברשימת המוסדות</Link> באתר.
       </p>
       <div className={styles.toolbar}>
         <Button variant="secondary" size="sm" onClick={() => onGo('signs')}>
@@ -255,9 +256,13 @@ function OpenStep({ data, onSaved, onGo }: { data: SetupData; onSaved: () => voi
         </Button>
       </div>
       <div role="status">
-        {data.is_active && <Notice tone="success">המוסד פעיל, ומופיע ברשימת המוסדות.</Notice>}
+        {data.is_active && (
+          <Notice tone="success">
+            המוסד פעיל, ומופיע <Link to="/institutions">ברשימת המוסדות</Link>.
+          </Notice>
+        )}
       </div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </section>
   )
 }

@@ -9,7 +9,8 @@ import type { Building, GeocodeResult, PlaceKind } from '../api/types'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { floorLabel, KIND_LABELS, KINDS } from '../i18n/labels'
-import { Button, ErrorState, Notice, PageLoading } from '../ui'
+import { Link } from 'react-router'
+import { ActionError, Button, ErrorState, JumpTo, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { useInstitution } from '../institution'
 import { PickMap } from './PickMap'
@@ -22,8 +23,8 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
   return (
     <div className={styles.adder}>
       <p className={styles.lead}>
-        מוסיפים בניין, ואז מקומות בתוכו. מקום חדש פתוח בשעות הרגילות של הקמפוס. לכל מקום נוצר שלט לבד, ומוכן להדפסה
-        בלשונית השלטים. עדיין אין עריכה או מחיקה.
+        מוסיפים בניין, ואז מקומות בתוכו. מקום חדש פתוח בשעות הרגילות של הקמפוס. לכל מקום נוצר שלט לבד, ומוכן להדפסה{' '}
+        <Link to="?tab=signs">בלשונית השלטים</Link>. עדיין אין עריכה או מחיקה.
       </p>
       <BuildingForm
         buildings={buildings.data}
@@ -74,7 +75,7 @@ function BuildingForm({
   }
 
   return (
-    <section className={styles.form} aria-labelledby={`${id}-title`}>
+    <section id="new-building" tabIndex={-1} className={styles.form} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.formTitle}>
         בניין חדש
       </h2>
@@ -129,7 +130,7 @@ function BuildingForm({
       <div role="status">
         {added && (
           <Notice tone="success">
-            {added.name} נוסף. עכשיו מוסיפים לו מקומות, למטה.{' '}
+            {added.name} נוסף. עכשיו <JumpTo id="new-place">מוסיפים לו מקומות</JumpTo>, למטה.{' '}
             {!added.located && (
               <Button variant="ghost" size="sm" onClick={() => onPlace(added.code)}>
                 למיקום על המפה
@@ -138,7 +139,7 @@ function BuildingForm({
           </Notice>
         )}
       </div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
       </form>
     </section>
   )
@@ -208,7 +209,7 @@ function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
       )}
       <p className={styles.attribution}>החיפוש: © OpenStreetMap</p>
       {locating && <Notice>{locating}</Notice>}
-      {search.error && <Notice tone="error">{search.error}</Notice>}
+      <ActionError action={search} />
     </div>
   )
 }
@@ -233,7 +234,7 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
   const building = buildings.find((b) => b.id === buildingId) ?? buildings[0]
   const lab = kind === 'computer_lab'
 
-  if (!building) return <Notice>קודם מוסיפים בניין.</Notice>
+  if (!building) return <Notice>קודם <JumpTo id="new-building">מוסיפים בניין</JumpTo>.</Notice>
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -241,14 +242,14 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
     const size = lab ? { lab_rows: Number(rows), lab_cols: Number(cols) } : { capacity: Number(capacity) }
     const saved = await action.run(() => addPlace(building.id, { kind, name: name.trim(), floor, ...size }))
     if (saved) {
-      setAdded(`${saved.name} נוסף לבניין ${building.code}. השלט שלו מוכן בלשונית השלטים.`)
+      setAdded(`${saved.name} נוסף לבניין ${building.code}.`)
       onAdded?.()
       setName('')
     }
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} aria-labelledby={`${id}-title`}>
+    <form id="new-place" tabIndex={-1} className={styles.form} onSubmit={submit} aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} className={styles.formTitle}>
         מקום חדש
       </h2>
@@ -363,8 +364,12 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
       <Button type="submit" busy={action.busy}>
         הוספת מקום
       </Button>
-      <div role="status">{added && <Notice tone="success">{added}</Notice>}</div>
-      <div role="alert">{action.error && <Notice tone="error">{action.error}</Notice>}</div>
+      <div role="status">{added && (
+          <Notice tone="success">
+            {added} השלט שלו מוכן <Link to="?tab=signs">בלשונית השלטים</Link>.
+          </Notice>
+        )}</div>
+      <div role="alert"><ActionError action={action} /></div>
     </form>
   )
 }

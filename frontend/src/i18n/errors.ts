@@ -110,3 +110,14 @@ const MESSAGES: Record<string, string> = {
 export function errorMessage(code: string): string {
   return MESSAGES[code] ?? MESSAGES.unknown_error
 }
+
+// Errors that say where to go next ("sign in again", "scan the code") come
+// with a link there. `here` is the page the error is on, to come back to.
+const SIGN_IN = ['not_authenticated', 'invalid_token', 'token_expired', 'invalid_session']
+
+export function errorLink(code: string, here: string): { to: string; label: string } | null {
+  if (SIGN_IN.includes(code)) return { to: `/login?next=${encodeURIComponent(here)}`, label: 'להתחברות' }
+  if (code === 'not_bookable' || code === 'not_checked_in') return { to: '/scan', label: 'לסריקת קוד' }
+  if (code === 'too_many_bookings') return { to: '/me#my-bookings', label: 'להזמנות שלי' }
+  return null
+}

@@ -8,7 +8,7 @@ import type { ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { levelWord, type ForecastLevel } from '../logic/forecast'
 import { HIGH_FROM, MEDIUM_FROM } from '../logic/occupancy'
-import { ErrorState, LoadingRegion, Skeleton } from '../ui'
+import { ErrorState, JumpTo, LoadingRegion, Skeleton } from '../ui'
 import styles from './me.module.css'
 
 const clock = (value: string) => value.slice(0, 5)
@@ -72,7 +72,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
     body = (
       <div className={styles.idle}>
         <p className={styles.idleTitle}>עוד אין לך מערכת שעות.</p>
-        <p className={styles.idleText}>הוסף את השיעורים שלך במערכת השעות למטה, ונציע לך מקום ללמוד בכל הפסקה.</p>
+        <p className={styles.idleText}>הוסף את השיעורים שלך <JumpTo id="my-timetable">במערכת השעות</JumpTo> למטה, ונציע לך מקום ללמוד בכל הפסקה.</p>
       </div>
     )
   } else if (between.data.gaps.length === 0) {

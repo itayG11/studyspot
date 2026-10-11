@@ -4,6 +4,7 @@
 // what a student could not use anyway.
 
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Adder } from './Adder'
 import styles from './admin.module.css'
 import { Placer } from './Placer'
@@ -14,14 +15,22 @@ type Tab = 'setup' | 'signs' | 'placing' | 'adding'
 
 const TAB_LABELS: Record<Tab, string> = { setup: 'הקמה', signs: 'שלטים להדפסה', placing: 'מיקום בניינים', adding: 'הוספה' }
 
+const isTab = (value: string | null): value is Tab => value !== null && value in TAB_LABELS
+
 export function AdminPage() {
   const setup = useSetup()
-  const [chosen, setTab] = useState<Tab | null>(null)
-  // The first tab, picked once when the setup loads: setting up while the
-  // institution is not open yet, the signs once it is. Picked once, so
-  // opening the institution does not move the admin to another tab.
-  if (chosen === null && setup.data) setTab(setup.data.is_active ? 'signs' : 'setup')
-  const tab: Tab = chosen ?? 'setup'
+  // The tab is in the address (?tab=signs), so a link elsewhere ("in the
+  // signs tab") can open it, and back and refresh keep it.
+  const [params, setParams] = useSearchParams()
+  const fromUrl = params.get('tab')
+  const setTab = (t: Tab) => setParams({ tab: t }, { replace: true })
+  // With no tab in the address, the first one is picked once, when the setup
+  // loads: setting up while the institution is not open yet, the signs once
+  // it is. Picked once, so opening the institution does not move the admin.
+  const [first, setFirst] = useState<Tab | null>(null)
+  if (first === null && setup.data) setFirst(setup.data.is_active ? 'signs' : 'setup')
+  const tab: Tab = isTab(fromUrl) ? fromUrl : (first ?? 'setup')
+
   // A building just added, to choose for placing on the map.
   const [toPlace, setToPlace] = useState<string | null>(null)
   return (

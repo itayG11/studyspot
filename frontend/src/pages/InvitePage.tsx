@@ -52,8 +52,12 @@ export function InvitePage() {
   if (accepted) return <Navigate to={`/${accepted}/admin`} replace />
   if (stale) {
     return (
-      <EmptyState icon={<KeyRound />} title="ההזמנה התקבלה">
-        טען מחדש את הדף, כדי להיכנס לדף הניהול.
+      <EmptyState
+        icon={<KeyRound />}
+        title="ההזמנה התקבלה"
+        action={<Button onClick={() => window.location.reload()}>לטעון מחדש</Button>}
+      >
+        טוענים מחדש את הדף, כדי להיכנס לדף הניהול.
       </EmptyState>
     )
   }

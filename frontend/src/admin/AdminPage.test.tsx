@@ -90,10 +90,10 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-function renderAdmin() {
+function renderAdmin(entry = '/admin') {
   const router = createMemoryRouter(
     [{ path: '/admin', element: <RequireAdmin><AdminPage /></RequireAdmin> }],
-    { initialEntries: ['/admin'] },
+    { initialEntries: [entry] },
   )
   render(
     <AuthProvider>
@@ -105,6 +105,14 @@ function renderAdmin() {
 }
 
 describe('AdminPage', () => {
+  it('a tab in the address opens it, and a link in the text moves to another', async () => {
+    const user = userEvent.setup()
+    renderAdmin('/admin?tab=adding')
+    expect(await screen.findByRole('button', { name: 'הוספה', pressed: true })).toBeInTheDocument()
+    await user.click(await screen.findByRole('link', { name: 'בלשונית השלטים' }))
+    expect(await screen.findByRole('button', { name: 'שלטים להדפסה', pressed: true })).toBeInTheDocument()
+  })
+
   it('a student is not let in', async () => {
     role = 'student'
     renderAdmin()

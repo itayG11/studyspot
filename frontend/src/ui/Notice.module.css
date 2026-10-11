@@ -39,3 +39,12 @@
   color: var(--free);
   background: var(--free-tint);
 }
+
+/* The way out of an error, right after its text. */
+.action {
+  margin-inline-start: var(--s-2);
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

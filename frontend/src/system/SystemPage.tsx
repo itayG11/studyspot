@@ -11,7 +11,7 @@ import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { formatDay, formatTime } from '../logic/time'
 import { useInstitution } from '../institution'
-import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
+import { ActionError, Button, ConfirmButton, ErrorState, PageLoading } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './system.module.css'
 
@@ -83,7 +83,7 @@ function PendingRules() {
           ))}
         </ul>
       )}
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </section>
   )
 }
@@ -138,7 +138,7 @@ function NewInstitutionForm({ onCreated }: { onCreated: () => void }) {
       <Button type="submit" busy={action.busy}>
         יצירת מוסד
       </Button>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </form>
   )
 }
@@ -190,7 +190,7 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
           )}
         </div>
       )}
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
       {!institution.is_active && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
     </li>
   )
@@ -235,7 +235,7 @@ function DeleteInstitution({ slug, onDeleted }: { slug: string; onDeleted: () =>
           ביטול
         </Button>
       </div>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </form>
   )
 }

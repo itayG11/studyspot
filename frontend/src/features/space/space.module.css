@@ -459,3 +459,12 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* Reached from "pick a seat on the map": room under the sticky header. */
+.jumpTarget {
+  scroll-margin-top: 96px;
+}
+
+.jumpTarget:focus:not(:focus-visible) {
+  outline: none;
+}

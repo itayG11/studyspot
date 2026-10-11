@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { ApiError } from '../api/client'
 import { errorMessage } from '../i18n/errors'
 import { Button } from './Button'
+import { ErrorAction } from './ErrorAction'
 import styles from './States.module.css'
 
 // Nothing to show, and what to do about it ("no results: remove a filter").
@@ -32,7 +33,10 @@ export function ErrorState({ error, onRetry, compact = false }: { error: ApiErro
     return (
       <div className={styles.strip} role="alert">
         <Icon aria-hidden="true" className={styles.stripIcon} />
-        <span>{errorMessage(error.code)}</span>
+        <span>
+          {errorMessage(error.code)}
+          <ErrorAction code={error.code} />
+        </span>
         <Button variant="ghost" size="sm" icon={<RotateCw aria-hidden="true" />} onClick={onRetry}>
           נסה שוב
         </Button>
@@ -45,7 +49,10 @@ export function ErrorState({ error, onRetry, compact = false }: { error: ApiErro
         <Icon />
       </span>
       <h2 className={styles.title}>{title}</h2>
-      <p className={styles.text}>{errorMessage(error.code)}</p>
+      <p className={styles.text}>
+        {errorMessage(error.code)}
+        <ErrorAction code={error.code} />
+      </p>
       <Button variant="secondary" icon={<RotateCw aria-hidden="true" />} onClick={onRetry}>
         נסה שוב
       </Button>

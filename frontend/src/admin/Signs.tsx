@@ -10,6 +10,7 @@ import { useApi } from '../hooks/useApi'
 import { SITE_URL } from '../config'
 import { scanUrl } from '../logic/codes'
 import { Printer } from 'lucide-react'
+import { Link } from 'react-router'
 import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { useQrImage } from './useQrImage'
@@ -26,7 +27,7 @@ export function Signs() {
   if (codes.data.length === 0) {
     return (
       <Notice>
-        השלטים נוצרים לבד: לכל מקום שמוסיפים יש שלט עם קוד משלו. עוד אין מקומות, אז מוסיפים אותם בלשונית "הוספה", והשלטים
+        השלטים נוצרים לבד: לכל מקום שמוסיפים יש שלט עם קוד משלו. עוד אין מקומות, אז מוסיפים אותם <Link to="?tab=adding">בלשונית "הוספה"</Link>, והשלטים
         יופיעו כאן.
       </Notice>
     )

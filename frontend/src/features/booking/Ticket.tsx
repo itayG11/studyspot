@@ -8,6 +8,7 @@ import { CalendarPlus } from 'lucide-react'
 import type { Booking } from '../../api/types'
 import { EASE_OUT } from '../../design/motion'
 import { formatDay, formatTime } from '../../logic/time'
+import { Link } from 'react-router'
 import { Button, ButtonLink, ExternalButtonLink } from '../../ui'
 import { googleCalendarLink, outlookCalendarLink, type CalendarEvent } from '../../logic/calendarLinks'
 import { floorLabel } from '../../i18n/labels'
@@ -49,7 +50,7 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
         </p>
         <div className={styles.perforation} aria-hidden="true" />
         <p className={styles.ticketNote}>
-          כשתגיע, סרוק את הקוד שבמקום. אפשר לאשר הגעה עד {arriveEarlyMinutes} דקות לפני.
+          כשתגיע, <Link to="/scan">סרוק את הקוד</Link> שבמקום. אפשר לאשר הגעה עד {arriveEarlyMinutes} דקות לפני.
         </p>
         <p className={styles.ticketNumber}>הזמנה מספר {booking.id}</p>
         <m.span

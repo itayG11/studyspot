@@ -6,7 +6,7 @@ import { getBuildings } from '../api/campus'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { AERIAL_ENABLED } from '../map/tiles'
-import { ErrorState, Notice, PageLoading } from '../ui'
+import { ActionError, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
 import { useInstitution } from '../institution'
@@ -59,7 +59,7 @@ export function Placer({ initial = null, onSaved }: { initial?: string | null; o
           ))}
         </ul>
         <div role="status">{done && <Notice tone="success">{done}</Notice>}</div>
-        {action.error && <Notice tone="error">{action.error}</Notice>}
+        <ActionError action={action} />
       </div>
       <PickMap buildings={buildings.data} selected={selected} onPick={(lat, lng) => void pick(lat, lng)} />
     </div>

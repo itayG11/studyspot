@@ -9,6 +9,7 @@ import { rememberReturnTo } from '../auth/returnTo'
 import { safeNext } from '../logic/next'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
+import { useHomeSlug } from '../institution'
 import { Button, ButtonLink, EmptyState, Notice, Photo, Skeleton } from '../ui'
 import { EmailSignIn } from './EmailSignIn'
 import styles from './pages.module.css'
@@ -25,6 +26,7 @@ export function LoginPage() {
   // The page to go back to afterwards; only a path on this site is accepted.
   const [params] = useSearchParams()
   const next = safeNext(params.get('next'))
+  const home = useHomeSlug()
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<DemoPersona | null>(null)
 
@@ -56,7 +58,7 @@ export function LoginPage() {
           התחברות
         </h1>
         <p className={styles.loginLead}>
-          אפשר לחפש מקומות בלי להתחבר. כדי להזמין מקום או לסרוק קוד, מתחברים עם חשבון המוסד.
+          אפשר <Link to={home ? `/${home}#finder` : '/'}>לחפש מקומות</Link> בלי להתחבר. כדי להזמין מקום או לסרוק קוד, מתחברים עם חשבון המוסד.
         </p>
 
         {providers.error && <Notice tone="error">{errorMessage(providers.error.code)}</Notice>}

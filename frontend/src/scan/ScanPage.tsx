@@ -23,7 +23,7 @@ import { bookingToConfirm } from '../logic/bookings'
 import { cleanCode, codeFromHash, placeIdFromCode } from '../logic/codes'
 import { formatTime } from '../logic/time'
 import { KIND_PHOTO } from '../media/photos'
-import { Button, ButtonLink, ErrorState, Notice, PageLoading, Photo } from '../ui'
+import { ActionError, Button, ButtonLink, ErrorState, Notice, PageLoading, Photo } from '../ui'
 import { clearPendingCode, peekPendingCode, rememberPendingCode } from './pendingCode'
 import styles from './scan.module.css'
 
@@ -223,7 +223,7 @@ function ScanPlace({ code, placeId }: { code: string; placeId: number }) {
           </Button>
         </>
       )}
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
       </div>
     </article>
   )

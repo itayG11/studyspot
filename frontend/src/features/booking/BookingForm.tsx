@@ -20,7 +20,7 @@ import { bookableDays, daySlots, durationsFrom, type Slot } from '../../logic/sl
 import { formatTime, weekdayName } from '../../logic/time'
 import { nearestFree } from '../../logic/timeline'
 import { weekdayOfDate } from '../../logic/zoned'
-import { Button, ButtonLink, Chip, ErrorState } from '../../ui'
+import { Button, ButtonLink, Chip, ErrorAction, ErrorState } from '../../ui'
 import { Ticket } from './Ticket'
 import styles from './booking.module.css'
 
@@ -225,6 +225,7 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
       {action.error && !clash && (
         <p className={styles.error} role="alert">
           {action.error}
+          <ErrorAction code={action.errorCode} />
         </p>
       )}
     </div>

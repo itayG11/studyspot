@@ -10,7 +10,7 @@ import { useAction } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { WEEK_ORDER, weekdayName } from '../logic/time'
-import { Button, ErrorState, LoadingRegion, Notice, Skeleton } from '../ui'
+import { ActionError, Button, ErrorState, LoadingRegion, Skeleton } from '../ui'
 import admin from '../admin/admin.module.css'
 import styles from './me.module.css'
 import { WeekGrid } from './WeekGrid'
@@ -36,7 +36,7 @@ export function Classes({ classes, between, onChanged }: Props) {
     if (done) onChanged()
   }
   return (
-    <section aria-label="מערכת השעות" className={styles.section}>
+    <section id="my-timetable" tabIndex={-1} aria-label="מערכת השעות" className={`${styles.section} ${styles.jumpTarget}`}>
       <h2 className={styles.heading}>מערכת השעות</h2>
       {user?.is_demo && (
         <p className={styles.idleText}>המערכת כאן לדוגמה, ומשותפת לכל המבקרים. כל יום היא חוזרת למצב ההתחלתי, ושמות קורסים חדשים לא נשמרים בה.</p>
@@ -56,7 +56,7 @@ export function Classes({ classes, between, onChanged }: Props) {
           onPickTime={(weekday, starts) => setPreset({ weekday, starts, key: Date.now() })}
         />
       )}
-      {removing.error && <Notice tone="error">{removing.error}</Notice>}
+      <ActionError action={removing} />
       <NewClassForm preset={preset} onAdded={onChanged} />
       <p className={styles.idleText}>רק אתה רואה את המערכת שלך. היא נמחקת עם החשבון.</p>
     </section>
@@ -150,7 +150,7 @@ function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: 
       <Button type="submit" size="sm" busy={action.busy} disabled={!chosen}>
         הוספת שיעור
       </Button>
-      {action.error && <Notice tone="error">{action.error}</Notice>}
+      <ActionError action={action} />
     </form>
   )
 }

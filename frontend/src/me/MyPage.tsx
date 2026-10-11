@@ -3,7 +3,8 @@
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useRef } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
 import { betweenClasses, cancelBooking, checkOut, extendBooking, myBookings, myCheckIn, myClasses } from '../api/student'
 import type { Booking, CheckIn, Place } from '../api/types'
@@ -16,7 +17,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useInstitution } from '../institution'
 import { formatDay, formatTime } from '../logic/time'
 import { KIND_PHOTO } from '../media/photos'
-import { Button, ButtonLink, ConfirmButton, EmptyState, ErrorState, LoadingRegion, Notice, Photo, Skeleton, useToast } from '../ui'
+import { ActionError, Button, ButtonLink, ConfirmButton, EmptyState, ErrorState, jumpTo, LoadingRegion, Notice, Photo, Skeleton, useToast } from '../ui'
 import { BetweenClasses } from './BetweenClasses'
 import { Classes } from './Classes'
 import styles from './me.module.css'
@@ -34,6 +35,16 @@ export function MyPage() {
   // For each booking's picture, and for the favourites.
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
   const classes = useApi(myClasses, 'my-classes')
+  // Arriving at /me#my-bookings or #my-timetable (from an error, the privacy
+  // page): there, once the sections above it are drawn, once per arrival.
+  const { hash } = useLocation()
+  const ready = bookings.data !== null && classes.data !== null
+  const jumped = useRef<string | null>(null)
+  useEffect(() => {
+    if (!ready || !hash || jumped.current === hash) return
+    jumped.current = hash
+    jumpTo(hash.slice(1))
+  }, [ready, hash])
   const between = useApi(betweenClasses, 'between-classes', REFRESH_INTERVAL_MS)
 
   if (!user) return null
@@ -81,7 +92,7 @@ export function MyPage() {
 
       <BetweenClasses between={between} classes={classes.data} />
 
-      <section aria-label="ההזמנות שלי" className={styles.section}>
+      <section id="my-bookings" tabIndex={-1} aria-label="ההזמנות שלי" className={`${styles.section} ${styles.jumpTarget}`}>
         <h2 className={styles.heading}>ההזמנות שלי</h2>
         {bookings.error && <ErrorState error={bookings.error} onRetry={bookings.reload} compact />}
         {bookings.loading && (
@@ -165,7 +176,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
           יציאה
         </Button>
       </div>
-      {leave.error && <Notice tone="error">{leave.error}</Notice>}
+      <ActionError action={leave} />
     </>
   )
 }
@@ -313,7 +324,7 @@ function Account() {
         {!user?.is_demo && 'המחיקה כוללת את ההזמנות והכניסות שלך, ואי אפשר לבטל אותה. '}
         <Link to="/privacy">מדיניות הפרטיות</Link>
       </p>
-      {account.error && <Notice tone="error">{account.error}</Notice>}
+      <ActionError action={account} />
     </section>
   )
 }

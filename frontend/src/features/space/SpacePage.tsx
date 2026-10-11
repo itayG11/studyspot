@@ -19,7 +19,7 @@ import { useInstitution, useLiveSimulated } from '../../institution'
 import { spaceStatus } from '../../logic/availability'
 import { KIND_PHOTO } from '../../media/photos'
 import { NotFoundPage } from '../../pages/NotFoundPage'
-import { Badge, Button, ButtonLink, ErrorState, LoadingRegion, Photo, Sheet, Skeleton, TALL_QUERY } from '../../ui'
+import { Badge, Button, ButtonLink, ErrorState, JumpTo, LoadingRegion, Photo, Sheet, Skeleton, TALL_QUERY } from '../../ui'
 import { BookingForm } from '../booking/BookingForm'
 import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
@@ -151,7 +151,9 @@ function SpaceView({ place }: { place: PlaceDetail }) {
               היום{seat && ` · תא ${seat.label}`}
             </h2>
             {isLab && !seat ? (
-              <p className={styles.muted}>בחר תא במפה למטה, ותראה מתי הוא פנוי היום.</p>
+              <p className={styles.muted}>
+                <JumpTo id="seats">בחר תא במפה</JumpTo> למטה, ותראה מתי הוא פנוי היום.
+              </p>
             ) : (
               <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
             )}
@@ -161,7 +163,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
 
           {place.seats && place.lab_rows && place.lab_cols && (
             <section className={styles.card} aria-labelledby="seats">
-              <h2 id="seats" className={styles.h2}>
+              <h2 id="seats" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
                 מפת התאים
               </h2>
               <p className={styles.muted}>כדי להזמין מראש, בחר תא.</p>
@@ -193,7 +195,9 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             <h2 id="book" className={styles.h2}>
               הזמנה מראש
             </h2>
-            {canBook ? form : <p className={styles.muted}>בחר תא במפת התאים, ואז זמן.</p>}
+            {canBook ? form : <p className={styles.muted}>
+                <JumpTo id="seats">בחר תא במפת התאים</JumpTo>, ואז זמן.
+              </p>}
           </aside>
         )}
       </div>

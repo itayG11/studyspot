@@ -10,7 +10,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useInstitution } from '../institution'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
 import { courseTone, dayLayout, hourRange, pickedTime, type Gap, type HourRange } from '../logic/week'
-import { Chip, ConfirmButton } from '../ui'
+import { Chip, ConfirmButton, JumpTo } from '../ui'
 import { BETWEEN_ID, SuggestionList } from './BetweenClasses'
 import styles from './week.module.css'
 
@@ -199,21 +199,9 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
   )
 }
 
-// "Between classes today", as a link: up the page to that section, which
-// takes the focus so a keyboard or screen reader user lands there too.
+// "Between classes today", as a link up the page to that section.
 function ToBetween() {
-  function go() {
-    const target = document.getElementById(BETWEEN_ID)
-    if (!target) return
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    target.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' })
-    target.focus({ preventScroll: true })
-  }
-  return (
-    <button type="button" className={styles.inlineLink} onClick={go}>
-      בין שיעורים היום
-    </button>
-  )
+  return <JumpTo id={BETWEEN_ID}>בין שיעורים היום</JumpTo>
 }
 
 interface DetailsProps {
