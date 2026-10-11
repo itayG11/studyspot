@@ -24,13 +24,14 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   await week.getByLabel('מתחיל').fill('16:00')
   await week.getByLabel('נגמר').fill('17:00')
   await week.getByLabel('בניין').selectOption('M')
-  await week.getByLabel(/שם הקורס/).fill('בדיקה')
+  // The demo student is shared: a new course name is not kept, the sample's are.
+  await week.getByLabel(/שם הקורס/).fill('מבני נתונים')
   await week.getByRole('button', { name: 'הוספת שיעור' }).click()
-  const added = week.getByRole('listitem').filter({ hasText: 'בדיקה' })
-  await expect(added).toHaveText(/16:00–17:00 · בניין M · בדיקה/)
+  const added = week.getByRole('list', { name: 'יום חמישי' }).getByRole('listitem').filter({ hasText: '16:00–17:00' })
+  await expect(added).toHaveText(/16:00–17:00 · בניין M · מבני נתונים/)
   await added.getByRole('button', { name: 'הסרה' }).click()
   await added.getByRole('button', { name: 'כן, להסיר' }).click()
-  await expect(week.getByText('בדיקה')).toHaveCount(0)
+  await expect(added).toHaveCount(0)
 
   // What it says depends on the day and the hour; that it answers does not.
   await expect(page.getByRole('region', { name: 'בין שיעורים היום' })).toBeVisible()

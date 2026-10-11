@@ -100,3 +100,18 @@ def test_classes_go_with_the_account(client, session, student):
     session.delete(student)
     session.flush()
     assert session.scalars(select(ClassSlot)).all() == []
+
+
+def test_the_shared_demo_student_cannot_show_its_own_words_to_every_visitor(client, session, braude, student):
+    # Every visitor is the same demo student: a course name typed by one
+    # would be shown to all. Only the sample's names are kept.
+    from app.models import AuthProvider, UserIdentity
+
+    session.add(UserIdentity(user_id=student.id, provider=AuthProvider.DEMO, subject="braude:student"))
+    session.flush()
+    assert client.post("/me/classes", json=lesson(title="כל מה שמבקר רוצה")).json()["title"] is None
+    assert client.post("/me/classes", json=lesson(MONDAY, title="מבני נתונים")).json()["title"] == "מבני נתונים"
+
+
+def test_a_building_under_construction_is_refused(client, braude):
+    assert refused(client.post("/me/classes", json=lesson(building="NG")), 404, "building_not_found")

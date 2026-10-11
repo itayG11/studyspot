@@ -39,6 +39,8 @@ from app.occupancy import occupied_by_place, open_all_day_place_ids
 MIN_GAP = timedelta(minutes=30)  # shorter, and there is no time to settle anywhere
 MIN_SIT = 20  # minutes left to sit, after both walks
 MAX_SUGGESTIONS = 3
+# A real day has a handful; this keeps one request bounded, whatever is stored.
+MAX_GAPS = 10
 WALK_METRES_PER_MINUTE = 80  # a slow pace, with a bag
 DETOUR = 1.3  # paths are not straight lines
 SAME_BUILDING_MINUTES = 1  # stairs and corridors
@@ -73,7 +75,7 @@ def find_gaps(classes: list[ClassSlot], now: time) -> list[Gap]:
         length = datetime.combine(date.min, after.starts) - datetime.combine(date.min, before.ends)
         if length >= MIN_GAP and after.starts > now:
             gaps.append(Gap(before.ends, after.starts, before, after))
-    return gaps
+    return gaps[:MAX_GAPS]
 
 
 @dataclass(frozen=True)

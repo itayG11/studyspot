@@ -160,4 +160,9 @@ geocode_limit = per_user("geocode", limit=10, window_seconds=60)
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
 forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+# Suggestions between classes read every place, and the forecast of each:
+# a page asks every half minute. Per address, not per user: every demo
+# visitor is the same user.
+BETWEEN_PER_MINUTE = 30
+between_limit = per_ip("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60, total_limit=1200)
 

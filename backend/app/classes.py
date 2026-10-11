@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import Building, ClassSlot, User
+from app.models import AuthProvider, Building, BuildingStatus, ClassSlot, User, UserIdentity
 
 # A full week of classes is far below this; it keeps one account small.
 MAX_CLASSES = 40
@@ -29,7 +29,11 @@ def add_class(
     # Locked: two tabs adding at once cannot both pass the checks below.
     db.refresh(user, with_for_update=True)
     building = db.scalars(
-        select(Building).where(Building.institution_id == user.institution_id, Building.code == building_code)
+        select(Building).where(
+            Building.institution_id == user.institution_id,
+            Building.code == building_code,
+            Building.status != BuildingStatus.UNDER_CONSTRUCTION,  # no classes there yet
+        )
     ).first()
     if building is None:
         raise Refusal(404, "building_not_found")
@@ -43,6 +47,12 @@ def add_class(
     ).first()
     if overlap is not None:
         raise Refusal(409, "class_overlaps")
+    if title is not None and _shared_demo(db, user):
+        # Every visitor is this one student: words typed by one would be
+        # shown to all. Only the sample's own course names are kept.
+        from app.seed.timetable import SAMPLE
+
+        title = title if title in {t for *_, t in SAMPLE} else None
     row = ClassSlot(user_id=user.id, weekday=weekday, starts=starts, ends=ends, building_id=building.id, title=title)
     db.add(row)
     db.flush()
@@ -55,3 +65,10 @@ def remove_class(db: Session, user: User, class_id: int) -> None:
         raise Refusal(404, "class_not_found")  # someone else's says the same: nothing to learn
     db.delete(row)
     db.flush()
+
+
+def _shared_demo(db: Session, user: User) -> bool:
+    return db.scalars(
+        select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
+    ).first() is not None
+

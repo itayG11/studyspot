@@ -136,3 +136,19 @@ def test_opening_hours_are_read_in_local_time_during_a_gap_under_way(session, br
     add(session, student, braude, time(8, 30), time(10), "M")
     morning = SUNDAY_10AM - timedelta(hours=2, minutes=45)
     assert suggest(session, student, morning).gaps[0].suggestions != []
+
+
+def test_a_day_has_at_most_so_many_gaps(session, braude, student):
+    from app.between_classes import MAX_GAPS
+
+    for n in range(MAX_GAPS + 3):
+        add(session, student, braude, time(6 + n, 0), time(6 + n, 5), "M")
+    assert len(find_gaps(session.query(ClassSlot).all(), time(5))) == MAX_GAPS
+
+
+def test_the_suggestions_are_rate_limited(client, session, braude, student):
+    from app.ratelimit import BETWEEN_PER_MINUTE
+
+    for _ in range(BETWEEN_PER_MINUTE):
+        assert client.get("/me/between-classes").status_code == 200
+    assert client.get("/me/between-classes").status_code == 429

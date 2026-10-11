@@ -23,7 +23,7 @@ export function Classes({ classes, onChanged }: { classes: ApiState<ClassSlot[]>
     <section aria-label="מערכת השעות" className={styles.section}>
       <h2 className={styles.heading}>מערכת השעות</h2>
       {user?.is_demo && (
-        <p className={styles.idleText}>המערכת כאן לדוגמה, ומשותפת לכל המבקרים. כל יום היא חוזרת למצב ההתחלתי.</p>
+        <p className={styles.idleText}>המערכת כאן לדוגמה, ומשותפת לכל המבקרים. כל יום היא חוזרת למצב ההתחלתי, ושמות קורסים חדשים לא נשמרים בה.</p>
       )}
       {!list && classes.error && <ErrorState error={classes.error} onRetry={classes.reload} compact />}
       {!list && !classes.error && (

@@ -15,7 +15,7 @@ from app.between_classes import suggest
 from app.clock import get_now
 from app.errors import Refusal
 from app.models import ClassSlot, User
-from app.ratelimit import write_limit
+from app.ratelimit import between_limit, write_limit
 from app.schemas import BetweenClassesOut, ClassSlotIn, ClassSlotOut, GapOut, SuggestionOut
 
 router = APIRouter(tags=["classes"])
@@ -61,7 +61,7 @@ def remove_class(class_id: Annotated[int, Path(gt=0)], user: UserDep, db: Sessio
     db.commit()
 
 
-@router.get("/me/between-classes", response_model=BetweenClassesOut)
+@router.get("/me/between-classes", response_model=BetweenClassesOut, dependencies=[Depends(between_limit)])
 def between_classes(user: UserDep, db: SessionDep, now: NowDep):
     """Today's gaps between the student's classes, each with up to three
     places to study, and the numbers behind each one."""
