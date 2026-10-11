@@ -6,6 +6,7 @@ import type { UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
+import { SiteFooter } from './SiteFooter'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   student: 'סטודנט',
@@ -102,6 +103,7 @@ export function Layout() {
       <main className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
+      <SiteFooter />
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration />
     </div>

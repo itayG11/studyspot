@@ -52,6 +52,16 @@ One container serves the web app and the API from the same address. The sweeper 
 - The demo campus's history and live crowd are simulated, and marked so on screen.
 - Email notifications and password sign-in are planned, not built.
 
+## Roadmap
+
+Planned, not built yet (see [docs/PLAN.md](docs/PLAN.md), Hebrew):
+
+- **Notifications:** email, and an optional Telegram bot, before a booking starts and before a no-show release. Waiting on a domain and a transactional email service (Brevo).
+- **Password sign-in,** next to Google, Microsoft and the one-time email code.
+- **Live updates** without the 30-second refresh.
+- **Bulk import** of buildings and places for an institution's admin, from a spreadsheet.
+- **Nightly database backups** beyond Neon's 6-hour restore window.
+
 ## Documentation
 
 - [Project plan](docs/PLAN.md) (Hebrew)

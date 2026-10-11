@@ -2,6 +2,7 @@
 one address, so the sign-in cookie is never a third-party cookie. Every
 answer carries the security headers."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -117,3 +118,51 @@ def test_security_headers_on_every_answer(site: TestClient, path: str):
     # never a page embedded in it. The browser still asks the visitor.
     assert "geolocation=(self)" in headers["permissions-policy"]
     assert headers["strict-transport-security"].startswith("max-age=")
+
+
+# --- What search engines and link previews read --------------------------------
+
+PUBLIC = Path(__file__).resolve().parents[2] / "frontend" / "public"
+INDEX = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
+
+
+def test_robots_and_the_sitemap_are_served_as_text_and_xml(built):
+    import shutil
+
+    for name in ("robots.txt", "sitemap.xml"):
+        shutil.copy(PUBLIC / name, built / name)
+    client = TestClient(create_site(built))
+    robots = client.get("/robots.txt")
+    assert robots.status_code == 200 and robots.headers["content-type"].startswith("text/plain")
+    sitemap = client.get("/sitemap.xml")
+    assert sitemap.status_code == 200 and "xml" in sitemap.headers["content-type"]
+
+
+def test_robots_keeps_personal_pages_out_of_search_and_only_them():
+    # Each rule ends with "$": "/me" alone, never an institution called
+    # "medicine" (robots rules match by prefix otherwise).
+    rules = (PUBLIC / "robots.txt").read_text()
+    for page in ("/me", "/admin", "/system", "/invite", "/scan", "/login", "/signed-in", "/*/me", "/*/admin"):
+        assert f"Disallow: {page}$" in rules
+    assert not re.search(r"Disallow: /[\w-]+\n", rules)  # no rule without its "$"
+
+
+def test_the_site_address_is_the_same_everywhere_it_is_written():
+    # On a move to the domain these three change together (docs/DEPLOY.md).
+    robots = re.search(r"Sitemap: (https://[^/\s]+)", (PUBLIC / "robots.txt").read_text())[1]
+    sitemap = set(re.findall(r"<loc>(https://[^/<]+)", (PUBLIC / "sitemap.xml").read_text()))
+    index = set(re.findall(r'content="(https://[^/"]+)', INDEX.read_text()))
+    assert sitemap == index == {robots}
+    assert (PUBLIC / "og-image.jpg").is_file()
+
+
+def test_text_files_are_sent_compressed_and_pictures_as_they_are(built):
+    (built / "assets" / "big-def456.js").write_text("console.log('app');\n" * 500)
+    (built / "images" / "big.webp").write_bytes(b"RIFF" + bytes(range(256)) * 20)
+    client = TestClient(create_site(built))
+    script = client.get("/assets/big-def456.js", headers={"Accept-Encoding": "gzip"})
+    assert script.headers.get("content-encoding") == "gzip"
+    assert script.text.startswith("console.log")  # the client unpacks it
+    picture = client.get("/images/big.webp", headers={"Accept-Encoding": "gzip"})
+    assert "content-encoding" not in picture.headers  # already compressed: no work for nothing
+    assert script.headers.get("content-security-policy")  # the headers survive compression

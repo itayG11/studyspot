@@ -1,0 +1,19 @@
+# Search engines are welcome on the public pages; the personal ones are not
+# for search (they need a sign-in anyway; this is a request, not a lock).
+# "$" ends a rule: /me, not every address starting so (/medicine).
+User-agent: *
+Disallow: /me$
+Disallow: /admin$
+Disallow: /system$
+Disallow: /invite$
+Disallow: /scan$
+Disallow: /login$
+Disallow: /signed-in$
+# An institution's own pages: /braude/me, /braude/admin
+Disallow: /*/me$
+Disallow: /*/admin$
+# With its tab in the address: /braude/admin?tab=signs
+Disallow: /admin?
+Disallow: /*/admin?
+
+Sitemap: https://studyspot-yetb.onrender.com/sitemap.xml

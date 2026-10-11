@@ -16,6 +16,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.main import app as api
 from app.main import lifespan
@@ -77,6 +78,10 @@ def create_site(static_dir: Path, api_docs: bool = False) -> FastAPI:
             site.add_api_route(path, no_docs, methods=["GET"], include_in_schema=False)
 
     site.mount("/api", api)
+    # Text (scripts, styles, pages, API answers) gzipped for a browser that
+    # asks; Starlette leaves out what is compressed already (images, fonts)
+    # and anything under 1 KB.
+    site.add_middleware(GZipMiddleware, minimum_size=1024)
 
     # HEAD too: uptime monitors and `curl -I` ask that way.
     @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)

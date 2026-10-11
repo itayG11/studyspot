@@ -223,3 +223,41 @@
     flex-basis: 100%;
   }
 }
+
+/* The bottom line of every page: quiet, out of the way. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-4) var(--s-8);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  border-top: 1px solid var(--stone-3);
+}
+
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+}
+
+.footerLinks a {
+  color: var(--ink-2);
+}
+
+@media (hover: hover) {
+  .footerLinks a:hover {
+    color: var(--ink);
+  }
+}
+
+/* Printing the admin's signs: no footer either. */
+@media print {
+  .footer {
+    display: none;
+  }
+}
