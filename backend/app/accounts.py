@@ -82,7 +82,11 @@ def sign_in(
             joined_today = db.scalar(
                 select(func.count())
                 .select_from(User)
-                .where(User.institution_id == institution_id, User.created_at > func.now() - timedelta(days=1))
+                .where(
+                    User.institution_id == institution_id,
+                    User.created_at > func.now() - timedelta(days=1),
+                    ~User.simulated,  # the demo's made-up students (app/seed/live.py)
+                )
             )
             if joined_today >= OPEN_NEW_USERS_PER_DAY:
                 raise Refusal(429, "open_sign_in_full")

@@ -124,9 +124,20 @@ describe('between classes', () => {
   })
 
   it('a day without gaps says so', async () => {
+    classes = [DATA]
     between = { weekday: 6, gaps: [] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/אין היום הפסקות/)).toBeInTheDocument()
+  })
+
+  it('a gap that is over says so, instead of "no gaps today"', async () => {
+    // Today has a gap, 10:00–11:30, but the server no longer lists it.
+    between = { weekday: 6, gaps: [] }
+    renderMe()
+    const section = await betweenSection()
+    expect(await within(section).findByText(/ההפסקה של היום כבר נגמרה/)).toBeInTheDocument()
+    expect(within(section).getByText('10:00–11:30')).toBeInTheDocument()
+    expect(within(section).queryByText(/אין היום הפסקות/)).not.toBeInTheDocument()
   })
 
   it('a gap with nowhere fitting says so', async () => {

@@ -62,8 +62,13 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     # After closing the expired ones: their end times count.
     record_history(session, now)
     # The demo campus's made-up students come and go (app/seed/live.py).
+    # In a savepoint: a failure there never undoes the rest of the sweep.
     for institution in session.scalars(select(Institution).where(Institution.slug == DEMO["institution"]["slug"])):
-        simulate_live(session, institution, now)
+        try:
+            with session.begin_nested():
+                simulate_live(session, institution, now)
+        except Exception:
+            log.exception("live simulation failed; the rest of the sweep goes on")
     old_check_ins = delete_old_check_ins(session, now)
     session.flush()
     return SweepResult(

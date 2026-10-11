@@ -14,6 +14,19 @@ import styles from './me.module.css'
 const clock = (value: string) => value.slice(0, 5)
 const walking = (minutes: number) => (minutes === 1 ? 'דקת הליכה אחת' : `${minutes} דקות הליכה`)
 
+const minutesOf = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
+
+// Today's gaps of half an hour or more, from the timetable (the same rule as
+// the server's find_gaps, app/between_classes.py).
+function gapsOf(classes: ClassSlot[], weekday: number) {
+  const today = classes.filter((c) => c.weekday === weekday).sort((a, b) => a.starts.localeCompare(b.starts))
+  const gaps = []
+  for (let i = 1; i < today.length; i++) {
+    if (minutesOf(today[i].starts) - minutesOf(today[i - 1].ends) >= 30) gaps.push({ starts: today[i - 1].ends, ends: today[i].starts })
+  }
+  return gaps
+}
+
 function load(s: Suggestion): string {
   // Not bookable: the student has no bookings left (two ahead at most).
   if (s.kind === 'group_room') return s.bookable ? 'החדר פנוי, אפשר להזמין' : 'החדר פנוי'
@@ -42,7 +55,23 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
       </div>
     )
   } else if (between.data.gaps.length === 0) {
-    body = (
+    // The server lists only gaps not over yet: a gap today that is gone is
+    // over, not missing.
+    const over = gapsOf(classes ?? [], between.data.weekday)
+    body = over.length > 0 ? (
+      <div className={styles.idle}>
+        <p className={styles.idleTitle}>{over.length === 1 ? 'ההפסקה של היום כבר נגמרה:' : 'ההפסקות של היום כבר נגמרו:'}</p>
+        <p className={styles.idleText}>
+          {over.map((g, i) => (
+            <span key={g.starts}>
+              {i > 0 && ', '}
+              <span dir="ltr">{`${clock(g.starts)}–${clock(g.ends)}`}</span>
+            </span>
+          ))}
+        </p>
+        <p className={styles.idleText}>ההצעות מופיעות כאן לפני כל הפסקה ובמהלכה.</p>
+      </div>
+    ) : (
       <div className={styles.idle}>
         <p className={styles.idleTitle}>אין היום הפסקות של חצי שעה ומעלה.</p>
         <p className={styles.idleText}>בימים עם הפסקה, תראה כאן לאן כדאי ללכת.</p>

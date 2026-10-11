@@ -7,20 +7,29 @@ and they never reach a campus with real sign-in rules."""
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
 from conftest import SUNDAY_10AM, TEST_CODE_SECRET, code_for, place_named
 from sqlalchemy import func, select
 
 from app.checkins import check_in
+from app.config import get_settings
 from app.history import record_history
 from app.models import Booking, BookingSource, BookingStatus, CheckIn, OccupancyHistory, PlaceKind, User
 from app.occupancy import occupied_by_place, occupied_seat_ids
-from app.seed import seed_demo
+from app.seed import live, seed_demo
 from app.seed.live import simulate_live
 from app.sweeper import sweep
 
 TZ = ZoneInfo("Asia/Jerusalem")
 SUNDAY_NOON = datetime(2026, 10, 11, 12, 0, tzinfo=TZ)
 SATURDAY_NOON = datetime(2026, 10, 10, 12, 0, tzinfo=TZ)
+
+
+@pytest.fixture(autouse=True)
+def demo_sign_in_on(monkeypatch):
+    """The live site has the demo sign-in on; the simulation runs only then."""
+    monkeypatch.setenv("DEMO_LOGIN_ENABLED", "true")
+    get_settings.cache_clear()
 
 
 def settle(session, institution, now, runs=40):
@@ -97,7 +106,7 @@ def test_a_campus_with_real_sign_in_rules_gets_none(session, braude):
     assert session.scalar(select(func.count()).select_from(User).where(User.simulated)) == 0
 
 
-def test_a_real_student_gets_into_a_place_the_simulation_made_full(session):
+def test_a_real_student_gets_into_a_place_full_with_simulated_people(session):
     demo = seed_demo(session)
     area = place_named(demo, "P", "מתחם 2")
     settle(session, demo, SUNDAY_NOON)
@@ -170,3 +179,62 @@ def test_the_daily_shape_is_quieter_early(session):
     simulate_live(session, demo, SUNDAY_NOON)  # leaves at most one step behind
     settle(session, demo, SUNDAY_NOON)
     assert morning < len(active(session, library, SUNDAY_NOON))
+
+
+def simulated_users(session, institution):
+    return session.scalar(
+        select(func.count()).select_from(User).where(User.institution_id == institution.id, User.simulated)
+    )
+
+
+def test_the_made_up_students_are_capped_and_the_spare_ones_go(session, monkeypatch):
+    # The shared demo admin can add places of up to 1000 seats: the pool of
+    # made-up students stays small whatever the campus holds.
+    demo = seed_demo(session)
+    monkeypatch.setattr(live, "MAX_POOL", 30)
+    settle(session, demo, SUNDAY_NOON, runs=5)
+    assert simulated_users(session, demo) == 30
+    monkeypatch.setattr(live, "MAX_POOL", 10)
+    evening = SUNDAY_NOON.replace(hour=23)  # closed: nobody sits anywhere
+    simulate_live(session, demo, evening)
+    assert simulated_users(session, demo) == 10
+
+
+def test_only_while_the_demo_sign_in_is_on(session, monkeypatch):
+    demo = seed_demo(session)
+    monkeypatch.setenv("DEMO_LOGIN_ENABLED", "false")
+    get_settings.cache_clear()
+    settle(session, demo, SUNDAY_NOON, runs=2)
+    assert simulated_users(session, demo) == 0
+
+
+def test_once_the_campus_has_a_sign_in_rule_even_a_waiting_one_the_made_up_students_go(session):
+    from app.models import AuthProvider, InstitutionLoginRule
+
+    demo = seed_demo(session)
+    settle(session, demo, SUNDAY_NOON, runs=3)
+    assert simulated_users(session, demo) > 0
+    session.add(InstitutionLoginRule(institution_id=demo.id, provider=AuthProvider.EMAIL, value="college.example", approved=False))
+    session.flush()
+    session.refresh(demo)
+    simulate_live(session, demo, SUNDAY_NOON)
+    assert simulated_users(session, demo) == 0
+    assert session.scalar(select(func.count()).select_from(CheckIn).where(CheckIn.simulated)) == 0
+
+
+def test_a_failing_simulation_does_not_undo_the_rest_of_the_sweep(session, monkeypatch):
+    from app import sweeper
+
+    demo = seed_demo(session)
+    expired_user = real_student(session, demo, 1)
+    area = place_named(demo, "L", "מתחם לימוד")
+    session.add(CheckIn(institution_id=demo.id, user_id=expired_user.id, place_id=area.id,
+                        started_at=SUNDAY_NOON - timedelta(hours=3), expires_at=SUNDAY_NOON - timedelta(hours=1)))
+    session.flush()
+
+    def broken(*args):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(sweeper, "simulate_live", broken)
+    result = sweep(session, SUNDAY_NOON)
+    assert result.expired_check_ins == 1

@@ -100,7 +100,7 @@ def remove_login_rule(db: Session, rule: InstitutionLoginRule) -> None:
         # Students: the admin alone (fixing a typo, say) locks no one out.
         users = db.scalar(
             select(func.count()).select_from(User).where(
-                User.institution_id == rule.institution_id, User.role == UserRole.STUDENT
+                User.institution_id == rule.institution_id, User.role == UserRole.STUDENT, ~User.simulated
             )
         )
         if others == 0 and users > 0:

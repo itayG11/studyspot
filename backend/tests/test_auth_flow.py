@@ -524,6 +524,19 @@ def test_deleting_needs_a_signed_in_user(auth_client):
     assert auth_client.post("/me/delete").status_code == 401
 
 
+def test_the_demo_campus_made_up_students_do_not_use_up_the_daily_cap(auth_client, fake, session, open_campus, monkeypatch):
+    # The live simulation (app/seed/live.py) makes hundreds of users at once.
+    from app import accounts
+    from app.models import User
+
+    monkeypatch.setattr(accounts, "OPEN_NEW_USERS_PER_DAY", 2)
+    for n in range(5):
+        session.add(User(institution_id=open_campus.id, email=f"simulated-{n}@demo.invalid", display_name="מדומה", simulated=True))
+    session.flush()
+    response = finish_login(auth_client, fake, personal_google(sub="g-1", email="one@gmail.com"), provider="google")
+    assert redirect_error(response) is None
+
+
 def test_me_says_whether_this_is_a_shared_demo_user(auth_client, fake, session):
     from app.models import Institution
 
