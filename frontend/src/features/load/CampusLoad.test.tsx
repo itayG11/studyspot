@@ -38,6 +38,13 @@ describe('CampusLoad', () => {
     expect(screen.getByText(/עוד אין חיזוי/)).toBeInTheDocument()
   })
 
+  it('the hour under way follows the data when it is ahead of the clock', () => {
+    // 10:20 by the clock, but the data already counts 11:00 (a refresh at 11:00:10).
+    render(<CampusLoad data={today({ slots: [{ start: '10:00:00', usual: 80, today: 110 }, { start: '11:00:00', usual: 100, today: 90 }] })} timeZone="Asia/Jerusalem" now={NOW} />)
+    const items = screen.getAllByRole('listitem').map((li) => li.textContent)
+    expect(items[1]).toBe('11:00: בדרך כלל שקט, בערך 100 אנשים, עכשיו 120')
+  })
+
   it('a closed day says so', () => {
     render(<CampusLoad data={today({ slots: [] })} timeZone="Asia/Jerusalem" now={NOW} />)
     expect(screen.getByText('הקמפוס סגור היום.')).toBeInTheDocument()

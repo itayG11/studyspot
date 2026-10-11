@@ -21,8 +21,11 @@ export function CampusLoad({ data, timeZone, now: start }: { data: CampusToday; 
     return () => clearInterval(timer)
   }, [start])
   const clock = formatTime(now.toISOString(), timeZone)
-  const currentHour = Number(clock.slice(0, 2))
   const hours = hourly(data.slots)
+  // The data may already be in the next hour while the page's minute timer
+  // is not (up to a minute after the hour): the later of the two.
+  const lastCounted = Math.max(-1, ...hours.filter((h) => h.today !== null).map((h) => h.hour))
+  const currentHour = Math.max(Number(clock.slice(0, 2)), lastCounted)
   const usualNow = hours.find((h) => h.hour === currentHour)?.usual ?? null
   const compared = data.weeks > 0 ? compareToUsual(data.occupied, usualNow) : null
   const open = hours.some((h) => h.hour === currentHour)
