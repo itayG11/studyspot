@@ -29,6 +29,7 @@ MAX_BYTES = 200 * 1024
 MAX_UNPACKED = 5 * 1024 * 1024
 MAX_ROWS = 40  # app/classes.py MAX_CLASSES
 TITLE_LENGTH = 60
+PLACE_LENGTH = 40
 # Only the corner a timetable fills: a cell far out (column XFD) would
 # otherwise turn every row into thousands of empty cells in memory.
 READ_ROWS, READ_COLUMNS = 200, 12
@@ -154,7 +155,7 @@ def _building(place: list[str], buildings: list[Building]) -> tuple[str | None, 
     for word in reversed(place[-2:]):
         if word.casefold() in codes:
             return codes[word.casefold()], word
-    said = _twice(place)
+    said = _twice(place)[:PLACE_LENGTH]  # app/schemas.py ClassSlotIn.place_text
     for b in buildings:
         if said and b.name and b.name == said:
             return b.code, said

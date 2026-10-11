@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { BuildingCreated, BuildingLocation, GeocodeResult, LoginRule, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { BuildingCreated, BuildingLocation, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -24,6 +24,11 @@ export const addBuilding = (slug: string, building: NewBuilding) =>
     auth: true,
     body: building,
   })
+
+// Places students' classes name that the campus does not list: how many
+// students, never who.
+export const getMentionedPlaces = (slug: string) =>
+  api<MentionedPlace[]>(`/admin/institutions/${encodeURIComponent(slug)}/mentioned-places`, { auth: true })
 
 export const addPlace = (buildingId: number, place: NewPlace) =>
   api<PlaceCreated>(`/admin/buildings/${buildingId}/places`, { method: 'POST', auth: true, body: place })

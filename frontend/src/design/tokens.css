@@ -30,8 +30,18 @@
   --free: #11714f;
   --free-tint: #e3f2ea;
   --load-usual: #ddd6c6; /* the load chart's "usually" bar */
-  --tone-blue: #2f6db3; /* timetable course tones */
-  --tone-violet: #7a4fb0;
+  /* Timetable: a bright fill per course, and the text on it (AA, 4.5:1 or
+     more, measured). The same in light and dark: they are their own ground. */
+  --course-1: #2563eb; --on-course-1: #fff;
+  --course-2: #7c3aed; --on-course-2: #fff;
+  --course-3: #db2777; --on-course-3: #fff;
+  --course-4: #dc2626; --on-course-4: #fff;
+  --course-5: #f97316; --on-course-5: #111827;
+  --course-6: #14b8a6; --on-course-6: #111827;
+  --course-7: #22c55e; --on-course-7: #111827;
+  --course-8: #0ea5e9; --on-course-8: #111827;
+  --break-fill: #facc15; /* every break, one colour */
+  --on-break: #111827;
   --busy: #8f5600;
   --busy-tint: #fbefd9;
   --full: #b42f25;
@@ -134,8 +144,6 @@
     --free: #5cd29c;
     --free-tint: #123328;
   --load-usual: #56607a;
-  --tone-blue: #7fb2ec;
-  --tone-violet: #b99be6;
     --busy: #efb453;
     --busy-tint: #38290f;
     --full: #ff8b7e;
@@ -170,8 +178,6 @@
   --free: #5cd29c;
   --free-tint: #123328;
   --load-usual: #56607a;
-  --tone-blue: #7fb2ec;
-  --tone-violet: #b99be6;
   --busy: #efb453;
   --busy-tint: #38290f;
   --full: #ff8b7e;

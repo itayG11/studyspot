@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { ClassSlot } from '../api/types'
-import { courseTone, dayLayout, hourRange, pickedTime } from './week'
+import { classPlace, courseTone, dayLayout, hourRange, pickedTime } from './week'
 
 const slot = (id: number, weekday: number, starts: string, ends: string, title: string | null = null): ClassSlot => ({
-  id, weekday, starts: `${starts}:00`, ends: `${ends}:00`, building_code: 'M', title,
+  id, weekday, starts: `${starts}:00`, ends: `${ends}:00`, building_code: 'M', place_text: null, title,
 })
 
 describe('hourRange', () => {
@@ -48,5 +48,12 @@ describe('pickedTime', () => {
     expect(pickedTime(0.5, { from: 8, to: 20 })).toBe('14:00') // the middle of 08:00–20:00
     expect(pickedTime(0.52, { from: 8, to: 20 })).toBe('14:00')
     expect(pickedTime(0.99, { from: 8, to: 20 })).toBe('19:30')
+  })
+})
+
+describe('classPlace', () => {
+  it('is the building, or the place in the student\'s words', () => {
+    expect(classPlace(slot(1, 6, '08:00', '09:00'))).toBe('M')
+    expect(classPlace({ ...slot(1, 6, '08:00', '09:00'), building_code: null, place_text: 'אולם ספורט' })).toBe('אולם ספורט')
   })
 })

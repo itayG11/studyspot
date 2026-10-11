@@ -1,8 +1,9 @@
 // Importing the timetable from the college's Excel export ("Yedion"). The
 // server reads the file and only says what it holds; nothing is saved until
 // the student checks the list, picks a building where none was found, and
-// adds. Each class then goes through the usual route (POST /me/classes),
-// with its checks: a refused one stays on the list with why.
+// adds. A place the campus does not list ("אולם ספורט") is kept in the
+// file's words, and its admin is told how many students name it. Each class
+// goes through the usual checks: a refused one stays on the list with why.
 
 import { FileSpreadsheet } from 'lucide-react'
 import { useId, useState, type ChangeEvent } from 'react'
@@ -22,9 +23,15 @@ import styles from './import.module.css'
 interface Item {
   row: ImportRow
   chosen: boolean
-  building: string // the code; '' until picked
+  building: string // a building's code, NOT_LISTED for the file's words, '' until picked
   refused: string | null // why the server said no, in Hebrew
 }
+
+// The place as the file names it, though the campus does not list it.
+const NOT_LISTED = '-'
+
+// The file's words can be kept as the place: not empty, and short enough.
+const canKeep = (row: ImportRow) => row.building_text !== '' && row.building_text.length <= 40
 
 const count = (n: number) => (n === 1 ? 'שיעור אחד' : `${n} שיעורים`)
 
@@ -49,7 +56,9 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
     setReading(true)
     try {
       const rows = await previewImport(file)
-      setItems(rows.map((row) => ({ row, chosen: true, building: row.building_code ?? '', refused: null })))
+      setItems(
+        rows.map((row) => ({ row, chosen: true, building: row.building_code ?? (canKeep(row) ? NOT_LISTED : ''), refused: null })),
+      )
     } catch (reason) {
       setProblem(errorMessage(reason instanceof ApiError ? reason.code : 'unknown_error'))
       setItems(null)
@@ -74,7 +83,13 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
     let answers: { refused: string | null }[]
     try {
       answers = await addClasses(
-        picked.map(({ row, building }) => ({ weekday: row.weekday, starts: row.starts, ends: row.ends, building_code: building, title: row.title })),
+        picked.map(({ row, building }) => ({
+          weekday: row.weekday,
+          starts: row.starts,
+          ends: row.ends,
+          ...(building === NOT_LISTED ? { place_text: row.building_text } : { building_code: building }),
+          title: row.title,
+        })),
       )
     } catch (reason) {
       setAdding(false)
@@ -98,7 +113,7 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
     <div className={styles.import}>
       <label className={styles.pick}>
         <FileSpreadsheet aria-hidden="true" />
-        <span>{reading ? 'קורא את הקובץ…' : 'ייבוא מקובץ הידיעון'}</span>
+        <span>{reading ? 'קורא את הקובץ…' : 'הוספת מערכת שעות'}</span>
         <input
           type="file"
           className="visually-hidden"
@@ -107,7 +122,7 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
           onChange={(event) => void pick(event)}
         />
       </label>
-      <p className={styles.hint}>קובץ האקסל של מערכת השעות, כפי שהידיעון מייצא אותו. הקובץ לא נשמר: רק השיעורים שתבחר.</p>
+      <p className={styles.hint}>מקובץ האקסל שהידיעון מייצא. הקובץ לא נשמר: רק השיעורים שתבחר.</p>
       {user?.is_demo && (
         <p className={styles.hint}>
           הסטודנט לדוגמה משותף לכל המבקרים: השעות שתוסיף ייראו גם להם עד האיפוס היומי, ושמות הקורסים לא יישמרו. למערכת משלך,
@@ -142,20 +157,20 @@ export function ImportClasses({ onAdded }: { onAdded: () => void }) {
                   <span className={styles.building}>
                     <select
                       className={admin.field}
-                      dir="ltr"
-                      aria-label={`בניין לשיעור ${name}`}
+                      aria-label={`מקום לשיעור ${name}`}
                       value={item.building}
                       disabled={adding}
                       onChange={(e) => update(index, { building: e.target.value })}
                     >
                       {!item.building && <option value="">בחר בניין</option>}
+                      {canKeep(row) && !row.building_code && <option value={NOT_LISTED}>{`${row.building_text}, לא ברשימה`}</option>}
                       {choices.map((b) => (
                         <option key={b.code} value={b.code}>
                           {b.code}
                         </option>
                       ))}
                     </select>
-                    {!row.building_code && row.building_text && <span className={styles.said}>בקובץ: {row.building_text}</span>}
+                    {item.building === NOT_LISTED && <span className={styles.said}>עוד לא ברשימת הבניינים. מנהל המוסד יראה שסטודנטים מזכירים אותו.</span>}
                   </span>
                   {item.refused && <span className={styles.refused}>{item.refused}</span>}
                 </li>

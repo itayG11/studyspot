@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app import campus_setup
 from app.api.auth import get_http_client
 from app.api.deps import get_code_secret, get_session
-from app.campus_admin import create_building, create_place
+from app.campus_admin import create_building, create_place, mentioned_places
 from app.codes import make_code
 from app.config import Settings, get_settings
 from app.errors import Refusal
@@ -30,6 +30,7 @@ from app.schemas import (
     InstitutionUpdateIn,
     LoginRuleIn,
     LoginRuleOut,
+    MentionedPlaceOut,
     PlaceCreatedOut,
     PlaceCreateIn,
     SetupOut,
@@ -209,6 +210,19 @@ def _refuse_demo(institution: Institution, settings: Settings) -> None:
     # The demo admin is shared by every visitor of the live site.
     if institution.slug == _demo_slug(settings):
         raise HTTPException(403, "demo_campus_locked")
+
+
+@router.get("/institutions/{slug}/mentioned-places", response_model=list[MentionedPlaceOut])
+def get_mentioned_places(
+    slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: SessionDep, settings: SettingsDep
+):
+    """Places named in students' timetables that the campus does not list:
+    for the admin to add. How many students, never who."""
+    institution = _managed(db, admin, slug)
+    return [
+        MentionedPlaceOut(text=text, students=count)
+        for text, count in mentioned_places(db, institution, demo_slug=_demo_slug(settings))
+    ]
 
 
 @router.get("/institutions/{slug}/setup", response_model=SetupOut)

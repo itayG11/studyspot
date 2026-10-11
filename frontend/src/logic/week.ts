@@ -24,7 +24,7 @@ export interface Gap {
 
 // The same rule as the server's gaps (app/between_classes.py MIN_GAP).
 export const MIN_GAP = 30
-const TONES = 6
+const TONES = 8
 
 const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
 const clock = (value: string) => value.slice(0, 5)
@@ -58,8 +58,11 @@ export function dayLayout(day: ClassSlot[], range: HourRange): { blocks: Block[]
 
 // A tone per course, by its name (or building when it has none), so a
 // course keeps its colour across the week.
+// Where a class is: its building, or a place the campus does not list.
+export const classPlace = (slot: ClassSlot): string => slot.building_code ?? slot.place_text ?? ''
+
 export function courseTone(slot: ClassSlot): number {
-  const key = slot.title ?? slot.building_code
+  const key = slot.title ?? classPlace(slot)
   let hash = 0
   for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
   return hash % TONES

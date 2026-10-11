@@ -45,11 +45,14 @@ MAX_GAPS = 10
 WALK_METRES_PER_MINUTE = 80  # a slow pace, with a bag
 DETOUR = 1.3  # paths are not straight lines
 SAME_BUILDING_MINUTES = 1  # stairs and corridors
-UNKNOWN_WALK_MINUTES = 5  # a building not yet placed on the map
+UNKNOWN_WALK_MINUTES = 5  # a building not yet placed on the map, or not listed
 EARTH_METRES = 6_371_000
 
 
-def walk_minutes(a: Building, b: Building) -> int:
+def walk_minutes(a: Building | None, b: Building | None) -> int:
+    """None: a place the campus does not list yet, so not on the map either."""
+    if a is None or b is None:
+        return UNKNOWN_WALK_MINUTES
     if a.id == b.id:
         return SAME_BUILDING_MINUTES
     if None in (a.latitude, a.longitude, b.latitude, b.longitude):
@@ -101,9 +104,11 @@ class GapSuggestions:
     starts: time
     ends: time
     ends_dt: datetime
-    from_building: str
+    from_building: str  # a building's code, or a place named in words
     to_building: str
     now: bool  # the gap is under way
+    from_listed: bool  # from_building is a building's code
+    to_listed: bool
     suggestions: list[Suggestion]
 
 
@@ -198,10 +203,14 @@ def suggest(session: Session, user: User, now: datetime) -> BetweenClasses:
         # the order never changes between two looks.
         found.sort(key=lambda s: (-s.sit_minutes, _taken_share(s), s.name, s.place_id))
         out.append(GapSuggestions(
-            gap.starts, gap.ends, end, gap.before.building.code, gap.after.building.code, under_way,
-            found[:MAX_SUGGESTIONS],
+            gap.starts, gap.ends, end, _where(gap.before), _where(gap.after), under_way,
+            gap.before.building is not None, gap.after.building is not None, found[:MAX_SUGGESTIONS],
         ))
     return BetweenClasses(weekday, out)
+
+
+def _where(row: ClassSlot) -> str:
+    return row.building.code if row.building else row.place_text
 
 
 def _open_throughout(place: Place, weekday: int, start: datetime, end: datetime, all_day: bool) -> bool:

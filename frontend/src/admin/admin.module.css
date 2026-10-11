@@ -433,3 +433,22 @@
   display: grid;
   gap: var(--s-2);
 }
+
+/* Places students name that the campus does not list. */
+.mentioned {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mentionedRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding-block: var(--s-2);
+  border-bottom: 1px solid var(--stone-3);
+}

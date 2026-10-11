@@ -3,14 +3,15 @@
 
 import { useId, useState, type FormEvent } from 'react'
 import { LocateFixed } from 'lucide-react'
-import { addBuilding, addPlace, geocode } from '../api/admin'
+import { addBuilding, addPlace, geocode, getMentionedPlaces } from '../api/admin'
 import { getBuildings } from '../api/campus'
-import type { Building, GeocodeResult, PlaceKind } from '../api/types'
+import type { Building, GeocodeResult, MentionedPlace, PlaceKind } from '../api/types'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { floorLabel, KIND_LABELS, KINDS } from '../i18n/labels'
 import { Link } from 'react-router'
 import { ActionError, Button, ErrorState, JumpTo, Notice, PageLoading } from '../ui'
+import { jumpTo } from '../ui/jump'
 import styles from './admin.module.css'
 import { useInstitution } from '../institution'
 import { PickMap } from './PickMap'
@@ -18,6 +19,9 @@ import { PickMap } from './PickMap'
 export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; onAdded?: () => void }) {
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `admin-buildings-${slug}`)
+  const mentioned = useApi(() => getMentionedPlaces(slug), `mentioned-${slug}`)
+  // A mentioned place picked: the building form gets its name.
+  const [suggested, setSuggested] = useState<{ name: string; key: number } | null>(null)
   if (buildings.error) return <ErrorState error={buildings.error} onRetry={buildings.reload} />
   if (!buildings.data) return <PageLoading />
   return (
@@ -26,10 +30,21 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
         מוסיפים בניין, ואז מקומות בתוכו. מקום חדש פתוח בשעות הרגילות של הקמפוס. לכל מקום נוצר שלט לבד, ומוכן להדפסה{' '}
         <Link to="?tab=signs">בלשונית השלטים</Link>. עדיין אין עריכה או מחיקה.
       </p>
+      {mentioned.data && mentioned.data.length > 0 && (
+        <Mentioned
+          places={mentioned.data}
+          onPick={(name) => {
+            setSuggested({ name, key: Date.now() })
+            jumpTo('new-building')
+          }}
+        />
+      )}
       <BuildingForm
         buildings={buildings.data}
+        suggested={suggested}
         onAdded={() => {
           buildings.reload()
+          mentioned.reload() // the classes that named it are in it now
           onAdded?.()
         }}
         onPlace={onPlace}
@@ -39,18 +54,54 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
   )
 }
 
+// Places named in students' timetables that the campus does not list yet.
+// Added as a building by that name, those classes move into it.
+function Mentioned({ places, onPick }: { places: MentionedPlace[]; onPick: (name: string) => void }) {
+  const id = useId()
+  return (
+    <section className={styles.form} aria-labelledby={`${id}-title`}>
+      <h2 id={`${id}-title`} className={styles.formTitle}>
+        מקומות שסטודנטים הזכירו
+      </h2>
+      <p className={styles.lead}>
+        שיעורים במערכות של סטודנטים, במקומות שעוד אין ברשימה. רואים רק כמה סטודנטים, בלי שמות. בניין חדש באותו שם מקבל את השיעורים
+        האלה.
+      </p>
+      <ul className={styles.mentioned}>
+        {places.map((place) => (
+          <li key={place.text} className={styles.mentionedRow}>
+            <span>
+              <strong>{place.text}</strong> · {place.students === 1 ? 'סטודנט אחד' : `${place.students} סטודנטים`}
+            </span>
+            <Button size="sm" variant="secondary" aria-label={`להוסיף את ${place.text} כבניין`} onClick={() => onPick(place.text)}>
+              להוסיף כבניין
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function BuildingForm({
   buildings,
+  suggested,
   onAdded,
   onPlace,
 }: {
   buildings: Building[]
+  suggested: { name: string; key: number } | null
   onAdded: () => void
   onPlace: (code: string) => void
 }) {
   const { slug } = useInstitution()
   const id = useId()
   const [name, setName] = useState('')
+  const [applied, setApplied] = useState<number | null>(null)
+  if (suggested && suggested.key !== applied) {
+    setApplied(suggested.key)
+    setName(suggested.name)
+  }
   const [code, setCode] = useState('')
   const [floors, setFloors] = useState('1')
   const [picked, setPicked] = useState<[number, number] | null>(null)

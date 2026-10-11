@@ -23,20 +23,34 @@ def list_classes(db: Session, user: User) -> list[ClassSlot]:
     return sorted(db.scalars(select(ClassSlot).where(ClassSlot.user_id == user.id)).all(), key=week_key)
 
 
+# What the shared demo student keeps for a place typed in words.
+SHARED_PLACE = "מקום אחר"
+
+
 def add_class(
-    db: Session, user: User, weekday: int, starts: time, ends: time, building_code: str, title: str | None
+    db: Session, user: User, weekday: int, starts: time, ends: time, building_code: str | None, title: str | None,
+    place_text: str | None = None,
 ) -> ClassSlot:
+    """In a building of the campus (building_code), or in a place it does
+    not list yet, named in words (place_text)."""
     # Locked: two tabs adding at once cannot both pass the checks below.
     db.refresh(user, with_for_update=True)
-    building = db.scalars(
-        select(Building).where(
-            Building.institution_id == user.institution_id,
-            Building.code == building_code,
-            Building.status != BuildingStatus.UNDER_CONSTRUCTION,  # no classes there yet
-        )
-    ).first()
-    if building is None:
-        raise Refusal(404, "building_not_found")
+    building = None
+    if building_code is not None:
+        building = db.scalars(
+            select(Building).where(
+                Building.institution_id == user.institution_id,
+                Building.code == building_code,
+                Building.status != BuildingStatus.UNDER_CONSTRUCTION,  # no classes there yet
+            )
+        ).first()
+        if building is None:
+            raise Refusal(404, "building_not_found")
+    elif place_text is not None:
+        # Typed, but a building the campus lists ("m", "ספרייה"): that one.
+        building = listed_building(db, user.institution_id, place_text)
+        if building is not None:
+            place_text = None
     count = db.scalar(select(func.count()).select_from(ClassSlot).where(ClassSlot.user_id == user.id))
     if count >= MAX_CLASSES:
         raise Refusal(409, "class_limit")
@@ -47,16 +61,37 @@ def add_class(
     ).first()
     if overlap is not None:
         raise Refusal(409, "class_overlaps")
-    if title is not None and _shared_demo(db, user):
+    if (title is not None or place_text is not None) and _shared_demo(db, user):
         # Every visitor is this one student: words typed by one would be
         # shown to all. Only the sample's own course names are kept.
         from app.seed.timetable import SAMPLE
 
         title = title if title in {t for *_, t in SAMPLE} else None
-    row = ClassSlot(user_id=user.id, weekday=weekday, starts=starts, ends=ends, building_id=building.id, title=title)
+        place_text = SHARED_PLACE if place_text is not None else None
+    row = ClassSlot(
+        user_id=user.id, weekday=weekday, starts=starts, ends=ends,
+        building_id=building.id if building else None, place_text=place_text, title=title,
+    )
     db.add(row)
     db.flush()
     return row
+
+
+def same_place(text: str) -> str:
+    """How two names of a place are compared: case and spacing aside."""
+    return " ".join(text.split()).lower()
+
+
+def listed_building(db: Session, institution_id: int, text: str) -> Building | None:
+    key = same_place(text)
+    for building in db.scalars(
+        select(Building).where(
+            Building.institution_id == institution_id, Building.status != BuildingStatus.UNDER_CONSTRUCTION
+        )
+    ):
+        if key in {same_place(n) for n in (building.code, building.name) if n}:
+            return building
+    return None
 
 
 def remove_class(db: Session, user: User, class_id: int) -> None:

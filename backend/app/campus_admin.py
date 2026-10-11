@@ -10,9 +10,10 @@ from datetime import date
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, literal, select, update
 from sqlalchemy.orm import Session
 
+from app.classes import same_place
 from app.errors import Refusal
 from app.models import (
     Building,
@@ -22,6 +23,7 @@ from app.models import (
     OccupancyHistory,
     Place,
     PlaceKind,
+    User,
     floor_exists,
 )
 from app.seed import _make_place, _position
@@ -71,7 +73,58 @@ def create_building(
         building.latitude, building.longitude = position
     institution.buildings.append(building)
     db.flush()
+    _take_mentioned_classes(db, building)
     return building
+
+
+def _take_mentioned_classes(db: Session, building: Building) -> None:
+    """Classes of the institution's students in a place named in words,
+    the name or short name of this new building: now in it. The words stay,
+    so the daily demo reset can put them back (reset_demo_extras)."""
+    if building.status == BuildingStatus.UNDER_CONSTRUCTION:
+        return  # no classes there yet (app/classes.py)
+    # Compared in the database, both sides through the same lower().
+    names = [func.lower(literal(same_place(n))) for n in (building.name, building.code) if n]
+    db.execute(
+        update(ClassSlot)
+        .where(
+            ClassSlot.building_id.is_(None),
+            func.lower(ClassSlot.place_text).in_(names),
+            ClassSlot.user_id.in_(select(User.id).where(User.institution_id == building.institution_id)),
+        )
+        .values(building_id=building.id)
+        .execution_options(synchronize_session=False)
+    )
+
+
+# On the shared demo campus every visitor is its admin: a place shows only
+# once this many students name it, so one visitor cannot write to the rest.
+MIN_SHARED_MENTIONS = 3
+
+
+def mentioned_places(db: Session, institution: Institution, *, demo_slug: str | None) -> list[tuple[str, int]]:
+    """Places the institution's students name that it does not list: the
+    words, and how many students, most first. Never who."""
+    key = func.lower(ClassSlot.place_text)
+    students = func.count(func.distinct(ClassSlot.user_id))
+    # A text that is a listed building's name went into it when typed;
+    # one left from before the building was added is not "unlisted".
+    listed = [
+        func.lower(literal(same_place(n)))
+        for b in institution.buildings for n in (b.code, b.name) if n
+    ]
+    query = (
+        select(func.min(ClassSlot.place_text), students)
+        .join(User, User.id == ClassSlot.user_id)
+        .where(User.institution_id == institution.id, ClassSlot.building_id.is_(None))
+        .where(key.not_in(listed) if listed else True)
+        .group_by(key)
+        .order_by(students.desc(), key)
+        .limit(50)
+    )
+    if _is_demo(institution, demo_slug):
+        query = query.having(students >= MIN_SHARED_MENTIONS)
+    return [(text, count) for text, count in db.execute(query)]
 
 
 def create_place(db: Session, building: Building, details: dict, *, demo_slug: str | None) -> Place:
@@ -119,6 +172,14 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
     if extra_places:
         db.execute(delete(Place).where(Place.id.in_(extra_places)))
     if extra_buildings:
+        # Classes that went into a visitor's building by its name: back to
+        # the words, rather than deleted with it.
+        db.execute(
+            update(ClassSlot)
+            .where(ClassSlot.building_id.in_(extra_buildings), ClassSlot.place_text.is_not(None))
+            .values(building_id=None)
+            .execution_options(synchronize_session=False)
+        )
         db.execute(delete(Building).where(Building.id.in_(extra_buildings)))
     for code, position in _SEED_POSITIONS.items():
         latitude, longitude = _position(position)

@@ -82,6 +82,8 @@ beforeEach(() => {
       setup = { ...setup, rules: setup.rules.filter((r) => r.id !== id) }
       return Promise.resolve(new Response(null, { status: 204 }))
     }
+    if (path === '/admin/institutions/braude/mentioned-places')
+      return Promise.resolve(jsonResponse([{ text: 'אולם ספורט', students: 4 }]))
     if (path === '/admin/geocode')
       return Promise.resolve(jsonResponse([{ name: 'כרמיאל, ישראל', latitude: 32.9171, longitude: 35.305 }]))
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
@@ -162,6 +164,16 @@ describe('AdminPage', () => {
       name: 'בניין ההנדסה', code: 'ZZ', floors_count: 3, latitude: 32.914579, longitude: 35.280015,
     })
     expect(await screen.findByText(/בניין ההנדסה נוסף/)).toBeInTheDocument()
+  })
+
+  it('places students name that the campus does not list: how many, and one click fills the form', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    const card = await screen.findByRole('region', { name: 'מקומות שסטודנטים הזכירו' })
+    expect(within(card).getByText(/אולם ספורט/)).toBeInTheDocument()
+    expect(within(card).getByText(/4 סטודנטים/)).toBeInTheDocument()
+    await userEvent.click(within(card).getByRole('button', { name: 'להוסיף את אולם ספורט כבניין' }))
+    expect(screen.getByLabelText('שם הבניין')).toHaveValue('אולם ספורט')
   })
 
   it('a building added without a point on the map can be placed later', async () => {

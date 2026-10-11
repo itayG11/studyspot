@@ -19,8 +19,11 @@ const INSTITUTION = {
 }
 const ROWS: ImportRow[] = [
   { weekday: 6, starts: '08:30', ends: '10:30', building_code: 'M', building_text: 'M', title: 'מבני נתונים, תרגיל' },
-  { weekday: 3, starts: '10:30', ends: '12:20', building_code: null, building_text: 'ספורט', title: 'אורח חיים בריא, הרצאה' },
+  { weekday: 3, starts: '10:30', ends: '12:20', building_code: null, building_text: 'אולם ספורט', title: 'אורח חיים בריא, הרצאה' },
 ]
+// A class whose file names no place at all.
+const NOWHERE: ImportRow = { weekday: 4, starts: '09:00', ends: '10:00', building_code: null, building_text: '', title: 'סמינר, הרצאה' }
+let rows: ImportRow[]
 
 let sent: { path: string; body: unknown; type: string | null }[]
 let refuse: string | null
@@ -29,6 +32,7 @@ beforeEach(() => {
   resetSessionForTests()
   sent = []
   refuse = null
+  rows = ROWS
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     const headers = (init.headers ?? {}) as Record<string, string>
@@ -37,7 +41,7 @@ beforeEach(() => {
     if (path === '/institutions/braude/buildings') return Promise.resolve(jsonResponse([building({ code: 'M' }), building({ id: 2, code: 'L' })]))
     if (path === '/me/classes/import') {
       sent.push({ path, body: init.body, type: headers['Content-Type'] ?? null })
-      return Promise.resolve(jsonResponse(ROWS))
+      return Promise.resolve(jsonResponse(rows))
     }
     if (path === '/me/classes/bulk' && init.method === 'POST') {
       const body = JSON.parse(String(init.body)) as { starts: string }[]
@@ -69,20 +73,29 @@ describe('ImportClasses', () => {
   it('sends the file as it is, and shows what it holds', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('ייבוא מקובץ הידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('הוספת מערכת שעות'), xlsx())
     expect(await screen.findByRole('checkbox', { name: /מבני נתונים, תרגיל/ })).toBeChecked()
     expect(sent[0].type).toBe('application/octet-stream')
     expect(sent[0].body).toBeInstanceOf(File)
   })
 
-  it('a class with no building found asks for one before adding', async () => {
+  it('a place the campus does not list is kept as the file names it, ready to add', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('ייבוא מקובץ הידיעון'), xlsx())
-    const add = await screen.findByRole('button', { name: 'להוסיף 2 שיעורים' })
+    await user.upload(await screen.findByLabelText('הוספת מערכת שעות'), xlsx())
+    expect(await screen.findByRole('button', { name: 'להוסיף 2 שיעורים' })).toBeEnabled()
+    expect(screen.getByLabelText(/מקום לשיעור אורח חיים בריא/)).toHaveDisplayValue('אולם ספורט, לא ברשימה')
+    expect(screen.getByText(/עוד לא ברשימת הבניינים/)).toBeInTheDocument()
+  })
+
+  it('a class with no place in the file asks for a building before adding', async () => {
+    const user = userEvent.setup()
+    rows = [...ROWS, NOWHERE]
+    show()
+    await user.upload(await screen.findByLabelText('הוספת מערכת שעות'), xlsx())
+    const add = await screen.findByRole('button', { name: 'להוסיף 3 שיעורים' })
     expect(add).toBeDisabled()
-    expect(screen.getByText(/בקובץ: ספורט/)).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText(/בניין לשיעור אורח חיים בריא/), 'L')
+    await user.selectOptions(screen.getByLabelText(/מקום לשיעור סמינר/), 'L')
     expect(add).toBeEnabled()
   })
 
@@ -90,14 +103,13 @@ describe('ImportClasses', () => {
     const user = userEvent.setup()
     refuse = '08:30'
     const onAdded = show()
-    await user.upload(await screen.findByLabelText('ייבוא מקובץ הידיעון'), xlsx())
-    await user.selectOptions(await screen.findByLabelText(/בניין לשיעור אורח חיים בריא/), 'L')
-    await user.click(screen.getByRole('button', { name: 'להוסיף 2 שיעורים' }))
+    await user.upload(await screen.findByLabelText('הוספת מערכת שעות'), xlsx())
+    await user.click(await screen.findByRole('button', { name: 'להוסיף 2 שיעורים' }))
     await waitFor(() => expect(onAdded).toHaveBeenCalled())
     // One request with both, in order.
     expect(sent.filter((s) => s.path === '/me/classes/bulk').map((s) => s.body)).toEqual([[
       { weekday: 6, starts: '08:30', ends: '10:30', building_code: 'M', title: 'מבני נתונים, תרגיל' },
-      { weekday: 3, starts: '10:30', ends: '12:20', building_code: 'L', title: 'אורח חיים בריא, הרצאה' },
+      { weekday: 3, starts: '10:30', ends: '12:20', place_text: 'אולם ספורט', title: 'אורח חיים בריא, הרצאה' },
     ]])
     expect(await screen.findByText(/נוסף שיעור אחד מתוך 2/)).toBeInTheDocument()
     // The refused one stays, with why.
@@ -108,7 +120,7 @@ describe('ImportClasses', () => {
   it('unchecking a class leaves it out', async () => {
     const user = userEvent.setup()
     show()
-    await user.upload(await screen.findByLabelText('ייבוא מקובץ הידיעון'), xlsx())
+    await user.upload(await screen.findByLabelText('הוספת מערכת שעות'), xlsx())
     await user.click(await screen.findByRole('checkbox', { name: /אורח חיים בריא/ }))
     await user.click(screen.getByRole('button', { name: 'להוסיף שיעור אחד' }))
     await waitFor(() => expect(sent.at(-1)?.path).toBe('/me/classes/bulk'))

@@ -31,7 +31,7 @@ NowDep = Annotated[datetime, Depends(get_now)]
 def _out(row: ClassSlot) -> ClassSlotOut:
     return ClassSlotOut(
         id=row.id, weekday=row.weekday, starts=row.starts, ends=row.ends,
-        building_code=row.building.code, title=row.title,
+        building_code=row.building.code if row.building else None, place_text=row.place_text, title=row.title,
     )
 
 
@@ -46,7 +46,9 @@ def my_classes(user: UserDep, db: SessionDep):
 )
 def add_class(body: ClassSlotIn, user: UserDep, db: SessionDep):
     try:
-        row = classes.add_class(db, user, body.weekday, body.starts, body.ends, body.building_code, body.title)
+        row = classes.add_class(
+            db, user, body.weekday, body.starts, body.ends, body.building_code, body.title, body.place_text
+        )
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
     db.commit()
@@ -74,7 +76,9 @@ def add_classes(body: Annotated[list[ClassSlotIn], Field(min_length=1, max_lengt
     for item in body:
         try:
             with db.begin_nested():
-                classes.add_class(db, user, item.weekday, item.starts, item.ends, item.building_code, item.title)
+                classes.add_class(
+                    db, user, item.weekday, item.starts, item.ends, item.building_code, item.title, item.place_text
+                )
             results.append(BulkResultOut(refused=None))
         except Refusal as refusal:
             results.append(BulkResultOut(refused=refusal.code))
@@ -122,6 +126,7 @@ def between_classes(user: UserDep, db: SessionDep, now: NowDep):
         gaps=[
             GapOut(
                 starts=g.starts, ends=g.ends, from_building=g.from_building, to_building=g.to_building, now=g.now,
+                from_listed=g.from_listed, to_listed=g.to_listed,
                 suggestions=[SuggestionOut(**asdict(s)) for s in g.suggestions],
             )
             for g in result.gaps

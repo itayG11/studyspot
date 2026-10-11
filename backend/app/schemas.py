@@ -532,7 +532,9 @@ class ClassSlotIn(BaseModel):
     weekday: int = Field(ge=0, le=6)  # Python's numbering: Monday is 0
     starts: time
     ends: time
-    building_code: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9-]+$")
+    # One of the two: a building of the campus, or a place it does not list.
+    building_code: str | None = Field(default=None, min_length=1, max_length=16, pattern=r"^[A-Za-z0-9-]+$")
+    place_text: str | None = Field(default=None, max_length=40)
     title: str | None = Field(default=None, max_length=60)
 
     @field_validator("title")
@@ -540,15 +542,24 @@ class ClassSlotIn(BaseModel):
     def _clean_title(cls, value: str | None) -> str | None:
         return _plain_text(value) or None
 
+    @field_validator("place_text")
+    @classmethod
+    def _clean_place(cls, value: str | None) -> str | None:
+        # One space between words: "אולם  ספורט" is the same place.
+        return " ".join((_plain_text(value) or "").split()) or None
+
     @model_validator(mode="after")
     def _ends_after_start(self) -> "ClassSlotIn":
+        if (self.building_code is None) == (self.place_text is None):
+            raise ValueError("a class is in a building or in a place named in words, one of the two")
         for value in (self.starts, self.ends):
             # Local times, in whole minutes, as the form sends them.
             if value.tzinfo is not None or value.second or value.microsecond:
                 raise ValueError("a class time is a local hour and minute")
         if self.ends <= self.starts:
             raise ValueError("a class ends after it starts")
-        self.building_code = self.building_code.upper()
+        if self.building_code is not None:
+            self.building_code = self.building_code.upper()
         return self
 
 
@@ -557,8 +568,17 @@ class ClassSlotOut(BaseModel):
     weekday: int
     starts: time
     ends: time
-    building_code: str
+    building_code: str | None  # None: a place the campus does not list yet
+    place_text: str | None
     title: str | None
+
+
+class MentionedPlaceOut(BaseModel):
+    """A place students' classes name that the campus has not added: how
+    many students, never who."""
+
+    text: str
+    students: int
 
 
 class SuggestionOut(BaseModel):
@@ -580,9 +600,11 @@ class SuggestionOut(BaseModel):
 class GapOut(BaseModel):
     starts: time  # local
     ends: time
-    from_building: str
+    from_building: str  # a building's code, or a place named in words
     to_building: str
     now: bool  # the gap is under way
+    from_listed: bool  # from_building is a building's code
+    to_listed: bool
     suggestions: list[SuggestionOut]
 
 

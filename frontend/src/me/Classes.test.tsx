@@ -17,8 +17,8 @@ const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
   booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
-const DATA: ClassSlot = { id: 1, weekday: 6, starts: '08:30:00', ends: '10:00:00', building_code: 'M', title: 'מבני נתונים' }
-const MATH: ClassSlot = { id: 2, weekday: 6, starts: '11:30:00', ends: '13:00:00', building_code: 'EF', title: null }
+const DATA: ClassSlot = { id: 1, weekday: 6, starts: '08:30:00', ends: '10:00:00', building_code: 'M', place_text: null, title: 'מבני נתונים' }
+const MATH: ClassSlot = { id: 2, weekday: 6, starts: '11:30:00', ends: '13:00:00', building_code: 'EF', place_text: null, title: null }
 
 function suggestion(overrides: Partial<Suggestion> = {}): Suggestion {
   return {
@@ -39,7 +39,7 @@ beforeEach(() => {
   between = {
     weekday: 6,
     gaps: [{
-      starts: '10:00:00', ends: '11:30:00', from_building: 'M', to_building: 'EF', now: true,
+      starts: '10:00:00', ends: '11:30:00', from_building: 'M', to_building: 'EF', from_listed: true, to_listed: true, now: true,
       suggestions: [
         suggestion(),
         suggestion({ place_id: 3, name: 'EM107', kind: 'group_room', building_code: 'EM', walk_there: 3, walk_after: 2, sit_minutes: 80, bookable: true, available: null }),
@@ -235,6 +235,25 @@ describe('the timetable', () => {
     const monday = await within(week).findByRole('list', { name: 'יום שני' })
     expect(await within(monday).findByRole('button', { name: 'אלגוריתמים, יום שני 14:00 עד 15:30, בניין EF' })).toBeInTheDocument()
     await waitFor(() => expect(asked()).toBeGreaterThan(before))
+  })
+
+  it('a class in a place not on the list is added in words, and shown so', async () => {
+    const user = userEvent.setup()
+    renderMe()
+    const week = await weekSection()
+    await within(week).findByRole('option', { name: 'EF' })
+    await user.type(within(week).getByLabelText('מתחיל'), '14:00')
+    await user.type(within(week).getByLabelText('נגמר'), '15:30')
+    await user.selectOptions(within(week).getByLabelText('בניין'), 'מקום שלא ברשימה')
+    await user.type(within(week).getByLabelText('שם המקום'), 'אולם ספורט')
+    await user.click(within(week).getByRole('button', { name: 'הוספת שיעור' }))
+    await waitFor(() => expect(sent.at(-1)).toEqual({
+      method: 'POST', path: '/me/classes',
+      body: { weekday: 6, starts: '14:00', ends: '15:30', place_text: 'אולם ספורט', title: null },
+    }))
+    const sunday = await within(week).findByRole('list', { name: 'יום ראשון' })
+    await user.click(await within(sunday).findByRole('button', { name: 'שיעור, יום ראשון 14:00 עד 15:30, אולם ספורט' }))
+    expect(await screen.findByText(/עוד לא במפה של המוסד/)).toBeInTheDocument()
   })
 
   it('a building under construction is not offered', async () => {

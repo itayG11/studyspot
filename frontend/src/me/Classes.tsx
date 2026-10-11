@@ -16,6 +16,9 @@ import styles from './me.module.css'
 import { ImportClasses } from './ImportClasses'
 import { WeekGrid } from './WeekGrid'
 
+// The building picker's choice for a place the campus does not list.
+const NOT_LISTED = '-'
+
 interface Props {
   classes: ApiState<ClassSlot[]>
   between: BetweenClassesData | null // today's gaps with places to go, for the grid
@@ -86,19 +89,29 @@ function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: 
   }, [preset])
   const [ends, setEnds] = useState('')
   const [building, setBuilding] = useState('')
+  const [place, setPlace] = useState('') // a place the campus does not list, in words
   const [title, setTitle] = useState('')
   const choices = (buildings.data ?? []).filter((b) => b.status !== 'under_construction')
-  const chosen = building || choices[0]?.code || ''
+  // No buildings on the campus yet: a place in words is the only choice.
+  const chosen = building || choices[0]?.code || (buildings.data ? NOT_LISTED : '')
+  const elsewhere = chosen === NOT_LISTED
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     const added = await action.run(() =>
-      addClass({ weekday, starts, ends, building_code: chosen, title: title.trim() || null }),
+      addClass({
+        weekday,
+        starts,
+        ends,
+        ...(elsewhere ? { place_text: place.trim() } : { building_code: chosen }),
+        title: title.trim() || null,
+      }),
     )
     if (!added) return
     setStarts('')
     setEnds('')
     setTitle('')
+    setPlace('')
     onAdded()
   }
 
@@ -136,20 +149,30 @@ function NewClassForm({ preset, onAdded }: { preset: { weekday: number; starts: 
           <label className={admin.label} htmlFor={`${id}-building`}>
             בניין
           </label>
-          <select id={`${id}-building`} className={admin.field} dir="ltr" required value={chosen} onChange={(e) => setBuilding(e.target.value)}>
+          <select id={`${id}-building`} className={admin.field} required value={chosen} onChange={(e) => setBuilding(e.target.value)}>
             {choices.map((b) => (
               <option key={b.code} value={b.code}>
                 {b.code}
               </option>
             ))}
+            <option value={NOT_LISTED}>מקום שלא ברשימה</option>
           </select>
         </div>
       </div>
+      {elsewhere && (
+        <>
+          <label className={admin.label} htmlFor={`${id}-place`}>
+            שם המקום
+          </label>
+          <input id={`${id}-place`} className={admin.field} required maxLength={40} value={place} onChange={(e) => setPlace(e.target.value)} />
+          <p className={styles.idleText}>מנהל המוסד יראה כמה סטודנטים מזכירים את המקום, בלי שמות, ויוכל להוסיף אותו לרשימה.</p>
+        </>
+      )}
       <label className={admin.label} htmlFor={`${id}-course`}>
         שם הקורס, לא חובה
       </label>
       <input id={`${id}-course`} className={admin.field} maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} />
-      <Button type="submit" size="sm" busy={action.busy} disabled={!chosen}>
+      <Button type="submit" size="sm" busy={action.busy} disabled={!chosen || (elsewhere && !place.trim())}>
         הוספת שיעור
       </Button>
       <ActionError action={action} />

@@ -16,6 +16,9 @@ class ClassSlot(Base):
     __table_args__ = (
         CheckConstraint("weekday BETWEEN 0 AND 6", name="weekday_range"),
         CheckConstraint("ends > starts", name="ends_after_start"),
+        # A building of the campus, or the name of a place it has not added
+        # yet ("אולם ספורט"): somewhere, always.
+        CheckConstraint("building_id IS NOT NULL OR place_text IS NOT NULL", name="has_a_place"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -23,7 +26,9 @@ class ClassSlot(Base):
     weekday: Mapped[int] = mapped_column(SmallInteger)  # Python's numbering: Monday is 0
     starts: Mapped[time]  # local, in the institution's time zone
     ends: Mapped[time]
-    building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id", ondelete="CASCADE"), index=True)
+    building_id: Mapped[int | None] = mapped_column(ForeignKey("buildings.id", ondelete="CASCADE"), index=True)
+    # As the student wrote it, kept once the admin adds that building too.
+    place_text: Mapped[str | None] = mapped_column(String(40))
     title: Mapped[str | None] = mapped_column(String(60))
 
-    building: Mapped[Building] = relationship()
+    building: Mapped[Building | None] = relationship()

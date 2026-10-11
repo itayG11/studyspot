@@ -314,16 +314,23 @@ export interface ClassSlot {
   weekday: number // Python's numbering: Monday is 0
   starts: string
   ends: string
-  building_code: string
+  building_code: string | null // null: a place the campus does not list yet
+  place_text: string | null // that place, in the student's words
   title: string | null
 }
 
-export interface NewClass {
+// A building of the campus, or a place it does not list, one of the two.
+export type NewClass = {
   weekday: number
   starts: string // "HH:MM"
   ends: string
-  building_code: string
   title: string | null
+} & ({ building_code: string; place_text?: undefined } | { place_text: string; building_code?: undefined })
+
+// A place students' classes name that the campus does not list (admin).
+export interface MentionedPlace {
+  text: string
+  students: number
 }
 
 // A place to study in a gap between classes (/me/between-classes).
@@ -346,8 +353,10 @@ export interface Suggestion {
 export interface Gap {
   starts: string // local "HH:MM:SS"
   ends: string
-  from_building: string
+  from_building: string // a building's code, or a place named in words
   to_building: string
+  from_listed: boolean // from_building is a building's code
+  to_listed: boolean
   now: boolean
   suggestions: Suggestion[]
 }

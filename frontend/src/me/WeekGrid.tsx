@@ -4,12 +4,13 @@
 // (today's, from "between classes"); picking an empty hour fills the form.
 // On a phone: one day at a time, chosen by tabs.
 
+import { Coffee } from 'lucide-react'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import type { BetweenClasses as Between, ClassSlot } from '../api/types'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useInstitution } from '../institution'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../logic/time'
-import { courseTone, dayLayout, hourRange, pickedTime, type Gap, type HourRange } from '../logic/week'
+import { classPlace, courseTone, dayLayout, hourRange, pickedTime, type Gap, type HourRange } from '../logic/week'
 import { Chip, ConfirmButton, JumpTo } from '../ui'
 import { BETWEEN_ID, SuggestionList } from './BetweenClasses'
 import styles from './week.module.css'
@@ -17,6 +18,8 @@ import styles from './week.module.css'
 const SATURDAY = 5
 const MINUTE = 60_000
 const clock = (value: string) => value.slice(0, 5)
+// "בניין M", or the place as the student named it.
+const placeLabel = (slot: ClassSlot) => (slot.building_code ? `בניין ${slot.building_code}` : classPlace(slot))
 const minutesOf = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
 
 type Picked = { kind: 'class'; slot: ClassSlot } | { kind: 'gap'; day: number; gap: Gap } | null
@@ -161,7 +164,7 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
                 type="button"
                 className={`${styles.block} ${styles[`tone${courseTone(slot)}`]} ${short ? styles.short : ''}`}
                 aria-pressed={selected}
-                aria-label={`${slot.title ?? 'שיעור'}, ${name} ${clock(slot.starts)} עד ${clock(slot.ends)}, בניין ${slot.building_code}`}
+                aria-label={`${slot.title ?? 'שיעור'}, ${name} ${clock(slot.starts)} עד ${clock(slot.ends)}, ${placeLabel(slot)}`}
                 onClick={() => onPick(selected ? null : { kind: 'class', slot })}
               >
                 <span className={styles.blockTitle}>{slot.title ?? 'שיעור'}</span>
@@ -169,7 +172,7 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
                   <span dir="ltr">
                     {clock(slot.starts)}–{clock(slot.ends)}
                   </span>{' '}
-                  · <bdi>{slot.building_code}</bdi>
+                  · <bdi>{classPlace(slot)}</bdi>
                 </span>
               </button>
             </li>
@@ -187,7 +190,10 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
                 aria-label={`הפסקה של ${gap.minutes} דקות, ${name} ${gap.starts} עד ${gap.ends}`}
                 onClick={() => onPick(selected ? null : { kind: 'gap', day, gap })}
               >
-                <span>הפסקה</span>
+                <span className={styles.gapLabel}>
+                  <Coffee aria-hidden="true" />
+                  הפסקה
+                </span>
                 <span className={styles.gapMinutes}>{gap.minutes} דק׳</span>
               </button>
             </li>
@@ -231,8 +237,9 @@ function Details({ picked, today, nowMinutes, between, removingId, onRemove, onC
             <span dir="ltr">
               {clock(slot.starts)}–{clock(slot.ends)}
             </span>{' '}
-            · בניין <bdi>{slot.building_code}</bdi>
+            · <bdi>{placeLabel(slot)}</bdi>
           </p>
+          {!slot.building_code && <p className={styles.detailsMeta}>המקום עוד לא במפה של המוסד. ההליכה אליו מוערכת בכמה דקות.</p>}
         </div>
         <div className={styles.detailsActions}>
           <ConfirmButton label="הסרה" confirmLabel="כן, להסיר" size="sm" busy={removingId === slot.id} onConfirm={() => onRemove(slot.id)} />

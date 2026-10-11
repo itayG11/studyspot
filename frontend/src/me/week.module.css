@@ -1,6 +1,6 @@
 /* The timetable board. Right to left like the page: Sunday on the right,
-   the hours down the right edge. Stone paper, ink, and one tone per
-   course on the card's edge; breaks are dashed, "now" is a red line. */
+   the hours down the right edge. Each course a solid, bright tile of its
+   own colour; every break the same yellow; "now" is a red line. */
 
 .board {
   display: grid;
@@ -91,7 +91,7 @@
 .place {
   position: absolute;
   inset-inline: 3px;
-  padding-block: 1px;
+  padding-block: 2px;
 }
 
 .block,
@@ -105,48 +105,59 @@
 }
 
 .block {
-  --tone: var(--free);
+  --tone: var(--course-1);
+  --on: var(--on-course-1);
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
   padding: 6px 8px;
-  color: var(--ink);
-  background: color-mix(in srgb, var(--tone) 14%, var(--stone-0));
+  color: var(--on);
+  background: var(--tone);
   border: 0;
-  border-inline-start: 3px solid var(--tone);
-  border-radius: 8px;
+  border-radius: 10px;
+  /* A sticker's edge: a darker lip below, a light one on top. */
+  box-shadow:
+    inset 0 -3px 0 rgb(0 0 0 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.25);
 }
 
 .block:active,
 .gap:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 @media (hover: hover) {
-  .block:hover {
-    box-shadow: var(--shadow-1);
+  .block:hover,
+  .gap:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 -3px 0 rgb(0 0 0 / 0.18),
+      0 6px 14px -6px rgb(0 0 0 / 0.45);
   }
 }
 
-.block[aria-pressed='true'] {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+.block[aria-pressed='true'],
+.gap[aria-pressed='true'] {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 
-.tone0 { --tone: var(--free); }
-.tone1 { --tone: var(--busy); }
-.tone2 { --tone: var(--full); }
-.tone3 { --tone: var(--tone-blue); }
-.tone4 { --tone: var(--tone-violet); }
-.tone5 { --tone: var(--ink-2); }
+.tone0 { --tone: var(--course-1); --on: var(--on-course-1); }
+.tone1 { --tone: var(--course-2); --on: var(--on-course-2); }
+.tone2 { --tone: var(--course-3); --on: var(--on-course-3); }
+.tone3 { --tone: var(--course-4); --on: var(--on-course-4); }
+.tone4 { --tone: var(--course-5); --on: var(--on-course-5); }
+.tone5 { --tone: var(--course-6); --on: var(--on-course-6); }
+.tone6 { --tone: var(--course-7); --on: var(--on-course-7); }
+.tone7 { --tone: var(--course-8); --on: var(--on-course-8); }
 
 /* Two lines at most; a long word breaks rather than leaving the card. */
 .blockTitle {
   display: -webkit-box;
   overflow: hidden;
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
@@ -155,8 +166,8 @@
 
 /* Wraps on a narrow day rather than cutting the building off. */
 .blockMeta {
-  font: 500 var(--text-xs) var(--font-mono);
-  color: var(--ink-2);
+  font: 600 var(--text-xs) var(--font-mono);
+  color: inherit;
 }
 
 /* A class under an hour: one line, the name only. */
@@ -192,40 +203,49 @@
   justify-content: center;
   gap: 2px;
   font-size: var(--text-xs);
-  color: var(--ink-2);
-  background: transparent;
-  border: 1.5px dashed var(--stone-3);
-  border-radius: 8px;
+  font-weight: 600;
+  color: var(--on-break);
+  background: var(--break-fill);
+  border: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.14);
 }
 
-@media (hover: hover) {
-  .gap:hover {
-    color: var(--ink);
-    border-color: var(--ink-3);
+/* The break under way: a ring that breathes, so it is found at a glance. */
+.gapNow {
+  outline: 3px solid var(--on-break);
+  outline-offset: -3px;
+  animation: breathe 2.4s var(--ease-in-out, ease-in-out) infinite;
+}
+
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--break-fill) 45%, transparent);
   }
 }
 
-.gap[aria-pressed='true'] {
-  color: var(--ink);
-  border-color: var(--ink);
-  border-style: solid;
+.gapLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.gapNow {
-  color: var(--free);
-  border-color: var(--free);
+.gapLabel svg {
+  width: 14px;
+  height: 14px;
 }
 
 .gapMinutes {
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: 700;
 }
 
 .nowLine {
   position: absolute;
   inset-inline: -3px;
   z-index: 1;
-  height: 2px;
+  height: 3px;
   background: var(--accent);
   border-radius: 2px;
   pointer-events: none;
@@ -312,7 +332,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .details {
+  .details,
+  .gapNow {
     animation: none;
   }
 }

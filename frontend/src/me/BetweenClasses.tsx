@@ -14,6 +14,8 @@ import styles from './me.module.css'
 const clock = (value: string) => value.slice(0, 5)
 const walking = (minutes: number) => (minutes === 1 ? 'דקת הליכה אחת' : `${minutes} דקות הליכה`)
 
+// "בניין M" for a building's code, or a place as the student named it.
+const routeEnd = (where: string, listed: boolean) => (listed ? `בניין ${where}` : where)
 const minutesOf = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
 
 // Today's gaps of half an hour or more, from the timetable (the same rule as
@@ -108,7 +110,7 @@ export function BetweenClasses({ between, classes }: { between: ApiState<Data>; 
               {range}
             </span>
             <span className={styles.gapRoute}>
-              מבניין {gap.from_building} לבניין {gap.to_building}
+              מ{routeEnd(gap.from_building, gap.from_listed)} ל{routeEnd(gap.to_building, gap.to_listed)}
             </span>
             {gap.now && <span className={styles.gapNow}>עכשיו</span>}
           </header>
