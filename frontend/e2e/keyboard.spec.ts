@@ -23,7 +23,7 @@ test('the keyboard can skip the story, search and open a place', async ({ page }
   // The search box, by keyboard.
   await page.getByRole('searchbox', { name: 'חיפוש מקום' }).focus()
   await page.keyboard.type('EM107')
-  const card = page.getByRole('link', { name: 'EM107' })
+  const card = page.getByRole('link', { name: 'EM107', exact: true })
   await expect(card).toBeVisible()
   await card.focus()
   // A visible focus ring is drawn around the whole card.

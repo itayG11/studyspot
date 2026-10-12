@@ -246,7 +246,7 @@ test('reload, "back to search" and the browser\'s back keep the place and the se
   await page.goto('/#finder')
   await page.getByRole('searchbox', { name: 'חיפוש מקום' }).fill('EM')
   await expect(page).toHaveURL(/q=EM/)
-  await page.getByRole('link', { name: 'EM107' }).click()
+  await page.getByRole('link', { name: 'EM107', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
 
   await page.reload()
@@ -256,7 +256,7 @@ test('reload, "back to search" and the browser\'s back keep the place and the se
   await expect(page).toHaveURL(/q=EM/)
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toHaveValue('EM')
 
-  await page.getByRole('link', { name: 'EM107' }).click()
+  await page.getByRole('link', { name: 'EM107', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
   await page.goBack()
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toHaveValue('EM')

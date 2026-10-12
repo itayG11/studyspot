@@ -29,6 +29,7 @@ import {
 import { Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Segmented, Skeleton } from '../../ui'
 import { CampusLoad } from '../load/CampusLoad'
 import { AdvancedFilters, AdvancedFiltersButton } from './AdvancedFilters'
+import { QuickFinder } from './QuickFinder'
 import { SpaceCard } from './SpaceCard'
 import styles from './finder.module.css'
 
@@ -133,11 +134,15 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
             </Chip>
           ))}
         </div>
-        <div className={styles.moreRow}>
-          <AdvancedFiltersButton open={moreOpen} onToggle={() => setMoreOpen(!moreOpen)} filters={filters} />
-        </div>
-        <AdvancedFilters open={moreOpen} filters={filters} buildings={buildings} update={update} />
       </div>
+
+      {/* Below the sticky bar, not in it: on a phone the bar stays one search
+          and one row of chips, and does not cover the cards. */}
+      <div className={styles.moreRow}>
+        <AdvancedFiltersButton open={moreOpen} onToggle={() => setMoreOpen(!moreOpen)} filters={filters} />
+        <QuickFinder places={places} />
+      </div>
+      <AdvancedFilters open={moreOpen} filters={filters} buildings={buildings} update={update} />
 
       {today && <CampusLoad data={today} places={places} timeZone={timezone} />}
 

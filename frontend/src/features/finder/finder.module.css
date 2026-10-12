@@ -420,6 +420,8 @@
 
 .moreRow {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
 }
 
 .moreToggle {
@@ -524,4 +526,104 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
+}
+
+/* --- Quick: where to study now ------------------------------------------- */
+
+.quickButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--on-primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border: 0;
+  border-radius: var(--r-pill);
+  box-shadow: 0 4px 14px -6px var(--primary-glow);
+  cursor: pointer;
+  transition: transform var(--dur-press) ease-out;
+}
+
+.quickButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quickButton:active {
+  transform: scale(0.97);
+}
+
+.quickButton:disabled {
+  color: var(--ink-3);
+  background: var(--stone-2);
+  box-shadow: none;
+  cursor: default;
+}
+
+.quickButton:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.quickQuestions {
+  display: grid;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.quickList {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quickPick {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-1);
+  border-radius: var(--r-md);
+}
+
+.quickName {
+  font: 700 var(--text-lg) / 1.2 var(--font-heading);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The whole row is the link's target. */
+.quickName::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.quickName:focus-visible {
+  outline: none;
+}
+
+.quickPick:has(.quickName:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.quickWhere {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.quickWhy {
+  font-size: var(--text-sm);
+  color: var(--free);
+}
+
+.quickEmpty {
+  margin: 0;
+  color: var(--ink-2);
 }

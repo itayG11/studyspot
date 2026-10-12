@@ -140,6 +140,22 @@ describe('Finder', () => {
     expect(cards()).toEqual(['M206'])
   })
 
+  it('"quick": two questions, and the places that fit now, with why', async () => {
+    const { router } = renderFinder()
+    await userEvent.click(await screen.findByRole('button', { name: 'מהיר: איפה ללמוד עכשיו?' }))
+    const sheet = screen.getByRole('dialog', { name: 'איפה ללמוד עכשיו?' })
+    await userEvent.click(within(sheet).getByRole('button', { name: 'קבוצה' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'לדבר' }))
+    // EM107 is a group room, but taken now: nothing fits.
+    expect(within(sheet).getByText('אין עכשיו מקום פנוי שמתאים לשתי התשובות.')).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'לבד' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'מחשב' }))
+    const pick = within(sheet).getByRole('link', { name: 'M206' })
+    expect(within(sheet).getByRole('list', { name: 'הצעות' })).toHaveTextContent('38 מקומות פנויים עכשיו · יש מחשבים · מתאים ללימוד לבד')
+    await userEvent.click(pick)
+    expect(router.state.location.pathname).toBe('/braude/spaces/1')
+  })
+
   it('opens with the filters of a shared link', async () => {
     renderFinder({ path: '/?quiet=1' })
     expect(await screen.findByRole('button', { name: /שקט/ })).toHaveAttribute('aria-pressed', 'true')

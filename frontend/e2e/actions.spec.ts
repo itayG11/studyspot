@@ -145,7 +145,7 @@ test('the admin adds a building and a room, and students find the room', async (
     await page.getByRole('button', { name: 'שלטים להדפסה' }).click()
     await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(11)
     await page.goto('/?q=QA101')
-    await expect(page.getByRole('link', { name: /QA101/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'QA101', exact: true })).toBeVisible()
   } finally {
     resetDemoCampus()
   }
@@ -171,7 +171,7 @@ test('the admin uploads a table of buildings and places, and students find them'
     await page.getByRole('button', { name: 'שלטים להדפסה' }).click()
     await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(11)
     await page.goto('/?q=TB101')
-    await expect(page.getByRole('link', { name: /TB101/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'TB101', exact: true })).toBeVisible()
   } finally {
     resetDemoCampus()
   }

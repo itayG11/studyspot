@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
 })
 
-async function check(page: Page, what: string) {
+async function check(page: Page, what: string, exclude?: string) {
   // Text that is still fading in is measured as faint: wait for the
   // entrance animations. Two kinds never end and are skipped: the endless
   // ones, like a live dot, and the story's scroll-driven ones, which follow
@@ -21,7 +21,8 @@ async function check(page: Page, what: string) {
   await page.waitForFunction(
     "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
   )
-  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
+  const axe = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+  const result = await (exclude ? axe.exclude(exclude) : axe).analyze()
   const problems = result.violations.map((v) => `${what}: ${v.id} (${v.impact}) ${v.nodes.map((n) => `${n.target.join(' ')} ${n.any[0]?.message ?? ''}`).slice(0, 3).join(', ')}`)
   expect.soft(problems).toEqual([])
 }
@@ -51,7 +52,10 @@ for (const [label, viewport, colorScheme] of [
     }
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await check(page, 'home')
+    // The finder is left out here: at the top of the page it is still tilted
+    // in 3D (FinderReveal), which axe cannot measure; its target-size rule
+    // took 85 s on a phone. The finder has its own check below, flat.
+    await check(page, 'home', '#finder')
     // One screen down the story, its dark glass panel with the live numbers.
     // axe cannot measure text on glass over a photo (it skips it), so the
     // panel's text is checked to be light: its first line had been dark grey.
