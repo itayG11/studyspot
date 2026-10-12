@@ -92,9 +92,20 @@ describe('an address per institution', () => {
     expect(top.getByRole('link', { name: 'חיפוש מקום' })).toHaveAttribute('href', '/braude')
   })
 
+  it('the first thing the keyboard reaches is a link that skips to the page itself', async () => {
+    renderAt('/privacy')
+    await screen.findByRole('heading', { level: 1, name: 'מדיניות הפרטיות' })
+    const first = document.querySelector('a, button')
+    expect(first).toHaveTextContent('דלג לתוכן')
+    expect(first).toHaveAttribute('href', '#main')
+    expect(document.getElementById('main')?.tagName).toBe('MAIN')
+  })
+
   it('an unknown institution says so', async () => {
     renderAt('/nowhere')
     expect(await screen.findByText('המוסד לא נמצא')).toBeInTheDocument()
+    // Not a dead end: the list of institutions is one click away.
+    expect(screen.getByRole('link', { name: 'לרשימת המוסדות' })).toHaveAttribute('href', '/institutions')
   })
 
   it('an old place link goes to the place, at its own institution', async () => {

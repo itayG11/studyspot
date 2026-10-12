@@ -1,6 +1,11 @@
+/* One row always: on a narrow screen it scrolls sideways rather than break
+   a label onto two lines. */
 .group {
   display: inline-flex;
   justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: 3px;
   background: var(--stone-2);
   border: 1px solid var(--hairline);
@@ -9,6 +14,8 @@
 
 .option {
   position: relative;
+  flex: none;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   min-height: 36px;
@@ -36,9 +43,10 @@
     background-color 0s linear 300ms;
 }
 
+/* Inside the option: the group scrolls, which clips anything outside it. */
 .option:focus-visible {
   outline: 3px solid var(--ink);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
 @media (hover: hover) {

@@ -57,7 +57,18 @@ export function InstitutionProvider({ slug, children }: { slug: string; children
   }, [gone, slug, user?.institution_slug])
   if (!valid || gone) {
     return (
-      <EmptyState icon={<MapPinOff />} title="המוסד לא נמצא" action={<ButtonLink to="/">לדף הראשי</ButtonLink>}>
+      <EmptyState
+        icon={<MapPinOff />}
+        title="המוסד לא נמצא"
+        action={
+          <>
+            <ButtonLink to="/">לדף הראשי</ButtonLink>
+            <ButtonLink to="/institutions" variant="secondary">
+              לרשימת המוסדות
+            </ButtonLink>
+          </>
+        }
+      >
         אולי הכתובת לא מדויקת.
       </EmptyState>
     )

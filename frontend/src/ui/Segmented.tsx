@@ -25,7 +25,9 @@ interface Props<T extends string> {
 export function Segmented<T extends string>({ label, options, value, onChange, className }: Props<T>) {
   const id = useId() // one mark per group: two groups on a page do not swap theirs
   return (
-    <div className={[styles.group, className].filter(Boolean).join(' ')} role="group" aria-label={label}>
+    // layoutScroll: the group scrolls sideways on a narrow screen, and Motion
+    // must count that scroll when it slides the mark.
+    <m.div layoutScroll className={[styles.group, className].filter(Boolean).join(' ')} role="group" aria-label={label}>
       {options.map((option) => {
         const chosen = option.value === value
         return (
@@ -35,6 +37,6 @@ export function Segmented<T extends string>({ label, options, value, onChange, c
           </button>
         )
       })}
-    </div>
+    </m.div>
   )
 }

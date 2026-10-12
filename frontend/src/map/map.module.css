@@ -119,6 +119,17 @@
   filter: var(--map-tiles);
 }
 
+/* Leaflet's own grey under the tiles, and its white layers box, in the
+   site's colours: in the dark theme they had stayed light. */
+.frame :global(.leaflet-container) {
+  background: var(--stone-2);
+}
+
+.frame :global(.leaflet-control-layers) {
+  color: var(--ink);
+  background: var(--stone-0);
+}
+
 /* Leaflet's own zoom buttons and credit line, in the site's colours. */
 .frame :global(.leaflet-bar a) {
   color: var(--ink);

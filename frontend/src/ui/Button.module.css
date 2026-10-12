@@ -41,8 +41,14 @@
   outline-offset: 3px;
 }
 
+/* Off: a plain grey, the same for every kind of button. A faded gradient
+   read as broken rather than as "not yet". */
 .button:disabled {
-  opacity: 0.45;
+  color: var(--ink-3);
+  background: var(--stone-2);
+  background-image: none;
+  border-color: var(--stone-3);
+  box-shadow: none;
   cursor: not-allowed;
 }
 

@@ -6,7 +6,7 @@ import { latLngBounds } from 'leaflet'
 import { useEffect } from 'react'
 import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { Building } from '../api/types'
-import { position } from '../logic/occupancy'
+import { position, SELECTED_COLOR } from '../logic/occupancy'
 import { SourceLayer } from '../map/CampusMap'
 import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS } from '../map/tiles'
 import styles from './admin.module.css'
@@ -65,7 +65,7 @@ export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
               center={at}
               radius={b.code === selected ? 14 : 10}
               interactive={false}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: b.code === selected ? '#ff5b14' : '#141a2e', fillOpacity: 0.95 }}
+              pathOptions={{ color: '#ffffff', weight: 3, fillColor: b.code === selected ? SELECTED_COLOR : '#141a2e', fillOpacity: 0.95 }}
             >
               <Tooltip permanent direction="top" offset={[0, -10]}>
                 {b.code}
@@ -78,7 +78,7 @@ export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
             center={picked}
             radius={12}
             interactive={false}
-            pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#ff5b14', fillOpacity: 0.95 }}
+            pathOptions={{ color: '#ffffff', weight: 3, fillColor: SELECTED_COLOR, fillOpacity: 0.95 }}
           >
             <Tooltip permanent direction="top" offset={[0, -10]}>
               הבניין החדש

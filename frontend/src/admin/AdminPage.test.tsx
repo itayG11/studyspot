@@ -139,6 +139,15 @@ describe('AdminPage', () => {
     expect(await within(sign).findByText(/השלט הישן כבר לא עובד/)).toBeInTheDocument()
   })
 
+  it('shows a placed building\'s coordinates left to right, as numbers are read', async () => {
+    // In a right-to-left page "32.9, 35.2" would otherwise come out reversed.
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'מיקום בניינים' }))
+    const coords = (await screen.findAllByText(/^\d+\.\d+, \d+\.\d+$/))[0]
+    expect(coords.tagName).toBe('BDI')
+    expect(coords).toHaveAttribute('dir', 'ltr')
+  })
+
   it('places a building where the map is clicked, rounded to 6 decimals', async () => {
     renderAdmin()
     await userEvent.click(await screen.findByRole('button', { name: 'מיקום בניינים' }))

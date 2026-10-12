@@ -48,6 +48,10 @@ export function Layout() {
   return (
     <CampusTodayProvider slug={institution.slug}>
     <div className={styles.app}>
+      {/* The first stop of the keyboard: past the header to the page itself. */}
+      <a href="#main" className={styles.skip}>
+        דלג לתוכן
+      </a>
       <header ref={header} className={styles.header}>
         <Link to={home} className={styles.brand} viewTransition>
           <Pin size={18} />
@@ -107,7 +111,7 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
+      <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
       <SiteFooter />

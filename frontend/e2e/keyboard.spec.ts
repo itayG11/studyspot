@@ -10,9 +10,12 @@ test.beforeEach(async ({ page }) => {
 test('the keyboard can skip the story, search and open a place', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  // The skip link comes before the long story.
+  // The first Tab reaches "skip to the page", past the header.
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'דלג לתוכן' })).toBeFocused()
+  // The story's own skip link comes before the long story.
   const skip = page.getByRole('link', { name: 'דלג לחיפוש' })
-  for (let i = 0; i < 8 && !(await skip.evaluate((el) => el === el.ownerDocument.activeElement)); i++) await page.keyboard.press('Tab')
+  for (let i = 0; i < 10 && !(await skip.evaluate((el) => el === el.ownerDocument.activeElement)); i++) await page.keyboard.press('Tab')
   await expect(skip).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()

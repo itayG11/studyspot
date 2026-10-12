@@ -75,6 +75,21 @@ describe('SpacePage', () => {
     expect(screen.queryByRole('button', { name: /להזמין/ })).not.toBeInTheDocument()
   })
 
+  it('on a phone, the bar under a lab with no station chosen leads to the station map, not a dead button', async () => {
+    // A greyed-out button reads as broken; this one says what to do and does it.
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }))
+    try {
+      placeResponses.push(() => jsonResponse(lab()))
+      renderAt('/spaces/1')
+      const bar = await screen.findByRole('button', { name: 'בחר תא כדי להזמין' })
+      expect(bar).toBeEnabled()
+      act(() => bar.click())
+      expect(document.activeElement?.id).toBe('seats')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('an invalid address shows "not found" without asking the server', async () => {
     renderAt('/spaces/abc')
     expect(await screen.findByText('הדף לא נמצא')).toBeInTheDocument()

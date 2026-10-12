@@ -52,7 +52,12 @@ export function Placer({ initial = null, onSaved }: { initial?: string | null; o
                 <span>
                   בניין {b.code}
                   <br />
-                  <span className={styles.coords}>{b.latitude ? `${b.latitude}, ${b.longitude}` : 'עוד לא על המפה'}</span>
+                  {b.latitude ? (
+                    // Numbers read left to right, also in a right-to-left page.
+                    <bdi dir="ltr" className={styles.coords}>{`${b.latitude}, ${b.longitude}`}</bdi>
+                  ) : (
+                    <span className={styles.coords}>עוד לא על המפה</span>
+                  )}
                 </span>
               </button>
             </li>

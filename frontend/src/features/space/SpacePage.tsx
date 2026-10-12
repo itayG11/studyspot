@@ -27,6 +27,7 @@ import { PlaceForecast } from './Forecast'
 import { Timetable } from './Timetable'
 import { artTransitionName } from './transition'
 import { backToFinder } from './backLink'
+import { jumpTo } from '../../ui/jump'
 import styles from './space.module.css'
 
 export function SpacePage() {
@@ -205,12 +206,20 @@ function SpaceView({ place }: { place: PlaceDetail }) {
       {place.bookable && tall && (
         <>
           <div className={styles.bookBar}>
-            <Button size="lg" block disabled={!canBook} onClick={() => {
-                setSheet(true)
-                setSheetUsed(true)
-              }}>
-              {canBook ? (seat ? `להזמין את תא ${seat.label}` : 'להזמין') : 'בחר תא כדי להזמין'}
-            </Button>
+            {canBook ? (
+              <Button size="lg" block onClick={() => {
+                  setSheet(true)
+                  setSheetUsed(true)
+                }}>
+                {seat ? `להזמין את תא ${seat.label}` : 'להזמין'}
+              </Button>
+            ) : (
+              // No station chosen yet: not a greyed-out button that reads as
+              // broken, but the way to the station map.
+              <Button size="lg" block variant="secondary" onClick={() => jumpTo('seats')}>
+                בחר תא כדי להזמין
+              </Button>
+            )}
           </div>
           <Sheet open={sheet} onClose={() => setSheet(false)} title={`הזמנה · ${place.name}${seat ? `, תא ${seat.label}` : ''}`}>
             {sheetUsed && canBook && form}

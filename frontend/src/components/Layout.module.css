@@ -8,6 +8,38 @@
   flex-direction: column;
 }
 
+/* "Skip to the page": off screen until the keyboard reaches it. */
+.skip {
+  position: fixed;
+  top: var(--s-2);
+  inset-inline-start: var(--s-4);
+  z-index: 1000; /* above the sticky header */
+  padding: var(--s-2) var(--s-4);
+  color: var(--on-ink);
+  background: var(--ink);
+  border-radius: var(--r-pill);
+  transform: translateY(-200%);
+  opacity: 0;
+}
+
+.skip:focus-visible {
+  transform: none;
+  opacity: 1;
+  outline: 3px solid var(--accent);
+}
+
+/* A main reached by the skip link takes the focus, but needs no ring; and
+   it stops below the sticky header, not under it (--header-h, Layout.tsx). */
+.main:focus,
+.mainBleed:focus {
+  outline: none;
+}
+
+.main,
+.mainBleed {
+  scroll-margin-top: var(--header-h, 0px);
+}
+
 /* A light glass bar: the page shows through it a little as it scrolls. */
 .header {
   position: sticky;
@@ -238,6 +270,22 @@
 @media (max-width: 640px) {
   .brandInstitution {
     display: none;
+  }
+
+  /* The links on one row that scrolls sideways, not two. */
+  .nav {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navLink {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* Inside the link: the scrolling row clips anything outside it. */
+  .navLink:focus-visible {
+    outline-offset: -3px;
   }
 
   .account {

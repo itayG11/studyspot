@@ -7,7 +7,7 @@ import { useEffect } from 'react'
 import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import type { Building } from '../api/types'
 import styles from './map.module.css'
-import { LEVEL_COLORS, occupancyLevel, position } from '../logic/occupancy'
+import { LEVEL_COLORS, occupancyLevel, position, SELECTED_COLOR } from '../logic/occupancy'
 import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS, type TileSource } from './tiles'
 
 interface Props {
@@ -55,7 +55,7 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
               radius={isSelected ? 19 : 15}
               pathOptions={{
                 // A white ring reads on both the dark photo and the light street map.
-                color: isSelected ? '#ff5b14' : '#ffffff',
+                color: isSelected ? SELECTED_COLOR : '#ffffff',
                 weight: isSelected ? 4 : 3,
                 fillColor: level === 'construction' ? '#ffcc00' : LEVEL_COLORS[level],
                 fillOpacity: 0.95,

@@ -206,6 +206,24 @@
   filter: var(--map-tiles);
 }
 
+/* As on the campus map (src/map/map.module.css): Leaflet's grey, its white
+   buttons and layers box, in the site's colours in both themes. */
+.pickMap :global(.leaflet-container) {
+  background: var(--stone-2);
+}
+
+.pickMap :global(.leaflet-control-layers),
+.pickMap :global(.leaflet-bar a) {
+  color: var(--ink);
+  background: var(--stone-0);
+  border-color: var(--stone-3);
+}
+
+.pickMap :global(.leaflet-control-attribution) {
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--stone-0) 85%, transparent);
+}
+
 .pickMap {
   height: min(65vh, 560px);
   overflow: hidden;
