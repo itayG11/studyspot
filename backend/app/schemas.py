@@ -171,6 +171,40 @@ IMPORT_PLACES = 300  # app/campus_import.py MAX_ROWS
 IMPORT_STATIONS = 2000  # computer lab stations, one row each in the database
 
 
+CLOSED = "closed"
+_HOURS = re.compile(r"(\d{2}):(\d{2})-(\d{2}):(\d{2})")
+
+
+def opening_hours(text: str | None) -> tuple[time, time] | None:
+    """"07:00-20:00" -> (07:00, 20:00); None for closed or not given. Raises
+    ValueError for anything else, or a day that closes before it opens."""
+    if text is None or text == CLOSED:
+        return None
+    match = _HOURS.fullmatch(text)
+    if match is None:
+        raise ValueError("hours are HH:MM-HH:MM or closed")
+    h1, m1, h2, m2 = (int(g) for g in match.groups())
+    opens, closes = time(h1, m1), time(h2, m2)  # ValueError past 23:59
+    if opens >= closes:
+        raise ValueError("a day closes after it opens")
+    return opens, closes
+
+
+class ImportPlaceIn(PlaceCreateIn):
+    """A place of the table, with its own opening hours on Sunday to
+    Thursday and on Friday: "HH:MM-HH:MM", "closed", or none for the
+    campus's usual hours. Saturday is closed, as in the forms."""
+
+    weekday_hours: str | None = None
+    friday_hours: str | None = None
+
+    @field_validator("weekday_hours", "friday_hours")
+    @classmethod
+    def _hours(cls, value: str | None) -> str | None:
+        opening_hours(value)
+        return value
+
+
 class CampusImportBuildingIn(BuildingCreateIn):
     """One building of the table, as the admin confirmed it. "create": new
     at the preview, and refused if it is there by now. A building that was
@@ -181,7 +215,7 @@ class CampusImportBuildingIn(BuildingCreateIn):
     action: Literal["create", "add", "replace"] = "create"
     expected_places: int | None = Field(default=None, ge=0)
     expected_upcoming_bookings: int | None = Field(default=None, ge=0)
-    places: list[PlaceCreateIn] = Field(default_factory=list, max_length=IMPORT_PLACES)
+    places: list[ImportPlaceIn] = Field(default_factory=list, max_length=IMPORT_PLACES)
 
     @model_validator(mode="after")
     def _replace_needs_the_count(self) -> "CampusImportBuildingIn":
@@ -217,6 +251,8 @@ class ImportedPlaceOut(BaseModel):
     lab_rows: int | None
     lab_cols: int | None
     location_note: str | None
+    weekday_hours: str | None
+    friday_hours: str | None
     # Why it would not go into the building that is there now, if it is.
     when_added: Literal["place_name_taken", "floor_not_in_building"] | None
 
@@ -234,6 +270,7 @@ class ImportedBuildingOut(BaseModel):
     code: str
     name: str | None
     floors_count: int
+    status: BuildingStatus
     latitude: Decimal | None
     longitude: Decimal | None
     existing: ExistingBuildingOut | None

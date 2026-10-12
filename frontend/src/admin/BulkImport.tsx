@@ -9,7 +9,7 @@ import { previewCampusImport, saveCampusImport } from '../api/admin'
 import { ApiError } from '../api/client'
 import type { CampusImportBuilding, CampusPreview, CampusSaved, ImportedBuilding, ImportedPlace } from '../api/types'
 import { errorMessage } from '../i18n/errors'
-import { floorLabel, KIND_LABELS } from '../i18n/labels'
+import { floorLabel, KIND_LABELS, STATUS_LABELS } from '../i18n/labels'
 import { useInstitution } from '../institution'
 import { Button, ConfirmButton, Notice } from '../ui'
 import picker from '../me/import.module.css'
@@ -42,22 +42,31 @@ function sent(building: ImportedBuilding, choice: Choice): ImportedPlace[] {
 }
 
 function request(building: ImportedBuilding, choice: Choice): CampusImportBuilding {
-  const { code, name, floors_count, latitude, longitude, existing } = building
+  const { code, name, floors_count, status, latitude, longitude, existing } = building
   return {
-    code, name, floors_count, latitude, longitude,
+    code, name, floors_count, status, latitude, longitude,
     // "create": new at the preview, so refused if it was added elsewhere since.
     action: existing === null ? 'create' : choice === 'replace' ? 'replace' : 'add',
     // What the admin was shown: if it changed since, nothing is deleted.
     ...(choice === 'replace' && existing
       ? { expected_places: existing.places, expected_upcoming_bookings: existing.upcoming_bookings }
       : {}),
-    places: sent(building, choice).map(({ kind, name, floor, capacity, lab_rows, lab_cols, location_note }) => ({
+    places: sent(building, choice).map(({ kind, name, floor, capacity, lab_rows, lab_cols, location_note, weekday_hours, friday_hours }) => ({
       kind, name, floor,
       ...(capacity !== null ? { capacity } : {}),
       ...(lab_rows !== null && lab_cols !== null ? { lab_rows, lab_cols } : {}),
       ...(location_note ? { location_note } : {}),
+      ...(weekday_hours ? { weekday_hours } : {}),
+      ...(friday_hours ? { friday_hours } : {}),
     })),
   }
+}
+
+// The table's own hours, if it gives any: "א'-ה' 07:00-20:00 · ו' סגור".
+function hoursText(place: ImportedPlace): string | null {
+  const day = (label: string, hours: string | null) => hours && `${label} ${hours === 'closed' ? 'סגור' : hours}`
+  const parts = [day("א'-ה'", place.weekday_hours), day("ו'", place.friday_hours)].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : null
 }
 
 // Hebrew agrees in number: "נוסף בניין אחד", "נוספו 2 בניינים".
@@ -225,6 +234,7 @@ function ImportedBuildingCard({
       {building.places.map((place) => (
         <li key={place.line}>
           {`${place.name} · ${KIND_LABELS[place.kind]} · ${floorLabel(place.floor)}`}
+          {hoursText(place) && ` · ${hoursText(place)}`}
           {existing && choice === 'add' && place.when_added === 'place_name_taken' && ' · כבר קיים, מדלגים'}
           {existing && choice === 'add' && place.when_added === 'floor_not_in_building' && ' · אין קומה כזו בבניין הקיים, מדלגים'}
         </li>
@@ -234,7 +244,10 @@ function ImportedBuildingCard({
   if (!existing) {
     return (
       <div className={styles.subform}>
-        <strong>{`${title} · בניין חדש, ${building.floors_count === 1 ? 'קומה אחת' : `${building.floors_count} קומות`}`}</strong>
+        <strong>
+          {`${title} · בניין חדש, ${building.floors_count === 1 ? 'קומה אחת' : `${building.floors_count} קומות`}`}
+          {building.status !== 'active' && ` · ${STATUS_LABELS[building.status]}`}
+        </strong>
         {building.places.length > 0 ? places : <p className={picker.hint}>בלי מקומות בטבלה.</p>}
       </div>
     )

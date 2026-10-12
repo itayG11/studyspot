@@ -25,8 +25,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.campus_admin import create_building, create_place, is_demo_seed_building
 from app.errors import Refusal
-from app.models import ACTIVE_STATUSES, Booking, Building, ClassSlot, Institution, Place, floor_exists
-from app.schemas import BuildingCreateIn, PlaceCreateIn, looks_like_formula
+from app.models import ACTIVE_STATUSES, Booking, Building, BuildingStatus, ClassSlot, Institution, Place, floor_exists
+from app.schemas import CLOSED, BuildingCreateIn, ImportPlaceIn, PlaceCreateIn, looks_like_formula, opening_hours
+from app.seed.braude import FRIDAY, SUNDAY_TO_THURSDAY, WEEK_AND_FRIDAY
 from app.timetable_import import ImportRefused, _open
 
 MAX_BYTES = 200 * 1024
@@ -50,6 +51,9 @@ COLUMNS = {
     "latitude": ("קו רוחב", "latitude", "lat"),
     "longitude": ("קו אורך", "longitude", "lng", "lon"),
     "location_note": ("הערת מיקום", "איך מגיעים", "location note"),
+    "status": ("מצב הבניין", "מצב", "status", "building status"),
+    "weekday_hours": ("ימים א'-ה'", "שעות פתיחה א'-ה'", "שעות א'-ה'", "sunday-thursday", "weekday hours"),
+    "friday_hours": ("יום ו'", "שעות פתיחה ו'", "שעות ו'", "friday", "friday hours"),
 }
 KINDS = {
     "group_room": ("חדר לימוד קבוצתי", "חדר קבוצתי", "group room"),
@@ -57,8 +61,20 @@ KINDS = {
     "library": ("ספרייה", "ספריה", "library"),
     "computer_lab": ("חוות מחשבים", "חוות מחשב", "computer lab", "lab"),
 }
-BUILDING_FIELDS = ("name", "floors_count", "latitude", "longitude")
-PLACE_FIELDS = ("kind", "place", "floor", "capacity", "lab_rows", "lab_cols", "location_note")
+# A building's row with no study place in it, as the template's list says.
+NO_PLACES = ("אין מקומות לימוד", "אין מקומות", "אין", "none", "no places")
+STATUSES = {
+    BuildingStatus.ACTIVE: ("פעיל", "active"),
+    BuildingStatus.NEW: ("חדש", "new"),
+    BuildingStatus.UNDER_CONSTRUCTION: ("בבנייה", "בבניה", "under construction"),
+}
+CLOSED_WORDS = ("סגור", "closed")
+# The Excel template (scripts/make_campus_template.py): a row of groups, the
+# headers, then the rows to fill in.
+TEMPLATE_FIRST_ROW = 3
+PLACE_FIELDS = (
+    "kind", "place", "floor", "capacity", "lab_rows", "lab_cols", "location_note", "weekday_hours", "friday_hours",
+)
 TEXT_FIELDS = ("name", "kind", "place", "location_note")
 
 
@@ -68,6 +84,9 @@ def _key(text: str) -> str:
 
 _HEADERS = {_key(alias): name for name, aliases in COLUMNS.items() for alias in aliases}
 _KINDS = {_key(alias): kind for kind, aliases in KINDS.items() for alias in (*aliases, kind)}
+_NO_PLACES = {_key(alias) for alias in NO_PLACES}
+_STATUSES = {_key(alias): status for status, aliases in STATUSES.items() for alias in (*aliases, status.value)}
+_TIMES = re.compile(r"(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})")
 
 
 @dataclass
@@ -75,9 +94,10 @@ class TableBuilding:
     code: str
     name: str | None
     floors_count: int
+    status: BuildingStatus
     latitude: Decimal | None
     longitude: Decimal | None
-    places: list[tuple[int, PlaceCreateIn]] = field(default_factory=list)  # (line, place)
+    places: list[tuple[int, ImportPlaceIn]] = field(default_factory=list)  # (line, place)
     read: bool = False  # a row of it was read whole: only then is it in the table
 
 
@@ -96,10 +116,15 @@ def read_table(data: bytes) -> Table:
     problems: list[tuple[int, str]] = []
     seen: set[tuple[str, str]] = set()
     rows = 0
+    above = None  # the short name of the row above, for rows that leave it empty
     for index, values in enumerate(lines[header_at + 1:], start=header_at + 2):
         cells = {name: _cell(values, column) for name, column in columns.items()}
         if all(value is None for value in cells.values()):
             continue
+        if cells.get("code") is None:
+            cells["code"] = above  # "the same building as above"
+        else:
+            above = cells["code"]
         rows += 1
         if rows > MAX_ROWS:
             raise ImportRefused("import_too_many_rows")
@@ -195,22 +220,26 @@ def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen:
             code=code,
             name=given("name", _text, known.name if known else None),
             floors_count=floors if floors is not None else known.floors_count,
+            status=given("status", _status, known.status if known else BuildingStatus.ACTIVE),
             latitude=given("latitude", _decimal, known.latitude if known else None),
             longitude=given("longitude", _decimal, known.longitude if known else None),
         )
+    except LookupError:
+        return "row_status"
     except (ValidationError, ValueError) as error:
         return _building_problem(error)
     if known is None:
         # Kept even if this row's place is wrong: the building's next rows
         # are read against it, not blamed for its missing floors.
         known = buildings[building.code] = TableBuilding(
-            building.code, building.name, building.floors_count, building.latitude, building.longitude
+            building.code, building.name, building.floors_count, building.status, building.latitude, building.longitude
         )
-    elif (known.name, known.floors_count, known.latitude, known.longitude) != (
-        building.name, building.floors_count, building.latitude, building.longitude
+    elif (known.name, known.floors_count, known.status, known.latitude, known.longitude) != (
+        building.name, building.floors_count, building.status, building.latitude, building.longitude
     ):
         return "row_building_differs"
-    if any(cells.get(name) is not None for name in PLACE_FIELDS):
+    no_places = cells.get("kind") is not None and _key(str(cells["kind"])) in _NO_PLACES
+    if not no_places and any(cells.get(name) is not None for name in PLACE_FIELDS):
         place = _place(cells)
         if isinstance(place, str):
             return place
@@ -224,7 +253,7 @@ def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen:
     return None
 
 
-def _place(cells: dict) -> PlaceCreateIn | str:
+def _place(cells: dict) -> ImportPlaceIn | str:
     kind = _KINDS.get(_key(str(cells.get("kind") or "")))
     if kind is None:
         return "row_kind"
@@ -248,7 +277,13 @@ def _place(cells: dict) -> PlaceCreateIn | str:
             return "row_capacity"
         numbers["lab_rows"] = numbers["lab_cols"] = None
     try:
-        return PlaceCreateIn(kind=kind, name=str(cells["place"]), location_note=_text(cells.get("location_note")), **numbers)
+        hours = {name: _hours(cells.get(name)) for name in ("weekday_hours", "friday_hours")}
+    except ValueError:
+        return "row_hours"
+    try:
+        return ImportPlaceIn(
+            kind=kind, name=str(cells["place"]), location_note=_text(cells.get("location_note")), **numbers, **hours
+        )
     except ValidationError as error:
         fields = {str(e["loc"][0]) for e in error.errors() if e["loc"]}
         if "floor" in fields:
@@ -257,6 +292,8 @@ def _place(cells: dict) -> PlaceCreateIn | str:
             return "row_capacity"
         if fields & {"lab_rows", "lab_cols"}:
             return "row_lab_size"
+        if fields & {"weekday_hours", "friday_hours"}:
+            return "row_hours"
         return "row_place_name"
 
 
@@ -288,6 +325,30 @@ def _decimal(value) -> Decimal:
         return Decimal(str(value)).quantize(Decimal("0.000001"))
     except InvalidOperation:
         raise ValueError(value) from None
+
+
+def _status(value) -> BuildingStatus:
+    status = _STATUSES.get(_key(str(value)))
+    if status is None:
+        raise LookupError(value)
+    return status
+
+
+def _hours(value) -> str | None:
+    """A cell of opening hours, as the schema keeps it: "07:00-20:00",
+    "closed", or None for the campus's usual hours."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if _key(text) in CLOSED_WORDS:
+        return CLOSED
+    match = _TIMES.fullmatch(text)
+    if match is None:
+        raise ValueError(value)
+    h1, m1, h2, m2 = match.groups()
+    normal = f"{int(h1):02}:{m1}-{int(h2):02}:{m2}"
+    opening_hours(normal)  # a real time, closing after opening
+    return normal
 
 
 def _text(value) -> str | None:
@@ -409,9 +470,24 @@ def save(db: Session, institution: Institution, items: list, now: datetime, *, d
             if place.name in had:
                 saved.places_skipped += 1
                 continue
-            create_place(db, building, place.model_dump(), demo_slug=demo_slug)
+            create_place(db, building, place.model_dump(), demo_slug=demo_slug, hours=_week(place))
             saved.places_added += 1
     return saved
+
+
+def _week(place: ImportPlaceIn) -> dict:
+    """The place's days: the campus's usual ones, with the table's hours for
+    Sunday to Thursday and for Friday where it gives them."""
+    week = dict(WEEK_AND_FRIDAY)
+    for days, text in ((SUNDAY_TO_THURSDAY, place.weekday_hours), ((FRIDAY,), place.friday_hours)):
+        if text is None:
+            continue
+        for day in days:
+            if text == CLOSED:
+                week.pop(day, None)
+            else:
+                week[day] = opening_hours(text)
+    return week
 
 
 def delete_building(db: Session, building: Building) -> None:

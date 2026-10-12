@@ -10,13 +10,24 @@ from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
 import pytest
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from sqlalchemy import func, select
 
 from app import campus_import
 from app.config import Settings, get_settings
 from app.main import app
-from app.models import Booking, BookingSource, BookingStatus, Building, ClassSlot, Place, Seat, User, UserRole
+from app.models import (
+    Booking,
+    BookingSource,
+    BookingStatus,
+    Building,
+    BuildingStatus,
+    ClassSlot,
+    Place,
+    Seat,
+    User,
+    UserRole,
+)
 from app.seed import seed_demo
 
 HEADER = "שם קצר,שם הבניין,מספר קומות,סוג המקום,שם המקום,קומה,כמה אנשים,שורות,עמדות בשורה"
@@ -84,10 +95,10 @@ def save(client, buildings: list[dict], slug: str = "braude"):
 
 def to_save(previewed: dict, action: str = "add", **extra) -> list[dict]:
     """What the site sends after the preview: every building, its places."""
-    keep = ("kind", "name", "floor", "capacity", "lab_rows", "lab_cols", "location_note")
+    keep = ("kind", "name", "floor", "capacity", "lab_rows", "lab_cols", "location_note", "weekday_hours", "friday_hours")
     out = []
     for b in previewed["buildings"]:
-        item = {k: b[k] for k in ("code", "name", "floors_count", "latitude", "longitude")}
+        item = {k: b[k] for k in ("code", "name", "floors_count", "status", "latitude", "longitude")}
         item["places"] = [{k: p[k] for k in keep} for p in b["places"] if p["when_added"] is None or action == "replace"]
         if b["existing"] is not None:
             item["action"] = action
@@ -183,7 +194,6 @@ def test_semicolons_too(client, admin):
         ("T,,2,ספרייה,L1,קומה,20,,", "row_floor"),
         ("T,,0,,,,,,", "row_floors"),
         ("ט!,,2,,,,,,", "row_building_code"),
-        (",,2,ספרייה,L1,0,20,,", "row_building_code"),
         ("T,=HYPERLINK(\"x\"),2,,,,,,", "row_formula"),
         ("T,,2,ספרייה,@SUM(A1),0,20,,", "row_formula"),
     ],
@@ -380,11 +390,113 @@ def test_a_booking_in_the_past_is_not_counted_as_upcoming(client, admin, session
 TEMPLATES = Path(__file__).resolve().parents[2] / "frontend" / "public" / "templates"
 
 
-@pytest.mark.parametrize("name", ["buildings.xlsx", "buildings.csv"])
-def test_the_templates_read_as_they_are(name):
-    table = campus_import.read_table((TEMPLATES / name).read_bytes())
+def test_the_templates_are_empty_and_ready():
+    for name in ("buildings.xlsx", "buildings.csv"):
+        with pytest.raises(campus_import.ImportRefused) as refused:
+            campus_import.read_table((TEMPLATES / name).read_bytes())
+        assert refused.value.code == "import_empty", name
+
+
+def filled_template(rows: list[list]) -> bytes:
+    """The Excel template as an admin fills it: from its first empty row."""
+    book = load_workbook(TEMPLATES / "buildings.xlsx")
+    sheet = book.worksheets[0]
+    first = campus_import.TEMPLATE_FIRST_ROW
+    for offset, row in enumerate(rows):
+        for column, value in enumerate(row, start=1):
+            sheet.cell(row=first + offset, column=column, value=value)
+    out = io.BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+def test_the_excel_template_filled_in_reads_whole():
+    # short name, name, floors, status, kind, place, floor, people, rows, per row, Sun-Thu, Fri, note, lat, lng
+    table = campus_import.read_table(filled_template([
+        ["M", "בניין ההנדסה", 3, "פעיל", "חוות מחשבים", "M206", 1, None, 5, 8, "07:00-20:00", "07:00-14:00", "ליד המעלית"],
+        [None, None, None, None, "חדר לימוד קבוצתי", "M310", 2, 6, None, None, None, "סגור"],
+        ["NX", "בניין חדש", 2, "בבנייה", "אין מקומות לימוד"],
+    ]))
     assert table.problems == []
-    assert [(b.code, len(b.places)) for b in table.buildings] == [("M", 2), ("L", 2), ("S", 0)]
+    m, nx = table.buildings
+    assert [(line, p.name) for line, p in m.places] == [(3, "M206"), (4, "M310")]
+    assert (m.places[0][1].weekday_hours, m.places[0][1].location_note) == ("07:00-20:00", "ליד המעלית")
+    assert (m.places[1][1].weekday_hours, m.places[1][1].friday_hours) == (None, "closed")
+    assert (nx.code, nx.status, nx.places) == ("NX", BuildingStatus.UNDER_CONSTRUCTION, [])
+
+
+def test_the_excel_templates_lists_and_headers_are_what_the_code_reads():
+    sheet = load_workbook(TEMPLATES / "buildings.xlsx").worksheets[0]
+    headers = [c.value for c in sheet[campus_import.TEMPLATE_FIRST_ROW - 1] if c.value]
+    assert all(campus_import._key(h) in campus_import._HEADERS for h in headers), headers
+    choices = [
+        value.strip('"')
+        for rule in sheet.data_validations.dataValidation
+        for value in rule.formula1.strip('"').split(",")
+    ]
+    assert choices
+    for choice in choices:
+        key = campus_import._key(choice)
+        assert key in campus_import._KINDS or key in campus_import._NO_PLACES or key in campus_import._STATUSES, choice
+
+
+def test_an_empty_short_name_is_the_building_above(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,בניין,2,ספרייה,L1,0,20,,", ",,,ספרייה,L2,1,20,,")).json()
+    assert body["problems"] == []
+    assert [p["name"] for p in body["buildings"][0]["places"]] == ["L1", "L2"]
+    first = preview(client, csv(",,2,ספרייה,L1,0,20,,")).json()
+    assert first["problems"] == [{"line": 2, "code": "row_building_code"}]
+
+
+def test_no_study_places_adds_the_building_only(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,,2,אין מקומות לימוד,,,,,")).json()
+    assert (body["problems"], body["buildings"][0]["places"]) == ([], [])
+
+
+HOURS_HEADER = HEADER + ",ימים א'-ה',יום ו',מצב הבניין"
+
+
+@pytest.mark.parametrize(
+    ("week", "friday", "expected"),
+    [
+        ("07:00-20:00", "07:00-14:00", ("07:00-20:00", "07:00-14:00")),
+        ("7:00 - 20:00", "סגור", ("07:00-20:00", "closed")),
+        ("8:30–16:00", "", ("08:30-16:00", None)),
+    ],
+)
+def test_opening_hours_in_their_forms(client, admin, week, friday, expected):
+    client.user = admin
+    body = preview(client, csv(f"T,,1,ספרייה,L1,0,20,,,{week},{friday},", header=HOURS_HEADER)).json()
+    assert body["problems"] == []
+    place = body["buildings"][0]["places"][0]
+    assert (place["weekday_hours"], place["friday_hours"]) == expected
+
+
+@pytest.mark.parametrize(("cells", "code"), [("20:00-07:00,,", "row_hours"), ("כל היום,,", "row_hours"), (",,ישן", "row_status")])
+def test_bad_hours_or_status(client, admin, cells, code):
+    client.user = admin
+    body = preview(client, csv(f"T,,1,ספרייה,L1,0,20,,,{cells}", header=HOURS_HEADER)).json()
+    assert body["problems"] == [{"line": 2, "code": code}]
+
+
+def test_the_hours_and_status_are_saved(client, admin, session, braude):
+    client.user = admin
+    data = csv("T,,1,ספרייה,L1,0,20,,,08:00-18:00,סגור,חדש", "T,,1,ספרייה,L2,0,20,,,,,", header=HOURS_HEADER)
+    assert save(client, to_save(preview(client, data).json())).status_code == 200
+    session.expire_all()
+    t = session.scalars(select(Building).where(Building.institution_id == braude.id, Building.code == "T")).one()
+    assert t.status == BuildingStatus.NEW
+    hours = {p.name: {h.weekday: (h.opens, h.closes) for h in p.opening_hours} for p in t.places}
+    assert hours["L1"] == {d: (time(8), time(18)) for d in (6, 0, 1, 2, 3)}  # Friday closed, Saturday too
+    assert hours["L2"][4] == (time(7), time(14))  # the campus's usual hours
+
+
+def test_the_saved_hours_are_checked_again(client, admin):
+    client.user = admin
+    place = {"kind": "library", "name": "L", "floor": 0, "capacity": 5, "weekday_hours": "20:00-07:00"}
+    assert save(client, [{"code": "T", "floors_count": 1, "places": [place]}]).status_code == 422
 
 
 # --- After the security review -------------------------------------------------------------

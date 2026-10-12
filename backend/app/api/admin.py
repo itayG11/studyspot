@@ -242,7 +242,8 @@ def _preview(db: Session, institution: Institution, table, now: datetime, demo_s
     for b in table.buildings:
         found = there.get(b.code)
         buildings.append(ImportedBuildingOut(
-            code=b.code, name=b.name, floors_count=b.floors_count, latitude=b.latitude, longitude=b.longitude,
+            code=b.code, name=b.name, floors_count=b.floors_count, status=b.status,
+            latitude=b.latitude, longitude=b.longitude,
             existing=ExistingBuildingOut(**asdict(found[1])) if found else None,
             places=[
                 ImportedPlaceOut(

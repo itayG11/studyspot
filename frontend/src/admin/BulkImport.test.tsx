@@ -18,13 +18,17 @@ const INSTITUTION = {
   booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
 }
 const place = (line: number, name: string, extra: Partial<ImportedPlace> = {}): ImportedPlace => ({
-  line, kind: 'library', name, floor: 0, capacity: 20, lab_rows: null, lab_cols: null, location_note: null, when_added: null, ...extra,
+  line, kind: 'library', name, floor: 0, capacity: 20, lab_rows: null, lab_cols: null, location_note: null,
+  weekday_hours: null, friday_hours: null, when_added: null, ...extra,
 })
 const PREVIEW: CampusPreview = {
   buildings: [
-    { code: 'T', name: 'בניין הניסיון', floors_count: 2, latitude: null, longitude: null, existing: null, places: [place(2, 'T101')] },
     {
-      code: 'M', name: 'בניין M', floors_count: 3, latitude: null, longitude: null,
+      code: 'T', name: 'בניין הניסיון', floors_count: 2, status: 'new', latitude: null, longitude: null, existing: null,
+      places: [place(2, 'T101', { weekday_hours: '08:00-18:00', friday_hours: 'closed' })],
+    },
+    {
+      code: 'M', name: 'בניין M', floors_count: 3, status: 'active', latitude: null, longitude: null,
       existing: { name: 'בניין M', floors_count: 3, places: 2, upcoming_bookings: 4, classes: 7, locked: false },
       places: [place(3, 'M206', { when_added: 'place_name_taken' }), place(4, 'M001')],
     },
@@ -165,5 +169,16 @@ describe('BulkImport', () => {
     } finally {
       PREVIEW.buildings[1].places = all
     }
+  })
+
+  it("shows the table's own hours and the building's status, and sends them", async () => {
+    const user = await upload()
+    expect(screen.getByText(/T101/)).toHaveTextContent("א'-ה' 08:00-18:00 · ו' סגור")
+    expect(screen.getByText(/בניין חדש, 2 קומות/)).toHaveTextContent('בניין חדש')
+    await user.click(screen.getByRole('button', { name: /^לשמור/ }))
+    const t = saved()!.buildings[0]
+    expect([t.status, (t.places as Record<string, unknown>[])[0]]).toEqual([
+      'new', expect.objectContaining({ weekday_hours: '08:00-18:00', friday_hours: 'closed' }),
+    ])
   })
 })

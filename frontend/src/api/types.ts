@@ -387,6 +387,9 @@ export interface ImportedPlace {
   lab_rows: number | null
   lab_cols: number | null
   location_note: string | null
+  // "HH:MM-HH:MM", "closed", or null for the campus's usual hours.
+  weekday_hours: string | null
+  friday_hours: string | null
   // Why it would not go into the building that is there now.
   when_added: 'place_name_taken' | 'floor_not_in_building' | null
 }
@@ -395,6 +398,7 @@ export interface ImportedBuilding {
   code: string
   name: string | null
   floors_count: number
+  status: BuildingStatus
   latitude: string | null
   longitude: string | null
   // What deleting the building that is there would take with it.
@@ -419,12 +423,13 @@ export interface CampusImportBuilding {
   code: string
   name: string | null
   floors_count: number
+  status: BuildingStatus
   latitude: string | null
   longitude: string | null
   action: 'create' | 'add' | 'replace'
   expected_places?: number
   expected_upcoming_bookings?: number
-  places: NewPlace[]
+  places: (NewPlace & { weekday_hours?: string; friday_hours?: string })[]
 }
 
 export interface CampusSaved {

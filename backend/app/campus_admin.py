@@ -133,8 +133,11 @@ def mentioned_places(db: Session, institution: Institution, *, demo_slug: str | 
     return [(text, count) for text, count in db.execute(query)]
 
 
-def create_place(db: Session, building: Building, details: dict, *, demo_slug: str | None) -> Place:
-    """details: kind, name, floor, capacity or lab_rows and lab_cols, location_note."""
+def create_place(
+    db: Session, building: Building, details: dict, *, demo_slug: str | None, hours: dict | None = None
+) -> Place:
+    """details: kind, name, floor, capacity or lab_rows and lab_cols, location_note.
+    hours: weekday -> (opens, closes); the campus's usual hours if not given."""
     full = len(_SEED_PLACES) + DEMO_EXTRA_PLACES
     if _is_demo(building.institution, demo_slug) and _count(db, Place, building.institution_id) >= full:
         raise Refusal(409, "demo_campus_full")
@@ -144,7 +147,7 @@ def create_place(db: Session, building: Building, details: dict, *, demo_slug: s
     if taken is not None:
         raise Refusal(409, "place_name_taken")
     # The same builder as the seed data, with the campus's usual hours.
-    place = _make_place(building, details, WEEK_AND_FRIDAY)
+    place = _make_place(building, details, WEEK_AND_FRIDAY if hours is None else hours)
     if place.kind != PlaceKind.COMPUTER_LAB:
         place.lab_rows = place.lab_cols = None
     building.places.append(place)
