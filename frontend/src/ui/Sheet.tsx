@@ -7,6 +7,8 @@ interface SheetProps {
   onClose: () => void
   title: string
   children: ReactNode
+  // 'end': a drawer from the side (the left, in Hebrew), full height, on every screen
+  side?: 'bottom' | 'end'
 }
 
 // A panel over the page: rises from the bottom on a phone, where the thumb
@@ -16,7 +18,7 @@ interface SheetProps {
 // focus inside, closes on Escape, makes the page behind it unreachable,
 // and returns focus to the button that opened it. The open and close
 // movement is CSS (@starting-style), so it runs off the main thread.
-export function Sheet({ open, onClose, title, children }: SheetProps) {
+export function Sheet({ open, onClose, title, children, side = 'bottom' }: SheetProps) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -30,7 +32,7 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   return (
     <dialog
       ref={dialog}
-      className={styles.sheet}
+      className={side === 'end' ? `${styles.sheet} ${styles.drawer}` : styles.sheet}
       aria-labelledby={titleId}
       // Escape, or close() above. Only report a close the parent did not ask for.
       onClose={() => {

@@ -147,6 +147,41 @@
   }
 }
 
+/* The drawer: from the side the reading ends on (the left, in Hebrew), the
+   full height of the screen, on a phone and a computer alike. */
+.sheet.drawer {
+  inset: 0 auto 0 0;
+  width: min(420px, 92vw);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border-radius: 0 var(--r-lg) var(--r-lg) 0;
+  opacity: 1;
+  transform: translateX(-100%);
+}
+
+.sheet.drawer[open] {
+  transform: none;
+  transition-duration: var(--dur-sheet);
+  transition-timing-function: var(--ease-drawer);
+}
+
+@starting-style {
+  .sheet.drawer[open] {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+}
+
+.drawer .handle {
+  display: none;
+}
+
+.drawer .panel {
+  height: 100%;
+  padding: var(--s-6) var(--s-5) calc(var(--s-6) + env(safe-area-inset-bottom));
+}
+
 /* Less motion: a fade only. */
 @media (prefers-reduced-motion: reduce) {
   .sheet,
@@ -168,6 +203,30 @@
 
   @starting-style {
     .sheet[open] {
+      opacity: 0;
+      transform: none;
+    }
+  }
+}
+
+/* Less motion, the drawer too: a fade, no slide (its rules above are more
+   specific than the ones for the sheet). */
+@media (prefers-reduced-motion: reduce) {
+  .sheet.drawer,
+  .sheet.drawer[open] {
+    transform: none;
+  }
+
+  .sheet.drawer {
+    opacity: 0;
+  }
+
+  .sheet.drawer[open] {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .sheet.drawer[open] {
       opacity: 0;
       transform: none;
     }

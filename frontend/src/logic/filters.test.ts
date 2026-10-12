@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { building, place } from '../test/fixtures'
 import {
+  advancedCount,
   applyFilters,
   countWith,
   distanceMetres,
@@ -24,14 +25,20 @@ describe('reading and writing the address', () => {
   })
 
   it('round-trips every field', () => {
-    const params = new URLSearchParams('q=מחשב&free=1&quiet=1&kind=library&kind=computer_lab&near=EM&view=map')
+    const params = new URLSearchParams('q=מחשב&free=1&quiet=1&kind=library&kind=computer_lab&near=EM&view=map&building=M&people=4&amenity=projector&amenity=whiteboard')
     const filters = readFilters(params)
-    expect(filters).toEqual({ q: 'מחשב', flags: ['free', 'quiet'], kinds: ['library', 'computer_lab'], near: 'EM', view: 'map' })
+    expect(filters).toEqual({
+      q: 'מחשב', flags: ['free', 'quiet'], kinds: ['library', 'computer_lab'], near: 'EM', view: 'map',
+      building: 'M', people: 4, amenities: ['whiteboard', 'projector'],
+    })
     expect(readFilters(writeFilters(filters))).toEqual(filters)
   })
 
   it('ignores values it does not know, so a crafted link cannot break the page', () => {
-    const filters = readFilters(new URLSearchParams('kind=pool&view=3d&near=<script>&q=' + 'א'.repeat(200)))
+    const filters = readFilters(new URLSearchParams('kind=pool&view=3d&near=<script>&building=x1&people=-3&amenity=pool&q=' + 'א'.repeat(200)))
+    expect(filters.building).toBeNull()
+    expect(filters.people).toBeNull()
+    expect(filters.amenities).toEqual([])
     expect(filters.kinds).toEqual([])
     expect(filters.view).toBe('list')
     expect(filters.near).toBeNull()
@@ -85,6 +92,30 @@ describe('applyFilters', () => {
       building({ code: 'EM', latitude: '32.914079', longitude: '35.281250' }),
     ]
     expect(applyFilters(ALL, { ...EMPTY_FILTERS, near: 'L' }, buildings).map((p) => p.building_code)).toEqual(['L', 'M', 'EM'])
+  })
+})
+
+describe('the expanded filters', () => {
+  it('keeps only the chosen building', () => {
+    expect(applyFilters(ALL, { ...EMPTY_FILTERS, building: 'EM' }, []).map((p) => p.id)).toEqual([3])
+  })
+
+  it('keeps places big enough for the group', () => {
+    const big = place({ id: 4, name: 'ספרייה', kind: 'library', capacity: 60 })
+    const small = { ...room, capacity: 6 }
+    expect(applyFilters([small, big], { ...EMPTY_FILTERS, people: 8 }, []).map((p) => p.id)).toEqual([4])
+  })
+
+  it('needs every chosen piece of equipment', () => {
+    const f = { ...EMPTY_FILTERS, amenities: ['outlets', 'daylight'] as const }
+    expect(applyFilters(ALL, { ...f, amenities: [...f.amenities] }, []).map((p) => p.id)).toEqual([2])
+  })
+
+  it('counts how many expanded filters are on, and they count as filters', () => {
+    const f = { ...EMPTY_FILTERS, building: 'M', amenities: ['printer' as const, 'ac' as const] }
+    expect(advancedCount(f)).toBe(3)
+    expect(hasFilters(f)).toBe(true)
+    expect(advancedCount(EMPTY_FILTERS)).toBe(0)
   })
 })
 

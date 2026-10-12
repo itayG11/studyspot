@@ -21,6 +21,9 @@ export const AMENITY_LABELS: Record<Amenity, string> = {
   printer: 'מדפסת',
 }
 
+// In the order the expanded filter shows them.
+export const AMENITIES = Object.keys(AMENITY_LABELS) as Amenity[]
+
 export const ATMOSPHERE_LABELS: Record<Atmosphere, string> = {
   quiet: 'שקט',
   conversation: 'אפשר לדבר',

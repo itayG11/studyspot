@@ -13,6 +13,7 @@ import { useFavorites } from '../../hooks/useFavorites'
 import { KIND_LABELS, KINDS } from '../../i18n/labels'
 import { useInstitution, useLiveSimulated } from '../../institution'
 import {
+  advancedCount,
   applyFilters,
   countWith,
   EMPTY_FILTERS,
@@ -27,6 +28,7 @@ import {
 } from '../../logic/filters'
 import { Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Segmented, Skeleton } from '../../ui'
 import { CampusLoad } from '../load/CampusLoad'
+import { AdvancedFilters, AdvancedFiltersButton } from './AdvancedFilters'
 import { SpaceCard } from './SpaceCard'
 import styles from './finder.module.css'
 
@@ -73,6 +75,8 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const { favorites } = useFavorites()
   const [selected, setSelected] = useState<string | null>(null)
+  // A shared link with expanded filters opens with their panel showing.
+  const [moreOpen, setMoreOpen] = useState(() => advancedCount(fromAddress) > 0)
 
   // Typing changes the results at once, but the address only after a short
   // pause: writing it is a navigation that draws the page again, and Safari
@@ -129,6 +133,10 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
             </Chip>
           ))}
         </div>
+        <div className={styles.moreRow}>
+          <AdvancedFiltersButton open={moreOpen} onToggle={() => setMoreOpen(!moreOpen)} filters={filters} />
+        </div>
+        <AdvancedFilters open={moreOpen} filters={filters} buildings={buildings} update={update} />
       </div>
 
       {today && <CampusLoad data={today} places={places} timeZone={timezone} />}
@@ -213,11 +221,14 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
       </div>
 
       {isMap && selected && (
-        <p className={styles.selected}>
-          <Chip selected icon={<X aria-hidden="true" />} onClick={() => setSelected(null)} aria-label={`הסרת הסינון לבניין ${selected}`}>
-            בניין {selected}
-          </Chip>
-        </p>
+        <BuildingPanel
+          building={buildings.find((b) => b.code === selected) ?? null}
+          code={selected}
+          count={shown.length}
+          only={filters.building === selected}
+          onOnly={() => update({ ...filters, building: selected })}
+          onClose={() => setSelected(null)}
+        />
       )}
 
       <div className={isMap ? styles.mapLayout : undefined}>
@@ -249,6 +260,44 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
         )}
       </div>
     </>
+  )
+}
+
+interface BuildingPanelProps {
+  building: Building | null
+  code: string
+  count: number // its places in the list, after the other filters
+  only: boolean // the list is already this building's only
+  onOnly: () => void
+  onClose: () => void
+}
+
+// The building chosen on the map: what is free in it now, and a way to keep
+// the list on it (into the address, so it stays when going back to the list).
+function BuildingPanel({ building, code, count, only, onOnly, onClose }: BuildingPanelProps) {
+  return (
+    <section className={styles.buildingPanel} aria-labelledby="chosen-building">
+      <div>
+        <p id="chosen-building" className={styles.buildingTitle}>
+          בניין {code}
+          {building?.name && <span> · {building.name}</span>}
+        </p>
+        <p className={styles.buildingFacts}>
+          {building && `${building.available} מקומות פנויים עכשיו, מתוך ${building.capacity} · `}
+          {count === 1 ? 'מקום אחד ברשימה' : `${count} מקומות ברשימה`}
+        </p>
+      </div>
+      <div className={styles.buildingActions}>
+        {!only && (
+          <Button variant="secondary" size="sm" onClick={onOnly}>
+            רק הבניין הזה
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" icon={<X aria-hidden="true" />} onClick={onClose}>
+          הסרת הבחירה
+        </Button>
+      </div>
+    </section>
   )
 }
 

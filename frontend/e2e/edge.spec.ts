@@ -152,7 +152,7 @@ test('search, then a quick filter, then the map', async ({ page }) => {
 
   await page.getByRole('group', { name: 'תצוגה' }).getByRole('button', { name: 'מפה' }).click()
   await page.getByRole('button', { name: 'M206 במפה' }).click()
-  await expect(page.getByRole('button', { name: 'הסרת הסינון לבניין M' })).toBeVisible()
+  await expect(page.getByRole('region', { name: /^בניין M/ }).getByRole('button', { name: 'הסרת הבחירה' })).toBeVisible()
 })
 
 test('a booking, its calendar link, and the dark theme on every page', async ({ page, request }) => {

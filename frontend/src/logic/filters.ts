@@ -2,10 +2,11 @@
 // same results to someone else. Pure functions.
 //
 // Address format: ?q=...&free=1&quiet=1&kind=library&near=EM&view=map
+//   &building=M&people=4&amenity=projector (the expanded filters)
 // Unknown values are ignored: the address is input from anyone.
 
-import type { Building, Place, PlaceKind } from '../api/types'
-import { KINDS } from '../i18n/labels'
+import type { Amenity, Building, Place, PlaceKind } from '../api/types'
+import { AMENITIES, KINDS } from '../i18n/labels'
 import { isFreeNow } from './availability'
 import { position } from './occupancy'
 import { matchesSearch } from './search'
@@ -21,9 +22,16 @@ export interface Filters {
   kinds: PlaceKind[]
   near: string | null // a building code: sort by distance from it
   view: View
+  // The expanded filters
+  building: string | null // only this building's places
+  people: number | null // room for at least this many
+  amenities: Amenity[] // every one of these
 }
 
-export const EMPTY_FILTERS: Filters = { q: '', flags: [], kinds: [], near: null, view: 'list' }
+export const EMPTY_FILTERS: Filters = { q: '', flags: [], kinds: [], near: null, view: 'list', building: null, people: null, amenities: [] }
+
+// The group sizes the expanded filter offers.
+export const PEOPLE_OPTIONS = [2, 4, 8, 20]
 
 const MAX_QUERY = 80
 const BUILDING_CODE = /^[A-Z]{1,4}$/
@@ -36,14 +44,20 @@ const FLAG_TESTS: Record<Flag, (place: Place) => boolean> = {
   outlets: (p) => p.amenities.includes('outlets'),
 }
 
+const code = (value: string | null) => (value !== null && BUILDING_CODE.test(value) ? value : null)
+
 export function readFilters(params: URLSearchParams): Filters {
-  const near = params.get('near')
+  const people = Number(params.get('people'))
+  const amenities = params.getAll('amenity')
   return {
     q: (params.get('q') ?? '').slice(0, MAX_QUERY),
     flags: FLAGS.filter((flag) => params.get(flag) === '1'),
     kinds: params.getAll('kind').filter((k): k is PlaceKind => (KINDS as string[]).includes(k)),
-    near: near !== null && BUILDING_CODE.test(near) ? near : null,
+    near: code(params.get('near')),
     view: params.get('view') === 'map' ? 'map' : 'list',
+    building: code(params.get('building')),
+    people: Number.isInteger(people) && people > 0 && people <= 500 ? people : null,
+    amenities: AMENITIES.filter((a) => amenities.includes(a)),
   }
 }
 
@@ -54,11 +68,19 @@ export function writeFilters(filters: Filters): URLSearchParams {
   for (const kind of filters.kinds) params.append('kind', kind)
   if (filters.near) params.set('near', filters.near)
   if (filters.view === 'map') params.set('view', 'map')
+  if (filters.building) params.set('building', filters.building)
+  if (filters.people) params.set('people', String(filters.people))
+  for (const amenity of filters.amenities) params.append('amenity', amenity)
   return params
 }
 
 export function hasFilters(filters: Filters): boolean {
-  return filters.q.trim() !== '' || filters.flags.length > 0 || filters.kinds.length > 0
+  return filters.q.trim() !== '' || filters.flags.length > 0 || filters.kinds.length > 0 || advancedCount(filters) > 0
+}
+
+// How many of the expanded filters are on: the number on their button.
+export function advancedCount(filters: Filters): number {
+  return Number(filters.building !== null) + Number(filters.people !== null) + filters.amenities.length
 }
 
 const toggle = <T,>(list: T[], item: T, order: T[]): T[] =>
@@ -66,12 +88,16 @@ const toggle = <T,>(list: T[], item: T, order: T[]): T[] =>
 
 export const toggleFlag = (filters: Filters, flag: Flag): Filters => ({ ...filters, flags: toggle(filters.flags, flag, FLAGS) })
 export const toggleKind = (filters: Filters, kind: PlaceKind): Filters => ({ ...filters, kinds: toggle(filters.kinds, kind, KINDS) })
+export const toggleAmenity = (filters: Filters, amenity: Amenity): Filters => ({ ...filters, amenities: toggle(filters.amenities, amenity, AMENITIES) })
 
 function passes(place: Place, filters: Filters): boolean {
   return (
     matchesSearch(place, filters.q) &&
     filters.flags.every((flag) => FLAG_TESTS[flag](place)) &&
-    (filters.kinds.length === 0 || filters.kinds.includes(place.kind))
+    (filters.kinds.length === 0 || filters.kinds.includes(place.kind)) &&
+    (filters.building === null || place.building_code === filters.building) &&
+    (filters.people === null || place.capacity >= filters.people) &&
+    filters.amenities.every((a) => place.amenities.includes(a))
   )
 }
 

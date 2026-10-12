@@ -116,6 +116,30 @@ describe('Finder', () => {
     expect(cards()).toEqual(['M206', 'EM107'])
   })
 
+  it('opens the expanded filters, and narrows by building, group size and equipment', async () => {
+    const { router } = renderFinder()
+    const toggle = await screen.findByRole('button', { name: 'סינון מורחב' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const panel = screen.getByRole('group', { name: 'סינון מורחב' })
+    await userEvent.selectOptions(within(panel).getByLabelText('בניין'), 'EM')
+    expect(cards()).toEqual(['EM107'])
+    await userEvent.click(within(panel).getByRole('button', { name: 'לוח מחיק' }))
+    await userEvent.selectOptions(within(panel).getByLabelText('כמה אנשים'), '4')
+    expect(cards()).toEqual(['EM107'])
+    expect(router.state.location.search).toContain('building=EM')
+    expect(router.state.location.search).toContain('amenity=whiteboard')
+    expect(router.state.location.search).toContain('people=4')
+    expect(toggle).toHaveTextContent('3') // three expanded filters on
+  })
+
+  it('a shared link with expanded filters opens their panel', async () => {
+    renderFinder({ path: '/?building=M' })
+    expect(await screen.findByRole('button', { name: 'סינון מורחב' })).toHaveAttribute('aria-expanded', 'true')
+    expect(cards()).toEqual(['M206'])
+  })
+
   it('opens with the filters of a shared link', async () => {
     renderFinder({ path: '/?quiet=1' })
     expect(await screen.findByRole('button', { name: /שקט/ })).toHaveAttribute('aria-pressed', 'true')
@@ -150,6 +174,19 @@ describe('Finder', () => {
   it('marks demo details on the card', async () => {
     renderFinder()
     expect(await screen.findAllByText('נתוני דמו')).toHaveLength(2)
+  })
+
+  it('on the map, a chosen building has a panel: what is free in it, and "only this building"', async () => {
+    const { router } = renderFinder({ path: '/?view=map' })
+    await userEvent.click(await screen.findByRole('button', { name: 'EM107 במפה' }))
+    const panel = screen.getByRole('region', { name: 'בניין EM' })
+    expect(panel).toHaveTextContent('60 מקומות פנויים עכשיו, מתוך 65')
+    expect(panel).toHaveTextContent('מקום אחד ברשימה')
+    expect(cards()).toEqual(['EM107'])
+    await userEvent.click(within(panel).getByRole('button', { name: 'רק הבניין הזה' }))
+    expect(router.state.location.search).toContain('building=EM')
+    await userEvent.click(within(panel).getByRole('button', { name: 'הסרת הבחירה' }))
+    expect(screen.queryByRole('region', { name: 'בניין EM' })).not.toBeInTheDocument()
   })
 
   it('moves between list and map through the address', async () => {

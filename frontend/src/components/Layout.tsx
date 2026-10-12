@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { CalendarClock } from 'lucide-react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { Pin } from '../illustrations/Pin'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -9,8 +10,9 @@ import styles from './Layout.module.css'
 import { SiteFooter } from './SiteFooter'
 import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
+import { BookingsDrawer } from './BookingsDrawer'
 import { CampusTodayProvider, useCampusToday } from '../features/load/campusToday'
-import { myBookings } from '../api/student'
+import { cancelBooking, myBookings } from '../api/student'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { useApi } from '../hooks/useApi'
 import { activeBookings } from '../logic/bookings'
@@ -128,24 +130,45 @@ function Pulse({ home }: { home: string }) {
 }
 
 // "My area", with how many bookings are still ahead: the count is also in
-// its name, for a screen reader.
+// its name, for a screen reader. With bookings ahead, a button next to it
+// opens them in a drawer, to see or cancel one without leaving the page.
 function MyAreaLink({ userId }: { userId: number }) {
+  const { timezone } = useInstitution()
   // Counted when the answer arrives, against the clock at that moment.
-  const active = useApi(
-    () => myBookings().then((all) => activeBookings(all, new Date()).length),
+  const bookings = useApi(
+    () => myBookings().then((all) => activeBookings(all, new Date()).toSorted((a, b) => a.starts_at.localeCompare(b.starts_at))),
     `my-bookings-${userId}`,
     REFRESH_INTERVAL_MS,
   )
-  const count = active.data ?? 0
+  const [drawer, setDrawer] = useState(false)
+  const active = bookings.data ?? []
+  const count = active.length
   return (
-    <NavLink
-      to="/me"
-      className={styles.navLink}
-      aria-label={count > 0 ? `האזור שלי, ${count === 1 ? 'הזמנה אחת' : `${count} הזמנות`}` : undefined}
-      viewTransition
-    >
-      האזור שלי
-      {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
-    </NavLink>
+    <>
+      <NavLink
+        to="/me"
+        className={styles.navLink}
+        aria-label={count > 0 ? `האזור שלי, ${count === 1 ? 'הזמנה אחת' : `${count} הזמנות`}` : undefined}
+        viewTransition
+      >
+        האזור שלי
+        {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
+      </NavLink>
+      {count > 0 && (
+        <button type="button" className={styles.drawerButton} aria-label="ההזמנות הקרובות" onClick={() => setDrawer(true)}>
+          <CalendarClock aria-hidden="true" />
+        </button>
+      )}
+      <BookingsDrawer
+        open={drawer}
+        bookings={active}
+        timeZone={timezone}
+        onClose={() => setDrawer(false)}
+        onCancel={async (id) => {
+          await cancelBooking(id)
+          bookings.reload()
+        }}
+      />
+    </>
   )
 }

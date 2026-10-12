@@ -344,3 +344,38 @@
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
   border-radius: var(--r-pill);
 }
+
+/* Next to "my area": opens the bookings ahead in a drawer. */
+.drawerButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--stone-3);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--dur-press) ease-out, color var(--dur-ui) ease;
+}
+
+.drawerButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.drawerButton:active {
+  transform: scale(0.97);
+}
+
+.drawerButton:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .drawerButton:hover {
+    color: var(--ink);
+  }
+}

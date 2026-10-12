@@ -116,8 +116,40 @@
 }
 
 /* List / map: a two-part switch. */
-.selected {
+/* The building chosen on the map */
+.buildingPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
   margin: 0 0 var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-0);
+  border: 1px solid var(--hairline);
+  border-inline-start: 4px solid var(--primary);
+  border-radius: var(--r-md);
+}
+
+.buildingTitle {
+  margin: 0;
+  font: 700 var(--text-lg) / 1.2 var(--font-heading);
+}
+
+.buildingTitle span {
+  font-weight: 500;
+}
+
+.buildingFacts {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.buildingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
 }
 
 /* --- Cards ------------------------------------------------------------- */
@@ -382,4 +414,114 @@
 .bookLink:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* --- The expanded filters ------------------------------------------------ */
+
+.moreRow {
+  display: flex;
+}
+
+.moreToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: transform var(--dur-press) ease-out, color var(--dur-ui) ease;
+}
+
+.moreToggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.moreToggle:active {
+  transform: scale(0.97);
+}
+
+.moreToggle[aria-expanded='true'] {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.moreToggle:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .moreToggle:hover {
+    color: var(--ink);
+  }
+}
+
+.moreCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font: 700 var(--text-xs) / 1 var(--font-mono);
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: var(--r-pill);
+}
+
+.advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-3) var(--s-4);
+  padding: var(--s-4);
+  background: var(--stone-0);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+}
+
+.field {
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.field select {
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--stone-1);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+}
+
+.field select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.amenityField {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.amenityField legend {
+  margin-bottom: var(--s-1);
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.amenityChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
 }
