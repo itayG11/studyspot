@@ -93,6 +93,7 @@ def to_save(previewed: dict, action: str = "add", **extra) -> list[dict]:
             item["action"] = action
             if action == "replace":
                 item["expected_places"] = b["existing"]["places"]
+                item["expected_upcoming_bookings"] = b["existing"]["upcoming_bookings"]
         out.append({**item, **extra})
     return out
 
@@ -272,7 +273,7 @@ def test_an_existing_building_is_named_with_what_is_in_it(client, admin, session
     body = preview(client, csv("m,,5,חוות מחשבים,M206,1,,2,2", "M,,5,ספרייה,M001,0,30,,", "M,,5,ספרייה,M002,4,30,,")).json()
     assert body["problems"] == []
     [b] = body["buildings"]
-    assert b["existing"] == {"name": m.name, "floors_count": 3, "places": 2, "upcoming_bookings": 1, "classes": 1}
+    assert b["existing"] == {"name": m.name, "floors_count": 3, "places": 2, "upcoming_bookings": 1, "classes": 1, "locked": False}
     assert [(p["name"], p["when_added"]) for p in b["places"]] == [
         ("M206", "place_name_taken"), ("M001", None), ("M002", "floor_not_in_building"),
     ]
@@ -347,13 +348,16 @@ def test_the_demo_campus_keeps_its_cap_and_its_seed_buildings(client, session, d
     session.commit()
     client.user = demo_admin
     seed_code = demo.buildings[0].code
-    items = [{"code": seed_code, "floors_count": 1, "action": "replace", "expected_places": len(demo.buildings[0].places), "places": []}]
+    items = [{
+        "code": seed_code, "floors_count": 1, "action": "replace", "expected_places": len(demo.buildings[0].places),
+        "expected_upcoming_bookings": 0, "places": [],
+    }]
     assert save(client, items, "demo").json()["detail"] == "demo_campus_locked"
     many = [{"code": f"V{n}", "floors_count": 1, "places": []} for n in range(10)]
     assert save(client, many, "demo").json()["detail"] == "demo_campus_full"
     # A building a visitor added can be put back from the file.
     assert save(client, [{"code": "V1", "floors_count": 1, "places": []}], "demo").status_code == 200
-    again = [{"code": "V1", "floors_count": 2, "action": "replace", "expected_places": 0, "places": []}]
+    again = [{"code": "V1", "floors_count": 2, "action": "replace", "expected_places": 0, "expected_upcoming_bookings": 0, "places": []}]
     assert save(client, again, "demo").json()["buildings_replaced"] == 1
 
 
@@ -364,7 +368,7 @@ def test_a_booking_in_the_past_is_not_counted_as_upcoming(client, admin, session
     start = client.clock.now - timedelta(days=1)
     session.add(Booking(
         institution_id=braude.id, user_id=student.id, place_id=lab.id, seat_id=seat.id,
-        starts_at=start, ends_at=start + timedelta(hours=1), status=BookingStatus.COMPLETED, source=BookingSource.ADVANCE,
+        starts_at=start, ends_at=start + timedelta(hours=1), status=BookingStatus.BOOKED, source=BookingSource.ADVANCE,
     ))
     session.flush()
     client.user = admin
@@ -381,3 +385,114 @@ def test_the_templates_read_as_they_are(name):
     table = campus_import.read_table((TEMPLATES / name).read_bytes())
     assert table.problems == []
     assert [(b.code, len(b.places)) for b in table.buildings] == [("M", 2), ("L", 2), ("S", 0)]
+
+
+# --- After the security review -------------------------------------------------------------
+
+
+@pytest.mark.parametrize("hidden", ["\u200b", "\ufeff", "\u2060", "\x01"])
+def test_a_hidden_character_does_not_slip_a_formula_past(client, admin, hidden):
+    client.user = admin
+    body = preview(client, csv(f"T,{hidden}=HYPERLINK(\"x\"),1,,,,,,", f"Q,,1,ספרייה,{hidden}=1+1,0,5,,")).json()
+    assert body["problems"] == [{"line": 2, "code": "row_formula"}, {"line": 3, "code": "row_formula"}]
+
+
+@pytest.mark.parametrize(
+    "where",
+    [{"name": "=HYPERLINK(1)"}, {"places": [{"kind": "library", "name": "@SUM(1)", "floor": 0, "capacity": 5}]},
+     {"places": [{"kind": "library", "name": "L", "floor": 0, "capacity": 5, "location_note": "+cmd"}]}],
+)
+def test_the_saved_table_and_the_forms_refuse_formulas_too(client, admin, session, where):
+    client.user = admin
+    assert save(client, [{"code": "T", "floors_count": 1, "places": [], **where}]).status_code == 422
+    if "name" in where:
+        assert client.post("/admin/institutions/braude/buildings", json={"code": "T", "floors_count": 1, **where}).status_code == 422
+    assert client.post("/admin/institutions/braude/buildings", json={"code": "-1", "floors_count": 1}).status_code == 422
+
+
+def test_replace_refuses_when_a_booking_was_made_since_the_preview(client, admin, session, braude, student):
+    client.user = admin
+    body = preview(client, csv("M,,2,ספרייה,M001,0,30,,")).json()
+    items = to_save(body, "replace")
+    assert items[0]["expected_upcoming_bookings"] == 0
+    m = next(b for b in braude.buildings if b.code == "M")
+    lab = next(p for p in m.places if p.name == "M206")
+    seat = session.scalars(select(Seat).where(Seat.place_id == lab.id)).first()
+    start = client.clock.now + timedelta(hours=2)
+    session.add(Booking(
+        institution_id=braude.id, user_id=student.id, place_id=lab.id, seat_id=seat.id,
+        starts_at=start, ends_at=start + timedelta(hours=1), status=BookingStatus.BOOKED, source=BookingSource.ADVANCE,
+    ))
+    session.commit()
+    assert save(client, items).json()["detail"] == "import_stale"
+    assert count(session, Booking) == 1
+
+
+def test_blank_lines_do_not_hide_rows_past_a_cut(client, admin):
+    client.user = admin
+    lines = [""] * 30 + [f"T,,1,ספרייה,L{n},0,5,," for n in range(300)]
+    body = preview(client, csv(*lines)).json()
+    assert len(body["buildings"][0]["places"]) == 300
+    many = [""] * 2000 + ["T,,1,,,,,,"]
+    assert preview(client, csv(*many)).json()["detail"] == "import_too_many_rows"
+
+
+def test_a_table_of_more_buildings_than_one_save_takes_is_refused_at_once(client, admin):
+    client.user = admin
+    response = preview(client, csv(*[f"B{n},,1,,,,,," for n in range(101)]))
+    assert response.json()["detail"] == "import_too_many_buildings"
+
+
+def test_one_import_creates_a_bounded_number_of_stations(client, admin):
+    client.user = admin
+    labs = [{"kind": "computer_lab", "name": f"L{n}", "floor": 0, "lab_rows": 20, "lab_cols": 20} for n in range(6)]
+    assert save(client, [{"code": "T", "floors_count": 1, "places": labs}]).status_code == 422
+    assert save(client, [{"code": "T", "floors_count": 1, "places": labs[:5]}]).status_code == 200
+
+
+# --- After the code review -----------------------------------------------------------------
+
+
+def test_semicolons_under_a_title_row(client, admin):
+    client.user = admin
+    data = "רשימת בניינים\n".encode() + csv("T;;1;ספרייה;L1;0;20;;", header=HEADER.replace(",", ";"))
+    assert [p["name"] for p in preview(client, data).json()["buildings"][0]["places"]] == ["L1"]
+
+
+def test_a_bad_first_row_does_not_get_the_next_ones_blamed(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,א,2,מטבח,L1,0,20,,", "T,,,ספרייה,L2,0,20,,")).json()
+    assert body["problems"] == [{"line": 2, "code": "row_kind"}]
+    assert [p["name"] for p in body["buildings"][0]["places"]] == ["L2"]
+
+
+def test_a_building_name_that_is_a_number(client, admin):
+    client.user = admin
+    data = xlsx([["Code", "Building name", "Floors"], ["T", 2020, 1]])
+    assert preview(client, data).json()["buildings"][0]["name"] == "2020"
+
+
+def test_a_building_new_at_the_preview_and_added_elsewhere_since(client, admin, session):
+    client.user = admin
+    items = to_save(preview(client, csv("T,,1,ספרייה,L1,0,5,,")).json())
+    assert client.post("/admin/institutions/braude/buildings", json={"code": "T", "floors_count": 3}).status_code == 201
+    assert save(client, items).json()["detail"] == "import_stale"
+
+
+def test_replace_keeps_classes_whatever_words_they_were_typed_in(client, admin, session, braude, student):
+    m = next(b for b in braude.buildings if b.code == "M")
+    session.add(ClassSlot(user_id=student.id, weekday=0, starts=time(9), ends=time(10), building_id=m.id, place_text="בניין מיטשל"))
+    session.commit()
+    client.user = admin
+    save(client, to_save(preview(client, csv("M,,2,,,,,,")).json(), "replace"))
+    session.expire_all()
+    new = session.scalars(select(Building).where(Building.institution_id == braude.id, Building.code == "M")).one()
+    assert session.scalars(select(ClassSlot)).one().building_id == new.id
+
+
+def test_the_preview_says_a_demo_seed_building_cannot_be_replaced(client, session, demo, demo_admin, demo_on):
+    session.commit()
+    client.user = demo_admin
+    code = demo.buildings[0].code
+    body = preview(client, csv(f"{code},,1,,,,,,", "NEW,,1,,,,,,"), "demo").json()
+    assert [b["existing"] and b["existing"]["locked"] for b in body["buildings"]] == [True, None]

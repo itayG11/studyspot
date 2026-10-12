@@ -34,7 +34,7 @@ const placesWord = (n: number) => many(n, 'מקום אחד', 'מקומות')
 const and = (words: string) => (/^\d/.test(words) ? `ו-${words}` : `ו${words}`)
 
 // The places of a building that would be saved, by the admin's choice: into
-// a building that is there, only those that fit it.
+// a building that is there, only those that fit it (the rest are skipped).
 function sent(building: ImportedBuilding, choice: Choice): ImportedPlace[] {
   if (choice === 'skip') return []
   if (choice === 'replace' || building.existing === null) return building.places
@@ -45,8 +45,12 @@ function request(building: ImportedBuilding, choice: Choice): CampusImportBuildi
   const { code, name, floors_count, latitude, longitude, existing } = building
   return {
     code, name, floors_count, latitude, longitude,
-    action: choice === 'replace' ? 'replace' : 'add',
-    ...(choice === 'replace' && existing ? { expected_places: existing.places } : {}),
+    // "create": new at the preview, so refused if it was added elsewhere since.
+    action: existing === null ? 'create' : choice === 'replace' ? 'replace' : 'add',
+    // What the admin was shown: if it changed since, nothing is deleted.
+    ...(choice === 'replace' && existing
+      ? { expected_places: existing.places, expected_upcoming_bookings: existing.upcoming_bookings }
+      : {}),
     places: sent(building, choice).map(({ kind, name, floor, capacity, lab_rows, lab_cols, location_note }) => ({
       kind, name, floor,
       ...(capacity !== null ? { capacity } : {}),
@@ -56,17 +60,22 @@ function request(building: ImportedBuilding, choice: Choice): CampusImportBuildi
   }
 }
 
-function savedText(saved: CampusSaved): string {
+// Hebrew agrees in number: "נוסף בניין אחד", "נוספו 2 בניינים".
+function savedText(saved: CampusSaved, skipped: number): string {
+  const b = saved.buildings_added
+  const p = saved.places_added
+  const r = saved.buildings_replaced
   const parts = [
-    saved.buildings_added > 0 && saved.places_added > 0
-      ? `נוספו ${buildingsWord(saved.buildings_added)} ${and(placesWord(saved.places_added))}.`
-      : saved.buildings_added > 0
-        ? `נוספו ${buildingsWord(saved.buildings_added)}.`
-        : `נוספו ${placesWord(saved.places_added)}.`,
-    saved.buildings_replaced > 0 && `${buildingsWord(saved.buildings_replaced)} נמחקו ונוספו מחדש.`,
-    saved.places_skipped > 0 && `${placesWord(saved.places_skipped)} שכבר היו דולגו.`,
-  ]
-  return parts.filter(Boolean).join(' ')
+    b > 0 && p > 0 && `נוספו ${buildingsWord(b)} ${and(placesWord(p))}.`,
+    b > 0 && p === 0 && (b === 1 ? 'נוסף בניין אחד.' : `נוספו ${b} בניינים.`),
+    b === 0 && p > 0 && (p === 1 ? 'נוסף מקום אחד.' : `נוספו ${p} מקומות.`),
+    r > 0 && (r === 1 ? 'בניין אחד נמחק ונוסף מחדש.' : `${r} בניינים נמחקו ונוספו מחדש.`),
+    skipped > 0 &&
+      (skipped === 1
+        ? 'מקום אחד, שכבר קיים או שלא מתאים לבניין הקיים, דולג.'
+        : `${skipped} מקומות, שכבר קיימים או שלא מתאימים לבניין הקיים, דולגו.`),
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : 'לא נוספו בניינים או מקומות.'
 }
 
 export function BulkImport({ onSaved }: { onSaved: () => void }) {
@@ -98,7 +107,11 @@ export function BulkImport({ onSaved }: { onSaved: () => void }) {
   }
 
   const choiceOf = (b: ImportedBuilding): Choice => choices[b.code] ?? 'add'
-  const chosen = (preview?.buildings ?? []).filter((b) => choiceOf(b) !== 'skip')
+  // A building that is there, with nothing new for it, has nothing to save.
+  const chosen = (preview?.buildings ?? []).filter(
+    (b) => choiceOf(b) !== 'skip' && !(b.existing && choiceOf(b) === 'add' && sent(b, 'add').length === 0),
+  )
+  const skipped = chosen.reduce((sum, b) => sum + b.places.length - sent(b, choiceOf(b)).length, 0)
   const placeCount = chosen.reduce((sum, b) => sum + sent(b, choiceOf(b)).length, 0)
   const replacing = chosen.some((b) => b.existing !== null && choiceOf(b) === 'replace')
   const saveLabel = `לשמור ${buildingsWord(chosen.length)}${placeCount > 0 ? ` ${and(placesWord(placeCount))}` : ''}`
@@ -110,7 +123,7 @@ export function BulkImport({ onSaved }: { onSaved: () => void }) {
     try {
       const saved = await saveCampusImport(slug, chosen.map((b) => request(b, choiceOf(b))))
       setPreview(null)
-      setDone(savedText(saved))
+      setDone(savedText(saved, skipped))
       onSaved()
     } catch (reason) {
       setProblem(message(reason instanceof ApiError ? reason.code : 'unknown_error'))
@@ -238,7 +251,7 @@ function ImportedBuildingCard({
         [
           ['add', 'להוסיף את המקומות החדשים'],
           ['skip', 'להשאיר כמו שהוא'],
-          ['replace', 'למחוק ולהוסיף מחדש מהטבלה'],
+          ...(existing.locked ? [] : ([['replace', 'למחוק ולהוסיף מחדש מהטבלה']] as const)),
         ] as const
       ).map(([value, label]) => (
         <label key={value} className={styles.label}>
@@ -246,9 +259,16 @@ function ImportedBuildingCard({
           {label}
         </label>
       ))}
+      {existing.locked && (
+        <p className={picker.hint}>זה בניין של קמפוס ההדגמה: אפשר להוסיף לו מקומות, אבל לא למחוק אותו.</p>
+      )}
       {choice === 'replace' && (
         <Notice tone="error">
-          {`יימחקו ${placesWord(existing.places)} עם השלטים שלהם. `}
+          {existing.places === 0
+            ? 'אין בו מקומות. '
+            : existing.places === 1
+              ? 'יימחק מקום אחד, עם השלט שלו. '
+              : `יימחקו ${existing.places} מקומות, עם השלטים שלהם. `}
           {existing.upcoming_bookings > 0 &&
             `${many(existing.upcoming_bookings, 'הזמנה עתידית אחת תבוטל', 'הזמנות עתידיות יבוטלו')}. `}
           {existing.classes > 0 &&

@@ -219,6 +219,7 @@ async def preview_campus_import(
     request: Request,
     admin: AdminDep,
     db: SessionDep,
+    settings: SettingsDep,
     now: Annotated[datetime, Depends(get_now)],
 ):
     """A table of buildings and places, sent as the request body: what it
@@ -230,9 +231,13 @@ async def preview_campus_import(
         table = await run_in_threadpool(campus_import.read_table, data)
     except campus_import.ImportRefused as refused:
         raise HTTPException(422, refused.code) from None
-    there = await run_in_threadpool(
-        campus_import.existing, db, institution, [b.code for b in table.buildings], now
-    )
+    # The answer reads the buildings' places: built in the thread too, so
+    # no query ever runs on the event loop.
+    return await run_in_threadpool(_preview, db, institution, table, now, _demo_slug(settings))
+
+
+def _preview(db: Session, institution: Institution, table, now: datetime, demo_slug: str | None) -> CampusPreviewOut:
+    there = campus_import.existing(db, institution, [b.code for b in table.buildings], now, demo_slug=demo_slug)
     buildings = []
     for b in table.buildings:
         found = there.get(b.code)
@@ -260,13 +265,14 @@ def save_campus_import(
     admin: AdminDep,
     db: SessionDep,
     settings: SettingsDep,
+    now: Annotated[datetime, Depends(get_now)],
 ):
     """The table as the admin confirmed it, in one transaction: every
     building and place is checked again as in the forms, and one refusal
     saves nothing."""
     institution = _managed(db, admin, slug, lock=True)
     try:
-        saved = campus_import.save(db, institution, body.buildings, demo_slug=_demo_slug(settings))
+        saved = campus_import.save(db, institution, body.buildings, now, demo_slug=_demo_slug(settings))
         db.commit()
     except Refusal as refusal:
         db.rollback()

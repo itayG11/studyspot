@@ -25,7 +25,7 @@ const PREVIEW: CampusPreview = {
     { code: 'T', name: 'בניין הניסיון', floors_count: 2, latitude: null, longitude: null, existing: null, places: [place(2, 'T101')] },
     {
       code: 'M', name: 'בניין M', floors_count: 3, latitude: null, longitude: null,
-      existing: { name: 'בניין M', floors_count: 3, places: 2, upcoming_bookings: 4, classes: 7 },
+      existing: { name: 'בניין M', floors_count: 3, places: 2, upcoming_bookings: 4, classes: 7, locked: false },
       places: [place(3, 'M206', { when_added: 'place_name_taken' }), place(4, 'M001')],
     },
   ],
@@ -105,10 +105,10 @@ describe('BulkImport', () => {
     await user.click(screen.getByRole('button', { name: 'לשמור 2 בניינים ו-2 מקומות' }))
     const body = saved()!
     expect(body.buildings.map((b) => [b.code, b.action, (b.places as { name: string }[]).map((p) => p.name)])).toEqual([
-      ['T', 'add', ['T101']],
+      ['T', 'create', ['T101']],
       ['M', 'add', ['M001']],
     ])
-    expect(await screen.findByText(/נוספו בניין אחד ו-2 מקומות/)).toBeInTheDocument()
+    expect(await screen.findByText(/נוספו בניין אחד ו-2 מקומות\. מקום אחד, שכבר קיים/)).toBeInTheDocument()
   })
 
   it('leaving it as it is sends nothing for it', async () => {
@@ -128,7 +128,9 @@ describe('BulkImport', () => {
     expect(saved()).toBeUndefined()
     await user.click(screen.getByRole('button', { name: 'כן, למחוק ולשמור' }))
     const m = saved()!.buildings[1]
-    expect([m.action, m.expected_places, (m.places as { name: string }[]).map((p) => p.name)]).toEqual(['replace', 2, ['M206', 'M001']])
+    expect([m.action, m.expected_places, m.expected_upcoming_bookings, (m.places as { name: string }[]).map((p) => p.name)]).toEqual([
+      'replace', 2, 4, ['M206', 'M001'],
+    ])
   })
 
   it('a refusal saves nothing and says why', async () => {
@@ -140,5 +142,28 @@ describe('BulkImport', () => {
     await user.click(await screen.findByRole('button', { name: /^לשמור/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/השתנה/)
     expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('a building of the demo campus cannot be deleted from here', async () => {
+    PREVIEW.buildings[1].existing!.locked = true
+    try {
+      await upload()
+      expect(screen.queryByRole('radio', { name: /למחוק/ })).not.toBeInTheDocument()
+      expect(screen.getByText(/אבל לא למחוק אותו/)).toBeInTheDocument()
+    } finally {
+      PREVIEW.buildings[1].existing!.locked = false
+    }
+  })
+
+  it('a building that is there with nothing new for it is not counted', async () => {
+    const all = PREVIEW.buildings[1].places
+    PREVIEW.buildings[1].places = all.filter((p) => p.when_added !== null) // only M206, which it has
+    try {
+      const user = await upload()
+      await user.click(screen.getByRole('button', { name: 'לשמור בניין אחד ומקום אחד' }))
+      expect(saved()!.buildings.map((b) => b.code)).toEqual(['T'])
+    } finally {
+      PREVIEW.buildings[1].places = all
+    }
   })
 })

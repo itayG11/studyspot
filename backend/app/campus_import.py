@@ -21,16 +21,19 @@ from decimal import Decimal, InvalidOperation
 
 from pydantic import ValidationError
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.campus_admin import create_building, create_place, is_demo_seed_building
 from app.errors import Refusal
-from app.models import ACTIVE_STATUSES, Booking, Building, ClassSlot, Institution, floor_exists
-from app.schemas import BuildingCreateIn, PlaceCreateIn
+from app.models import ACTIVE_STATUSES, Booking, Building, ClassSlot, Institution, Place, floor_exists
+from app.schemas import BuildingCreateIn, PlaceCreateIn, looks_like_formula
 from app.timetable_import import ImportRefused, _open
 
 MAX_BYTES = 200 * 1024
 MAX_ROWS = 300
+MAX_BUILDINGS = 100  # app/schemas.py IMPORT_BUILDINGS: what one save takes
+# Lines read at most, blank ones too: past them the file is refused, not cut.
+MAX_LINES = 2000
 READ_COLUMNS = 20
 
 # Header -> field. Compared lower-cased, with spaces and underscores as one.
@@ -46,7 +49,7 @@ COLUMNS = {
     "lab_cols": ("עמדות בשורה", "stations per row", "columns", "cols", "lab cols"),
     "latitude": ("קו רוחב", "latitude", "lat"),
     "longitude": ("קו אורך", "longitude", "lng", "lon"),
-    "location_note": ("הערת מיקום", "איך מגיעים", "location note", "note"),
+    "location_note": ("הערת מיקום", "איך מגיעים", "location note"),
 }
 KINDS = {
     "group_room": ("חדר לימוד קבוצתי", "חדר קבוצתי", "group room"),
@@ -57,8 +60,6 @@ KINDS = {
 BUILDING_FIELDS = ("name", "floors_count", "latitude", "longitude")
 PLACE_FIELDS = ("kind", "place", "floor", "capacity", "lab_rows", "lab_cols", "location_note")
 TEXT_FIELDS = ("name", "kind", "place", "location_note")
-# The first characters a spreadsheet reads as a formula.
-FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _key(text: str) -> str:
@@ -77,6 +78,7 @@ class TableBuilding:
     latitude: Decimal | None
     longitude: Decimal | None
     places: list[tuple[int, PlaceCreateIn]] = field(default_factory=list)  # (line, place)
+    read: bool = False  # a row of it was read whole: only then is it in the table
 
 
 @dataclass
@@ -89,8 +91,7 @@ class Table:
 
 
 def read_table(data: bytes) -> Table:
-    lines = _rows(data)
-    header_at, columns = _header(lines)
+    lines, (header_at, columns) = _rows(data)
     buildings: dict[str, TableBuilding] = {}
     problems: list[tuple[int, str]] = []
     seen: set[tuple[str, str]] = set()
@@ -107,15 +108,22 @@ def read_table(data: bytes) -> Table:
             problems.append((index, problem))
     if rows == 0:
         raise ImportRefused("import_empty")
-    return Table(list(buildings.values()), problems)
+    if sum(b.read for b in buildings.values()) > MAX_BUILDINGS:
+        raise ImportRefused("import_too_many_buildings")
+    return Table([b for b in buildings.values() if b.read], problems)
 
 
-def _rows(data: bytes) -> list[tuple]:
+def _rows(data: bytes) -> tuple[list[tuple], tuple[int, dict[str, int]]]:
+    """The file's lines, and where its header is."""
     if len(data) > MAX_BYTES:
         raise ImportRefused("import_too_big")
     if data.startswith(b"PK\x03\x04"):
         sheet = _open(data)
-        return list(sheet.iter_rows(max_row=MAX_ROWS + 20, max_col=READ_COLUMNS, values_only=True))
+        lines = list(sheet.iter_rows(max_row=MAX_LINES + 1, max_col=READ_COLUMNS, values_only=True))
+        header = _header(lines)
+        if header is None:
+            raise ImportRefused("import_missing_column")
+        return _bounded(lines), header
     if b"\x00" in data:
         raise ImportRefused("import_not_table")
     try:
@@ -123,12 +131,23 @@ def _rows(data: bytes) -> list[tuple]:
     except UnicodeDecodeError:
         # Plain "CSV" from Excel on a Hebrew Windows.
         text = data.decode("cp1255", errors="replace")
-    first = text.split("\n", 1)[0]
-    delimiter = max(",;\t", key=first.count)
-    return [tuple(row[:READ_COLUMNS]) for row in csv.reader(io.StringIO(text), delimiter=delimiter)][: MAX_ROWS + 20]
+    # Commas, or semicolons and tabs as Excel saves in some languages: the
+    # one that splits out a header, which may sit under a title row.
+    for delimiter in ",;\t":
+        lines = [tuple(row[:READ_COLUMNS]) for row in csv.reader(io.StringIO(text), delimiter=delimiter)]
+        header = _header(lines)
+        if header is not None:
+            return _bounded(lines), header
+    raise ImportRefused("import_missing_column")
 
 
-def _header(lines: list[tuple]) -> tuple[int, dict[str, int]]:
+def _bounded(lines: list[tuple]) -> list[tuple]:
+    if len(lines) > MAX_LINES:
+        raise ImportRefused("import_too_many_rows")
+    return lines
+
+
+def _header(lines: list[tuple]) -> tuple[int, dict[str, int]] | None:
     """The first row that names the short-name column: field -> column."""
     for index, values in enumerate(lines[:10]):
         columns: dict[str, int] = {}
@@ -140,7 +159,7 @@ def _header(lines: list[tuple]) -> tuple[int, dict[str, int]]:
             if "floors_count" not in columns or ("place" in columns) != ("kind" in columns):
                 raise ImportRefused("import_missing_column")
             return index, columns
-    raise ImportRefused("import_missing_column")
+    return None
 
 
 def _cell(values: tuple, column: int):
@@ -153,8 +172,7 @@ def _cell(values: tuple, column: int):
 def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen: set) -> str | None:
     """Adds the row to its building, or says what is wrong with it."""
     for name in TEXT_FIELDS:
-        value = cells.get(name)
-        if isinstance(value, str) and value.startswith(FORMULA):
+        if looks_like_formula(_text(cells.get(name))):
             return "row_formula"
     code = cells.get("code")
     if code is None:
@@ -167,37 +185,42 @@ def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen:
         return "row_floors"
     if floors is None and known is None:
         return "row_floors"
+
+    def given(name: str, convert, before):
+        """The row's value, or the one an earlier row of the building gave."""
+        return convert(cells[name]) if cells.get(name) is not None else before
+
     try:
         building = BuildingCreateIn(
             code=code,
-            name=cells.get("name") if cells.get("name") is not None else (known.name if known else None),
+            name=given("name", _text, known.name if known else None),
             floors_count=floors if floors is not None else known.floors_count,
-            latitude=_decimal(cells.get("latitude")) if cells.get("latitude") is not None else (known.latitude if known else None),
-            longitude=_decimal(cells.get("longitude")) if cells.get("longitude") is not None else (known.longitude if known else None),
+            latitude=given("latitude", _decimal, known.latitude if known else None),
+            longitude=given("longitude", _decimal, known.longitude if known else None),
         )
     except (ValidationError, ValueError) as error:
         return _building_problem(error)
-    if known is not None and (known.name, known.floors_count, known.latitude, known.longitude) != (
+    if known is None:
+        # Kept even if this row's place is wrong: the building's next rows
+        # are read against it, not blamed for its missing floors.
+        known = buildings[building.code] = TableBuilding(
+            building.code, building.name, building.floors_count, building.latitude, building.longitude
+        )
+    elif (known.name, known.floors_count, known.latitude, known.longitude) != (
         building.name, building.floors_count, building.latitude, building.longitude
     ):
         return "row_building_differs"
-    place = None
     if any(cells.get(name) is not None for name in PLACE_FIELDS):
-        place_or_problem = _place(cells)
-        if isinstance(place_or_problem, str):
-            return place_or_problem
-        place = place_or_problem
+        place = _place(cells)
+        if isinstance(place, str):
+            return place
         if not floor_exists(place.floor, building.floors_count):
             return "floor_not_in_building"
         if (building.code, place.name) in seen:
             return "row_duplicate"
         seen.add((building.code, place.name))
-    if known is None:
-        known = buildings[building.code] = TableBuilding(
-            building.code, building.name, building.floors_count, building.latitude, building.longitude
-        )
-    if place is not None:
         known.places.append((line, place))
+    known.read = True
     return None
 
 
@@ -281,24 +304,41 @@ class Existing:
     places: int
     upcoming_bookings: int
     classes: int
+    locked: bool  # a seed building of the shared demo campus: never deleted
 
 
-def existing(db: Session, institution: Institution, codes: list[str], now: datetime) -> dict[str, tuple[Building, Existing]]:
+def _upcoming(db: Session, building_ids: list[int], now: datetime) -> dict[int, int]:
+    rows = db.execute(
+        select(Place.building_id, func.count(Booking.id))
+        .join(Booking, Booking.place_id == Place.id)
+        .where(Place.building_id.in_(building_ids), Booking.ends_at > now, Booking.status.in_(ACTIVE_STATUSES))
+        .group_by(Place.building_id)
+    )
+    return dict(rows.all())
+
+
+def existing(
+    db: Session, institution: Institution, codes: list[str], now: datetime, *, demo_slug: str | None
+) -> dict[str, tuple[Building, Existing]]:
     """The institution's buildings of these codes, with what deleting one
-    would take with it."""
-    out = {}
-    for building in db.scalars(
-        select(Building).where(Building.institution_id == institution.id, Building.code.in_(codes))
-    ):
-        place_ids = [p.id for p in building.places]
-        bookings = db.scalar(
-            select(func.count()).select_from(Booking).where(
-                Booking.place_id.in_(place_ids), Booking.ends_at > now, Booking.status.in_(ACTIVE_STATUSES)
-            )
-        ) if place_ids else 0
-        classes = db.scalar(select(func.count()).select_from(ClassSlot).where(ClassSlot.building_id == building.id))
-        out[building.code] = (building, Existing(building.name, building.floors_count, len(place_ids), bookings, classes))
-    return out
+    would take with it. A few queries, however many buildings."""
+    buildings = db.scalars(
+        select(Building)
+        .where(Building.institution_id == institution.id, Building.code.in_(codes))
+        .options(selectinload(Building.places))
+    ).all()
+    ids = [b.id for b in buildings]
+    bookings = _upcoming(db, ids, now) if ids else {}
+    classes = dict(db.execute(
+        select(ClassSlot.building_id, func.count()).where(ClassSlot.building_id.in_(ids)).group_by(ClassSlot.building_id)
+    ).all()) if ids else {}
+    return {
+        b.code: (b, Existing(
+            b.name, b.floors_count, len(b.places), bookings.get(b.id, 0), classes.get(b.id, 0),
+            is_demo_seed_building(institution, b.code, demo_slug),
+        ))
+        for b in buildings
+    }
 
 
 def when_added(building: Building, place: PlaceCreateIn) -> str | None:
@@ -321,19 +361,29 @@ class Saved:
     places_skipped: int = 0
 
 
-def save(db: Session, institution: Institution, items: list, *, demo_slug: str | None) -> Saved:
+def save(db: Session, institution: Institution, items: list, now: datetime, *, demo_slug: str | None) -> Saved:
     """items: CampusImportBuildingIn. All of them, or a Refusal and the
     caller rolls everything back."""
     saved = Saved()
     for item in items:
+        # Locked: a place or a booking added in it from now waits for this
+        # transaction, so what is deleted is what was counted.
         building = db.scalars(
-            select(Building).where(Building.institution_id == institution.id, Building.code == item.code)
+            select(Building)
+            .where(Building.institution_id == institution.id, Building.code == item.code)
+            .with_for_update()
         ).first()
+        if building is not None and item.action == "create":
+            raise Refusal(409, "import_stale")  # added elsewhere since the preview
+        moved: list[int] = []
         if building is not None and item.action == "replace":
             if is_demo_seed_building(institution, building.code, demo_slug):
                 raise Refusal(403, "demo_campus_locked")
-            if len(building.places) != item.expected_places:
+            db.refresh(building)
+            bookings = _upcoming(db, [building.id], now).get(building.id, 0)
+            if len(building.places) != item.expected_places or bookings > item.expected_upcoming_bookings:
                 raise Refusal(409, "import_stale")
+            moved = list(db.scalars(select(ClassSlot.id).where(ClassSlot.building_id == building.id)))
             delete_building(db, building)
             saved.buildings_replaced += 1
             building = None
@@ -349,6 +399,12 @@ def save(db: Session, institution: Institution, items: list, *, demo_slug: str |
                 position=(item.latitude, item.longitude) if item.latitude is not None else None,
                 demo_slug=demo_slug,
             )
+        if moved:
+            # The classes that were in it: in the new one, whatever their words.
+            db.execute(
+                update(ClassSlot).where(ClassSlot.id.in_(moved)).values(building_id=building.id)
+                .execution_options(synchronize_session=False)
+            )
         for place in item.places:
             if place.name in had:
                 saved.places_skipped += 1
@@ -362,7 +418,8 @@ def delete_building(db: Session, building: Building) -> None:
     """The building and all in it: places, stations, hours, bookings and
     check-ins go with it (ON DELETE CASCADE). The students' classes there
     stay, back to the building's short name in words: a building added
-    again under that name takes them back (campus_admin._take_mentioned_classes)."""
+    later under that name takes them back (campus_admin._take_mentioned_classes),
+    and save() puts them straight into the one that replaces it."""
     db.execute(
         update(ClassSlot)
         .where(ClassSlot.building_id == building.id)

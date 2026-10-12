@@ -73,19 +73,36 @@ def _plain_text(value: str | None) -> str | None:
     return cleaned.strip()
 
 
+# The first characters a spreadsheet reads as a formula ("=HYPERLINK(...)"):
+# a name that starts so could run when a table of names is opened in Excel.
+FORMULA = ("=", "+", "-", "@")
+
+
+def looks_like_formula(value: str | None) -> bool:
+    """Checked on the text as it is kept, after _plain_text: a hidden
+    character in front ("\u200b=...") is no way around it."""
+    return bool(value) and (_plain_text(value) or "").startswith(FORMULA)
+
+
+def _not_formula(value: str | None) -> str | None:
+    if looks_like_formula(value):
+        raise ValueError("text that starts like a spreadsheet formula")
+    return value
+
+
 class BuildingCreateIn(BaseModel):
     """A new building, from the admin page."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     # Letters, digits and dashes, like the codes painted on the buildings.
-    code: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9-]+$")
+    code: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9][A-Za-z0-9-]*$")
     name: str | None = Field(default=None, max_length=200)
 
     @field_validator("name")
     @classmethod
     def _clean_name(cls, value: str | None) -> str | None:
-        return _plain_text(value) or None
+        return _not_formula(_plain_text(value) or None)
     floors_count: int = Field(ge=1, le=50)
     status: BuildingStatus = BuildingStatus.ACTIVE
     latitude: Decimal | None = Field(default=None, ge=-90, le=90, max_digits=9, decimal_places=6)
@@ -125,7 +142,7 @@ class PlaceCreateIn(BaseModel):
     @field_validator("name", "location_note")
     @classmethod
     def _clean(cls, value: str | None) -> str | None:
-        return _plain_text(value)
+        return _not_formula(_plain_text(value))
 
     @model_validator(mode="after")
     def _size(self) -> "PlaceCreateIn":
@@ -151,22 +168,25 @@ class PlaceCreatedOut(BaseModel):
 
 IMPORT_BUILDINGS = 100
 IMPORT_PLACES = 300  # app/campus_import.py MAX_ROWS
+IMPORT_STATIONS = 2000  # computer lab stations, one row each in the database
 
 
 class CampusImportBuildingIn(BuildingCreateIn):
-    """One building of the table, as the admin confirmed it. A building
-    that is already there: "add" puts the new places into it; "replace"
-    deletes it first, and only with the number of places the admin was
-    shown, so a building that changed since is not deleted unseen."""
+    """One building of the table, as the admin confirmed it. "create": new
+    at the preview, and refused if it is there by now. A building that was
+    there: "add" puts the new places into it; "replace" deletes it first,
+    and only with what the admin was shown (its places, its upcoming
+    bookings), so a building that changed since is not deleted unseen."""
 
-    action: Literal["add", "replace"] = "add"
+    action: Literal["create", "add", "replace"] = "create"
     expected_places: int | None = Field(default=None, ge=0)
+    expected_upcoming_bookings: int | None = Field(default=None, ge=0)
     places: list[PlaceCreateIn] = Field(default_factory=list, max_length=IMPORT_PLACES)
 
     @model_validator(mode="after")
     def _replace_needs_the_count(self) -> "CampusImportBuildingIn":
-        if self.action == "replace" and self.expected_places is None:
-            raise ValueError("replace needs expected_places")
+        if self.action == "replace" and (self.expected_places is None or self.expected_upcoming_bookings is None):
+            raise ValueError("replace needs what the admin was shown")
         return self
 
 
@@ -180,8 +200,11 @@ class CampusImportIn(BaseModel):
         codes = [b.code for b in self.buildings]
         if len(set(codes)) != len(codes):
             raise ValueError("a building appears twice")
-        if sum(len(b.places) for b in self.buildings) > IMPORT_PLACES:
+        places = [p for b in self.buildings for p in b.places]
+        if len(places) > IMPORT_PLACES:
             raise ValueError("too many places")
+        if sum((p.lab_rows or 0) * (p.lab_cols or 0) for p in places) > IMPORT_STATIONS:
+            raise ValueError("too many computer lab stations")
         return self
 
 
@@ -204,6 +227,7 @@ class ExistingBuildingOut(BaseModel):
     places: int
     upcoming_bookings: int
     classes: int
+    locked: bool  # a seed building of the shared demo campus: replace is refused
 
 
 class ImportedBuildingOut(BaseModel):

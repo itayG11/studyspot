@@ -398,7 +398,15 @@ export interface ImportedBuilding {
   latitude: string | null
   longitude: string | null
   // What deleting the building that is there would take with it.
-  existing: { name: string | null; floors_count: number; places: number; upcoming_bookings: number; classes: number } | null
+  // locked: a seed building of the shared demo campus, which is never deleted.
+  existing: {
+    name: string | null
+    floors_count: number
+    places: number
+    upcoming_bookings: number
+    classes: number
+    locked: boolean
+  } | null
   places: ImportedPlace[]
 }
 
@@ -413,8 +421,9 @@ export interface CampusImportBuilding {
   floors_count: number
   latitude: string | null
   longitude: string | null
-  action: 'add' | 'replace'
+  action: 'create' | 'add' | 'replace'
   expected_places?: number
+  expected_upcoming_bookings?: number
   places: NewPlace[]
 }
 
