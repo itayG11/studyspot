@@ -283,7 +283,9 @@ def test_an_existing_building_is_named_with_what_is_in_it(client, admin, session
     body = preview(client, csv("m,,5,חוות מחשבים,M206,1,,2,2", "M,,5,ספרייה,M001,0,30,,", "M,,5,ספרייה,M002,4,30,,")).json()
     assert body["problems"] == []
     [b] = body["buildings"]
-    assert b["existing"] == {"name": m.name, "floors_count": 3, "places": 2, "upcoming_bookings": 1, "classes": 1, "locked": False}
+    assert b["existing"] == {"name": m.name, "floors_count": 3, "places": 2, "upcoming_bookings": 1, "classes": 1, "locked": False,
+        "status": "active",
+    }
     assert [(p["name"], p["when_added"]) for p in b["places"]] == [
         ("M206", "place_name_taken"), ("M001", None), ("M002", "floor_not_in_building"),
     ]
@@ -608,3 +610,49 @@ def test_the_preview_says_a_demo_seed_building_cannot_be_replaced(client, sessio
     code = demo.buildings[0].code
     body = preview(client, csv(f"{code},,1,,,,,,", "NEW,,1,,,,,,"), "demo").json()
     assert [b["existing"] and b["existing"]["locked"] for b in body["buildings"]] == [True, None]
+
+
+# --- After the review of the template -----------------------------------------------------
+
+
+def test_a_missing_short_name_on_a_new_building_is_not_taken_for_the_one_above(client, admin):
+    client.user = admin
+    body = preview(client, csv("M,בניין M,3,ספרייה,M1,0,20,,", ",בניין B,2,ספרייה,B1,0,20,,", ",,,ספרייה,B2,1,20,,")).json()
+    assert body["problems"] == [{"line": 3, "code": "row_building_code"}, {"line": 4, "code": "row_building_above"}]
+    assert [p["name"] for p in body["buildings"][0]["places"]] == ["M1"]
+
+
+def test_rows_under_a_bad_building_row_say_so(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,,0,ספרייה,L1,0,20,,", ",,,ספרייה,L2,0,20,,")).json()
+    assert body["problems"] == [{"line": 2, "code": "row_floors"}, {"line": 3, "code": "row_building_above"}]
+
+
+@pytest.mark.parametrize("header", ["ימים א׳-ה׳,יום ו׳", "ימים א’-ה’,יום ו’"])
+def test_hours_headers_with_a_hebrew_geresh(client, admin, header):
+    client.user = admin
+    body = preview(client, csv("T,,1,ספרייה,L1,0,20,,,סגור,08:00-12:00", header=HEADER + "," + header)).json()
+    place = body["buildings"][0]["places"][0]
+    assert (place["weekday_hours"], place["friday_hours"]) == ("closed", "08:00-12:00")
+
+
+def test_a_place_closed_every_day_is_refused(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,,1,ספרייה,L1,0,20,,,סגור,סגור,", header=HOURS_HEADER)).json()
+    assert body["problems"] == [{"line": 2, "code": "row_hours"}]
+    place = {"kind": "library", "name": "L", "floor": 0, "capacity": 5, "weekday_hours": "closed", "friday_hours": "closed"}
+    assert save(client, [{"code": "T", "floors_count": 1, "places": [place]}]).status_code == 422
+
+
+def test_no_study_places_with_place_details_is_a_problem(client, admin):
+    client.user = admin
+    body = preview(client, csv("T,,1,אין מקומות לימוד,A,0,10,,")).json()
+    assert body["problems"] == [{"line": 2, "code": "row_no_places_details"}]
+
+
+def test_the_preview_shows_the_status_of_a_building_that_is_there(client, admin, session, braude):
+    m = next(b for b in braude.buildings if b.code == "M")
+    m.status = BuildingStatus.UNDER_CONSTRUCTION
+    session.commit()
+    client.user = admin
+    assert preview(client, csv("M,,3,,,,,,")).json()["buildings"][0]["existing"]["status"] == "under_construction"

@@ -286,6 +286,8 @@ function ImportedBuildingCard({
             `${many(existing.upcoming_bookings, 'הזמנה עתידית אחת תבוטל', 'הזמנות עתידיות יבוטלו')}. `}
           {existing.classes > 0 &&
             `${many(existing.classes, 'שיעור אחד', 'שיעורים')} של סטודנטים יישמרו, ויחזרו לבניין החדש באותו שם קצר. `}
+          {existing.status !== building.status &&
+            `מצב הבניין ישתנה: ${STATUS_LABELS[existing.status]}, ובמקומו ${STATUS_LABELS[building.status]}. `}
           אי אפשר לבטל את המחיקה.
         </Notice>
       )}

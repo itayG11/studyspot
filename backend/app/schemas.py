@@ -204,6 +204,12 @@ class ImportPlaceIn(PlaceCreateIn):
         opening_hours(value)
         return value
 
+    @model_validator(mode="after")
+    def _open_some_day(self) -> "ImportPlaceIn":
+        if self.weekday_hours == self.friday_hours == CLOSED:
+            raise ValueError("a place closed every day")
+        return self
+
 
 class CampusImportBuildingIn(BuildingCreateIn):
     """One building of the table, as the admin confirmed it. "create": new
@@ -264,6 +270,7 @@ class ExistingBuildingOut(BaseModel):
     upcoming_bookings: int
     classes: int
     locked: bool  # a seed building of the shared demo campus: replace is refused
+    status: BuildingStatus
 
 
 class ImportedBuildingOut(BaseModel):

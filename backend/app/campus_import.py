@@ -72,14 +72,20 @@ CLOSED_WORDS = ("סגור", "closed")
 # The Excel template (scripts/make_campus_template.py): a row of groups, the
 # headers, then the rows to fill in.
 TEMPLATE_FIRST_ROW = 3
+BROKEN = object()  # the building above has no short name to take
 PLACE_FIELDS = (
     "kind", "place", "floor", "capacity", "lab_rows", "lab_cols", "location_note", "weekday_hours", "friday_hours",
 )
 TEXT_FIELDS = ("name", "kind", "place", "location_note")
 
 
+# The Hebrew geresh and gershayim, and the curly quotes Word and the Mac
+# type for them: all as the plain ' and ".
+_QUOTES = str.maketrans({"׳": "'", "’": "'", "‘": "'", "´": "'", "״": '"', "”": '"', "“": '"'})
+
+
 def _key(text: str) -> str:
-    return re.sub(r"[\s_]+", " ", text).strip().lower()
+    return re.sub(r"[\s_]+", " ", text.translate(_QUOTES)).strip().lower()
 
 
 _HEADERS = {_key(alias): name for name, aliases in COLUMNS.items() for alias in aliases}
@@ -121,14 +127,22 @@ def read_table(data: bytes) -> Table:
         cells = {name: _cell(values, column) for name, column in columns.items()}
         if all(value is None for value in cells.values()):
             continue
-        if cells.get("code") is None:
+        inherited = cells.get("code") is None
+        if inherited:
             cells["code"] = above  # "the same building as above"
         else:
             above = cells["code"]
         rows += 1
         if rows > MAX_ROWS:
             raise ImportRefused("import_too_many_rows")
-        problem = _read_row(cells, index, buildings, seen)
+        if inherited and above is BROKEN:
+            problem = "row_building_above"
+        else:
+            problem = _read_row(cells, index, buildings, seen, inherited=inherited)
+        if inherited and problem == "row_building_code":
+            # A new building with no short name: the rows under it are its,
+            # not the building's above.
+            above = BROKEN
         if problem is not None:
             problems.append((index, problem))
     if rows == 0:
@@ -194,8 +208,11 @@ def _cell(values: tuple, column: int):
     return value
 
 
-def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen: set) -> str | None:
-    """Adds the row to its building, or says what is wrong with it."""
+def _read_row(
+    cells: dict, line: int, buildings: dict[str, TableBuilding], seen: set, *, inherited: bool = False
+) -> str | None:
+    """Adds the row to its building, or says what is wrong with it.
+    inherited: the row left the short name empty, for the building above."""
     for name in TEXT_FIELDS:
         if looks_like_formula(_text(cells.get(name))):
             return "row_formula"
@@ -204,6 +221,8 @@ def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen:
         return "row_building_code"
     code = str(code).upper()
     known = buildings.get(code)
+    if inherited and known is None:
+        return "row_building_above"  # the building's own row had a problem
     try:
         floors = _number(cells.get("floors_count")) if cells.get("floors_count") is not None else None
     except ValueError:
@@ -237,8 +256,12 @@ def _read_row(cells: dict, line: int, buildings: dict[str, TableBuilding], seen:
     elif (known.name, known.floors_count, known.status, known.latitude, known.longitude) != (
         building.name, building.floors_count, building.status, building.latitude, building.longitude
     ):
-        return "row_building_differs"
+        # With no short name, other building details mean a new building
+        # whose short name is missing, not the one above.
+        return "row_building_code" if inherited else "row_building_differs"
     no_places = cells.get("kind") is not None and _key(str(cells["kind"])) in _NO_PLACES
+    if no_places and any(cells.get(name) is not None for name in PLACE_FIELDS if name != "kind"):
+        return "row_no_places_details"  # rather than drop them unseen
     if not no_places and any(cells.get(name) is not None for name in PLACE_FIELDS):
         place = _place(cells)
         if isinstance(place, str):
@@ -280,6 +303,8 @@ def _place(cells: dict) -> ImportPlaceIn | str:
         hours = {name: _hours(cells.get(name)) for name in ("weekday_hours", "friday_hours")}
     except ValueError:
         return "row_hours"
+    if hours["weekday_hours"] == hours["friday_hours"] == CLOSED:
+        return "row_hours"  # closed every day: never open to come to
     try:
         return ImportPlaceIn(
             kind=kind, name=str(cells["place"]), location_note=_text(cells.get("location_note")), **numbers, **hours
@@ -366,6 +391,7 @@ class Existing:
     upcoming_bookings: int
     classes: int
     locked: bool  # a seed building of the shared demo campus: never deleted
+    status: BuildingStatus
 
 
 def _upcoming(db: Session, building_ids: list[int], now: datetime) -> dict[int, int]:
@@ -396,7 +422,7 @@ def existing(
     return {
         b.code: (b, Existing(
             b.name, b.floors_count, len(b.places), bookings.get(b.id, 0), classes.get(b.id, 0),
-            is_demo_seed_building(institution, b.code, demo_slug),
+            is_demo_seed_building(institution, b.code, demo_slug), b.status,
         ))
         for b in buildings
     }

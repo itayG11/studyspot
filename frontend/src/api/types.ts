@@ -410,6 +410,7 @@ export interface ImportedBuilding {
     upcoming_bookings: number
     classes: number
     locked: boolean
+    status: BuildingStatus
   } | null
   places: ImportedPlace[]
 }

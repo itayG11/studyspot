@@ -29,7 +29,7 @@ const PREVIEW: CampusPreview = {
     },
     {
       code: 'M', name: 'בניין M', floors_count: 3, status: 'active', latitude: null, longitude: null,
-      existing: { name: 'בניין M', floors_count: 3, places: 2, upcoming_bookings: 4, classes: 7, locked: false },
+      existing: { name: 'בניין M', floors_count: 3, places: 2, upcoming_bookings: 4, classes: 7, locked: false, status: 'under_construction' },
       places: [place(3, 'M206', { when_added: 'place_name_taken' }), place(4, 'M001')],
     },
   ],
@@ -128,6 +128,7 @@ describe('BulkImport', () => {
     const warning = screen.getByText(/יימחקו 2 מקומות/)
     expect(warning).toHaveTextContent('4 הזמנות')
     expect(warning).toHaveTextContent('7 שיעורים')
+    expect(warning).toHaveTextContent('מצב הבניין ישתנה: בבנייה, ובמקומו פעיל')
     await user.click(screen.getByRole('button', { name: 'לשמור 2 בניינים ו-3 מקומות' }))
     expect(saved()).toBeUndefined()
     await user.click(screen.getByRole('button', { name: 'כן, למחוק ולשמור' }))
