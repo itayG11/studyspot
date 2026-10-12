@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { BuildingCreated, BuildingLocation, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { BuildingCreated, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -32,6 +32,13 @@ export const getMentionedPlaces = (slug: string) =>
 
 export const addPlace = (buildingId: number, place: NewPlace) =>
   api<PlaceCreated>(`/admin/buildings/${buildingId}/places`, { method: 'POST', auth: true, body: place })
+
+// A table of buildings and places: what it holds (nothing saved), then the
+// buildings as the admin confirmed them, all in one go.
+export const previewCampusImport = (slug: string, file: Blob) =>
+  api<CampusPreview>(`/admin/institutions/${encodeURIComponent(slug)}/import/preview`, { method: 'POST', auth: true, file })
+export const saveCampusImport = (slug: string, buildings: CampusImportBuilding[]) =>
+  api<CampusSaved>(`/admin/institutions/${encodeURIComponent(slug)}/import`, { method: 'POST', auth: true, body: { buildings } })
 
 // The institution's own setup: details, who signs in, opening it.
 const own = (slug: string) => `/admin/institutions/${encodeURIComponent(slug)}`

@@ -1,5 +1,7 @@
-// Adding a building, and places in a building. There is no editing or
-// deleting yet; on the demo campus, additions are removed once a day.
+// Adding a building, and places in a building: one at a time in the forms,
+// or many from a table (BulkImport), which can also delete a building to
+// add it again. No editing yet; on the demo campus, additions are removed
+// once a day.
 
 import { useId, useState, type FormEvent } from 'react'
 import { LocateFixed } from 'lucide-react'
@@ -15,6 +17,7 @@ import { jumpTo } from '../ui/jump'
 import styles from './admin.module.css'
 import { useInstitution } from '../institution'
 import { PickMap } from './PickMap'
+import { BulkImport } from './BulkImport'
 
 export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; onAdded?: () => void }) {
   const { slug } = useInstitution()
@@ -28,8 +31,16 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
     <div className={styles.adder}>
       <p className={styles.lead}>
         מוסיפים בניין, ואז מקומות בתוכו. מקום חדש פתוח בשעות הרגילות של הקמפוס. לכל מקום נוצר שלט לבד, ומוכן להדפסה{' '}
-        <Link to="?tab=signs">בלשונית השלטים</Link>. עדיין אין עריכה או מחיקה.
+        <Link to="?tab=signs">בלשונית השלטים</Link>. עדיין אין עריכה. מחיקה של בניין אפשרית רק בהעלאת טבלה, כשבוחרים
+        למחוק אותו ולהוסיף אותו מחדש.
       </p>
+      <BulkImport
+        onSaved={() => {
+          buildings.reload()
+          mentioned.reload()
+          onAdded?.()
+        }}
+      />
       {mentioned.data && mentioned.data.length > 0 && (
         <Mentioned
           places={mentioned.data}

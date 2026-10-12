@@ -7,11 +7,13 @@ file."""
 import io
 import zipfile
 from datetime import UTC, datetime, time, timedelta
+from pathlib import Path
 
 import pytest
 from openpyxl import Workbook
 from sqlalchemy import func, select
 
+from app import campus_import
 from app.config import Settings, get_settings
 from app.main import app
 from app.models import Booking, BookingSource, BookingStatus, Building, ClassSlot, Place, Seat, User, UserRole
@@ -367,3 +369,15 @@ def test_a_booking_in_the_past_is_not_counted_as_upcoming(client, admin, session
     session.flush()
     client.user = admin
     assert preview(client, csv("M,,3,,,,,,")).json()["buildings"][0]["existing"]["upcoming_bookings"] == 0
+
+
+# --- The templates the admin page offers -------------------------------------------------
+
+TEMPLATES = Path(__file__).resolve().parents[2] / "frontend" / "public" / "templates"
+
+
+@pytest.mark.parametrize("name", ["buildings.xlsx", "buildings.csv"])
+def test_the_templates_read_as_they_are(name):
+    table = campus_import.read_table((TEMPLATES / name).read_bytes())
+    assert table.problems == []
+    assert [(b.code, len(b.places)) for b in table.buildings] == [("M", 2), ("L", 2), ("S", 0)]

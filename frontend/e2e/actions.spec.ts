@@ -145,3 +145,29 @@ test('the admin adds a building and a room, and students find the room', async (
     resetDemoCampus()
   }
 })
+
+test('the admin uploads a table of buildings and places, and students find them', async ({ page }) => {
+  try {
+    await page.goto('/login')
+    await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
+    await page.getByRole('link', { name: 'ניהול' }).click()
+    await page.getByRole('button', { name: 'הוספה' }).click()
+
+    const table = ['שם קצר,שם הבניין,מספר קומות,סוג המקום,שם המקום,קומה,כמה אנשים', 'TB,בניין הטבלה,2,חדר קבוצתי,TB101,1,6', 'TB,,2,מטבח,TB102,0,6']
+    await page.getByLabel('העלאת טבלה').setInputFiles({
+      name: 'בניינים.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('﻿' + table.join('\n')),
+    })
+    await expect(page.getByText(/שורה 3: סוג המקום לא מוכר/)).toBeVisible()
+    await page.getByRole('button', { name: 'לשמור בניין אחד ומקום אחד' }).click()
+    await expect(page.getByText(/נוספו בניין אחד ומקום אחד/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'שלטים להדפסה' }).click()
+    await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(11)
+    await page.goto('/?q=TB101')
+    await expect(page.getByRole('link', { name: /TB101/ })).toBeVisible()
+  } finally {
+    resetDemoCampus()
+  }
+})

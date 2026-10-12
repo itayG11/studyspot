@@ -376,3 +376,51 @@ export interface ImportRow {
   building_text: string // what the file says
   title: string | null
 }
+
+// A table of buildings and places (backend/app/campus_import.py).
+export interface ImportedPlace {
+  line: number
+  kind: PlaceKind
+  name: string
+  floor: number
+  capacity: number | null
+  lab_rows: number | null
+  lab_cols: number | null
+  location_note: string | null
+  // Why it would not go into the building that is there now.
+  when_added: 'place_name_taken' | 'floor_not_in_building' | null
+}
+
+export interface ImportedBuilding {
+  code: string
+  name: string | null
+  floors_count: number
+  latitude: string | null
+  longitude: string | null
+  // What deleting the building that is there would take with it.
+  existing: { name: string | null; floors_count: number; places: number; upcoming_bookings: number; classes: number } | null
+  places: ImportedPlace[]
+}
+
+export interface CampusPreview {
+  buildings: ImportedBuilding[]
+  problems: { line: number; code: string }[]
+}
+
+export interface CampusImportBuilding {
+  code: string
+  name: string | null
+  floors_count: number
+  latitude: string | null
+  longitude: string | null
+  action: 'add' | 'replace'
+  expected_places?: number
+  places: NewPlace[]
+}
+
+export interface CampusSaved {
+  buildings_added: number
+  buildings_replaced: number
+  places_added: number
+  places_skipped: number
+}
