@@ -37,13 +37,15 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
         animate={reduce ? { opacity: 1 } : { clipPath: 'inset(0% 0% 0% 0%)' }}
         transition={{ duration: 0.6, ease: EASE_OUT }}
       >
-        <p className={styles.ticketEyebrow} role="status">
-          ההזמנה נקלטה
-        </p>
-        <h3 className={styles.ticketPlace} ref={heading} tabIndex={-1}>
-          {booking.place_name}
-          {booking.seat_label && <span> · תא {booking.seat_label}</span>}
-        </h3>
+        <div className={styles.ticketHead}>
+          <p className={styles.ticketEyebrow} role="status">
+            ההזמנה נקלטה
+          </p>
+          <h3 className={styles.ticketPlace} ref={heading} tabIndex={-1}>
+            {booking.place_name}
+            {booking.seat_label && <span> · תא {booking.seat_label}</span>}
+          </h3>
+        </div>
         <p className={styles.ticketDay}>{formatDay(booking.starts_at, timeZone)}</p>
         <p className={styles.ticketTime}>
           {formatTime(booking.starts_at, timeZone)}–{formatTime(booking.ends_at, timeZone)}

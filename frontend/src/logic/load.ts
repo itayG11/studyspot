@@ -1,6 +1,8 @@
 // The load chart: "usually" next to "today so far", hour by hour. Pure, so
 // the tests read it without a page.
 
+import type { Place } from '../api/types'
+
 export interface LoadSlot {
   start: string // local "HH:MM:SS", a quarter hour
   usual: number | null // null: no forecast yet
@@ -47,4 +49,17 @@ export function compareToUsual(now: number, usual: number | null): 'busier' | 'q
   if (now >= usual * 1.25) return 'busier'
   if (now <= usual * 0.75) return 'quieter'
   return 'usual'
+}
+
+// The dashboard's tiles, from the places as they are now: seats free to walk
+// into (group rooms are booked, not walked into), places open, and group
+// rooms free to book this minute.
+export function campusTiles(places: Place[]): { freeSeats: number; open: number; places: number; freeRooms: number } {
+  const open = places.filter((p) => p.is_open)
+  return {
+    freeSeats: open.filter((p) => p.kind !== 'group_room').reduce((sum, p) => sum + p.available, 0),
+    open: open.length,
+    places: places.length,
+    freeRooms: open.filter((p) => p.kind === 'group_room' && p.free_now === true).length,
+  }
 }

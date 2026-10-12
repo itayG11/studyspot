@@ -355,3 +355,31 @@
   font-size: var(--text-xs);
   color: var(--ink-3);
 }
+
+/* "Book" on a group room's card: above the card's own link, so it is a
+   target of its own. */
+.bookLink {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-top: var(--s-2);
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--on-primary);
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-radius: var(--r-pill);
+  transition: transform var(--dur-press) ease-out;
+}
+
+.bookLink:active {
+  transform: scale(0.97);
+}
+
+.bookLink:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}

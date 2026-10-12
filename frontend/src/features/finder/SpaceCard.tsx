@@ -72,6 +72,18 @@ export function SpaceCard({ place, nextHour = null, onShowOnMap }: SpaceCardProp
           {ATMOSPHERE_LABELS[place.atmosphere]} · עד {place.capacity} {UNIT[place.kind]}
         </p>
         {!place.bookable && <p className={styles.walkIn}>בלי הזמנה: נכנסים בסריקה</p>}
+        {/* A group room has no station to choose first: straight to its booking. */}
+        {place.bookable && place.kind === 'group_room' && (
+          <Link
+            to={`/${slug}/spaces/${place.id}`}
+            state={{ finder: search, book: true }}
+            className={styles.bookLink}
+            aria-label={`להזמין את ${place.name}`}
+            viewTransition
+          >
+            להזמין
+          </Link>
+        )}
         {nextHour !== null && place.is_open && (
           <p className={styles.facts}>בעוד שעה: בדרך כלל {levelWord(nextHour >= HIGH_FROM ? 'high' : nextHour >= MEDIUM_FROM ? 'medium' : 'low', place.kind)}</p>
         )}

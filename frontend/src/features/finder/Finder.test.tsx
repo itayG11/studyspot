@@ -87,6 +87,16 @@ describe('Finder', () => {
     expect(within(bookable).queryByText('בלי הזמנה: נכנסים בסריקה')).not.toBeInTheDocument()
   })
 
+  it('a group room card has "book", which opens the booking on its page', async () => {
+    const { router } = renderFinder()
+    const book = await screen.findByRole('link', { name: 'להזמין את EM107' })
+    const lab = screen.getByRole('link', { name: 'M206' }).closest('li')!
+    expect(within(lab).queryByRole('link', { name: /להזמין/ })).not.toBeInTheDocument()
+    await userEvent.click(book)
+    expect(router.state.location.pathname).toBe('/braude/spaces/3')
+    expect(router.state.location.state).toMatchObject({ book: true })
+  })
+
   it('filters as you type, and keeps the search in the address', async () => {
     const { router } = renderFinder()
     await userEvent.type(await screen.findByRole('searchbox', { name: 'חיפוש מקום' }), 'לוח')

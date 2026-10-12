@@ -131,7 +131,7 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
         </div>
       </div>
 
-      {today && <CampusLoad data={today} timeZone={timezone} />}
+      {today && <CampusLoad data={today} places={places} timeZone={timezone} />}
 
       <Results
         places={places}

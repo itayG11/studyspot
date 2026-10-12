@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { compareToUsual, hourly, withToday } from './load'
+import { place } from '../test/fixtures'
+import { campusTiles, compareToUsual, hourly, withToday } from './load'
 
 describe('hourly', () => {
   it('averages the quarter hours of each hour, and today only so far', () => {
@@ -46,5 +47,19 @@ describe('compareToUsual', () => {
     expect(compareToUsual(105, 100)).toBe('usual')
     expect(compareToUsual(3, 1)).toBe('usual') // a handful of people is no trend
     expect(compareToUsual(5, null)).toBeNull()
+  })
+})
+
+describe('campusTiles', () => {
+  it('counts free seats and open places now, and the group rooms free to book', () => {
+    const tiles = campusTiles([
+      place({ id: 1, kind: 'computer_lab', available: 20 }),
+      place({ id: 2, kind: 'library', available: 15 }),
+      place({ id: 3, kind: 'open_area', available: 9, is_open: false }), // closed: not free now
+      place({ id: 4, kind: 'group_room', available: 0, free_now: true }),
+      place({ id: 5, kind: 'group_room', available: 0, free_now: false }),
+      place({ id: 6, kind: 'group_room', free_now: true, is_open: false }),
+    ])
+    expect(tiles).toEqual({ freeSeats: 35, open: 4, places: 6, freeRooms: 1 })
   })
 })

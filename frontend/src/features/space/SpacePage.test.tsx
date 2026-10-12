@@ -50,8 +50,8 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-function renderAt(path: string) {
-  const router = createMemoryRouter([{ path: '/spaces/:spaceId', Component: SpacePage }], { initialEntries: [path] })
+function renderAt(path: string, state?: unknown) {
+  const router = createMemoryRouter([{ path: '/spaces/:spaceId', Component: SpacePage }], { initialEntries: [{ pathname: path, state }] })
   resetSessionForTests()
   render(
     <AuthProvider>
@@ -88,6 +88,26 @@ describe('SpacePage', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it('"book" on a card opens the booking at once: the sheet on a phone', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }))
+    try {
+      const room = lab({ id: 3, kind: 'group_room', name: 'EM107', lab_rows: null, lab_cols: null, seats: null })
+      placeResponses.push(() => jsonResponse(room))
+      renderAt('/spaces/3', { book: true })
+      expect(await screen.findByRole('dialog', { name: 'הזמנה · EM107' })).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('"book" on a card opens the booking at once: the form on a computer', async () => {
+    const room = lab({ id: 3, kind: 'group_room', name: 'EM107', lab_rows: null, lab_cols: null, seats: null })
+    placeResponses.push(() => jsonResponse(room))
+    renderAt('/spaces/3', { book: true })
+    await screen.findByRole('heading', { name: 'הזמנה מראש' })
+    expect(document.activeElement?.id).toBe('book')
   })
 
   it('an invalid address shows "not found" without asking the server', async () => {

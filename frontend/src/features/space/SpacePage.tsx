@@ -4,7 +4,7 @@
 // sits beside the page; on a phone a button at the thumb opens a sheet.
 
 import { ArrowRight, KeyRound, Star, Users, Volume1 } from 'lucide-react'
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
 import type { Booking, PlaceDetail, Seat } from '../../api/types'
@@ -63,12 +63,19 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   const { slug, timezone, booking_rules: rules } = useInstitution()
   const { isFavorite, toggle } = useFavorites()
   const tall = useMediaQuery(TALL_QUERY)
+  const { state } = useLocation()
+  // "Book" on a card (a group room: no station to choose first) opens the
+  // booking at once: the sheet on a phone, the form beside it on a computer.
+  const cameToBook = (state as { book?: boolean } | null)?.book === true && place.bookable && place.kind !== 'computer_lab'
   const [seatId, setSeatId] = useState<number | null>(null)
-  const [sheet, setSheet] = useState(false)
+  const [sheet, setSheet] = useState(cameToBook && tall)
   // On a phone the form (and its request for times) waits for the first
   // open of the sheet; after that it stays, so closing keeps the choices.
-  const [sheetUsed, setSheetUsed] = useState(false)
-  const back = backToFinder(useLocation().state, slug, place.building_code)
+  const [sheetUsed, setSheetUsed] = useState(cameToBook && tall)
+  const back = backToFinder(state, slug, place.building_code)
+  useEffect(() => {
+    if (cameToBook && !tall) jumpTo('book')
+  }, [cameToBook, tall])
   const [booked, setBooked] = useState<Booking | null>(null)
   const seat: Seat | null = place.seats?.find((s) => s.id === seatId) ?? null
   const isLab = place.kind === 'computer_lab'
@@ -193,7 +200,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
         {!place.bookable && !tall && <WalkIn place={place} className={styles.aside} />}
         {place.bookable && !tall && (
           <aside className={styles.aside} aria-labelledby="book">
-            <h2 id="book" className={styles.h2}>
+            <h2 id="book" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
               הזמנה מראש
             </h2>
             {canBook ? form : <p className={styles.muted}>

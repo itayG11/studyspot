@@ -61,6 +61,10 @@
   --primary-2: #4f46e5;
   --on-primary: #fff;
   --primary-glow: rgb(37 99 235 / 26%);
+  /* The booking ticket's head: blue to teal, white text on both ends (AA:
+     5.2:1 and 5.4:1). Its own ground, the same in both themes. */
+  --ticket-head: linear-gradient(120deg, #2563eb, #0e7490);
+  --on-ticket-head: #fff;
   /* The page's light: two soft glows, blue and violet, over a faint grid
      of dots (base.css). Decoration only, under everything. */
   --glow-a: rgb(37 99 235 / 16%);

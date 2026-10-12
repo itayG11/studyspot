@@ -2,8 +2,8 @@
 // usually and so far today, and one line on how now compares.
 
 import { useEffect, useState } from 'react'
-import type { CampusToday } from '../../api/types'
-import { compareToUsual, hourly } from '../../logic/load'
+import type { CampusToday, Place } from '../../api/types'
+import { campusTiles, compareToUsual, hourly } from '../../logic/load'
 import { formatTime } from '../../logic/time'
 import { LoadChart } from './LoadChart'
 import styles from './load.module.css'
@@ -12,7 +12,14 @@ const COMPARED = { busier: 'עמוס מהרגיל', quieter: 'שקט מהרגי�
 
 const MINUTE = 60_000
 
-export function CampusLoad({ data, timeZone, now: start }: { data: CampusToday; timeZone: string; now?: Date }) {
+interface CampusLoadProps {
+  data: CampusToday
+  places?: Place[] | null // for the tiles; without them, the chart only
+  timeZone: string
+  now?: Date
+}
+
+export function CampusLoad({ data, places = null, timeZone, now: start }: CampusLoadProps) {
   // Kept in state and moved on every minute, like the place page's chart.
   const [now, setNow] = useState(() => start ?? new Date())
   useEffect(() => {
@@ -35,6 +42,7 @@ export function CampusLoad({ data, timeZone, now: start }: { data: CampusToday; 
       <h2 id="campus-today" className={styles.title}>
         העומס היום בקמפוס
       </h2>
+      {places && <Tiles places={places} compared={compared} hasForecast={data.weeks > 0} />}
       {hours.length === 0 ? (
         <p className={styles.line}>הקמפוס סגור היום.</p>
       ) : (
@@ -61,5 +69,28 @@ export function CampusLoad({ data, timeZone, now: start }: { data: CampusToday; 
         </>
       )}
     </section>
+  )
+}
+
+// Four numbers at a glance, every one from the server: no figure here is
+// written into the page.
+function Tiles({ places, compared, hasForecast }: { places: Place[]; compared: keyof typeof COMPARED | null; hasForecast: boolean }) {
+  const t = campusTiles(places)
+  const vsUsual = compared ? [COMPARED[compared], 'בשעה הזו'] : hasForecast ? ['אין השוואה', 'בשעה הזו'] : ['עוד אין', 'חיזוי']
+  const tiles = [
+    [String(t.freeSeats), 'מקומות פנויים עכשיו'],
+    [`${t.open} מתוך ${t.places}`, 'פתוחים עכשיו'],
+    [String(t.freeRooms), 'חדרים פנויים להזמנה'],
+    vsUsual,
+  ]
+  return (
+    <ul className={styles.tiles} aria-label="הקמפוס עכשיו">
+      {tiles.map(([value, label]) => (
+        <li key={label} className={styles.tile}>
+          <strong className={styles.tileValue}>{value}</strong>
+          <span className={styles.tileLabel}>{label}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

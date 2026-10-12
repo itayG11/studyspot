@@ -3,6 +3,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { CampusToday } from '../../api/types'
+import { place } from '../../test/fixtures'
 import { CampusLoad } from './CampusLoad'
 
 // 10:20 in Jerusalem (UTC+3 in October).
@@ -48,5 +49,24 @@ describe('CampusLoad', () => {
   it('a closed day says so', () => {
     render(<CampusLoad data={today({ slots: [] })} timeZone="Asia/Jerusalem" now={NOW} />)
     expect(screen.getByText('הקמפוס סגור היום.')).toBeInTheDocument()
+  })
+
+  it('shows four tiles: free now, open now, rooms to book, and today against usual', () => {
+    const places = [
+      place({ id: 1, kind: 'computer_lab', available: 20 }),
+      place({ id: 2, kind: 'group_room', available: 0, free_now: true }),
+      place({ id: 3, kind: 'library', is_open: false }),
+    ]
+    render(<CampusLoad data={today()} places={places} timeZone="Asia/Jerusalem" now={NOW} />)
+    const tiles = screen.getByRole('list', { name: 'הקמפוס עכשיו' })
+    expect(tiles).toHaveTextContent('20מקומות פנויים עכשיו')
+    expect(tiles).toHaveTextContent('2 מתוך 3פתוחים עכשיו')
+    expect(tiles).toHaveTextContent('1חדרים פנויים להזמנה')
+    expect(tiles).toHaveTextContent('עמוס מהרגילבשעה הזו')
+  })
+
+  it('without a forecast, the last tile says so', () => {
+    render(<CampusLoad data={today({ weeks: 0 })} places={[place()]} timeZone="Asia/Jerusalem" now={NOW} />)
+    expect(screen.getByRole('list', { name: 'הקמפוס עכשיו' })).toHaveTextContent('עוד איןחיזוי')
   })
 })
