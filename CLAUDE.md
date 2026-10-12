@@ -19,6 +19,8 @@
 
 ## Source of truth
 - Plan: `docs/PLAN.md` (Hebrew). Follow its stages in order.
+- Remaining work, from the 12 Oct 2026 audit to the end: `docs/ROADMAP.md`, 16 waves in order. It overrides the order in `PLAN.md`. Each wave needs the user's approval; mark it done there when finished. Audit findings: `docs/AUDIT_2026-10-12.md`.
+- After every push, check that the GitHub CI run is green (it was red for 16 runs unnoticed once).
 - Competitive analysis: `docs/COMPETITIVE_ANALYSIS.md`.
 - Keep `docs/INTERVIEW_REPORT.md` updated as we go (decisions + trade-offs, challenges, weaknesses and honest answers, competitors, expected interview questions with answers). It becomes the final summary report.
 

@@ -6,12 +6,28 @@ and every test runs inside a transaction that is rolled back at the end,
 so tests never see each other's data.
 """
 
+import os
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
+from dotenv import dotenv_values
+
+from app.config import REPO_ROOT, Settings
+
+# The tests run the same on a laptop as on GitHub: from .env they take only
+# what CI sets too (the database addresses and the two secrets), and every
+# other setting keeps its default whatever a developer's .env says. Before
+# app.main is imported, since it reads the settings once at import.
+CI_KEYS = ("DATABASE_URL", "TEST_DATABASE_URL", "CHECKIN_CODE_SECRET", "JWT_SECRET")
+for _name, _value in dotenv_values(REPO_ROOT / ".env").items():
+    if _name in CI_KEYS and _value is not None:
+        os.environ.setdefault(_name, _value)
+Settings.model_config["env_file"] = None
+
 from alembic import command
 from alembic.config import Config
 from fastapi import HTTPException
@@ -33,6 +49,8 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def _test_database_url() -> str:
+    """TEST_DATABASE_URL with a name of its own for this run, so two runs at
+    once (two terminals, or agents) never wipe each other's schema."""
     settings = get_settings()
     url = settings.test_database_url
     if not url:
@@ -41,7 +59,17 @@ def _test_database_url() -> str:
     # pointed at the development database.
     if make_url(url).database == make_url(settings.database_url).database:
         pytest.fail("TEST_DATABASE_URL must use a different database than DATABASE_URL.")
-    return url
+    base = make_url(url)
+    return base.set(database=f"{base.database}_{uuid.uuid4().hex[:8]}").render_as_string(hide_password=False)
+
+
+def _drop_database(url: str) -> None:
+    target = make_url(url)
+    admin = create_engine(target.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        # The name comes from _test_database_url, not from user input.
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{target.database}" WITH (FORCE)'))
+    admin.dispose()
 
 
 def _create_database_if_missing(url: str) -> None:
@@ -81,6 +109,7 @@ def engine() -> Iterator[Engine]:
     command.upgrade(alembic_config(url), "head")
     yield engine
     engine.dispose()
+    _drop_database(url)
 
 
 @pytest.fixture(autouse=True)

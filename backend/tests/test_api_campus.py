@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 
 from conftest import place_named
 
+from app.config import get_settings
+
 TZ = ZoneInfo("Asia/Jerusalem")
 
 
@@ -42,9 +44,12 @@ def test_institution_details(client):
     }
 
 
-def test_only_the_demo_campus_says_its_live_numbers_are_simulated(client, session):
+def test_only_the_demo_campus_says_its_live_numbers_are_simulated(client, session, monkeypatch):
     from app.seed import seed_demo
 
+    # Simulated only while the demo sign-in is on (app/seed/live.py).
+    monkeypatch.setenv("DEMO_LOGIN_ENABLED", "true")
+    get_settings.cache_clear()
     seed_demo(session)
     assert client.get("/institutions/braude").json()["live_simulated"] is False
     assert client.get("/institutions/demo").json()["live_simulated"] is True
