@@ -116,43 +116,6 @@
 }
 
 /* List / map: a two-part switch. */
-.views {
-  display: inline-flex;
-  padding: 3px;
-  background: var(--stone-2);
-  border-radius: var(--r-pill);
-}
-
-.views button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 var(--s-4);
-  font: 600 var(--text-sm) var(--font-body);
-  color: var(--ink-2);
-  background: transparent;
-  border: 0;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
-}
-
-.views button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.views button[aria-pressed='true'] {
-  color: var(--ink);
-  background: var(--stone-0);
-  box-shadow: var(--shadow-1);
-}
-
-.views button:focus-visible {
-  outline: 3px solid var(--ink);
-}
-
 .selected {
   margin: 0 0 var(--s-3);
 }

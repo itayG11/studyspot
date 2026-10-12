@@ -17,3 +17,8 @@ export function inArrivalWindow(booking: Booking, now: Date, rules: BookingRules
 export function bookingToConfirm(bookings: Booking[], placeId: number, now: Date, rules: BookingRules): Booking | null {
   return bookings.find((b) => b.place_id === placeId && inArrivalWindow(b, now, rules)) ?? null
 }
+
+// The bookings still ahead or under way: what "my bookings" counts.
+export function activeBookings(bookings: Booking[], now: Date): Booking[] {
+  return bookings.filter((b) => (b.status === 'booked' || b.status === 'checked_in') && new Date(b.ends_at) > now)
+}

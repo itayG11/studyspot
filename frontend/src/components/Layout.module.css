@@ -261,3 +261,17 @@
     display: none;
   }
 }
+
+/* How many bookings are still ahead, next to "my area". */
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-inline-start: 6px;
+  padding: 0 5px;
+  font: 600 11px / 1 var(--font-mono);
+  color: var(--on-primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-radius: var(--r-pill);
+}

@@ -29,33 +29,7 @@
 
 /* Two toggle buttons in one pill, like the list / map switch. */
 .tabs {
-  display: inline-flex;
-  justify-self: start;
-  padding: 3px;
-  background: var(--stone-2);
-  border-radius: var(--r-pill);
-}
-
-.tab {
-  min-height: 38px;
-  padding: 0 var(--s-5);
-  font: 600 var(--text-sm) var(--font-body);
-  color: var(--ink-2);
-  background: transparent;
-  border: 0;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
-}
-
-.tab[aria-pressed='true'] {
-  color: var(--ink);
-  background: var(--stone-0);
-  box-shadow: var(--shadow-1);
-}
-
-.tab:focus-visible {
-  outline: 3px solid var(--ink);
+  margin-bottom: var(--s-2);
 }
 
 .toolbar {

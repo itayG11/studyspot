@@ -25,7 +25,7 @@ import {
   type Filters,
   type Flag,
 } from '../../logic/filters'
-import { Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Skeleton } from '../../ui'
+import { Button, Chip, EmptyState, ErrorState, LoadingRegion, SearchField, Segmented, Skeleton } from '../../ui'
 import { CampusLoad } from '../load/CampusLoad'
 import { SpaceCard } from './SpaceCard'
 import styles from './finder.module.css'
@@ -201,14 +201,15 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
             ניקוי הסינון
           </Button>
         )}
-        <div className={styles.views} role="group" aria-label="תצוגה">
-          <button type="button" aria-pressed={!isMap} onClick={() => update({ ...filters, view: 'list' })}>
-            <List aria-hidden="true" /> רשימה
-          </button>
-          <button type="button" aria-pressed={isMap} onClick={() => update({ ...filters, view: 'map' })}>
-            <MapIcon aria-hidden="true" /> מפה
-          </button>
-        </div>
+        <Segmented
+          label="תצוגה"
+          value={isMap ? 'map' : 'list'}
+          onChange={(view) => update({ ...filters, view })}
+          options={[
+            { value: 'list', label: <><List aria-hidden="true" /> רשימה</> },
+            { value: 'map', label: <><MapIcon aria-hidden="true" /> מפה</> },
+          ]}
+        />
       </div>
 
       {isMap && selected && (

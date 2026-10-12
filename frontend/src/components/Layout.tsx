@@ -7,6 +7,12 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { SiteFooter } from './SiteFooter'
+import { CampusPulse } from './CampusPulse'
+import { CampusTodayProvider, useCampusToday } from '../features/load/campusToday'
+import { myBookings } from '../api/student'
+import { REFRESH_INTERVAL_MS } from '../config'
+import { useApi } from '../hooks/useApi'
+import { activeBookings } from '../logic/bookings'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   student: 'סטודנט',
@@ -39,6 +45,7 @@ export function Layout() {
   }, [])
 
   return (
+    <CampusTodayProvider slug={institution.slug}>
     <div className={styles.app}>
       <header ref={header} className={styles.header}>
         <Link to={home} className={styles.brand} viewTransition>
@@ -62,9 +69,7 @@ export function Layout() {
           >
             חיפוש מקום
           </NavLink>
-          {status === 'signed-in' && (
-            <NavLink to="/me" className={styles.navLink} viewTransition>האזור שלי</NavLink>
-          )}
+          {status === 'signed-in' && user && <MyAreaLink userId={user.id} />}
           {user && user.role !== 'student' && (
             // An institution's admin manages their own; the system admin, the one shown.
             <NavLink
@@ -80,6 +85,7 @@ export function Layout() {
           )}
           <NavLink to="/institutions" className={styles.navLink} viewTransition>מוסדות</NavLink>
         </nav>
+        <Pulse home={home} />
         <div className={styles.account}>
           <ThemeSwitch />
           {status === 'signed-in' && user && (
@@ -107,5 +113,34 @@ export function Layout() {
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration />
     </div>
+    </CampusTodayProvider>
+  )
+}
+
+function Pulse({ home }: { home: string }) {
+  const today = useCampusToday()
+  return <CampusPulse today={today.data} home={home} />
+}
+
+// "My area", with how many bookings are still ahead: the count is also in
+// its name, for a screen reader.
+function MyAreaLink({ userId }: { userId: number }) {
+  // Counted when the answer arrives, against the clock at that moment.
+  const active = useApi(
+    () => myBookings().then((all) => activeBookings(all, new Date()).length),
+    `my-bookings-${userId}`,
+    REFRESH_INTERVAL_MS,
+  )
+  const count = active.data ?? 0
+  return (
+    <NavLink
+      to="/me"
+      className={styles.navLink}
+      aria-label={count > 0 ? `האזור שלי, ${count === 1 ? 'הזמנה אחת' : `${count} הזמנות`}` : undefined}
+      viewTransition
+    >
+      האזור שלי
+      {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
+    </NavLink>
   )
 }

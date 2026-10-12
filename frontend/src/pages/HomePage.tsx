@@ -3,13 +3,14 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocation } from 'react-router'
-import { getBuildings, getCampusToday, getPlaces } from '../api/campus'
+import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { InstallTip } from '../components/InstallTip'
 import { Finder } from '../features/finder/Finder'
 import { FinderReveal } from '../features/finder/FinderReveal'
 import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
 import { useApi } from '../hooks/useApi'
+import { useCampusToday } from '../features/load/campusToday'
 import { hasFilters, readFilters } from '../logic/filters'
 import { useInstitution } from '../institution'
 
@@ -40,7 +41,7 @@ export function HomePage() {
   const { slug } = useInstitution()
   const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`, REFRESH_INTERVAL_MS)
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
-  const today = useApi(() => getCampusToday(slug), `today-${slug}`, REFRESH_INTERVAL_MS)
+  const today = useCampusToday() // shared with the header's pulse (Layout)
   const location = useLocation()
   const ready = places.data !== null && buildings.data !== null
 

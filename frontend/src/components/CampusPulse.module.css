@@ -1,0 +1,71 @@
+.pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 34px;
+  padding: 0 var(--s-3);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--stone-0) 70%, transparent);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  transition: border-color var(--dur-ui) ease;
+}
+
+.pulse:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .pulse:hover {
+    border-color: var(--free);
+  }
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--free);
+}
+
+.demo {
+  color: var(--ink-3);
+}
+
+/* The one thing that pulses on the page: it is live. Still, when the
+   device asks for less motion. */
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--free);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dot {
+    animation: beat 2.4s var(--ease-out) infinite;
+  }
+}
+
+@keyframes beat {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--free) 55%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--free) 0%, transparent);
+  }
+}
+
+/* A phone's header is narrow: the number and the dot are enough. */
+@media (max-width: 720px) {
+  .words,
+  .demo {
+    display: none;
+  }
+}

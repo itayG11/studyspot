@@ -10,6 +10,7 @@ import styles from './admin.module.css'
 import { Placer } from './Placer'
 import { Setup, useSetup } from './Setup'
 import { Signs } from './Signs'
+import { Segmented } from '../ui'
 
 type Tab = 'setup' | 'signs' | 'placing' | 'adding'
 
@@ -39,18 +40,18 @@ export function AdminPage() {
         <p className={styles.eyebrow}>מנהל המוסד</p>
         <h1 className={styles.title}>ניהול</h1>
       </header>
-      {/* Two plain toggle buttons: simpler than full ARIA tabs, and honest
-          about what they are. */}
-      <div className={styles.tabs} role="group" aria-label="ניהול">
-        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-          <button key={t} type="button" className={styles.tab} aria-pressed={tab === t} onClick={() => {
-              setTab(t)
-              setToPlace(null) // a building chosen once is not chosen again later
-            }}>
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      {/* Plain toggle buttons: simpler than full ARIA tabs, and honest
+          about what they are (src/ui/Segmented). */}
+      <Segmented
+        label="ניהול"
+        className={styles.tabs}
+        value={tab}
+        options={(Object.keys(TAB_LABELS) as Tab[]).map((t) => ({ value: t, label: TAB_LABELS[t] }))}
+        onChange={(t) => {
+          setTab(t)
+          setToPlace(null) // a building chosen once is not chosen again later
+        }}
+      />
       <section aria-label={TAB_LABELS[tab]}>
         {tab === 'setup' && <Setup setup={setup} onGo={(t) => setTab(t)} />}
         {tab === 'signs' && <Signs />}
