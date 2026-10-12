@@ -44,8 +44,12 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
-      - run: pip install -e ".[dev]"
+          cache-dependency-path: backend/requirements-dev.lock
+      # The exact versions in the lock file, each checked against its hash;
+      # then the app itself, with nothing new pulled in (--no-deps).
+      - run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
       - run: ruff check app tests
       - name: Migrations build the schema, and match the models
         run: |
@@ -71,6 +75,44 @@ jobs:
       - run: npm test
       - run: npm run build # includes the type check (tsc -b)
 
+  # Known vulnerabilities in the libraries we ship, a lock file that still
+  # matches pyproject.toml, and no secret anywhere in the git history.
+  security:
+    name: Security (pip-audit, npm audit, lock file, secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the whole history, for the secret scan
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pip install pip-tools==7.6.2 pip-audit==2.10.1
+      - name: The lock files match pyproject.toml
+        working-directory: backend
+        # pip-compile keeps every pin it can, so this changes the files only
+        # when pyproject.toml asks for something the lock does not have.
+        run: |
+          pip-compile -q --generate-hashes --strip-extras --allow-unsafe -o requirements.lock pyproject.toml
+          pip-compile -q --generate-hashes --strip-extras --allow-unsafe --extra dev -o requirements-dev.lock pyproject.toml
+          git diff --exit-code -- requirements.lock requirements-dev.lock
+      - name: Known vulnerabilities in the server's libraries
+        working-directory: backend
+        run: pip-audit --strict -r requirements.lock --require-hashes --disable-pip
+      - name: Known vulnerabilities in the libraries the browser gets
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=moderate
+      - name: No secret in the git history
+        # A pinned release, checked against its published checksum.
+        run: |
+          curl -fsSL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+          ./gitleaks git --no-banner --redact --exit-code 1 .
+
   browser:
     name: Whole site in a browser (Playwright, axe)
     runs-on: ubuntu-latest
@@ -91,7 +133,7 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: backend/pyproject.toml
+          cache-dependency-path: backend/requirements.lock
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -100,7 +142,8 @@ jobs:
       - name: Database with both campuses
         working-directory: backend
         run: |
-          pip install -e .
+          pip install --require-hashes -r requirements.lock
+          pip install --no-deps -e .
           alembic upgrade head
           python -m app.seed
       - working-directory: frontend

@@ -1,0 +1,38 @@
+# CodeQL reads the code itself (the server's Python and the web app's
+# TypeScript) and looks for patterns of security bugs, such as input that
+# reaches a query or a page unchecked. Free for a public repository; the
+# findings show under Security > Code scanning.
+name: CodeQL
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1" # Mondays: new rules find old code too
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none # both are read from source; nothing to compile
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

@@ -91,7 +91,8 @@ cp .env.example .env              # then replace every change-me with one real p
 docker compose up -d              # PostgreSQL 16
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install --require-hashes -r requirements-dev.lock   # the exact locked versions
+pip install --no-deps -e .
 alembic upgrade head              # create the tables
 python -m app.seed                # load Braude, and the demo campus the live site shows
 python -m app.codes braude        # print the signed check-in code of every place

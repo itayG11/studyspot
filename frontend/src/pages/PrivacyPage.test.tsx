@@ -25,4 +25,12 @@ describe('PrivacyPage', () => {
     expect(screen.getByRole('heading', { name: 'כמה זמן נשמר' })).toBeInTheDocument()
     expect(screen.getByText(/השרת שלנו רושם.*בלי כתובת ה-IP/)).toBeInTheDocument()
   })
+
+  it('says how to reach us: an issue on the project page, not an e-mail address', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'איך פונים' })).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /פנייה בדף הפרויקט/ })
+    expect(link).toHaveAttribute('href', 'https://github.com/itayG11/studyspot/issues')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+  })
 })

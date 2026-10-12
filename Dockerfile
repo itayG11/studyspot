@@ -28,9 +28,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     STATIC_DIR=/app/static
 WORKDIR /app
+# The exact versions in the lock file, each checked against its hash: two
+# builds of the same commit install the same libraries, and a file that
+# does not match its hash is refused. Then the app, with nothing new pulled.
+COPY backend/requirements.lock ./
+RUN pip install --require-hashes -r requirements.lock
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
-RUN pip install .
+RUN pip install --no-deps .
 COPY backend/alembic.ini ./
 COPY backend/migrations ./migrations
 COPY --from=web /web/dist ./static
