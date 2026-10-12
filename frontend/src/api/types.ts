@@ -111,6 +111,7 @@ export interface CampusToday {
   weekday: number
   capacity: number
   occupied: number // live, now
+  free_now: number // seats free in the places open now: 0 when all are closed
   weeks: number // 0: no forecast yet
   simulated: boolean
   slots: { start: string; usual: number | null; today: number | null }[]

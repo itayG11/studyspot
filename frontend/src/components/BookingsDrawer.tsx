@@ -5,10 +5,11 @@
 // It is the same <dialog> as the booking sheet (ui/Sheet): focus stays
 // inside, Escape closes it, and focus goes back to the button that opened it.
 
+import { useRef, useState } from 'react'
 import type { Booking } from '../api/types'
 import { useAction } from '../hooks/useAction'
 import { formatDay, formatTime } from '../logic/time'
-import { ActionError, ButtonLink, ConfirmButton, Sheet, useToast } from '../ui'
+import { ActionError, ButtonLink, ConfirmButton, Sheet } from '../ui'
 import styles from './BookingsDrawer.module.css'
 
 interface BookingsDrawerProps {
@@ -20,14 +21,34 @@ interface BookingsDrawerProps {
 }
 
 export function BookingsDrawer({ open, bookings, timeZone, onClose, onCancel }: BookingsDrawerProps) {
+  // Said here, not in a toast: the page behind the open drawer, toasts
+  // included, is under its backdrop. The note also takes the focus, since
+  // the row (and its button) that had it is gone.
+  const [done, setDone] = useState<string | null>(null)
+  const note = useRef<HTMLParagraphElement>(null)
+  const cancelled = (where: string) => {
+    setDone(`ההזמנה ל-${where} בוטלה.`)
+    requestAnimationFrame(() => note.current?.focus())
+  }
   return (
-    <Sheet open={open} onClose={onClose} title="ההזמנות הקרובות" side="end">
+    <Sheet
+      open={open}
+      onClose={() => {
+        setDone(null)
+        onClose()
+      }}
+      title="ההזמנות הקרובות"
+      side="end"
+    >
+      <p ref={note} className={styles.done} role="status" tabIndex={-1}>
+        {done}
+      </p>
       {bookings.length === 0 ? (
         <p className={styles.empty}>אין הזמנות קרובות.</p>
       ) : (
         <ul className={styles.list}>
           {bookings.map((booking) => (
-            <Row key={booking.id} booking={booking} timeZone={timeZone} onCancel={onCancel} />
+            <Row key={booking.id} booking={booking} timeZone={timeZone} onCancel={onCancel} onCancelled={cancelled} />
           ))}
         </ul>
       )}
@@ -38,8 +59,14 @@ export function BookingsDrawer({ open, bookings, timeZone, onClose, onCancel }: 
   )
 }
 
-function Row({ booking, timeZone, onCancel }: { booking: Booking; timeZone: string; onCancel: (id: number) => Promise<void> }) {
-  const toast = useToast()
+interface RowProps {
+  booking: Booking
+  timeZone: string
+  onCancel: (id: number) => Promise<void>
+  onCancelled: (where: string) => void
+}
+
+function Row({ booking, timeZone, onCancel, onCancelled }: RowProps) {
   const action = useAction()
   const where = `${booking.place_name}${booking.seat_label ? `, תא ${booking.seat_label}` : ''}`
   const day = formatDay(booking.starts_at, timeZone)
@@ -64,7 +91,7 @@ function Row({ booking, timeZone, onCancel }: { booking: Booking; timeZone: stri
           onConfirm={() =>
             void action.run(async () => {
               await onCancel(booking.id)
-              toast(`ההזמנה ל-${where} בוטלה.`, 'success')
+              onCancelled(where)
             })
           }
         />

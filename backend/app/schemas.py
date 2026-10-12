@@ -408,6 +408,7 @@ class CampusTodayOut(BaseModel):
     weekday: int
     capacity: int
     occupied: int
+    free_now: int
     weeks: int
     simulated: bool
     slots: list[CampusSlotOut]

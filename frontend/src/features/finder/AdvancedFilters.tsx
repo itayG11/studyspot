@@ -57,6 +57,10 @@ export function AdvancedFilters({ open, filters, buildings, update }: Omit<Advan
             <span>בניין</span>
             <select value={filters.building ?? ''} onChange={(e) => update({ ...filters, building: e.target.value || null })}>
               <option value="">כל הבניינים</option>
+              {/* A link to a building not on the list (renamed, removed): shown, so the empty list has a reason. */}
+              {filters.building && !(buildings ?? []).some((b) => b.code === filters.building) && (
+                <option value={filters.building}>בניין {filters.building}</option>
+              )}
               {(buildings ?? []).map((b) => (
                 <option key={b.code} value={b.code}>
                   בניין {b.code}

@@ -422,6 +422,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
+  margin: var(--s-3) 0;
 }
 
 .moreToggle {
@@ -477,6 +478,7 @@
 }
 
 .advanced {
+  margin-bottom: var(--s-3);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--s-3) var(--s-4);

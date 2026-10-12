@@ -163,3 +163,17 @@ def test_one_place_today_is_hourly_and_hides_a_few_people(client, session):
     assert {"start": "08:00:00", "people": 0} in today
     assert {"start": "10:00:00", "people": 4} in today
     assert all(t["start"].endswith(":00:00") for t in today)
+
+
+def test_free_now_counts_only_the_places_open_now(client, session):
+    # The header's "free now": a closed place's seats are not free to walk into.
+    demo = seed_demo(session)
+    client.clock.now = SUNDAY_1PM
+    area = place_named(demo, "L", "מתחם לימוד")
+    stay(session, demo, area, at(9), SUNDAY_1PM + timedelta(hours=1))
+    body = client.get("/institutions/demo/load/today").json()
+    places = client.get("/institutions/demo/places").json()
+    open_free = sum(p["available"] for p in places if p["is_open"] and p["kind"] != "group_room")
+    assert body["free_now"] == open_free  # the same number as the tiles under it
+    client.clock.now = SUNDAY.replace(hour=23, minute=30)  # every place closed
+    assert client.get("/institutions/demo/load/today").json()["free_now"] == 0

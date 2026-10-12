@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CalendarClock } from 'lucide-react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router'
 import { Pin } from '../illustrations/Pin'
@@ -154,11 +155,13 @@ function MyAreaLink({ userId }: { userId: number }) {
         האזור שלי
         {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
       </NavLink>
-      {count > 0 && (
+      {(count > 0 || drawer) && (
         <button type="button" className={styles.drawerButton} aria-label="ההזמנות הקרובות" onClick={() => setDrawer(true)}>
           <CalendarClock aria-hidden="true" />
         </button>
       )}
+      {/* Out of the navigation landmark: a dialog is not part of the menu. */}
+      {createPortal(
       <BookingsDrawer
         open={drawer}
         bookings={active}
@@ -168,7 +171,9 @@ function MyAreaLink({ userId }: { userId: number }) {
           await cancelBooking(id)
           bookings.reload()
         }}
-      />
+      />,
+      document.body,
+      )}
     </>
   )
 }

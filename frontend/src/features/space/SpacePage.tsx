@@ -5,7 +5,7 @@
 
 import { ArrowRight, KeyRound, Star, Users, Volume1 } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, Navigate, useLocation, useParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { getPlace } from '../../api/campus'
 import type { Booking, PlaceDetail, Seat } from '../../api/types'
 import { LiveNote } from '../../components/LiveNote'
@@ -73,9 +73,17 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   // open of the sheet; after that it stays, so closing keeps the choices.
   const [sheetUsed, setSheetUsed] = useState(cameToBook && tall)
   const back = backToFinder(state, slug, place.building_code)
+  // Used once: taken out of the history entry, so a reload or "back" here
+  // does not open the booking again (the way back to the search stays).
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   useEffect(() => {
-    if (cameToBook && !tall) jumpTo('book')
-  }, [cameToBook, tall])
+    if (!cameToBook) return
+    if (!tall) jumpTo('book')
+    navigate(pathname, { replace: true, state: { finder: (state as { finder?: string } | null)?.finder } })
+    // Once, on arrival: not again when the window is resized.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameToBook])
   const [booked, setBooked] = useState<Booking | null>(null)
   const seat: Seat | null = place.seats?.find((s) => s.id === seatId) ?? null
   const isLab = place.kind === 'computer_lab'

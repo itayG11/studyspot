@@ -10,7 +10,8 @@ import styles from './CampusPulse.module.css'
 
 export function CampusPulse({ today, home }: { today: CampusToday | null; home: string }) {
   if (today === null || today.capacity === 0) return null
-  const free = Math.max(0, today.capacity - today.occupied)
+  // From the places open now only: at night, 0, not the campus's size.
+  const free = Math.max(0, today.free_now)
   const words = `${free} מקומות פנויים עכשיו בקמפוס${today.simulated ? ', נתוני דמו' : ''}`
   return (
     <Link to={`${home}#finder`} className={styles.pulse} aria-label={words}>

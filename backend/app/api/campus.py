@@ -304,7 +304,8 @@ def get_campus_today(slug: Slug, session: SessionDep, now: NowDep):
     """The campus today, hour by hour: usually, and so far today."""
     result = campus_today(session, _institution(session, slug), now)
     return CampusTodayOut(
-        weekday=result.weekday, capacity=result.capacity, occupied=result.occupied, weeks=result.weeks,
+        weekday=result.weekday, capacity=result.capacity, occupied=result.occupied, free_now=result.free_now,
+        weeks=result.weeks,
         simulated=result.simulated,
         slots=[{"start": s.start, "usual": s.usual, "today": s.today} for s in result.slots],
         places=[{"place_id": pid, "next_hour": share} for pid, share in result.next_hour.items()],

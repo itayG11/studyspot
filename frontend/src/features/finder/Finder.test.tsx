@@ -51,7 +51,7 @@ describe('Finder', () => {
     const first = PLACES[0] as Place
     renderFinder({
       today: {
-        weekday: 6, capacity: 50, occupied: 10, weeks: 8, simulated: false,
+        weekday: 6, capacity: 50, occupied: 10, free_now: 40, weeks: 8, simulated: false,
         slots: [{ start: '09:00:00', usual: 12, today: 10 }],
         places: [{ place_id: first.id, next_hour: 0.9 }],
       },
@@ -132,6 +132,13 @@ describe('Finder', () => {
     expect(router.state.location.search).toContain('amenity=whiteboard')
     expect(router.state.location.search).toContain('people=4')
     expect(toggle).toHaveTextContent('3') // three expanded filters on
+  })
+
+  it('a link to a building that is not on the list still shows it in the panel', async () => {
+    renderFinder({ path: '/?building=ZZ' })
+    const select = (await screen.findByLabelText('בניין')) as HTMLSelectElement
+    expect(select.value).toBe('ZZ')
+    expect(screen.getByText('אין מקום שמתאים לכל הסינונים')).toBeInTheDocument()
   })
 
   it('a shared link with expanded filters opens their panel', async () => {

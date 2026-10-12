@@ -11,7 +11,7 @@ const NOW = new Date('2026-10-11T07:20:00Z')
 
 function today(overrides: Partial<CampusToday> = {}): CampusToday {
   return {
-    weekday: 6, capacity: 250, occupied: 120, weeks: 8, simulated: true,
+    weekday: 6, capacity: 250, occupied: 120, free_now: 130, weeks: 8, simulated: true,
     slots: [
       { start: '09:00:00', usual: 60, today: 70 },
       { start: '10:00:00', usual: 80, today: 110 },
@@ -68,5 +68,11 @@ describe('CampusLoad', () => {
   it('without a forecast, the last tile says so', () => {
     render(<CampusLoad data={today({ weeks: 0 })} places={[place()]} timeZone="Asia/Jerusalem" now={NOW} />)
     expect(screen.getByRole('list', { name: 'הקמפוס עכשיו' })).toHaveTextContent('עוד איןחיזוי')
+  })
+
+  it('on a closed day the last tile says closed, like the line', () => {
+    render(<CampusLoad data={today({ slots: [] })} places={[place({ is_open: false })]} timeZone="Asia/Jerusalem" now={NOW} />)
+    expect(screen.getByText('הקמפוס סגור היום.')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'הקמפוס עכשיו' })).toHaveTextContent('סגורהיום')
   })
 })

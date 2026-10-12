@@ -96,6 +96,12 @@ describe('applyFilters', () => {
 })
 
 describe('the expanded filters', () => {
+  it('takes from the address only a group size the panel offers', () => {
+    // ?people=7 would filter while the select showed "any".
+    for (const odd of ['7', '0x4', '1e1', '4.0', ' 4']) expect(readFilters(new URLSearchParams(`people=${odd}`)).people).toBeNull()
+    expect(readFilters(new URLSearchParams('people=8')).people).toBe(8)
+  })
+
   it('keeps only the chosen building', () => {
     expect(applyFilters(ALL, { ...EMPTY_FILTERS, building: 'EM' }, []).map((p) => p.id)).toEqual([3])
   })

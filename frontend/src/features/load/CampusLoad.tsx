@@ -42,7 +42,7 @@ export function CampusLoad({ data, places = null, timeZone, now: start }: Campus
       <h2 id="campus-today" className={styles.title}>
         העומס היום בקמפוס
       </h2>
-      {places && <Tiles places={places} compared={compared} hasForecast={data.weeks > 0} />}
+      {places && <Tiles places={places} compared={compared} hasForecast={data.weeks > 0} closedToday={hours.length === 0} />}
       {hours.length === 0 ? (
         <p className={styles.line}>הקמפוס סגור היום.</p>
       ) : (
@@ -74,9 +74,22 @@ export function CampusLoad({ data, places = null, timeZone, now: start }: Campus
 
 // Four numbers at a glance, every one from the server: no figure here is
 // written into the page.
-function Tiles({ places, compared, hasForecast }: { places: Place[]; compared: keyof typeof COMPARED | null; hasForecast: boolean }) {
+interface TilesProps {
+  places: Place[]
+  compared: keyof typeof COMPARED | null
+  hasForecast: boolean
+  closedToday: boolean
+}
+
+function Tiles({ places, compared, hasForecast, closedToday }: TilesProps) {
   const t = campusTiles(places)
-  const vsUsual = compared ? [COMPARED[compared], 'בשעה הזו'] : hasForecast ? ['אין השוואה', 'בשעה הזו'] : ['עוד אין', 'חיזוי']
+  const vsUsual = closedToday
+    ? ['סגור', 'היום']
+    : compared
+      ? [COMPARED[compared], 'בשעה הזו']
+      : hasForecast
+        ? ['אין השוואה', 'בשעה הזו']
+        : ['עוד אין', 'חיזוי']
   const tiles = [
     [String(t.freeSeats), 'מקומות פנויים עכשיו'],
     [`${t.open} מתוך ${t.places}`, 'פתוחים עכשיו'],

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.forecast import Forecast, _quarter_hours, forecast
 from app.history import SLOT
+from app.hours import opening_status
 from app.models import Institution, Place, PlaceKind
 from app.occupancy import occupied_by_place, open_all_day_place_ids
 from app.seed.live import is_simulated_campus
@@ -100,6 +101,7 @@ class CampusToday:
     weekday: int
     capacity: int
     occupied: int
+    free_now: int  # seats free in the places open now (the header's pulse)
     weeks: int
     simulated: bool
     slots: list[CampusSlot]
@@ -166,10 +168,15 @@ def _work_out(session: Session, institution: Institution, now: datetime) -> Camp
         # to close is not "usually quiet in an hour".
         whole = len(quarters) == len(coming) and place.id not in all_day
         next_hour[place.id] = round(min(sum(quarters) / len(quarters) / place.capacity, 1), 2) if whole and place.capacity else None
+    # The same rule as the place list (api/campus.py): a closed place has
+    # no seat free to walk into, so at night the pulse says 0, not the
+    # campus's whole size.
+    open_now = [p for p in places if opening_status(p.opening_hours, local, p.id in all_day).is_open]
     return CampusToday(
         weekday=weekday,
         capacity=sum(p.capacity for p in places),
         occupied=sum(live.values()),
+        free_now=sum(max(p.capacity - live.get(p.id, 0), 0) for p in open_now),
         weeks=max((f.weeks for f in with_forecast), default=0),
         simulated=is_simulated_campus(institution) or any(f.simulated for f in with_forecast),
         slots=slots,

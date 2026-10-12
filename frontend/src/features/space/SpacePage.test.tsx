@@ -60,6 +60,7 @@ function renderAt(path: string, state?: unknown) {
       </InstitutionProvider>
     </AuthProvider>,
   )
+  return router
 }
 
 const placeCalls = () => fetchMock.mock.calls.filter(([url]) => new URL(url).pathname.startsWith('/places'))
@@ -105,9 +106,12 @@ describe('SpacePage', () => {
   it('"book" on a card opens the booking at once: the form on a computer', async () => {
     const room = lab({ id: 3, kind: 'group_room', name: 'EM107', lab_rows: null, lab_cols: null, seats: null })
     placeResponses.push(() => jsonResponse(room))
-    renderAt('/spaces/3', { book: true })
+    const router = renderAt('/spaces/3', { book: true, finder: '?q=EM' })
     await screen.findByRole('heading', { name: 'הזמנה מראש' })
     expect(document.activeElement?.id).toBe('book')
+    // Used once: a reload or "back" here does not open the booking again,
+    // and the way back to the search stays.
+    await vi.waitFor(() => expect(router.state.location.state).toEqual({ finder: '?q=EM' }))
   })
 
   it('an invalid address shows "not found" without asking the server', async () => {

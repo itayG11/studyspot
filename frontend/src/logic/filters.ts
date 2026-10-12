@@ -48,6 +48,7 @@ const code = (value: string | null) => (value !== null && BUILDING_CODE.test(val
 
 export function readFilters(params: URLSearchParams): Filters {
   const people = Number(params.get('people'))
+  // Only a size the panel offers: ?people=7 would filter while it showed "any".
   const amenities = params.getAll('amenity')
   return {
     q: (params.get('q') ?? '').slice(0, MAX_QUERY),
@@ -56,7 +57,7 @@ export function readFilters(params: URLSearchParams): Filters {
     near: code(params.get('near')),
     view: params.get('view') === 'map' ? 'map' : 'list',
     building: code(params.get('building')),
-    people: Number.isInteger(people) && people > 0 && people <= 500 ? people : null,
+    people: PEOPLE_OPTIONS.includes(people) && params.get('people') === String(people) ? people : null,
     amenities: AMENITIES.filter((a) => amenities.includes(a)),
   }
 }

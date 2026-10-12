@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import type { Booking } from '../api/types'
-import { ToastProvider } from '../ui/Toast'
 import { BookingsDrawer } from './BookingsDrawer'
 
 const ROOM: Booking = {
@@ -15,9 +14,7 @@ const LAB: Booking = { ...ROOM, id: 8, place_name: 'M206', seat_id: 1, seat_labe
 function renderDrawer(onCancel = vi.fn(() => Promise.resolve()), onClose = vi.fn()) {
   render(
     <MemoryRouter>
-      <ToastProvider>
         <BookingsDrawer open bookings={[ROOM, LAB]} timeZone="Asia/Jerusalem" onClose={onClose} onCancel={onCancel} />
-      </ToastProvider>
     </MemoryRouter>,
   )
   return { onCancel, onClose }
@@ -39,6 +36,10 @@ describe('BookingsDrawer', () => {
     await userEvent.click(within(room).getByRole('button', { name: 'לבטל' }))
     await userEvent.click(within(room).getByRole('button', { name: 'כן, לבטל' }))
     expect(onCancel).toHaveBeenCalledWith(7)
+    // Said inside the drawer, which also keeps the focus.
+    const note = await screen.findByRole('status')
+    expect(note).toHaveTextContent('ההזמנה ל-EM107 בוטלה.')
+    await vi.waitFor(() => expect(document.activeElement).toBe(note))
     const lab = screen.getByRole('listitem', { name: /M206/ })
     expect(within(lab).queryByRole('button', { name: 'לבטל' })).not.toBeInTheDocument()
   })
