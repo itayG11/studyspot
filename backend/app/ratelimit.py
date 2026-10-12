@@ -192,6 +192,7 @@ def per_person(name: str, limit: int, window_seconds: float) -> Callable:
 # a page asks every half minute, so a person is far below this.
 # Reading a timetable file is heavier than a write: a few a minute is plenty.
 import_limit = per_person("timetable-import", limit=10, window_seconds=60)
+campus_import_limit = per_person("campus-import", limit=10, window_seconds=60)
 BETWEEN_PER_MINUTE = 30
 between_limit = per_person("between-classes", limit=BETWEEN_PER_MINUTE, window_seconds=60)
 

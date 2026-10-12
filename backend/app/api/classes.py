@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app import classes, timetable_import, timetable_photo
-from app.api.deps import get_session
+from app.api.deps import get_session, limited_body
 from app.auth import get_current_user
 from app.between_classes import suggest
 from app.clock import get_now
@@ -101,7 +101,7 @@ async def preview_import(request: Request, user: UserDep, db: SessionDep):
     """A timetable exported from the college, sent as the request body: what
     it holds, for the student to check and add. Nothing is saved, and the
     file is not kept (app/timetable_import.py)."""
-    data = await _limited_body(request, timetable_import.MAX_BYTES)
+    data = await limited_body(request, timetable_import.MAX_BYTES)
     buildings = await run_in_threadpool(
         lambda: db.scalars(select(Building).where(Building.institution_id == user.institution_id)).all()
     )
@@ -144,7 +144,7 @@ def import_options(user: UserDep, reader: ReaderDep) -> dict[str, bool]:
 async def preview_photo(request: Request, user: UserDep, db: SessionDep, reader: ReaderDep):
     """A photo of the timetable, read by Claude: what it holds, for the
     student to check and add. Nothing saved, the image not kept here."""
-    data = await _limited_body(request, timetable_photo.MAX_BYTES, too_big="import_photo_too_big")
+    data = await limited_body(request, timetable_photo.MAX_BYTES, too_big="import_photo_too_big")
     try:
         timetable_photo.media_type(data)  # not an image: refused before the buildings, and the paid call
         buildings = await run_in_threadpool(
@@ -159,20 +159,6 @@ async def preview_photo(request: Request, user: UserDep, db: SessionDep, reader:
     except timetable_photo.PhotoUnavailable:
         raise HTTPException(503, "import_photo_unavailable") from None
     return [ImportRowOut(**asdict(row)) for row in rows]
-
-
-async def _limited_body(request: Request, limit: int, too_big: str = "import_too_big") -> bytes:
-    """The body, read only up to just over the limit: a huge upload is cut
-    off instead of filling the server's memory."""
-    declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > limit:
-        raise HTTPException(422, too_big)
-    data = bytearray()
-    async for chunk in request.stream():
-        data.extend(chunk)
-        if len(data) > limit:
-            raise HTTPException(422, too_big)
-    return bytes(data)
 
 
 @router.get("/me/between-classes", response_model=BetweenClassesOut, dependencies=[Depends(between_limit)])

@@ -1,32 +1,43 @@
 """Admin endpoints. An institution admin who asks about another institution
 gets 404, exactly as if it did not exist."""
 
+from dataclasses import asdict
+from datetime import datetime
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
-from app import campus_setup
+from app import campus_import, campus_setup
 from app.api.auth import get_http_client
-from app.api.deps import get_code_secret, get_session
+from app.api.deps import get_code_secret, get_session, limited_body
 from app.campus_admin import create_building, create_place, mentioned_places
+from app.clock import get_now
 from app.codes import make_code
 from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.geocode import SHARED, Geocoder
 from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 from app.permissions import can_manage, require_admin
-from app.ratelimit import geocode_limit, write_limit
+from app.ratelimit import campus_import_limit, geocode_limit, write_limit
 from app.schemas import (
     BuildingCreatedOut,
     BuildingCreateIn,
     BuildingLocationIn,
     BuildingLocationOut,
+    CampusImportIn,
+    CampusPreviewOut,
+    CampusSavedOut,
+    ExistingBuildingOut,
     GeocodeResultOut,
+    ImportedBuildingOut,
+    ImportedPlaceOut,
+    ImportProblemOut,
     InstitutionUpdateIn,
     LoginRuleIn,
     LoginRuleOut,
@@ -193,6 +204,78 @@ def add_place(
     return PlaceCreatedOut(
         id=place.id, building_id=building.id, name=place.name, kind=place.kind, capacity=place.capacity
     )
+
+
+# --- A table of buildings and places (app/campus_import.py) ------------------------------
+
+
+@router.post(
+    "/institutions/{slug}/import/preview",
+    response_model=CampusPreviewOut,
+    dependencies=[Depends(campus_import_limit)],
+)
+async def preview_campus_import(
+    slug: Annotated[str, Path(max_length=64)],
+    request: Request,
+    admin: AdminDep,
+    db: SessionDep,
+    now: Annotated[datetime, Depends(get_now)],
+):
+    """A table of buildings and places, sent as the request body: what it
+    holds, line by line, and which buildings are there already with what
+    deleting them would take. Nothing is saved, and the file is not kept."""
+    institution = await run_in_threadpool(_managed, db, admin, slug)
+    data = await limited_body(request, campus_import.MAX_BYTES)
+    try:
+        table = await run_in_threadpool(campus_import.read_table, data)
+    except campus_import.ImportRefused as refused:
+        raise HTTPException(422, refused.code) from None
+    there = await run_in_threadpool(
+        campus_import.existing, db, institution, [b.code for b in table.buildings], now
+    )
+    buildings = []
+    for b in table.buildings:
+        found = there.get(b.code)
+        buildings.append(ImportedBuildingOut(
+            code=b.code, name=b.name, floors_count=b.floors_count, latitude=b.latitude, longitude=b.longitude,
+            existing=ExistingBuildingOut(**asdict(found[1])) if found else None,
+            places=[
+                ImportedPlaceOut(
+                    line=line, **place.model_dump(),
+                    when_added=campus_import.when_added(found[0], place) if found else None,
+                )
+                for line, place in b.places
+            ],
+        ))
+    problems = [ImportProblemOut(line=line, code=code) for line, code in table.problems]
+    return CampusPreviewOut(buildings=buildings, problems=problems)
+
+
+@router.post(
+    "/institutions/{slug}/import", response_model=CampusSavedOut, dependencies=[Depends(campus_import_limit)]
+)
+def save_campus_import(
+    slug: Annotated[str, Path(max_length=64)],
+    body: CampusImportIn,
+    admin: AdminDep,
+    db: SessionDep,
+    settings: SettingsDep,
+):
+    """The table as the admin confirmed it, in one transaction: every
+    building and place is checked again as in the forms, and one refusal
+    saves nothing."""
+    institution = _managed(db, admin, slug, lock=True)
+    try:
+        saved = campus_import.save(db, institution, body.buildings, demo_slug=_demo_slug(settings))
+        db.commit()
+    except Refusal as refusal:
+        db.rollback()
+        raise HTTPException(refusal.status, refusal.code) from None
+    except IntegrityError:
+        # The same building or place added in another tab a moment ago.
+        db.rollback()
+        raise HTTPException(409, "import_stale") from None
+    return CampusSavedOut(**asdict(saved))
 
 
 # --- The institution's own setup: details, who signs in, opening it ----------

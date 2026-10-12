@@ -147,6 +147,92 @@ class PlaceCreatedOut(BaseModel):
     capacity: int
 
 
+# --- A table of buildings and places (app/campus_import.py) ------------------------------
+
+IMPORT_BUILDINGS = 100
+IMPORT_PLACES = 300  # app/campus_import.py MAX_ROWS
+
+
+class CampusImportBuildingIn(BuildingCreateIn):
+    """One building of the table, as the admin confirmed it. A building
+    that is already there: "add" puts the new places into it; "replace"
+    deletes it first, and only with the number of places the admin was
+    shown, so a building that changed since is not deleted unseen."""
+
+    action: Literal["add", "replace"] = "add"
+    expected_places: int | None = Field(default=None, ge=0)
+    places: list[PlaceCreateIn] = Field(default_factory=list, max_length=IMPORT_PLACES)
+
+    @model_validator(mode="after")
+    def _replace_needs_the_count(self) -> "CampusImportBuildingIn":
+        if self.action == "replace" and self.expected_places is None:
+            raise ValueError("replace needs expected_places")
+        return self
+
+
+class CampusImportIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    buildings: list[CampusImportBuildingIn] = Field(min_length=1, max_length=IMPORT_BUILDINGS)
+
+    @model_validator(mode="after")
+    def _once_each(self) -> "CampusImportIn":
+        codes = [b.code for b in self.buildings]
+        if len(set(codes)) != len(codes):
+            raise ValueError("a building appears twice")
+        if sum(len(b.places) for b in self.buildings) > IMPORT_PLACES:
+            raise ValueError("too many places")
+        return self
+
+
+class ImportedPlaceOut(BaseModel):
+    line: int
+    kind: PlaceKind
+    name: str
+    floor: int
+    capacity: int | None
+    lab_rows: int | None
+    lab_cols: int | None
+    location_note: str | None
+    # Why it would not go into the building that is there now, if it is.
+    when_added: Literal["place_name_taken", "floor_not_in_building"] | None
+
+
+class ExistingBuildingOut(BaseModel):
+    name: str | None
+    floors_count: int
+    places: int
+    upcoming_bookings: int
+    classes: int
+
+
+class ImportedBuildingOut(BaseModel):
+    code: str
+    name: str | None
+    floors_count: int
+    latitude: Decimal | None
+    longitude: Decimal | None
+    existing: ExistingBuildingOut | None
+    places: list[ImportedPlaceOut]
+
+
+class ImportProblemOut(BaseModel):
+    line: int
+    code: str
+
+
+class CampusPreviewOut(BaseModel):
+    buildings: list[ImportedBuildingOut]
+    problems: list[ImportProblemOut]
+
+
+class CampusSavedOut(BaseModel):
+    buildings_added: int
+    buildings_replaced: int
+    places_added: int
+    places_skipped: int
+
+
 class BuildingLocationOut(BaseModel):
     id: int
     code: str

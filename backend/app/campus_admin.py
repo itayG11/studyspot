@@ -45,6 +45,12 @@ def _is_demo(institution: Institution, demo_slug: str | None) -> bool:
     return demo_slug is not None and institution.slug == demo_slug == _DEMO_SLUG
 
 
+def is_demo_seed_building(institution: Institution, code: str, demo_slug: str | None) -> bool:
+    """A building of the shared demo campus's seed data: the daily reset
+    puts back what visitors add and move, not what they delete."""
+    return _is_demo(institution, demo_slug) and code in _SEED_BUILDINGS
+
+
 def _count(db: Session, model, institution_id: int) -> int:
     return db.scalar(select(func.count()).select_from(model).where(model.institution_id == institution_id))
 
