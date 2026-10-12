@@ -63,9 +63,9 @@
   --primary-glow: rgb(37 99 235 / 26%);
   /* The page's light: two soft glows, blue and violet, over a faint grid
      of dots (base.css). Decoration only, under everything. */
-  --glow-a: rgb(37 99 235 / 9%);
-  --glow-b: rgb(124 58 237 / 7%);
-  --dots: rgb(20 32 58 / 7%);
+  --glow-a: rgb(37 99 235 / 16%);
+  --glow-b: rgb(124 58 237 / 13%);
+  --dots: rgb(20 32 58 / 10%);
   /* A heading in colour: large text only, every stop 3:1 or more on the
      page (measured). */
   --headline: linear-gradient(90deg, #1d4ed8, #4338ca 55%, #0e7490);

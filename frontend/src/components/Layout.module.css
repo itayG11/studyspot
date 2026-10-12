@@ -24,6 +24,19 @@
   border-bottom: 1px solid var(--hairline);
 }
 
+/* The site's signature: a thin line in its blue to violet, under the
+   header, in both themes. */
+.header::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--primary) 30%, var(--primary-2) 70%, transparent);
+  opacity: 0.7;
+}
+
 .brand {
   display: flex;
   align-items: center;
