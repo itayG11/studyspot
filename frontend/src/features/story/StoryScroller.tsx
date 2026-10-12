@@ -117,7 +117,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         </h1>
 
         <m.div className={styles.panel} style={{ opacity: panelOpacity, transform: panel }} inert={!opening}>
-          <p className={styles.eyebrow}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
+          <p className={styles.eyebrowLight}>{buildings.length} בניינים · מתעדכן כל 30 שניות</p>
           <LiveNote simulated={simulated} />
           <p className={styles.bigLine}>
             <span className={styles.number}>{freeNow}</span> מקומות פנויים עכשיו

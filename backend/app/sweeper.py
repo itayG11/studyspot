@@ -23,8 +23,9 @@ from sqlalchemy.orm import Session
 from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
+from app.email_codes import KEEP_FOR
 from app.history import delete_old_check_ins, record_history
-from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, Institution
+from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, EmailSignInCode, Institution
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
 
@@ -38,6 +39,7 @@ class SweepResult:
     expired_check_ins: int
     deleted_sessions: int = 0
     deleted_check_ins: int = 0
+    deleted_codes: int = 0
 
 
 def sweep(session: Session, now: datetime) -> SweepResult:
@@ -70,6 +72,9 @@ def sweep(session: Session, now: datetime) -> SweepResult:
         except Exception:
             log.exception("live simulation failed; the rest of the sweep goes on")
     old_check_ins = delete_old_check_ins(session, now)
+    # Sign-in codes are kept a day (the privacy page says so; the daily
+    # count needs that long), whether or not the address asks again.
+    old_codes = session.execute(delete(EmailSignInCode).where(EmailSignInCode.created_at < now - KEEP_FOR)).rowcount
     session.flush()
     return SweepResult(
         no_shows=no_shows,
@@ -77,6 +82,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
         expired_check_ins=expired,
         deleted_sessions=old_sessions,
         deleted_check_ins=old_check_ins,
+        deleted_codes=old_codes,
     )
 
 

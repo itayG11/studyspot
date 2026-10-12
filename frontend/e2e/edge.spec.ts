@@ -357,3 +357,29 @@ test('a building moved on the admin map moves in the API too', async ({ page, re
     expect(restored.ok()).toBeTruthy()
   }
 })
+
+// Between a phone and a wide screen, everything in the header stays on the
+// screen: the sign-out button had gone off the side at tablet widths, hidden
+// by the page's overflow clip.
+test('the header fits at every width between a phone and a computer', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'computer', 'widths are set by hand; once is enough')
+  for (const persona of [null, 'student', 'admin'] as const) {
+    if (persona) await signIn(page, persona)
+    else await page.context().clearCookies()
+    for (const width of [641, 720, 768, 820, 900, 1000]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      await expect(page.getByRole('banner')).toBeVisible()
+      const outside = await page.getByRole('banner').evaluate((header) =>
+        [...header.querySelectorAll('a, button, [role="switch"]')]
+          .filter((el) => el.getClientRects().length > 0)
+          .filter((el) => {
+            const box = el.getBoundingClientRect()
+            return box.left < -1 || box.right > window.innerWidth + 1
+          })
+          .map((el) => el.textContent?.trim() || el.getAttribute('aria-label')),
+      )
+      expect(outside, `${persona ?? 'guest'} at ${width}px`).toEqual([])
+    }
+  }
+})

@@ -52,6 +52,15 @@ for (const [label, viewport, colorScheme] of [
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await check(page, 'home')
+    // One screen down the story, its dark glass panel with the live numbers.
+    // axe cannot measure text on glass over a photo (it skips it), so the
+    // panel's text is checked to be light: its first line had been dark grey.
+    await page.evaluate(() => window.scrollTo(0, window.innerHeight))
+    const line = page.getByText(/בניינים · מתעדכן כל 30 שניות/).first()
+    await expect(line).toBeVisible()
+    const rgb = (await line.evaluate((el) => getComputedStyle(el).color)).match(/\d+/g)!.map(Number)
+    expect(Math.min(...rgb.slice(0, 3)), `panel text ${rgb}`).toBeGreaterThan(200)
+    await page.evaluate(() => window.scrollTo(0, 0))
 
     await page.goto('/?q=M206#finder')
     await expect(page.getByRole('link', { name: 'M206' })).toBeVisible()

@@ -64,3 +64,18 @@ def test_sweep_deletes_sessions_past_their_lifetime(session, braude, student):
     session.flush()
     assert sweep(session, SUNDAY_10AM).deleted_sessions == 1
     assert session.scalars(select(AuthSession.token_hash)).all() == ["a" * 64]
+
+
+def test_sweep_deletes_sign_in_codes_older_than_a_day(session):
+    # The privacy page says a code is kept a day at most: without the sweep,
+    # one stayed until the same address asked for a new code.
+    from app.models import EmailSignInCode
+
+    def code(email: str, age: timedelta) -> EmailSignInCode:
+        made = SUNDAY_10AM - age
+        return EmailSignInCode(email=email, code_hash="h" * 64, created_at=made, expires_at=made + timedelta(minutes=10))
+
+    session.add_all([code("old@e.braude.ac.il", timedelta(days=2)), code("new@e.braude.ac.il", timedelta(hours=2))])
+    session.flush()
+    assert sweep(session, SUNDAY_10AM).deleted_codes == 1
+    assert session.scalars(select(EmailSignInCode.email)).all() == ["new@e.braude.ac.il"]

@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { SiteFooter } from './SiteFooter'
+import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
 import { CampusTodayProvider, useCampusToday } from '../features/load/campusToday'
 import { myBookings } from '../api/student'
@@ -111,7 +112,7 @@ export function Layout() {
       </main>
       <SiteFooter />
       {/* A new page starts at the top; "back" returns to where you were. */}
-      <ScrollRestoration />
+      <ScrollRestoration getKey={scrollKey} />
     </div>
     </CampusTodayProvider>
   )

@@ -12,4 +12,17 @@ describe('PrivacyPage', () => {
     }
     expect(screen.getByRole('link', { name: 'האזור שלי' })).toHaveAttribute('href', '/me')
   })
+
+  it('says a timetable photo goes abroad, and to crop the name and ID number out first', () => {
+    // A screenshot of the timetable often shows both.
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByText(/Anthropic.*בארצות הברית/)).toBeInTheDocument()
+    expect(screen.getByText(/לחתוך.*תעודת הזהות/)).toBeInTheDocument()
+  })
+
+  it('says how long things are kept, and that the server log has no addresses or queries', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'כמה זמן נשמר' })).toBeInTheDocument()
+    expect(screen.getByText(/השרת שלנו רושם.*בלי כתובת ה-IP/)).toBeInTheDocument()
+  })
 })
