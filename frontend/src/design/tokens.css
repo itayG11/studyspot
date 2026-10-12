@@ -1,7 +1,9 @@
 /* Design tokens: every colour, size, shadow and timing the site uses.
 
    The direction is "Galilee daylight": warm white stone, night-blue ink,
-   soft long shadows and a lot of air. Colour carries meaning only where it
+   soft long shadows and a lot of air. At night the stone turns to a deep
+   navy, lit by two soft glows, blue and violet; the main action is a blue
+   to indigo gradient in both themes. Colour carries meaning only where it
    must (free / filling / full), and always together with a shape and words.
 
    Contrast (WCAG AA, 4.5:1 for text) was measured for every text colour:
@@ -47,11 +49,26 @@
   --full: #b42f25;
   --full-tint: #fbe5e1;
   --on-full: #fff; /* text on a full-red button */
-  --closed: #6b6a64;
+  --closed: #62615b;
   --closed-tint: #ecebe7;
 
   /* The red of the chairs in the EM atrium: decoration only */
   --accent: #d2402e;
+
+  /* The main action: a blue to indigo gradient, white text on both ends
+     (AA: 5.2:1 and 6.3:1). */
+  --primary: #2563eb;
+  --primary-2: #4f46e5;
+  --on-primary: #fff;
+  --primary-glow: rgb(37 99 235 / 26%);
+  /* The page's light: two soft glows, blue and violet, over a faint grid
+     of dots (base.css). Decoration only, under everything. */
+  --glow-a: rgb(37 99 235 / 9%);
+  --glow-b: rgb(124 58 237 / 7%);
+  --dots: rgb(20 32 58 / 7%);
+  /* A heading in colour: large text only, every stop 3:1 or more on the
+     page (measured). */
+  --headline: linear-gradient(90deg, #1d4ed8, #4338ca 55%, #0e7490);
 
   /* Landscape and scene light, for the illustrations */
   --sky: #d7e8f3;
@@ -131,15 +148,22 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --stone-0: #1c2230;
-    --stone-1: #131823;
-    --stone-2: #252c3b;
-    --stone-3: #384157;
-    --ink: #e8ecf3;
-    --ink-2: #b5bdcc;
-    --ink-3: #939cae;
-    --on-ink: #131823;
-    --night: #232c40;
+    --stone-0: #0f1629;
+    --stone-1: #070b1a;
+    --stone-2: #18213a;
+    --stone-3: #2a3553;
+    --ink: #e8ecf6;
+    --ink-2: #b6bfd4;
+    --ink-3: #939eb8;
+    --on-ink: #070b1a;
+    --night: #17203a;
+    --primary: #2f60e8;
+    --primary-2: #5b4ff0;
+    --primary-glow: rgb(59 108 246 / 35%);
+    --glow-a: rgb(37 99 235 / 16%);
+    --glow-b: rgb(147 51 234 / 14%);
+    --dots: rgb(148 163 184 / 9%);
+    --headline: linear-gradient(90deg, #60a5fa, #a5b4fc 55%, #22d3ee);
     --on-night: #f3f5f9;
     --free: #5cd29c;
     --free-tint: #123328;
@@ -165,15 +189,22 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --stone-0: #1c2230;
-  --stone-1: #131823;
-  --stone-2: #252c3b;
-  --stone-3: #384157;
-  --ink: #e8ecf3;
-  --ink-2: #b5bdcc;
-  --ink-3: #939cae;
-  --on-ink: #131823;
-  --night: #232c40;
+  --stone-0: #0f1629;
+  --stone-1: #070b1a;
+  --stone-2: #18213a;
+  --stone-3: #2a3553;
+  --ink: #e8ecf6;
+  --ink-2: #b6bfd4;
+  --ink-3: #939eb8;
+  --on-ink: #070b1a;
+  --night: #17203a;
+  --primary: #2f60e8;
+  --primary-2: #5b4ff0;
+  --primary-glow: rgb(59 108 246 / 35%);
+  --glow-a: rgb(37 99 235 / 16%);
+  --glow-b: rgb(147 51 234 / 14%);
+  --dots: rgb(148 163 184 / 9%);
+  --headline: linear-gradient(90deg, #60a5fa, #a5b4fc 55%, #22d3ee);
   --on-night: #f3f5f9;
   --free: #5cd29c;
   --free-tint: #123328;

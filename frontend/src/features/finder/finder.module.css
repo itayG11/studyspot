@@ -18,14 +18,31 @@
   gap: var(--s-3);
   margin: 0 calc(-1 * var(--s-4));
   padding: var(--s-3) var(--s-4);
-  background: color-mix(in srgb, var(--stone-1) 88%, transparent);
-  backdrop-filter: blur(12px);
+  /* Glass over the page's light: an edge of its own, so that it reads as
+     a panel and not as a hole in the glow. */
+  background: color-mix(in srgb, var(--stone-1) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
 }
 
 .heading {
   margin: 0 0 var(--s-2);
   font: 700 var(--text-2xl) / 1.1 var(--font-heading);
   color: var(--ink);
+  /* In the site's colours (tokens.css --headline); plain ink where the
+     system forces its own colours. */
+  background: var(--headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@media (forced-colors: active) {
+  .heading {
+    background: none;
+    -webkit-text-fill-color: CanvasText;
+  }
 }
 
 /* One scrolling row on a phone, wrapping lines on a wide screen. */

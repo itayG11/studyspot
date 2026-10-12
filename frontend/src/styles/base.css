@@ -22,6 +22,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The page's light: a blue glow at the top right, a violet one at the
+   left, and a faint grid of dots. On a fixed layer of its own, so that
+   scrolling does not repaint it; under everything, and never in the way. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 32rem at 100% 0%, var(--glow-a), transparent 70%),
+    radial-gradient(38rem 30rem at 0% 35%, var(--glow-b), transparent 70%),
+    radial-gradient(var(--dots) 1px, transparent 1px) 0 0 / 24px 24px;
+}
+
+@media print {
+  body::before {
+    display: none;
+  }
+}
+
 h1,
 h2,
 h3 {
