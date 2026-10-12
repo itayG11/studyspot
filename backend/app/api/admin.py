@@ -20,7 +20,7 @@ from app.campus_admin import create_building, create_place, mentioned_places
 from app.clock import get_now
 from app.codes import make_code
 from app.config import Settings, get_settings
-from app.errors import Refusal, is_duplicate
+from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
 from app.geocode import SHARED, Geocoder
 from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 from app.permissions import can_manage, require_admin
@@ -201,7 +201,9 @@ def add_place(
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
     except IntegrityError as error:
-        if not is_duplicate(error):
+        # The building deleted at the same moment (an import replacing it,
+        # the demo reset) trips a foreign key: a race too, not a bug.
+        if not (is_duplicate(error) or sqlstate(error) == FOREIGN_KEY_VIOLATION):
             raise
         db.rollback()
         raise HTTPException(409, "place_name_taken") from None
@@ -283,7 +285,9 @@ def save_campus_import(
         db.rollback()
         raise HTTPException(refusal.status, refusal.code) from None
     except IntegrityError as error:
-        if not is_duplicate(error):
+        # The building deleted at the same moment (an import replacing it,
+        # the demo reset) trips a foreign key: a race too, not a bug.
+        if not (is_duplicate(error) or sqlstate(error) == FOREIGN_KEY_VIOLATION):
             raise
         # The same building or place added in another tab a moment ago.
         db.rollback()

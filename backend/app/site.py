@@ -14,10 +14,11 @@ Run with:  STATIC_DIR=../frontend/dist uvicorn app.site:app
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from starlette.middleware.gzip import GZipMiddleware
 
+from app.edge import Edge, configure_logging
 from app.main import app as api
 from app.main import lifespan
 
@@ -53,18 +54,12 @@ ONE_YEAR = "public, max-age=31536000, immutable"  # file names carry a hash
 ONE_WEEK = "public, max-age=604800"
 
 
-def create_site(static_dir: Path, api_docs: bool = False) -> FastAPI:
+def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     root = static_dir.resolve()
     index = root / "index.html"
     # The API's own lifespan (the background sweep) runs with this app: a
     # mounted app's lifespan is not started by Starlette.
     site = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-
-    @site.middleware("http")
-    async def security_headers(request: Request, call_next) -> Response:
-        response = await call_next(request)
-        response.headers.update(SECURITY_HEADERS)
-        return response
 
     if not api_docs:
         # The API's own docs page lists every route, the admin ones too, and
@@ -101,7 +96,9 @@ def create_site(static_dir: Path, api_docs: bool = False) -> FastAPI:
         # Every other address is a page of the web app; its router decides.
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
-    return site
+    # Outside everything, so that a 500 from a crash has the headers too.
+    return Edge(site, SECURITY_HEADERS)
 
 
+configure_logging()
 app = create_site(Path(os.environ.get("STATIC_DIR", "../frontend/dist")))

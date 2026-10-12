@@ -12,6 +12,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 8002
 const python = process.env.PYTHON ?? 'python'
+// What our proxy adds in front of the live site (TRUSTED_PROXY_HOPS below).
+const visitor = (n: number) => ({ 'X-Forwarded-For': `198.51.100.${n}` })
 const launchOptions = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}
 
 export default defineConfig({
@@ -29,10 +31,14 @@ export default defineConfig({
   },
   // Only Chromium is installed here: the tablet and the phone are its
   // emulation of their size, touch and pixel density, not Safari itself.
+  // Each device is a visitor of its own, from an address of its own, as
+  // three real visitors would be: they all sign in as the one demo student,
+  // whose writes are counted per address (app/ratelimit.py per_person), and
+  // one address doing three devices' writes in a minute is over the limit.
   projects: [
-    { name: 'computer', use: { viewport: { width: 1280, height: 860 } } },
-    { name: 'ipad', use: { ...devices['iPad Pro 11'], browserName: 'chromium', launchOptions } },
-    { name: 'phone', use: { ...devices['iPhone 13'], browserName: 'chromium', launchOptions } },
+    { name: 'computer', use: { viewport: { width: 1280, height: 860 }, extraHTTPHeaders: visitor(1) } },
+    { name: 'ipad', use: { ...devices['iPad Pro 11'], browserName: 'chromium', launchOptions, extraHTTPHeaders: visitor(2) } },
+    { name: 'phone', use: { ...devices['iPhone 13'], browserName: 'chromium', launchOptions, extraHTTPHeaders: visitor(3) } },
   ],
   webServer: {
     command:
@@ -47,6 +53,7 @@ export default defineConfig({
       SITE_URL: `http://localhost:${PORT}`,
       DEMO_LOGIN_ENABLED: 'true',
       SWEEP_INTERVAL_SECONDS: '0',
+      TRUSTED_PROXY_HOPS: '1',
     },
     reuseExistingServer: false,
   },

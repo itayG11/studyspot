@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
+import { resetActivityForTests } from '../logic/idle'
 import { useApi } from './useApi'
 
 function Probe({ load, id, refreshMs }: { load: (id: string) => Promise<string>; id: string | null; refreshMs?: number }) {
@@ -14,10 +15,29 @@ function Probe({ load, id, refreshMs }: { load: (id: string) => Promise<string>;
 
 const text = () => screen.getByText(/\|/).textContent
 
-beforeEach(() => vi.useFakeTimers())
+beforeEach(() => {
+  vi.useFakeTimers()
+  resetActivityForTests()
+})
 afterEach(() => vi.useRealTimers())
 
 describe('useApi', () => {
+  it('stops refreshing after 15 minutes with no one at the page, and starts again at once on a key', async () => {
+    // A tab left open must not keep the database awake all night.
+    const load = vi.fn().mockResolvedValue('x')
+    render(<Probe load={load} id="1" refreshMs={30_000} />)
+    await act(() => vi.advanceTimersByTimeAsync(16 * 60_000))
+    const calls = load.mock.calls.length
+    expect(calls).toBeLessThanOrEqual(31) // the first load and up to 15 minutes of refreshes
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60_000))
+    expect(load).toHaveBeenCalledTimes(calls)
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(load).toHaveBeenCalledTimes(calls + 1) // fresh numbers, no wait
+  })
+
   it('loads, then refreshes on the interval', async () => {
     const load = vi.fn().mockResolvedValueOnce('one').mockResolvedValueOnce('two')
     render(<Probe load={load} id="1" refreshMs={1000} />)

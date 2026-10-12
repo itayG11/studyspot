@@ -10,4 +10,6 @@ python -m app.seed
 # The visitor's address for the rate limits is read by the app itself,
 # from the hops our own proxy adds (TRUSTED_PROXY_HOPS, app/ratelimit.py),
 # never from what the visitor wrote. Nothing else needs it.
-exec uvicorn app.site:app --host 0.0.0.0 --port "${PORT:-8000}"
+# --no-access-log: app/edge.py writes one line per request, with a request
+# id and without the query, which can carry a sign-in code.
+exec uvicorn app.site:app --host 0.0.0.0 --port "${PORT:-8000}" --no-access-log

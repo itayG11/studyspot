@@ -120,6 +120,58 @@ def test_security_headers_on_every_answer(site: TestClient, path: str):
     assert headers["strict-transport-security"].startswith("max-age=")
 
 
+def test_a_server_error_still_carries_the_security_headers(built: Path):
+    # A crash is answered by Starlette outside the app's own middleware; the
+    # headers are added outside that again (app/edge.py).
+    wrapped = create_site(built)
+
+    def boom() -> None:
+        raise RuntimeError("a bug")
+
+    wrapped.site.add_api_route("/boom", boom)
+    routes = wrapped.site.router.routes
+    routes.insert(0, routes.pop())  # before the web app's catch-all page
+    response = TestClient(wrapped, raise_server_exceptions=False).get("/boom")
+    assert response.status_code == 500
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+    assert response.headers["strict-transport-security"].startswith("max-age=")
+    assert response.headers["x-request-id"]
+
+
+def test_every_answer_has_a_request_id_and_one_log_line_without_the_query(site: TestClient, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="studyspot.requests"):
+        response = site.get("/api/nowhere?code=secret-from-the-provider")
+    request_id = response.headers["x-request-id"]
+    assert re.fullmatch(r"[0-9a-f]{12}", request_id)
+    lines = [r.getMessage() for r in caplog.records if r.name == "studyspot.requests"]
+    assert len(lines) == 1
+    assert request_id in lines[0] and "GET /api/nowhere 404" in lines[0]
+    assert "secret" not in lines[0]  # sign-in codes travel in the query
+
+
+def test_the_health_check_is_not_logged_while_it_is_well(site: TestClient, caplog):
+    # Asked every half minute by the monitor and the container.
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="studyspot.requests"):
+        site.get("/api/health")
+    assert not [r for r in caplog.records if r.name == "studyspot.requests"]
+
+
+def test_information_from_the_app_reaches_the_log():
+    # Without a handler, Python drops anything below WARNING: the sweeper's
+    # and the daily reset's notes never showed on Render.
+    import logging
+
+    from app.edge import configure_logging
+
+    configure_logging()
+    assert logging.getLogger("app.sweeper").getEffectiveLevel() <= logging.INFO
+    assert logging.getLogger("studyspot").getEffectiveLevel() <= logging.INFO
+
+
 # --- What search engines and link previews read --------------------------------
 
 PUBLIC = Path(__file__).resolve().parents[2] / "frontend" / "public"

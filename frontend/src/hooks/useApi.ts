@@ -6,6 +6,7 @@
 
 import { useEffect, useEffectEvent, useState } from 'react'
 import { ApiError } from '../api/client'
+import { isIdle, onWake } from '../logic/idle'
 
 export interface ApiState<T> {
   data: T | null
@@ -48,14 +49,18 @@ export function useApi<T>(load: () => Promise<T>, key: string | null, refreshMs?
     }
     run()
     // A refresh is skipped while the last one is still on its way (so answers
-    // cannot arrive out of order), and while the tab is in the background.
+    // cannot arrive out of order), while the tab is in the background, and
+    // while no one has touched the page for a while (logic/idle.ts). When
+    // they come back, fresh numbers at once.
     const tick = () => {
-      if (!inFlight && document.visibilityState === 'visible') run()
+      if (!inFlight && document.visibilityState === 'visible' && !isIdle()) run()
     }
     const timer = refreshMs ? setInterval(tick, refreshMs) : undefined
+    const stopWaking = refreshMs ? onWake(tick) : undefined
     return () => {
       cancelled = true
       clearInterval(timer)
+      stopWaking?.()
     }
   }, [key, refreshMs, attempt])
 
