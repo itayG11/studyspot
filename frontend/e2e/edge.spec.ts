@@ -71,8 +71,11 @@ async function chooseLastDayFirstTime(form: Locator, length: string) {
     await days.nth(i).click()
     // Count only once the form shows this day, not the one before it.
     await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
-    // The day's times load after the click: wait for them, free or not.
-    await expect(form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button').first()).toBeVisible()
+    // The day's times load after the click: wait for them, free or not, or
+    // for the note that this day has none left.
+    await expect(
+      form.getByRole('group', { name: 'שעת התחלה', exact: true }).or(form.getByText('לא נשארו ביום הזה שעות להזמנה')),
+    ).toBeVisible()
     if ((await starts.count()) > 0) break
   }
   await starts.first().click()

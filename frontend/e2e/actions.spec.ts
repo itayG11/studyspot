@@ -51,8 +51,13 @@ test('a student books a lab station, sees it, and cancels it', async ({ page, re
   // day has only minutes left in it.
   const days = page.getByRole('group', { name: 'יום' }).getByRole('button')
   const starts = page.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  // Each day's times load from the server: count them only once they came,
+  // or the day reads as empty while it is still loading.
+  const loaded = page.getByRole('group', { name: 'שעת התחלה', exact: true }).or(page.getByText('לא נשארו ביום הזה שעות להזמנה'))
   for (let day = (await days.count()) - 1; day >= 0; day--) {
     await days.nth(day).click()
+    await expect(days.nth(day)).toHaveAttribute('aria-pressed', 'true')
+    await expect(loaded).toBeVisible()
     if ((await starts.count()) > 0) break
   }
   await starts.first().click()
