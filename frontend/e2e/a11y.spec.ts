@@ -22,7 +22,7 @@ async function check(page: Page, what: string) {
     "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
   )
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
-  const problems = result.violations.map((v) => `${what}: ${v.id} (${v.impact}) ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(', ')}`)
+  const problems = result.violations.map((v) => `${what}: ${v.id} (${v.impact}) ${v.nodes.map((n) => `${n.target.join(' ')} ${n.any[0]?.message ?? ''}`).slice(0, 3).join(', ')}`)
   expect.soft(problems).toEqual([])
 }
 
@@ -60,7 +60,7 @@ for (const [label, viewport, colorScheme] of [
     await page.goto('/login')
     await check(page, 'login')
     await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
-    await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible() // signed in; not the name, which the login button contains too
 
     await page.goto(`/spaces/${await firstPlace(page, 'M206')}`)
     await expect(page.getByRole('list', { name: 'תאים' })).toBeVisible()

@@ -44,6 +44,16 @@ class SlidingWindow:
             hits.append(now)
             return True
 
+    def give_back(self, key: str) -> None:
+        """Undo the last hit allow() counted for key, when a later check
+        refuses the request after all; a key left with no hits is forgotten."""
+        with self._lock:
+            hits = self._hits.get(key)
+            if hits:
+                hits.pop()
+                if not hits:
+                    del self._hits[key]
+
     def _prune(self, now: float) -> None:
         """Forget keys with no recent requests, so memory does not grow forever."""
         if len(self._hits) < self.max_keys:
@@ -98,11 +108,16 @@ def per_ip(name: str, limit: int, window_seconds: float, total_limit: int | None
     total = LIMITERS.setdefault(f"{name}:total", SlidingWindow(total_limit, window_seconds)) if total_limit else None
 
     def dependency(request: Request, trusted_hops: Annotated[int, Depends(_trusted_hops)]) -> None:
+        # The address first: a request it refuses is not counted in the
+        # total, so one address alone can never use the total up. A request
+        # the total refuses is not kept against its address either, so a
+        # flood of new addresses cannot fill the table of addresses.
         client = client_address(request, trusted_hops)
-        if total is not None and not total.allow("all"):
-            raise _too_many(total)
         if not window.allow(client):
             raise _too_many(window)
+        if total is not None and not total.allow("all"):
+            window.give_back(client)
+            raise _too_many(total)
 
     return dependency
 
@@ -162,6 +177,11 @@ geocode_limit = per_user("geocode", limit=10, window_seconds=60)
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
 forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+# The campus's today view: every page asks for it (the pulse in the header,
+# in every open tab), and the server keeps it a minute (app/load_today.py),
+# so a repeat costs one query. Its own limit, and generous, so that a
+# campus network behind one address does not use up the forecasts' limit.
+load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limit=6000)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:

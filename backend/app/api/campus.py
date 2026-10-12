@@ -27,7 +27,7 @@ from app.models import (
     is_counted,
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
-from app.ratelimit import forecast_limit
+from app.ratelimit import forecast_limit, load_today_limit
 from app.schemas import (
     BookingRules,
     BuildingOut,
@@ -299,7 +299,7 @@ def get_forecast(
     )
 
 
-@router.get("/institutions/{slug}/load/today", response_model=CampusTodayOut, dependencies=[Depends(forecast_limit)])
+@router.get("/institutions/{slug}/load/today", response_model=CampusTodayOut, dependencies=[Depends(load_today_limit)])
 def get_campus_today(slug: Slug, session: SessionDep, now: NowDep):
     """The campus today, hour by hour: usually, and so far today."""
     result = campus_today(session, _institution(session, slug), now)

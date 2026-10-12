@@ -27,6 +27,11 @@ for _name, _value in dotenv_values(REPO_ROOT / ".env").items():
     if _name in CI_KEYS and _value is not None:
         os.environ.setdefault(_name, _value)
 Settings.model_config["env_file"] = None
+# The developer's shell is shut out the same way: a DEMO_LOGIN_ENABLED or
+# TRUSTED_PROXY_HOPS exported there would change what the tests see.
+for _field in Settings.model_fields:
+    if _field.upper() not in CI_KEYS:
+        os.environ.pop(_field.upper(), None)
 
 from alembic import command
 from alembic.config import Config
@@ -106,10 +111,12 @@ def engine() -> Iterator[Engine]:
     _create_database_if_missing(url)
     engine = create_engine(url)
     reset_schema(engine)
-    command.upgrade(alembic_config(url), "head")
-    yield engine
-    engine.dispose()
-    _drop_database(url)
+    try:
+        command.upgrade(alembic_config(url), "head")
+        yield engine
+    finally:  # also after a failed migration or Ctrl-C
+        engine.dispose()
+        _drop_database(url)
 
 
 @pytest.fixture(autouse=True)

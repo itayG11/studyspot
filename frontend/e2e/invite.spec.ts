@@ -20,7 +20,7 @@ test('an invite link names the institution, keeps the token out of the address, 
   const token = newInvite()
   await page.goto('/login')
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
-  await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible() // signed in; not the name, which the login button contains too
 
   await page.goto(`/invite#t=${encodeURIComponent(token)}`)
   await expect(page.getByRole('heading', { name: 'הוזמנת לנהל את מוסד לבדיקה' })).toBeVisible()

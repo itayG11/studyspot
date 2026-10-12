@@ -13,7 +13,7 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   })
   await page.goto('/login')
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
-  await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible() // signed in; not the name, which the login button contains too
   await page.getByRole('link', { name: 'האזור שלי' }).click()
 
   const week = page.getByRole('region', { name: 'מערכת השעות' })

@@ -11,7 +11,7 @@ test('a demo student finds a computer lab through the story and the search', asy
 
   // The home page opens on the story; its button leads down to the finder.
   await expect(page).toHaveURL('/demo') // the visitor's institution, at its own address
-  await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+  await expect(page.getByRole('banner').getByText('סטודנט לדוגמה')).toBeVisible() // signed in, as the demo student
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('יש לך מקום בקמפוס.')
   await page.getByRole('button', { name: 'לחיפוש מקום' }).click()
   const search = page.getByRole('searchbox', { name: 'חיפוש מקום' })
@@ -34,7 +34,7 @@ test('a demo student finds a computer lab through the story and the search', asy
 
   // A reload keeps the session: the HttpOnly cookie brings a new token.
   await page.reload()
-  await expect(page.getByText('סטודנט לדוגמה')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible() // signed in; not the name, which the login button contains too
 
   await page.getByRole('button', { name: 'התנתקות' }).click()
   await expect(page.getByRole('link', { name: 'התחברות' })).toBeVisible()

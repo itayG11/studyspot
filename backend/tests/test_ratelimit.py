@@ -76,6 +76,47 @@ def test_a_new_fake_address_on_every_request_still_hits_the_total_limit():
     assert statuses[10:] == [429, 429]
 
 
+def test_one_address_over_its_own_limit_does_not_use_up_the_total():
+    # A refused request is not counted in the total: otherwise one address
+    # alone could fill it and lock every other visitor out.
+    check = per_ip("test-share", limit=3, window_seconds=60, total_limit=10)
+    for _ in range(50):
+        try:
+            check(request_from("10.0.0.1"), trusted_hops=0)
+        except HTTPException:
+            pass
+    check(request_from("10.0.0.2"), trusted_hops=0)  # still let in
+
+
+def test_the_campus_today_view_has_a_limit_of_its_own():
+    # Every page asks for it (the pulse in the header), and the server keeps
+    # it a minute: it must not use up the per-place forecasts' limit.
+    from app.api.campus import router
+    from app.ratelimit import forecast_limit, load_today_limit
+
+    def limits(path: str) -> set:
+        route = next(r for r in router.routes if getattr(r, "path", None) == path)
+        return {d.call for d in route.dependant.dependencies}
+
+    assert forecast_limit in limits("/places/{place_id}/forecast")
+    assert load_today_limit in limits("/institutions/{slug}/load/today")
+    assert forecast_limit not in limits("/institutions/{slug}/load/today")
+
+
+def test_addresses_refused_by_the_total_are_not_remembered():
+    # A flood of new addresses past the total must not fill the
+    # per-address table, or every new real visitor would be refused.
+    from app.ratelimit import LIMITERS
+
+    check = per_ip("test-flood", limit=3, window_seconds=60, total_limit=10)
+    for i in range(200):
+        try:
+            check(request_from(f"10.1.{i // 250}.{i % 250}"), trusted_hops=0)
+        except HTTPException:
+            pass
+    assert len(LIMITERS["test-flood"]._hits) <= 10
+
+
 @pytest.fixture(autouse=True)
 def _forget_test_limiters():
     yield

@@ -113,12 +113,23 @@ test('the story scrolls to the search without jumps or missing pictures', async 
   `)
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  const finderTop = await page.locator('#finder').evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
+  // Measured without transforms (offsetTop): the finder rises tilted back
+  // in 3D (FinderReveal), and a tall tilted box measures far off the page.
+  const pageTop = (el: Element) => {
+    let y = 0
+    for (let node = el as HTMLElement | null; node; node = node.offsetParent as HTMLElement | null) y += node.offsetTop
+    return y
+  }
+  const finderTop = await page.locator('#finder').evaluate(pageTop)
   const step = (page.viewportSize()?.height ?? 800) / 2
   for (let y = 0; y <= finderTop; y += step) {
     await page.evaluate((top) => window.scrollTo(0, top), y)
     await page.waitForTimeout(80)
   }
+  // The last step may stop short: what loads above (the live numbers) can
+  // move the finder down after it was measured. A real shift is still
+  // caught below, by the layout-shift count.
+  await page.evaluate((top) => window.scrollTo(0, top), await page.locator('#finder').evaluate(pageTop))
   await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
   // A picture that finished loading with no size is a broken one.
   const broken = await page.locator('img').evaluateAll((images) =>
@@ -202,7 +213,7 @@ test('two tabs, one time: a clash, the next free time, the limit, cancel and boo
 
   // The second tab still shows the time as free; the database says no.
   await formB.getByRole('button', { name: 'להזמין', exact: true }).click()
-  await expect(second.getByRole('alert')).toContainText('מישהו הזמין את הזמן הזה ממש עכשיו')
+  await expect(second.getByRole('alert').filter({ hasText: 'מישהו הזמין את הזמן הזה ממש עכשיו' })).toBeVisible()
   await second.getByRole('button', { name: /הזמן הפנוי הקרוב/ }).click()
   await formB.getByRole('button', { name: 'להזמין', exact: true }).click()
   await expect(second.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
