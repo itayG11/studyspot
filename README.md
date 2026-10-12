@@ -73,7 +73,6 @@ Planned, not built yet (see [docs/PLAN.md](docs/PLAN.md), Hebrew):
 - **Notifications:** email, and an optional Telegram bot, before a booking starts and before a no-show release. Waiting on a domain and a transactional email service (Brevo).
 - **Password sign-in,** next to Google, Microsoft and the one-time email code.
 - **Live updates** without the 30-second refresh.
-- **Bulk import** of buildings and places for an institution's admin, from a spreadsheet.
 - **Nightly database backups** beyond Neon's 6-hour restore window.
 
 ## Documentation
@@ -176,6 +175,6 @@ Interactive docs: http://localhost:8000/docs
 - [x] Web app, part 1: campus map, places list, place page with the lab seat map, demo sign-in
 - [x] Web app, part 2: booking, QR check-in (`/scan#c=...`), my area, admin pages (printable QR signs, building placing)
 - [x] CI, Docker, deployment (Render + Neon)
-- [x] Many institutions on one site, with self-service setup
+- [x] Many institutions on one site, with self-service setup, and a table import of buildings and places (Excel or CSV)
 - [x] Occupancy prediction, live demo occupancy, places between classes, timetable import
 - [ ] Notifications and password sign-in
