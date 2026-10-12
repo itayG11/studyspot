@@ -6,7 +6,7 @@ setting cannot open a back door in a real deployment by accident.
 """
 
 import pytest
-from conftest import SUNDAY_10AM
+from conftest import SUNDAY_10AM, DuplicateKey
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -187,7 +187,7 @@ def test_two_first_demo_sign_ins_at_once_get_a_clear_answer(demo_client, monkeyp
     # The losing request of the race hits the unique (provider, subject)
     # rule; it must answer 409, not crash with 500.
     def lost_the_race(*_args):
-        raise IntegrityError("INSERT INTO user_identities", {}, Exception("duplicate key"))
+        raise IntegrityError("INSERT INTO user_identities", {}, DuplicateKey("duplicate key"))
 
     monkeypatch.setattr("app.api.auth.demo_user", lost_the_race)
     response = demo_login(demo_client)
@@ -199,3 +199,18 @@ def test_the_server_warns_when_demo_sign_in_is_on():
     assert demo_warning(make_settings()) is None
     warning = demo_warning(make_settings(demo_login_enabled=True))
     assert warning is not None and "demo" in warning
+
+
+def test_each_demo_visitor_has_a_write_limit_of_their_own(make_client):
+    # Every visitor is the one demo student; counting writes per user would
+    # let one visitor use up everyone's (app/ratelimit.py per_person).
+    client = make_client(demo_login_enabled=True, trusted_proxy_hops=1)
+    token = demo_login(client).json()["access_token"]
+
+    def remove_all(address: str) -> int:
+        headers = {"Authorization": f"Bearer {token}", "X-Forwarded-For": address}
+        return client.delete("/me/classes", headers=headers).status_code
+
+    first = [remove_all("198.51.100.1") for _ in range(31)]
+    assert first[:30] == [200] * 30 and first[30] == 429
+    assert remove_all("198.51.100.2") == 200

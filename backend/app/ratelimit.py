@@ -6,6 +6,7 @@ servers the counters would move to a shared store such as Redis.
 """
 
 import hashlib
+import ipaddress
 import threading
 import time
 from collections import defaultdict, deque
@@ -22,8 +23,11 @@ from app.models import User
 
 
 class SlidingWindow:
-    def __init__(self, limit: int, window_seconds: float, max_keys: int = 10_000):
-        self.limit, self.window, self.max_keys = limit, window_seconds, max_keys
+    def __init__(self, limit: int, window_seconds: float, max_keys: int = 10_000, evict: bool = False):
+        """evict: when the table is full, drop the oldest key for a new one,
+        instead of refusing. For keys a visitor makes up at will (a cookie),
+        where refusing new keys would let a flood lock real visitors out."""
+        self.limit, self.window, self.max_keys, self.evict = limit, window_seconds, max_keys, evict
         self._hits: dict[str, deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
 
@@ -35,7 +39,10 @@ class SlidingWindow:
                 # Full even after forgetting old keys: a flood of new keys
                 # (say, faked addresses) is refused instead of growing memory.
                 if len(self._hits) >= self.max_keys:
-                    return False
+                    if not self.evict:
+                        return False
+                    # The first key in the dict is the oldest one added.
+                    del self._hits[next(iter(self._hits))]
             hits = self._hits[key]
             while hits and hits[0] <= now - self.window:
                 hits.popleft()
@@ -94,6 +101,19 @@ def client_address(request: Request, trusted_hops: int) -> str:
     return hops[-trusted_hops] if len(hops) >= trusted_hops else connected
 
 
+def address_key(address: str) -> str:
+    """The key an address is counted under. An IPv6 home or phone gets a
+    whole /64 and may use a new address for every request, so those count
+    as one; IPv4, and anything that is not an address, as they are."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if ip.version == 6 and ip.ipv4_mapped is None:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
+
+
 def _trusted_hops(settings: Annotated[Settings, Depends(get_settings)]) -> int:
     return settings.trusted_proxy_hops
 
@@ -112,7 +132,7 @@ def per_ip(name: str, limit: int, window_seconds: float, total_limit: int | None
         # total, so one address alone can never use the total up. A request
         # the total refuses is not kept against its address either, so a
         # flood of new addresses cannot fill the table of addresses.
-        client = client_address(request, trusted_hops)
+        client = address_key(client_address(request, trusted_hops))
         if not window.allow(client):
             raise _too_many(window)
         if total is not None and not total.allow("all"):
@@ -124,7 +144,9 @@ def per_ip(name: str, limit: int, window_seconds: float, total_limit: int | None
 
 def per_cookie(name: str, cookie: str, limit: int, window_seconds: float) -> Callable:
     """Per session, not per IP: a whole campus may share one public address."""
-    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
+    # Made-up cookies are free to send: a full table drops its oldest
+    # instead of refusing everyone new (evict).
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds, evict=True))
 
     def dependency(request: Request) -> None:
         value = request.cookies.get(cookie)
@@ -134,18 +156,6 @@ def per_cookie(name: str, cookie: str, limit: int, window_seconds: float) -> Cal
         if not value:
             return
         if not window.allow(hashlib.sha256(value.encode()).hexdigest()):
-            raise _too_many(window)
-
-    return dependency
-
-
-def per_user(name: str, limit: int, window_seconds: float) -> Callable:
-    """For signed-in actions. FastAPI resolves get_current_user once per
-    request, so this adds no second token check."""
-    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
-
-    def dependency(user: Annotated[User, Depends(get_current_user)]) -> None:
-        if not window.allow(f"user:{user.id}"):
             raise _too_many(window)
 
     return dependency
@@ -169,10 +179,10 @@ def email_start_limit(
     _ten: Annotated[None, Depends(_email_start_10_minutes)], _day: Annotated[None, Depends(_email_start_day)]
 ) -> None:
     """Both limits, short and daily."""
+# Refreshing: per address first, generous since a campus shares one, and
+# without a total (one address cannot fill it); then per session.
+refresh_address_limit = per_ip("refresh-address", limit=300, window_seconds=60)
 refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seconds=60)
-write_limit = per_user("writes", limit=30, window_seconds=60)
-# Place search for the admin map (app/geocode.py): a person types slowly.
-geocode_limit = per_user("geocode", limit=10, window_seconds=60)
 # The load forecast is public and reads weeks of counts: a page asks for a
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
@@ -185,7 +195,7 @@ load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limi
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:
-    """Per user, like per_user, except for a shared demo user: every visitor
+    """Per signed-in user, except for a shared demo user: every visitor
     is that one user, so each visitor's address counts on its own instead."""
     from app.api.deps import get_session
     from app.models import AuthProvider, UserIdentity
@@ -201,11 +211,18 @@ def per_person(name: str, limit: int, window_seconds: float) -> Callable:
         shared = db.scalars(
             select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.DEMO)
         ).first()
-        key = f"address:{client_address(request, trusted_hops)}" if shared else f"user:{user.id}"
+        key = f"address:{address_key(client_address(request, trusted_hops))}" if shared else f"user:{user.id}"
         if not window.allow(key):
             raise _too_many(window)
 
     return dependency
+
+
+# Writes, and the admin map's place search (app/geocode.py; a person types
+# slowly). Per person, so that one visitor of the shared demo users cannot
+# use up the others' writes.
+write_limit = per_person("writes", limit=30, window_seconds=60)
+geocode_limit = per_person("geocode", limit=10, window_seconds=60)
 
 
 # Suggestions between classes read every place, and the forecast of each:

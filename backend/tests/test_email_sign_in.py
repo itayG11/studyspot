@@ -10,7 +10,7 @@ code, never the code.
 from datetime import timedelta
 
 import pytest
-from conftest import SUNDAY_10AM, Clock
+from conftest import SUNDAY_10AM, Clock, DuplicateKey
 from factories import assert_rejected
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -479,7 +479,7 @@ def test_a_lost_sign_in_race_keeps_the_code_for_the_retry(client, mailer, monkey
     code = mailer.last_code()
 
     def lost_the_race(*_args, **_kwargs):
-        raise IntegrityError("INSERT INTO user_identities", {}, Exception("duplicate key"))
+        raise IntegrityError("INSERT INTO user_identities", {}, DuplicateKey("duplicate key"))
 
     monkeypatch.setattr(auth, "sign_in", lost_the_race)
     response = verify(client, code)

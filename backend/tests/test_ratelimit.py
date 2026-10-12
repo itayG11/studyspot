@@ -117,6 +117,43 @@ def test_addresses_refused_by_the_total_are_not_remembered():
     assert len(LIMITERS["test-flood"]._hits) <= 10
 
 
+def test_a_window_that_evicts_lets_a_new_key_in_when_full():
+    # For keys a visitor makes up (a cookie): a full table drops its oldest
+    # key rather than refuse everyone new, so a flood of made-up cookies
+    # cannot lock real visitors out.
+    window = SlidingWindow(limit=5, window_seconds=60, max_keys=3, evict=True)
+    for key in ("a", "b", "c"):
+        assert window.allow(key)
+    assert window.allow("new")
+    assert "a" not in window._hits
+
+
+def test_ipv6_addresses_in_one_slash_64_count_as_one():
+    # One home or phone gets a whole /64; a new address per request must
+    # not escape the per-address limit.
+    check = per_ip("test-v6", limit=3, window_seconds=60)
+    statuses = []
+    for i in range(1, 6):
+        try:
+            check(request_from(f"2001:db8:1:2::{i:x}"), trusted_hops=0)
+            statuses.append(200)
+        except HTTPException as refused:
+            statuses.append(refused.status_code)
+    assert statuses == [200, 200, 200, 429, 429]
+    check(request_from("2001:db8:1:3::1"), trusted_hops=0)  # another /64: let in
+
+
+def test_refreshing_a_session_is_limited_per_address_too():
+    # Before the cookie is even looked at: one address cannot send cookie
+    # after made-up cookie without end.
+    from app.api.auth import router
+    from app.ratelimit import refresh_address_limit, refresh_limit
+
+    route = next(r for r in router.routes if getattr(r, "path", None) == "/auth/refresh")
+    calls = [d.call for d in route.dependant.dependencies]
+    assert calls.index(refresh_address_limit) < calls.index(refresh_limit)
+
+
 @pytest.fixture(autouse=True)
 def _forget_test_limiters():
     yield

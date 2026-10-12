@@ -7,6 +7,7 @@ campus has a cap on additions and is put back to its seed data once a day.
 from datetime import date
 
 import pytest
+from conftest import DuplicateKey
 from sqlalchemy import func, select
 
 from app import campus_admin
@@ -339,7 +340,7 @@ def test_two_tabs_adding_the_same_code_get_409_not_500(client, admin, monkeypatc
     from sqlalchemy.exc import IntegrityError
 
     def lost_the_race(*_args, **_kwargs):
-        raise IntegrityError("INSERT INTO buildings", {}, Exception("duplicate key"))
+        raise IntegrityError("INSERT INTO buildings", {}, DuplicateKey("duplicate key"))
 
     monkeypatch.setattr("app.api.admin.create_building", lost_the_race)
     client.user = admin
@@ -352,3 +353,37 @@ def test_a_campus_with_real_sign_in_rules_is_never_reset_even_if_named_demo(sess
     braude.slug = "demo"
     session.flush()
     assert campus_admin.reset_demo_extras(session, "demo") == (0, 0)
+
+
+class _DatabaseError(Exception):
+    def __init__(self, sqlstate: str):
+        super().__init__(sqlstate)
+        self.sqlstate = sqlstate
+
+
+def _fails_with(sqlstate: str):
+    from sqlalchemy.exc import IntegrityError
+
+    def create(*args, **kwargs):
+        raise IntegrityError("INSERT ...", {}, _DatabaseError(sqlstate))
+
+    return create
+
+
+def test_a_duplicate_found_by_the_database_is_a_409(client, admin, monkeypatch):
+    # Two tabs adding the same code at once: the unique index catches it.
+    monkeypatch.setattr("app.api.admin.create_building", _fails_with("23505"))
+    client.user = admin
+    response = add_building(client, code="Z")
+    assert (response.status_code, response.json()["detail"]) == (409, "building_code_taken")
+
+
+def test_any_other_database_refusal_is_a_bug_not_name_taken(client, admin, monkeypatch):
+    # A broken foreign key or CHECK means a bug: it must show as one (500),
+    # not hide behind "the code is taken".
+    from sqlalchemy.exc import IntegrityError
+
+    monkeypatch.setattr("app.api.admin.create_building", _fails_with("23503"))
+    client.user = admin
+    with pytest.raises(IntegrityError):
+        add_building(client, code="Z")

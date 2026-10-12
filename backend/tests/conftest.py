@@ -162,6 +162,13 @@ def session(engine: Engine) -> Iterator[Session]:
     connection.close()
 
 
+class DuplicateKey(Exception):
+    """What psycopg raises for a row a unique index refuses: tests that fake
+    a lost race raise IntegrityError with this, as the database would."""
+
+    sqlstate = "23505"
+
+
 # --- API fixtures ---------------------------------------------------------------
 
 # A Sunday morning in Karmiel: every Braude place is open.

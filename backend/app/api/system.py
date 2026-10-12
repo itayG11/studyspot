@@ -14,7 +14,7 @@ from app.api.deps import get_session
 from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
-from app.errors import Refusal
+from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
 from app.models import AdminInvite, Building, Institution, InstitutionLoginRule, User, UserRole
 from app.permissions import require_role
 from app.ratelimit import write_limit
@@ -82,7 +82,9 @@ def create(body: InstitutionCreateIn, owner: OwnerDep, db: SessionDep):
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:  # the same name, created a moment ago in another tab
+    except IntegrityError as error:  # the same name, created a moment ago in another tab
+        if not is_duplicate(error):
+            raise
         db.rollback()
         raise HTTPException(409, "institution_slug_taken") from None
     return SystemInstitutionOut(
@@ -171,7 +173,12 @@ def accept(body: InviteTokenIn, user: UserDep, db: SessionDep, now: NowDep, sett
         db.commit()
     except Refusal as refusal:  # every refusal comes before the first write
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:  # something of theirs changed at the same moment
+    except IntegrityError as error:
+        # Something of theirs changed at the same moment: a booking made in
+        # the old institution trips the (user, institution) foreign key, the
+        # same row added twice a unique index. Anything else is a bug.
+        if not (is_duplicate(error) or sqlstate(error) == FOREIGN_KEY_VIOLATION):
+            raise
         db.rollback()
         raise HTTPException(409, "concurrent_request") from None
     return InviteInstitutionOut(slug=institution.slug, name=institution.name)
@@ -209,7 +216,9 @@ def approve_rule(rule_id: Annotated[int, Path(gt=0)], owner: OwnerDep, db: Sessi
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:  # approved elsewhere at the same moment
+    except IntegrityError as error:  # approved elsewhere at the same moment
+        if not is_duplicate(error):
+            raise
         db.rollback()
         raise HTTPException(409, "login_rule_taken") from None
     return found

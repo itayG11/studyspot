@@ -41,11 +41,11 @@ from app.email_codes import (
     issue_code,
     normalize_email,
 )
-from app.errors import Refusal
+from app.errors import Refusal, is_duplicate
 from app.mailer import BrevoMailer, LogMailer, Mailer
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
-from app.ratelimit import email_start_limit, refresh_limit, sign_in_limit, write_limit
+from app.ratelimit import email_start_limit, refresh_address_limit, refresh_limit, sign_in_limit, write_limit
 from app.schemas import DemoLoginIn, EmailStartIn, EmailStartOut, EmailVerifyIn, MeOut, ProvidersOut, TokenOut
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
@@ -209,7 +209,9 @@ def email_verify(
                 # The open campus only for a student it moves (the domain has a rule).
                 user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
                 issued = start_session(db, user, now)
-        except IntegrityError:
+        except IntegrityError as error:
+            if not is_duplicate(error):
+                raise
             # The same first sign-in finished in another tab a moment ago.
             # Undo everything, the used code too: "try again" must work.
             db.rollback()
@@ -241,7 +243,9 @@ def demo_login(
             issued = start_session(db, user, now)
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:
+    except IntegrityError as error:
+        if not is_duplicate(error):
+            raise
         # Two first sign-ins of the same persona at once: one created the user.
         raise HTTPException(409, "concurrent_sign_in") from None
     if not demo_still_allowed(db, user, settings):
@@ -325,7 +329,9 @@ def callback(
                     system_admins=settings.system_admins(),
                 )
                 issued = start_session(db, user, now)
-        except IntegrityError:
+        except IntegrityError as error:
+            if not is_duplicate(error):
+                raise
             # The same first sign-in finished in another tab a moment ago.
             raise Refusal(409, "concurrent_sign_in") from None
         db.commit()
@@ -355,7 +361,9 @@ def _read_pending(pending: str | None, provider_name: str, now: datetime, settin
     return claims
 
 
-@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(refresh_limit)])
+@router.post(
+    "/auth/refresh", response_model=TokenOut, dependencies=[Depends(refresh_address_limit), Depends(refresh_limit)]
+)
 def refresh(
     request: Request,
     response: Response,

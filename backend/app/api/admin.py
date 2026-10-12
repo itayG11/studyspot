@@ -20,7 +20,7 @@ from app.campus_admin import create_building, create_place, mentioned_places
 from app.clock import get_now
 from app.codes import make_code
 from app.config import Settings, get_settings
-from app.errors import Refusal
+from app.errors import Refusal, is_duplicate
 from app.geocode import SHARED, Geocoder
 from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 from app.permissions import can_manage, require_admin
@@ -160,7 +160,9 @@ def add_building(
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:
+    except IntegrityError as error:
+        if not is_duplicate(error):
+            raise
         # The same code added in another tab a moment ago.
         db.rollback()
         raise HTTPException(409, "building_code_taken") from None
@@ -198,7 +200,9 @@ def add_place(
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:
+    except IntegrityError as error:
+        if not is_duplicate(error):
+            raise
         db.rollback()
         raise HTTPException(409, "place_name_taken") from None
     return PlaceCreatedOut(
@@ -278,7 +282,9 @@ def save_campus_import(
     except Refusal as refusal:
         db.rollback()
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:
+    except IntegrityError as error:
+        if not is_duplicate(error):
+            raise
         # The same building or place added in another tab a moment ago.
         db.rollback()
         raise HTTPException(409, "import_stale") from None
@@ -366,7 +372,9 @@ def add_login_rule(
         db.commit()
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
-    except IntegrityError:  # the same rule, added a moment ago elsewhere
+    except IntegrityError as error:  # the same rule, added a moment ago elsewhere
+        if not is_duplicate(error):
+            raise
         db.rollback()
         raise HTTPException(409, "login_rule_taken") from None
     return created
