@@ -7,13 +7,14 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import bookings as rules
 from app.api.deps import get_session
 from app.bookings import MIN_WALK_IN, holding
 from app.clock import get_now
+from app.config import Settings, get_settings
 from app.forecast import forecast
 from app.hours import opening_status, place_status
 from app.load_today import campus_today, place_today
@@ -33,7 +34,7 @@ from app.schemas import (
     BuildingOut,
     CampusTodayOut,
     ForecastOut,
-    InstitutionListItem,
+    InstitutionCard,
     InstitutionOut,
     OpeningHoursOut,
     PlaceDetail,
@@ -56,13 +57,32 @@ def _institution(session: Session, slug: str) -> Institution:
     return institution
 
 
-@router.get("/institutions", response_model=list[InstitutionListItem])
-def list_institutions(session: SessionDep):
+@router.get("/institutions", response_model=list[InstitutionCard])
+def list_institutions(session: SessionDep, settings: Annotated[Settings, Depends(get_settings)]):
     """The institutions a visitor can pick. One being set up stays hidden
-    until its admin marks it active, but still opens by its address."""
-    return session.scalars(
-        select(Institution).where(Institution.is_active).order_by(Institution.name)
+    until its admin marks it active, but still opens by its address.
+    Each with how many buildings and places it has, counted in one query."""
+    rows = session.execute(
+        select(
+            Institution.slug,
+            Institution.name,
+            func.count(distinct(Building.id)),
+            func.count(Place.id),
+        )
+        .outerjoin(Building, Building.institution_id == Institution.id)
+        .outerjoin(Place, Place.building_id == Building.id)
+        .where(Institution.is_active)
+        .group_by(Institution.id)
+        .order_by(Institution.name)
     ).all()
+    # The demo badge by the same test as the header's "demo" (is_simulated_campus):
+    # at most one institution can pass it, so only that one is loaded.
+    demo = session.scalars(select(Institution).where(Institution.slug == settings.demo_institution)).first()
+    demo_slug = demo.slug if demo is not None and is_simulated_campus(demo, settings) else None
+    return [
+        InstitutionCard(slug=slug, name=name, buildings_count=buildings, places_count=places, is_demo=slug == demo_slug)
+        for slug, name, buildings, places in rows
+    ]
 
 
 @router.get("/institutions/{slug}", response_model=InstitutionOut)

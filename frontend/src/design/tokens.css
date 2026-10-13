@@ -60,6 +60,10 @@
   --primary: #2563eb;
   --primary-2: #4f46e5;
   --on-primary: #fff;
+  /* Chosen: a chip, a tab, a start time. One look everywhere; the gradient
+     is kept for the main action of a screen. */
+  --selected: var(--primary);
+  --on-selected: var(--on-primary);
   --primary-glow: rgb(37 99 235 / 26%);
   /* The booking ticket's head: blue to teal, white text on both ends (AA:
      5.2:1 and 5.4:1). Its own ground, the same in both themes. */
@@ -188,6 +192,17 @@
     --backdrop: rgb(0 0 0 / 60%);
     --shimmer: rgb(255 255 255 / 7%);
     --map-tiles: brightness(0.78) contrast(1.08);
+    /* Courses at night: the same eight hues, darker and calmer, so the
+       week is not the loudest thing on the page. Light text on each, AA
+       5.1:1 to 6.8:1 (measured). */
+    --course-1: #3b5bab; --on-course-1: #f8fafc;
+    --course-2: #6046a8; --on-course-2: #f8fafc;
+    --course-3: #a3386e; --on-course-3: #f8fafc;
+    --course-4: #a63a3a; --on-course-4: #f8fafc;
+    --course-5: #a3561c; --on-course-5: #f8fafc;
+    --course-6: #1f746c; --on-course-6: #f8fafc;
+    --course-7: #2c7343; --on-course-7: #f8fafc;
+    --course-8: #2a6a94; --on-course-8: #f8fafc;
   }
 }
 
@@ -229,4 +244,15 @@
   --backdrop: rgb(0 0 0 / 60%);
   --shimmer: rgb(255 255 255 / 7%);
   --map-tiles: brightness(0.78) contrast(1.08);
+  /* Courses at night: the same eight hues, darker and calmer, so the
+     week is not the loudest thing on the page. Light text on each, AA
+     5.1:1 to 6.8:1 (measured). */
+  --course-1: #3b5bab; --on-course-1: #f8fafc;
+  --course-2: #6046a8; --on-course-2: #f8fafc;
+  --course-3: #a3386e; --on-course-3: #f8fafc;
+  --course-4: #a63a3a; --on-course-4: #f8fafc;
+  --course-5: #a3561c; --on-course-5: #f8fafc;
+  --course-6: #1f746c; --on-course-6: #f8fafc;
+  --course-7: #2c7343; --on-course-7: #f8fafc;
+  --course-8: #2a6a94; --on-course-8: #f8fafc;
 }

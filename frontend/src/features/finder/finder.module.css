@@ -27,7 +27,7 @@
 }
 
 .heading {
-  margin: 0 0 var(--s-2);
+  margin: 0 0 var(--s-3);
   font: 700 var(--text-2xl) / 1.1 var(--font-heading);
   color: var(--ink);
   /* In the site's colours (tokens.css --headline); plain ink where the

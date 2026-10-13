@@ -34,6 +34,7 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
         <Link to="?tab=signs">בלשונית השלטים</Link>. עדיין אין עריכה. מחיקה של בניין אפשרית רק בהעלאת טבלה, כשבוחרים
         למחוק אותו ולהוסיף אותו מחדש.
       </p>
+      <div className={styles.adderSide}>
       <BulkImport
         onSaved={() => {
           buildings.reload()
@@ -50,6 +51,8 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
           }}
         />
       )}
+      <PlaceForm buildings={buildings.data} onAdded={onAdded} />
+      </div>
       <BuildingForm
         buildings={buildings.data}
         suggested={suggested}
@@ -60,7 +63,6 @@ export function Adder({ onPlace, onAdded }: { onPlace: (code: string) => void; o
         }}
         onPlace={onPlace}
       />
-      <PlaceForm buildings={buildings.data} onAdded={onAdded} />
     </div>
   )
 }

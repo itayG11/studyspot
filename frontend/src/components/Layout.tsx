@@ -134,7 +134,7 @@ function Pulse({ home }: { home: string }) {
 // its name, for a screen reader. With bookings ahead, a button next to it
 // opens them in a drawer, to see or cancel one without leaving the page.
 function MyAreaLink({ userId }: { userId: number }) {
-  const { timezone } = useInstitution()
+  const { slug, timezone } = useInstitution()
   // Counted when the answer arrives, against the clock at that moment.
   const bookings = useApi(
     () => myBookings().then((all) => activeBookings(all, new Date()).toSorted((a, b) => a.starts_at.localeCompare(b.starts_at))),
@@ -155,17 +155,17 @@ function MyAreaLink({ userId }: { userId: number }) {
         האזור שלי
         {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
       </NavLink>
-      {(count > 0 || drawer) && (
-        <button type="button" className={styles.drawerButton} aria-label="ההזמנות הקרובות" onClick={() => setDrawer(true)}>
-          <CalendarClock aria-hidden="true" />
-        </button>
-      )}
+      {/* Always there for a signed-in student: with no bookings, the drawer says so and leads to the search. */}
+      <button type="button" className={styles.drawerButton} aria-label="ההזמנות הקרובות" onClick={() => setDrawer(true)}>
+        <CalendarClock aria-hidden="true" />
+      </button>
       {/* Out of the navigation landmark: a dialog is not part of the menu. */}
       {createPortal(
       <BookingsDrawer
         open={drawer}
         bookings={active}
         timeZone={timezone}
+        findHref={`/${slug}#finder`}
         onClose={() => setDrawer(false)}
         onCancel={async (id) => {
           await cancelBooking(id)

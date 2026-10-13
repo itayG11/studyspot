@@ -44,6 +44,11 @@
   opacity: 0.75;
 }
 
+/* On the chosen day's colour the faded date fell under AA: full strength there. */
+[aria-pressed='true'] .date {
+  opacity: 1;
+}
+
 /* Times read right to left, like the hands of a Hebrew clock face would. */
 .times {
   display: grid;
@@ -79,9 +84,9 @@
 }
 
 .time[aria-pressed='true'] {
-  color: var(--on-ink);
-  background: var(--ink);
-  border-color: var(--ink);
+  color: var(--on-selected);
+  background: var(--selected);
+  border-color: var(--selected);
 }
 
 /* Booked: struck through, not only greyed, so it reads without colour. */

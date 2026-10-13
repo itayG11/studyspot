@@ -49,6 +49,7 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
           </li>
         ))}
       </ol>
+      <div className={styles.setupMain}>
       <DetailsStep data={data} onSaved={setup.reload} />
       <RulesStep data={data} onSaved={setup.reload} />
       <section className={styles.form} aria-labelledby="setup-campus">
@@ -68,6 +69,7 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
         </div>
       </section>
       <OpenStep data={data} onSaved={setup.reload} onGo={onGo} />
+      </div>
     </div>
   )
 }

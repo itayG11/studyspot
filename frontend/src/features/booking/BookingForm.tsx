@@ -201,6 +201,11 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
         </fieldset>
       )}
 
+      {/* The book button comes last: until then, say what is still missing. */}
+      {availability.data && upcoming.length > 0 && !(slot && minutes) && (
+        <p className={styles.hint}>{slot ? 'בחר כמה זמן, ואז אפשר להזמין.' : 'בחר שעת התחלה, ואז כמה זמן.'}</p>
+      )}
+
       {slot && minutes && (
         <div className={styles.summary}>
           <p className={styles.summaryText}>

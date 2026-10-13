@@ -34,10 +34,9 @@
 }
 
 .chip[aria-pressed='true'] {
-  color: var(--on-primary);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: var(--on-selected);
+  background: var(--selected);
   border-color: transparent;
-  box-shadow: 0 4px 14px -6px var(--primary-glow);
 }
 
 @media (hover: hover) {

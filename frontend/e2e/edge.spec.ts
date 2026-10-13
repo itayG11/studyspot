@@ -142,6 +142,20 @@ test('the story scrolls to the search without jumps or missing pictures', async 
   expect(await page.evaluate('window.__shift')).toBeLessThan(0.1)
 })
 
+test('on a phone the sticky search takes under a quarter of the screen', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'the phone is where the screen is short')
+  await page.goto('/#finder')
+  const search = page.getByRole('searchbox', { name: 'חיפוש מקום' })
+  await expect(search).toBeVisible()
+  // The part that stays on screen while the results scroll under it.
+  const share = await search.evaluate((input) => {
+    let box: HTMLElement | null = input as HTMLElement
+    while (box && getComputedStyle(box).position !== 'sticky') box = box.parentElement
+    return box ? box.getBoundingClientRect().height / window.innerHeight : 1
+  })
+  expect(share, `the sticky panel is ${Math.round(share * 100)}% of the screen`).toBeLessThan(0.25)
+})
+
 test('search, then a quick filter, then the map', async ({ page }) => {
   await page.goto('/#finder')
   await page.getByRole('searchbox', { name: 'חיפוש מקום' }).fill('מחשב')
@@ -369,7 +383,7 @@ test('the header fits at every width between a phone and a computer', async ({ p
   for (const persona of [null, 'student', 'admin'] as const) {
     if (persona) await signIn(page, persona)
     else await page.context().clearCookies()
-    for (const width of [641, 720, 768, 820, 900, 1000]) {
+    for (const width of [641, 720, 768, 820, 900, 1000, 1024, 1100, 1180, 1280]) {
       await page.setViewportSize({ width, height: 900 })
       await page.goto('/')
       await expect(page.getByRole('banner')).toBeVisible()

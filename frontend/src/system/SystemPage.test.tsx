@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetSessionForTests } from '../api/client'
-import type { PendingRule, SystemInstitution } from '../api/types'
+import type { Invite, PendingRule, SystemInstitution } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { InstitutionProvider } from '../institution'
 import { INSTITUTION, jsonResponse } from '../test/fixtures'
@@ -16,6 +16,7 @@ let institutions: SystemInstitution[]
 let pending: PendingRule[]
 let deletes: string[]
 let posts: { path: string; body: unknown }[]
+let invites: Invite[]
 
 beforeEach(() => {
   resetSessionForTests()
@@ -26,6 +27,10 @@ beforeEach(() => {
   ]
   deletes = []
   posts = []
+  invites = [
+    { id: 4, status: 'open', created_at: '2026-10-10T10:00:00Z', expires_at: '2026-10-17T10:00:00Z', used_at: null },
+    { id: 3, status: 'used', created_at: '2026-10-01T10:00:00Z', expires_at: '2026-10-08T10:00:00Z', used_at: '2026-10-02T09:00:00Z' },
+  ]
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     const body = init.body ? JSON.parse(String(init.body)) : null
@@ -56,6 +61,12 @@ beforeEach(() => {
       return Promise.resolve(new Response(null, { status: 204 }))
     }
     if (path === '/system/institutions') return Promise.resolve(jsonResponse(institutions))
+    if (path === '/system/institutions/braude/invites' && (init.method ?? 'GET') === 'GET')
+      return Promise.resolve(jsonResponse(invites))
+    if (path === '/system/invites/4/revoke') {
+      invites = invites.map((i) => (i.id === 4 ? { ...i, status: 'revoked' as const } : i))
+      return Promise.resolve(jsonResponse(invites[0]))
+    }
     if (path === '/system/institutions/braude/invites' && init.method === 'POST')
       return Promise.resolve(jsonResponse({ id: 4, token: 'tok-123', expires_at: '2026-10-17T10:00:00Z' }, 201))
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
@@ -112,6 +123,25 @@ describe('SystemPage', () => {
     const link = await within(row).findByRole('textbox', { name: 'קישור ההזמנה' })
     expect((link as HTMLInputElement).value).toMatch(/\/invite#t=tok-123$/)
     expect(within(row).getByText(/תקף עד/)).toBeInTheDocument()
+  })
+
+  it('lists the invites sent, with their state, and revokes an open one after asking', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    const toggle = within(row).getByRole('button', { name: 'ההזמנות שנשלחו' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(toggle)
+    const list = await within(row).findByRole('list', { name: 'ההזמנות של מכללת בראודה' })
+    const open = within(list).getAllByRole('listitem')[0]
+    expect(open).toHaveTextContent('פתוחה')
+    expect(open).toHaveTextContent('תקפה עד')
+    expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('נוצלה')
+    expect(within(within(list).getAllByRole('listitem')[1]).queryByRole('button', { name: 'לבטל' })).not.toBeInTheDocument()
+    await user.click(within(open).getByRole('button', { name: 'לבטל' }))
+    await user.click(within(open).getByRole('button', { name: 'כן, לבטל' }))
+    expect(posts.map((p) => p.path)).toContain('/system/invites/4/revoke')
+    await waitFor(() => expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('בוטלה'))
   })
 
   it('lists the login rules waiting for approval, with their institution', async () => {

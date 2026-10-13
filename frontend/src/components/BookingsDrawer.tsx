@@ -16,11 +16,12 @@ interface BookingsDrawerProps {
   open: boolean
   bookings: Booking[] // the active ones, soonest first
   timeZone: string
+  findHref: string // the search on the home page, for "find a place"
   onClose: () => void
   onCancel: (id: number) => Promise<void>
 }
 
-export function BookingsDrawer({ open, bookings, timeZone, onClose, onCancel }: BookingsDrawerProps) {
+export function BookingsDrawer({ open, bookings, timeZone, findHref, onClose, onCancel }: BookingsDrawerProps) {
   // Said here, not in a toast: the page behind the open drawer, toasts
   // included, is under its backdrop. The note also takes the focus, since
   // the row (and its button) that had it is gone.
@@ -44,7 +45,12 @@ export function BookingsDrawer({ open, bookings, timeZone, onClose, onCancel }: 
         {done}
       </p>
       {bookings.length === 0 ? (
-        <p className={styles.empty}>אין הזמנות קרובות.</p>
+        <div className={styles.empty}>
+          <p>אין הזמנות קרובות.</p>
+          <ButtonLink to={findHref} onClick={onClose}>
+            למצוא מקום
+          </ButtonLink>
+        </div>
       ) : (
         <ul className={styles.list}>
           {bookings.map((booking) => (

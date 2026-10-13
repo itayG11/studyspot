@@ -99,6 +99,7 @@
   align-items: center;
   min-height: 38px;
   padding: 0 var(--s-4);
+  white-space: nowrap; /* a link is one line, or the header grows uneven */
   font: 600 var(--text-md) / 1 var(--font-body);
   color: var(--ink-2);
   text-decoration: none;
@@ -137,6 +138,14 @@
   display: flex;
   align-items: center;
   gap: var(--s-2);
+  white-space: nowrap;
+}
+
+/* Up to a wide screen, an admin's header has many links: tighter. */
+@media (max-width: 1360px) {
+  .navLink {
+    padding: 0 var(--s-3);
+  }
 }
 
 .role {
@@ -243,10 +252,11 @@
 
 /* Up to a small computer, two rows, not three: the brand, the pulse, the
    switch and sign-in/out on the first, the links on the second. On one row
-   these no longer fit below about 1000px (measured: the sign-out button
-   went off the side, hidden by the page's overflow clip; e2e/edge.spec.ts
-   checks every width). The user's name is in "my area" anyway. */
-@media (max-width: 1000px) {
+   these no longer fit below about 1200px (measured: an admin's sign-out
+   button went off the side at 1024, hidden by the page's overflow clip;
+   e2e/edge.spec.ts checks ten widths). The user's name is in "my area"
+   anyway. */
+@media (max-width: 1200px) {
   .header {
     flex-wrap: wrap;
     gap: var(--s-1) var(--s-3);
@@ -341,7 +351,7 @@
   padding: 0 5px;
   font: 600 11px / 1 var(--font-mono);
   color: var(--on-primary);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: var(--primary);
   border-radius: var(--r-pill);
 }
 

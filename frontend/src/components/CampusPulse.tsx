@@ -18,7 +18,9 @@ export function CampusPulse({ today, home }: { today: CampusToday | null; home: 
       <span className={styles.dot} aria-hidden="true" />
       <span aria-hidden="true">
         <strong className={styles.number}>{free}</strong>
-        <span className={styles.words}> פנויים עכשיו</span>
+        {/* On a phone "now" goes; "free" stays, so the number is not a riddle. */}
+        <span> פנויים</span>
+        <span className={styles.words}> עכשיו</span>
         {today.simulated && <span className={styles.demo}> · דמו</span>}
       </span>
     </Link>

@@ -76,3 +76,22 @@
   font-size: var(--text-sm);
   color: var(--ink-2);
 }
+
+/* The invites sent for an institution */
+.invites {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inviteRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: var(--stone-1);
+  border-radius: var(--r-sm);
+}

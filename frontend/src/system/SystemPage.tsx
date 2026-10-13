@@ -4,8 +4,8 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { removeLoginRule } from '../api/admin'
-import { approveRule, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getPendingRules } from '../api/system'
-import type { InviteCreated, PendingRule, SystemInstitution } from '../api/types'
+import { approveRule, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getInvites, getPendingRules, revokeInvite } from '../api/system'
+import type { Invite, InviteCreated, PendingRule, SystemInstitution } from '../api/types'
 import { SITE_URL } from '../config'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
@@ -150,9 +150,16 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
   const linkId = useId()
   const link = invite ? `${SITE_URL}/invite#t=${encodeURIComponent(invite.token)}` : ''
 
+  // The list of invites sent, loaded only when opened.
+  const [listOpen, setListOpen] = useState(false)
+  const [sent, setSent] = useState(0) // a new invite: the open list reloads
+
   async function newInvite() {
     const created = await action.run(() => createInvite(institution.slug))
-    if (created) setInvite(created)
+    if (created) {
+      setInvite(created)
+      setSent((n) => n + 1)
+    }
   }
 
   return (
@@ -173,6 +180,12 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
         <Button variant="secondary" size="sm" busy={action.busy} onClick={() => void newInvite()}>
           קישור הזמנה למנהל
         </Button>
+        <Button variant="ghost" size="sm" aria-expanded={listOpen} aria-controls={`invites-${institution.slug}`} onClick={() => setListOpen(!listOpen)}>
+          ההזמנות שנשלחו
+        </Button>
+      </div>
+      <div id={`invites-${institution.slug}`}>
+        {listOpen && <Invites slug={institution.slug} name={institution.name} version={sent} />}
       </div>
       {invite && (
         <div className={styles.invite}>
@@ -193,6 +206,54 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
       <ActionError action={action} />
       {!institution.is_active && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
     </li>
+  )
+}
+
+const INVITE_STATES: Record<Invite['status'], string> = { open: 'פתוחה', used: 'נוצלה', revoked: 'בוטלה', expired: 'פגה' }
+
+// The invites sent for one institution: what became of each, and "revoke"
+// for one still open (a link sent to the wrong person, or never used).
+function Invites({ slug, name, version }: { slug: string; name: string; version: number }) {
+  const { timezone } = useInstitution()
+  const list = useApi(() => getInvites(slug), `invites-${slug}-${version}`)
+  const action = useAction()
+  if (!list.data && list.error) return <ErrorState error={list.error} onRetry={list.reload} compact />
+  if (!list.data) return <p className={styles.note}>טוען את ההזמנות…</p>
+  if (list.data.length === 0) return <p className={styles.note}>עוד לא נשלחו הזמנות.</p>
+  return (
+    <>
+      <ul className={styles.invites} aria-label={`ההזמנות של ${name}`}>
+        {list.data.map((invite) => (
+          <li key={invite.id} className={styles.inviteRow}>
+            <span className={invite.status === 'open' ? styles.active : styles.hidden}>{INVITE_STATES[invite.status]}</span>
+            <span className={styles.note}>
+              נוצרה {formatDay(invite.created_at, timezone)}
+              {invite.status === 'open' && ` · תקפה עד ${formatDay(invite.expires_at, timezone)} בשעה ${formatTime(invite.expires_at, timezone)}`}
+              {invite.used_at && ` · נוצלה ${formatDay(invite.used_at, timezone)}`}
+            </span>
+            {invite.status === 'open' && (
+              <ConfirmButton
+                size="sm"
+                label="לבטל"
+                confirmLabel="כן, לבטל"
+                busy={action.busy}
+                onConfirm={() =>
+                  void action.run(async () => {
+                    // Reloaded even when refused: it may have expired meanwhile.
+                    try {
+                      await revokeInvite(invite.id)
+                    } finally {
+                      list.reload()
+                    }
+                  })
+                }
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+      <ActionError action={action} />
+    </>
   )
 }
 

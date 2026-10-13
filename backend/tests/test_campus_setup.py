@@ -80,7 +80,7 @@ def test_the_admin_renames_and_activates_the_institution(manager, session, tel_h
     assert response.status_code == 200
     session.refresh(tel_hai)
     assert (tel_hai.name, tel_hai.is_active) == ("תל חי", True)
-    assert manager.get("/institutions").json() == [{"slug": "tel-hai", "name": "תל חי"}]
+    assert [(i["slug"], i["name"]) for i in manager.get("/institutions").json()] == [("tel-hai", "תל חי")]
 
 
 def test_an_unknown_time_zone_is_refused(manager):

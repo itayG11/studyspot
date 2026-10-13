@@ -62,7 +62,7 @@
   }
 }
 
-/* A phone's header is narrow: the number and the dot are enough. */
+/* A phone's header is narrow: the dot, the number and "free". */
 @media (max-width: 720px) {
   .words,
   .demo {

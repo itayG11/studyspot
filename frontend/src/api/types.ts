@@ -24,6 +24,13 @@ export interface InstitutionListItem {
   name: string
 }
 
+// A card on the public institutions page.
+export interface InstitutionCard extends InstitutionListItem {
+  buildings_count: number
+  places_count: number
+  is_demo: boolean // the demo campus, with made-up people
+}
+
 export interface Institution {
   slug: string
   name: string

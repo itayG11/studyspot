@@ -36,8 +36,8 @@
    (the delay), so the mark is seen moving rather than the option jumping;
    the option left behind loses it at once (the base rule has no delay). */
 .option[aria-pressed='true'] {
-  color: var(--on-primary);
-  background: var(--primary);
+  color: var(--on-selected);
+  background: var(--selected);
   transition:
     color var(--dur-ui) ease,
     background-color 0s linear 300ms;
@@ -55,13 +55,12 @@
   }
 }
 
-/* The mark under the chosen option, in the site's blue to indigo. */
+/* The mark under the chosen option: the same "chosen" as a chip or a time. */
 .mark {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: 0 4px 14px -6px var(--primary-glow);
+  background: var(--selected);
 }
 
 .label {

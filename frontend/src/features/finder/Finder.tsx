@@ -97,10 +97,11 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
 
   return (
     <section id="finder" className={styles.finder} aria-labelledby="finder-title" tabIndex={-1}>
+      {/* The heading scrolls away; only the search and the chips stay. */}
+      <h2 id="finder-title" className={styles.heading}>
+        איפה תלמד היום?
+      </h2>
       <div className={styles.bar}>
-        <h2 id="finder-title" className={styles.heading}>
-          איפה תלמד היום?
-        </h2>
         <SearchField
           label="חיפוש מקום"
           value={filters.q}

@@ -444,3 +444,50 @@
   padding-block: var(--s-2);
   border-bottom: 1px solid var(--stone-3);
 }
+
+/* The two columns are plain wrappers: the order on screen is the order in
+   the page, for the keyboard and a screen reader too. */
+.adderSide,
+.setupMain {
+  display: grid;
+  gap: var(--s-6);
+  align-content: start;
+}
+
+.setupMain {
+  gap: var(--s-4);
+}
+
+/* --- Two columns on a computer (wide enough for a form beside a map) ----- */
+@media (min-width: 1000px) {
+  /* "Add": the table, the places students mentioned and the new place on
+     one side; the new building, with its map, on the other. */
+  .adder {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    align-items: start;
+    max-width: none;
+  }
+
+  .adder > .lead {
+    grid-column: 1 / -1;
+  }
+
+  /* "Set up": the steps beside the cards, in view while scrolling. */
+  .setup {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .setup > :not(.steps, .setupMain) {
+    grid-column: 1 / -1; /* the demo campus's note, above both */
+  }
+
+  .setup > .steps {
+    position: sticky;
+    top: calc(var(--header-h, 0px) + var(--s-4));
+    padding: var(--s-4);
+    background: var(--stone-0);
+    border: 1px solid var(--stone-3);
+    border-radius: var(--r-md);
+  }
+}

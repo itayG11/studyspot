@@ -48,6 +48,14 @@ class InstitutionListItem(BaseModel):
     name: str
 
 
+class InstitutionCard(InstitutionListItem):
+    """One card on the public institutions page."""
+
+    buildings_count: int
+    places_count: int
+    is_demo: bool  # the demo campus, with its made-up people
+
+
 class InstitutionOut(BaseModel):
     slug: str
     name: str

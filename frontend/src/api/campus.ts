@@ -1,11 +1,11 @@
 // The campus endpoints. All of them are public: no sign-in needed.
 
 import { api } from './client'
-import type { Building, CampusToday, Forecast, Institution, InstitutionListItem, Place, PlaceDetail, PlaceKind, Providers } from './types'
+import type { Building, CampusToday, Forecast, Institution, InstitutionCard, Place, PlaceDetail, PlaceKind, Providers } from './types'
 
 const base = (slug: string) => `/institutions/${encodeURIComponent(slug)}`
 
-export const getInstitutions = () => api<InstitutionListItem[]>('/institutions')
+export const getInstitutions = () => api<InstitutionCard[]>('/institutions')
 export const getInstitution = (slug: string) => api<Institution>(base(slug))
 export const getBuildings = (slug: string) => api<Building[]>(`${base(slug)}/buildings`)
 export const getPlace = (id: number) => api<PlaceDetail>(`/places/${id}`)

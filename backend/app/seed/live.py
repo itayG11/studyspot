@@ -28,7 +28,7 @@ from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.bookings import MIN_WALK_IN, holding
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.history import slot_floor
 from app.hours import place_status
 from app.models import Booking, CheckIn, CheckInEndReason, Institution, Place, PlaceKind, User
@@ -47,10 +47,11 @@ SHORTEST_STAY = timedelta(minutes=10)
 MAX_POOL = 400
 
 
-def is_simulated_campus(institution: Institution) -> bool:
+def is_simulated_campus(institution: Institution, settings: Settings | None = None) -> bool:
     """The demo campus, while the demo sign-in is on and it has no real
-    sign-in rules (approved or waiting)."""
-    settings = get_settings()
+    sign-in rules (approved or waiting). An endpoint passes its own settings
+    (a FastAPI dependency); elsewhere they are read here."""
+    settings = settings or get_settings()
     return (
         settings.demo_login_enabled
         and institution.slug == settings.demo_institution == DEMO["institution"]["slug"]

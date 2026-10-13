@@ -11,10 +11,10 @@ const ROOM: Booking = {
 }
 const LAB: Booking = { ...ROOM, id: 8, place_name: 'M206', seat_id: 1, seat_label: 'A1', status: 'checked_in' }
 
-function renderDrawer(onCancel = vi.fn(() => Promise.resolve()), onClose = vi.fn()) {
+function renderDrawer(onCancel = vi.fn(() => Promise.resolve()), onClose = vi.fn(), bookings: Booking[] = [ROOM, LAB]) {
   render(
     <MemoryRouter>
-        <BookingsDrawer open bookings={[ROOM, LAB]} timeZone="Asia/Jerusalem" onClose={onClose} onCancel={onCancel} />
+        <BookingsDrawer open bookings={bookings} findHref="/demo#finder" timeZone="Asia/Jerusalem" onClose={onClose} onCancel={onCancel} />
     </MemoryRouter>,
   )
   return { onCancel, onClose }
@@ -50,5 +50,16 @@ describe('BookingsDrawer', () => {
     await userEvent.click(within(room).getByRole('button', { name: 'לבטל' }))
     await userEvent.click(within(room).getByRole('button', { name: 'כן, לבטל' }))
     expect(await within(room).findByRole('alert')).toBeInTheDocument()
+  })
+
+  it('with no bookings, says so and leads to the search, and closes on the way', async () => {
+    const onClose = vi.fn()
+    renderDrawer(undefined, onClose, [])
+    const drawer = screen.getByRole('dialog', { name: 'ההזמנות הקרובות' })
+    expect(within(drawer).getByText('אין הזמנות קרובות.')).toBeInTheDocument()
+    const find = within(drawer).getByRole('link', { name: 'למצוא מקום' })
+    expect(find).toHaveAttribute('href', '/demo#finder')
+    await userEvent.click(find)
+    expect(onClose).toHaveBeenCalled()
   })
 })

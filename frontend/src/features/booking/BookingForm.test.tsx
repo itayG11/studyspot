@@ -105,6 +105,17 @@ describe('BookingForm', () => {
     expect(screen.getByRole('button', { name: '10:00' })).toBeEnabled()
   })
 
+  it('says what is still missing before the book button appears', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    expect(await screen.findByText('בחר שעת התחלה, ואז כמה זמן.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '10:00' }))
+    expect(screen.getByText('בחר כמה זמן, ואז אפשר להזמין.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    expect(screen.queryByText(/ואז אפשר להזמין/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'להזמין' })).toBeInTheDocument()
+  })
+
   it('sends the chosen time as an exact moment', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     renderPanel()

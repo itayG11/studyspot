@@ -1,6 +1,8 @@
 """The public list of institutions: only the ones marked active."""
 
-from app.models import Institution
+from app.config import Settings, get_settings
+from app.main import app
+from app.models import Institution, InstitutionLoginRule
 from app.seed import seed_demo
 
 
@@ -14,7 +16,32 @@ def test_lists_only_active_institutions(client, session, braude):
     response = client.get("/institutions")
     assert response.status_code == 200
     # Braude waits for the college; a new institution waits for its admin.
-    assert response.json() == [{"slug": "demo", "name": "קמפוס הדגמה"}]
+    assert [(i["slug"], i["name"]) for i in response.json()] == [("demo", "קמפוס הדגמה")]
+
+
+def test_each_institution_says_how_many_buildings_and_places_it_has(client, session):
+    # For the cards on the institutions page.
+    demo = seed_demo(session)
+    settings = Settings(database_url="postgresql+psycopg://unused@localhost/unused", demo_login_enabled=True, _env_file=None)
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        [card] = client.get("/institutions").json()
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+    assert card["buildings_count"] == len(demo.buildings)
+    assert card["places_count"] == sum(len(b.places) for b in demo.buildings)
+    assert card["is_demo"] is True  # with the demo sign-in on
+    # With real sign-in rules it is not the open demo any more.
+    session.add(InstitutionLoginRule(institution_id=demo.id, provider="email", value="example.ac.il", approved=True))
+    session.expire(demo)
+    session.flush()
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        assert client.get("/institutions").json()[0]["is_demo"] is False
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+    # Off (a site for real students only): no card says "demo".
+    assert client.get("/institutions").json()[0]["is_demo"] is False
 
 
 def test_a_hidden_institution_still_opens_by_its_address(client, session):
