@@ -156,6 +156,21 @@ test('on a phone the sticky search takes under a quarter of the screen', async (
   expect(share, `the sticky panel is ${Math.round(share * 100)}% of the screen`).toBeLessThan(0.25)
 })
 
+test('the finder\'s tilt never makes the page longer, on any device', async ({ page }) => {
+  // The finder rises tilted in 3D. Once it was taller than the tilt's depth
+  // (a phone's one long column of cards) its end was drawn twenty times its
+  // size: the page grew to 100,000 px and the accessibility check crashed
+  // the browser (CI run 97, src/features/finder/reveal.ts).
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.locator('#finder').getByRole('link').first()).toBeAttached() // the cards are in
+  const tilted = await page.evaluate(() => document.documentElement.scrollHeight)
+  await page.locator('#finder').scrollIntoViewIfNeeded()
+  await expect.poll(() => page.locator('#finder').evaluate((el) => (el.closest('[style*="transform-origin"]') as HTMLElement).style.transform)).toBe('none')
+  const flat = await page.evaluate(() => document.documentElement.scrollHeight)
+  expect(tilted, `the page is ${tilted}px with the finder tilted, ${flat}px flat`).toBeLessThanOrEqual(flat + 2)
+})
+
 test('search, then a quick filter, then the map', async ({ page }) => {
   await page.goto('/#finder')
   await page.getByRole('searchbox', { name: 'חיפוש מקום' }).fill('מחשב')
