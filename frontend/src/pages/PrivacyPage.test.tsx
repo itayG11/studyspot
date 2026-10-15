@@ -20,6 +20,14 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/לחתוך.*תעודת הזהות/)).toBeInTheDocument()
   })
 
+  it('lists the two cookies, both for signing in, and says there are no others', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'עוגיות' })).toBeInTheDocument()
+    expect(screen.getByText('studyspot_refresh')).toBeInTheDocument()
+    expect(screen.getByText('studyspot_login')).toBeInTheDocument()
+    expect(screen.getByText(/אין עוגיות של פרסום/)).toBeInTheDocument()
+  })
+
   it('says how long things are kept, and that the server log has no addresses or queries', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'כמה זמן נשמר' })).toBeInTheDocument()

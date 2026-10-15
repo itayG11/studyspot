@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { AccessibilityPage } from './AccessibilityPage'
 import { LicensesPage } from './LicensesPage'
+import { TermsPage } from './TermsPage'
 
 describe('AccessibilityPage', () => {
   it('says the level aimed for, what was checked, what is known to be missing, and how to report', () => {
@@ -23,5 +24,16 @@ describe('LicensesPage', () => {
       expect(screen.getAllByText(new RegExp(name)).length).toBeGreaterThan(0)
     }
     expect(screen.getAllByText('OFL-1.1').length).toBeGreaterThan(0)
+  })
+})
+
+describe('TermsPage', () => {
+  it('says what the site is, what a user may and may not do, and links the privacy page', () => {
+    render(<MemoryRouter><TermsPage /></MemoryRouter>)
+    expect(screen.getByRole('heading', { level: 1, name: 'תנאי שימוש' })).toBeInTheDocument()
+    for (const heading of ['מה האתר', 'מה מותר ומה לא', 'הזמנות וכניסות', 'בלי התחייבות', 'שינויים']) {
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
+    }
+    expect(screen.getByRole('link', { name: 'מדיניות הפרטיות' })).toHaveAttribute('href', '/privacy')
   })
 })

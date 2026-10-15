@@ -32,7 +32,7 @@ INVITE_LIFETIME = timedelta(days=7)
 # open. tests/test_system_institutions.py keeps this in step with the router.
 RESERVED_SLUGS = frozenset({
     "admin", "api", "assets", "design", "icons", "images", "institutions", "invite",
-    "accessibility", "licenses", "login", "me", "places", "privacy", "scan", "signed-in", "spaces", "system",
+    "accessibility", "licenses", "login", "terms", "me", "places", "privacy", "scan", "signed-in", "spaces", "system",
     # The demo campus's own name: an institution created under it would get
     # the demo's made-up live occupancy (app/seed/live.py).
     "demo",

@@ -214,6 +214,29 @@
   color: var(--ink);
 }
 
+/* The cookies, a small table: on a phone the descriptions wrap, the names do not. */
+.cookies {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.cookies th,
+.cookies td {
+  padding: var(--s-2) var(--s-3);
+  text-align: start;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.cookies th {
+  color: var(--ink);
+}
+
+.cookies code {
+  white-space: nowrap; /* a name is read whole, not broken mid-word */
+}
+
 .loginPrivacy {
   margin: var(--s-5) 0 0;
   font-size: var(--text-sm);

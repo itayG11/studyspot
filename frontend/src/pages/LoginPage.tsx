@@ -114,7 +114,8 @@ export function LoginPage() {
 
         {error && <Notice tone="error">{error}</Notice>}
         <p className={styles.loginPrivacy}>
-          מה נשמר עליך, ואיך מוחקים: <Link to="/privacy">מדיניות הפרטיות</Link>
+          בהתחברות אתה מסכים ל<Link to="/terms">תנאי השימוש</Link> ול<Link to="/privacy">מדיניות הפרטיות</Link>, שבה כתוב
+          מה נשמר עליך ואיך מוחקים.
         </p>
       </section>
     </div>

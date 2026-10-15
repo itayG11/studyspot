@@ -16,6 +16,7 @@ import { ScanPage } from './scan/ScanPage'
 import { AccessibilityPage } from './pages/AccessibilityPage'
 import { LicensesPage } from './pages/LicensesPage'
 import { PrivacyPage } from './pages/PrivacyPage'
+import { TermsPage } from './pages/TermsPage'
 import { InstitutionsPage } from './pages/InstitutionsPage'
 import { InvitePage } from './pages/InvitePage'
 import { SystemPage } from './system/SystemPage'
@@ -37,6 +38,7 @@ export const routes = [
       { path: 'institutions', Component: InstitutionsPage },
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', Component: SignedInPage },
+      { path: 'terms', Component: TermsPage },
       { path: 'privacy', Component: PrivacyPage },
       { path: 'accessibility', Component: AccessibilityPage },
       { path: 'licenses', Component: LicensesPage },

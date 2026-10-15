@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -45,6 +45,13 @@ function renderLogin() {
 }
 
 describe('LoginPage', () => {
+  it('says that signing in means agreeing to the terms and the privacy policy', async () => {
+    renderLogin()
+    const line = await screen.findByText(/בהתחברות אתה מסכים/)
+    expect(within(line).getByRole('link', { name: 'תנאי השימוש' })).toHaveAttribute('href', '/terms')
+    expect(within(line).getByRole('link', { name: 'מדיניות הפרטיות' })).toHaveAttribute('href', '/privacy')
+  })
+
   it('links to each enabled provider', async () => {
     renderLogin()
     const link = await screen.findByRole('link', { name: 'התחברות עם מיקרוסופט' })
