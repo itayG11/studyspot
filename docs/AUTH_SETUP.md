@@ -33,8 +33,10 @@
 6. **כתובת חזרה:** בשדה `Redirect URI` בחר את הסוג `Web`, והדבק את כתובת האתר החי:
 
    ```text
-   https://studyspot-yetb.onrender.com/api/auth/microsoft/callback
+   https://getstudyspot.me/api/auth/microsoft/callback
    ```
+
+   - **הכתובת הקודמת,** `https://studyspot-yetb.onrender.com/api/auth/microsoft/callback`, יכולה להישאר ברשימה. היא לא מזיקה.
 
    - **לפיתוח במחשב:** אפשר להוסיף גם `http://localhost:8000/auth/microsoft/callback`.
 7. **שמירה:** לחץ `Register`.
@@ -54,8 +56,11 @@
 4. **כתובת חזרה:** תחת `Authorized redirect URIs` הוסף:
 
    ```text
+   https://getstudyspot.me/api/auth/google/callback
    http://localhost:8000/auth/google/callback
    ```
+
+   - **הדומיין במסך ההסכמה:** אם גוגל מבקשת, מוסיפים את `getstudyspot.me` תחת `Authorized domains`, באזור `Branding`.
 
 5. **העתקה:** העתק את `Client ID` ואת `Client secret`.
 
