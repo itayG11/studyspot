@@ -1,25 +1,21 @@
 // Every address of the site and the page it shows.
 // "Data mode" (createBrowserRouter) is used for its page-change animations.
 
+import type { ComponentType } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { LazyAdminPage } from './admin/LazyAdminPage'
 import { RequireAdmin, RequireAuth, RequireSystemAdmin } from './auth/guards'
 import { HomeInstitutionRoute, InstitutionRoute, ToHomeInstitution } from './institutionRoutes'
-import { MyPage } from './me/MyPage'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceRedirect, PlacesRedirect } from './pages/PlacesRedirect'
 import { SpacePage } from './features/space/SpacePage'
-import { SignedInPage } from './pages/SignedInPage'
-import { ScanPage } from './scan/ScanPage'
-import { AccessibilityPage } from './pages/AccessibilityPage'
-import { LicensesPage } from './pages/LicensesPage'
-import { PrivacyPage } from './pages/PrivacyPage'
-import { TermsPage } from './pages/TermsPage'
-import { InstitutionsPage } from './pages/InstitutionsPage'
-import { InvitePage } from './pages/InvitePage'
-import { SystemPage } from './system/SystemPage'
+
+// Pages few visitors open first load when asked for (wave 7.3): the home
+// page, a place's page and sign-in stay in the main file; the rest, and
+// each one's code, arrive on the way there. A guard stays in front.
+const page = (load: () => Promise<ComponentType>) => ({ lazy: async () => ({ Component: await load() }) })
 
 export const routes = [
   // The front page: the visitor's own institution, or the demo campus.
@@ -30,18 +26,24 @@ export const routes = [
     Component: HomeInstitutionRoute,
     children: [
       // The scan page asks for sign-in itself, keeping the code out of the address.
-      { path: 'scan', Component: ScanPage },
-      { path: 'me', element: <RequireAuth><MyPage /></RequireAuth> },
+      { path: 'scan', ...page(() => import('./scan/ScanPage').then((m) => m.ScanPage)) },
+      {
+        path: 'me',
+        ...page(() => import('./me/MyPage').then(({ MyPage }) => () => <RequireAuth><MyPage /></RequireAuth>)),
+      },
       // The system admin's page, and the link a new institution's admin gets.
-      { path: 'system', element: <RequireSystemAdmin><SystemPage /></RequireSystemAdmin> },
-      { path: 'invite', Component: InvitePage },
-      { path: 'institutions', Component: InstitutionsPage },
+      {
+        path: 'system',
+        ...page(() => import('./system/SystemPage').then(({ SystemPage }) => () => <RequireSystemAdmin><SystemPage /></RequireSystemAdmin>)),
+      },
+      { path: 'invite', ...page(() => import('./pages/InvitePage').then((m) => m.InvitePage)) },
+      { path: 'institutions', ...page(() => import('./pages/InstitutionsPage').then((m) => m.InstitutionsPage)) },
       { path: 'login', Component: LoginPage },
-      { path: 'signed-in', Component: SignedInPage },
-      { path: 'terms', Component: TermsPage },
-      { path: 'privacy', Component: PrivacyPage },
-      { path: 'accessibility', Component: AccessibilityPage },
-      { path: 'licenses', Component: LicensesPage },
+      { path: 'signed-in', ...page(() => import('./pages/SignedInPage').then((m) => m.SignedInPage)) },
+      { path: 'terms', ...page(() => import('./pages/TermsPage').then((m) => m.TermsPage)) },
+      { path: 'privacy', ...page(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage)) },
+      { path: 'accessibility', ...page(() => import('./pages/AccessibilityPage').then((m) => m.AccessibilityPage)) },
+      { path: 'licenses', ...page(() => import('./pages/LicensesPage').then((m) => m.LicensesPage)) },
       // The living style guide, in development only; the build leaves it out.
       ...(import.meta.env.DEV
         ? [{ path: 'design', lazy: () => import('./design/Showcase').then((module) => ({ Component: module.Showcase })) }]
