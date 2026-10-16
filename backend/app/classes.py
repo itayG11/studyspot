@@ -1,5 +1,6 @@
 """Adding and removing a student's classes (models/classes.py)."""
 
+from collections.abc import Iterable
 from datetime import time
 
 from sqlalchemy import delete, func, select
@@ -82,16 +83,25 @@ def same_place(text: str) -> str:
     return " ".join(text.split()).lower()
 
 
-def listed_building(db: Session, institution_id: int, text: str) -> Building | None:
+def match_building[B](text: str, buildings: Iterable[B]) -> B | None:
+    """The building the text names: its short name or its full name, case
+    and spacing aside. The one rule of the manual form and the three
+    imports (wave 7.5); each import only decides which words to ask about."""
     key = same_place(text)
-    for building in db.scalars(
-        select(Building).where(
-            Building.institution_id == institution_id, Building.status != BuildingStatus.UNDER_CONSTRUCTION
-        )
-    ):
-        if key in {same_place(n) for n in (building.code, building.name) if n}:
-            return building
-    return None
+    if not key:
+        return None
+    return next((b for b in buildings if key in {same_place(n) for n in (b.code, b.name) if n}), None)
+
+
+def listed_building(db: Session, institution_id: int, text: str) -> Building | None:
+    return match_building(
+        text,
+        db.scalars(
+            select(Building).where(
+                Building.institution_id == institution_id, Building.status != BuildingStatus.UNDER_CONSTRUCTION
+            )
+        ),
+    )
 
 
 def remove_all(db: Session, user: User) -> int:

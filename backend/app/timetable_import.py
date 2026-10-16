@@ -20,9 +20,11 @@ import re
 import unicodedata
 import zipfile
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 from openpyxl import load_workbook
 
+from app.classes import match_building
 from app.models import Building
 
 MAX_BYTES = 200 * 1024
@@ -151,15 +153,13 @@ def _building(place: list[str], buildings: list[Building]) -> tuple[str | None, 
     """Where the class is, from the words just before its times only (never
     further back: that is the lecturer's name). The export writes the place
     twice: "219 M נגישות M", "702 L L", "אולם ספורט אולם ספורט"."""
-    codes = {b.code.casefold(): b.code for b in buildings}
+    by_code = [SimpleNamespace(code=b.code, name=None) for b in buildings]  # one word: a short name only
     for word in reversed(place[-2:]):
-        if word.casefold() in codes:
-            return codes[word.casefold()], word
+        if found := match_building(word, by_code):
+            return found.code, word
     said = _twice(place)[:PLACE_LENGTH]  # app/schemas.py ClassSlotIn.place_text
-    for b in buildings:
-        if said and b.name and b.name == said:
-            return b.code, said
-    return None, said
+    found = match_building(said, buildings)
+    return (found.code if found else None), said
 
 
 def _twice(words: list[str]) -> str:

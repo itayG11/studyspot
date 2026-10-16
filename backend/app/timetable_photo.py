@@ -18,7 +18,7 @@ from typing import Any
 
 import anthropic
 
-from app.classes import same_place
+from app.classes import match_building, same_place
 from app.schemas import _plain_text
 from app.timetable_import import MAX_ROWS, PLACE_LENGTH, TITLE_LENGTH, WEEKDAYS, ImportRefused, Row
 
@@ -135,10 +135,9 @@ def _listed(said: str, buildings: list) -> str | None:
     lecturer before it is a building called so."""
     if not said:
         return None
-    key = same_place(said)
-    whole = next((b.code for b in buildings if key in {same_place(n) for n in (b.code, b.name) if n}), None)
+    whole = match_building(said, buildings)
     if whole:
-        return whole
+        return whole.code
     codes = {same_place(b.code): b.code for b in buildings}
     return next((codes[w] for w in map(same_place, reversed(said.split())) if w in codes), None)
 
