@@ -1,7 +1,11 @@
 // Sign-in with a one-time code by email, in two steps: the college address,
 // then the 6-digit code the server emailed to it.
+//
+// A college mailbox can hold an email for minutes while it scans it (it
+// happened with Braude's). So the page says so, any code still in time
+// works (app/email_codes.py), and a new code is offered only after a minute.
 
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Mail } from 'lucide-react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
@@ -12,6 +16,22 @@ import styles from './pages.module.css'
 // Digits only: a code pasted as "123 456" or with a dash still works.
 function codeDigits(raw: string): string {
   return raw.replace(/[^0-9]/g, '').slice(0, 6)
+}
+
+const RESEND_AFTER_S = 60
+
+// Seconds left until a new code may be asked for; 0 once it may.
+function useCountdown(from: number | null): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (from === null) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [from])
+  if (from === null) return 0
+  // Until the first tick, now may be from before the code was sent.
+  const elapsed = Math.max(0, now - from)
+  return Math.max(0, RESEND_AFTER_S - Math.floor(elapsed / 1000))
 }
 
 export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
@@ -25,6 +45,9 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   // Read out by screen readers; always in the page, so every change is heard.
   const [status, setStatus] = useState('')
   const [changedAddress, setChangedAddress] = useState(false)
+  const [minutes, setMinutes] = useState(20)
+  const [sentAt, setSentAt] = useState<number | null>(null)
+  const wait = useCountdown(sentAt)
   const id = useId()
 
   async function run(action: 'send' | 'verify', work: () => Promise<void>) {
@@ -43,7 +66,9 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
     event?.preventDefault()
     const again = step === 'code'
     void run('send', async () => {
-      await emailStart(email.trim())
+      const lifetime = await emailStart(email.trim())
+      setMinutes(Math.round(lifetime / 60))
+      setSentAt(Date.now())
       setStatus(again ? `שלחנו קוד חדש. השעה: ${new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'שלחנו קוד')
       setStep('code')
       setCode('')
@@ -90,7 +115,10 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
       ) : (
         <form className={styles.emailForm} onSubmit={checkCode}>
           <p className={styles.demoText}>
-            שלחנו קוד בן 6 ספרות אל <bdi dir="ltr">{email.trim().toLowerCase()}</bdi>. הקוד תקף ל-10 דקות.
+            שלחנו קוד בן 6 ספרות אל <bdi dir="ltr">{email.trim().toLowerCase()}</bdi>. הקוד תקף ל-{minutes} דקות.
+          </p>
+          <p className={styles.demoText}>
+            לתיבה של המכללה המייל יכול להגיע אחרי עד כמה דקות. אם ביקשת קוד חדש, גם קוד קודם עובד, כל עוד הוא בתוקף.
           </p>
           <label htmlFor={`${id}-code`} className={styles.fieldLabel}>
             הקוד מהמייל
@@ -117,8 +145,8 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
             כניסה
           </Button>
           <div className={styles.emailActions}>
-            <Button variant="ghost" size="sm" busy={busy === 'send'} disabled={busy === 'verify'} onClick={() => sendCode()}>
-              שליחת קוד חדש
+            <Button variant="ghost" size="sm" busy={busy === 'send'} disabled={busy === 'verify' || wait > 0} onClick={() => sendCode()}>
+              {wait > 0 ? `שליחת קוד חדש בעוד ${wait} שניות` : 'שליחת קוד חדש'}
             </Button>
             <Button
               variant="ghost"

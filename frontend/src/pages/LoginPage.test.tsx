@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -110,6 +110,15 @@ describe('LoginPage return path', () => {
 
 describe('LoginPage email code', () => {
   const STUDENT = { ...ME, email: 'itay.gabay@e.braude.ac.il', display_name: 'Itay Gabay' }
+  // A new code is offered a minute after the last: the clock is a fake one
+  // that also runs on its own, so the rest of the page works as usual.
+  const aMinutePasses = () => act(() => vi.advanceTimersByTimeAsync(60_000))
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   beforeEach(() => {
     providers = { providers: [], demo: false, email: true }
@@ -119,7 +128,7 @@ describe('LoginPage email code', () => {
       if (path === '/auth/email/start') {
         const { email } = JSON.parse(String(init!.body))
         if (email.endsWith('@gmail.com')) return Promise.resolve(jsonResponse({ detail: 'email_domain_not_supported' }, 403))
-        return Promise.resolve(jsonResponse({ expires_in: 600 }, 202))
+        return Promise.resolve(jsonResponse({ expires_in: 1200 }, 202))
       }
       if (path === '/auth/email/verify') {
         const { code } = JSON.parse(String(init!.body))
@@ -172,10 +181,32 @@ describe('LoginPage email code', () => {
     expect(screen.getByLabelText('כתובת המייל של המכללה')).toHaveValue('a@e.braude.ac.il')
   })
 
+  it('says the email may be slow, and that an earlier code still works', async () => {
+    // A college mailbox held the codes for minutes; a new code was asked
+    // for meanwhile, and the late one seemed wrong.
+    renderLogin()
+    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    expect(await screen.findByText(/תקף ל-20 דקות/)).toBeInTheDocument()
+    expect(screen.getByText(/עד כמה דקות/)).toBeInTheDocument()
+    expect(screen.getByText(/גם קוד קודם עובד/)).toBeInTheDocument()
+  })
+
+  it('offers a new code only after a minute', async () => {
+    renderLogin()
+    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    expect(await screen.findByRole('button', { name: /שליחת קוד חדש בעוד \d+ שניות/ })).toBeDisabled()
+    await aMinutePasses()
+    expect(screen.getByRole('button', { name: 'שליחת קוד חדש' })).toBeEnabled()
+  })
+
   it('asks for a new code', async () => {
     renderLogin()
     await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    await screen.findByLabelText('הקוד מהמייל')
+    await aMinutePasses()
     await userEvent.click(await screen.findByRole('button', { name: 'שליחת קוד חדש' }))
     expect(await screen.findByRole('status')).toHaveTextContent(/שלחנו קוד חדש/)
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/email/start'))).toHaveLength(2)
@@ -186,6 +217,7 @@ describe('LoginPage email code', () => {
     await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     await screen.findByLabelText('הקוד מהמייל')
+    await aMinutePasses()
     const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>
     fetchMock.mockImplementation((url: string, init?: RequestInit) =>
       String(url).endsWith('/auth/email/start')
@@ -202,11 +234,12 @@ describe('LoginPage email code', () => {
     await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     await screen.findByLabelText('הקוד מהמייל')
+    await aMinutePasses()
     let release!: () => void
     const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>
     fetchMock.mockImplementation((url: string, init?: RequestInit) =>
       String(url).endsWith('/auth/email/start')
-        ? new Promise<Response>((done) => (release = () => done(jsonResponse({ expires_in: 600 }, 202))))
+        ? new Promise<Response>((done) => (release = () => done(jsonResponse({ expires_in: 1200 }, 202))))
         : base(url, init),
     )
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד חדש' }))

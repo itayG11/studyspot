@@ -12,7 +12,8 @@ interface AuthValue {
   status: Status
   user: Me | null
   demoLogin: (persona: DemoPersona) => Promise<void>
-  emailStart: (email: string) => Promise<void>
+  // Resolves to how long the code lasts, in seconds.
+  emailStart: (email: string) => Promise<number>
   emailVerify: (email: string, code: string) => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
@@ -40,9 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     demoLogin: async (persona) => {
       await client.demoLogin(persona)
     },
-    emailStart: async (email) => {
-      await client.emailStart(email)
-    },
+    emailStart: async (email) => (await client.emailStart(email)).expires_in,
     emailVerify: async (email, code) => {
       await client.emailVerify(email, code)
     },

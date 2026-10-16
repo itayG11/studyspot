@@ -3,9 +3,12 @@
 1. start: the address must belong to an institution's email login rule
    (its exact domain); otherwise no email is sent, so the site cannot be
    used to mail strangers. A random 6-digit code is made, its HMAC stored
-   for 10 minutes, and the code emailed.
-2. verify: only the newest code of the address counts. It works once, and
-   after MAX_ATTEMPTS wrong tries not at all; the comparison is in
+   for 20 minutes, and the code emailed.
+2. verify: any code of the address still in time counts, not only the
+   newest: a college mailbox may hold an email for minutes, and by then a
+   new code was asked for. A wrong try counts on every open code, so open
+   codes do not add guesses; after MAX_ATTEMPTS they are locked. A sign-in
+   uses up every open code of the address. The comparisons are in
    constant time. Then the usual sign-in (app/accounts.py) runs, with the
    address as the identity and its domain as the institution key.
 
@@ -27,7 +30,7 @@ from app.errors import Refusal
 from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule
 from app.oidc import ProviderIdentity
 
-CODE_LIFETIME = timedelta(minutes=10)
+CODE_LIFETIME = timedelta(minutes=20)
 MAX_ATTEMPTS = 5
 CODES_PER_ADDRESS_PER_HOUR = 5
 CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address
@@ -104,24 +107,29 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int,
 
 
 def check_code(db: Session, email: str, code: str, now: datetime, key: bytes) -> None:
-    """Use up the address's newest code, or refuse. A wrong try is counted
-    on the row, so the caller commits even when this refuses."""
-    row = db.scalars(
+    """Use up the address's open codes with this one, or refuse. A wrong
+    try is counted on the rows, so the caller commits even when this
+    refuses."""
+    rows = db.scalars(
         select(EmailSignInCode)
-        .where(EmailSignInCode.email == email)
-        .order_by(EmailSignInCode.created_at.desc(), EmailSignInCode.id.desc())
-        .limit(1)
+        .where(EmailSignInCode.email == email, EmailSignInCode.used_at.is_(None), EmailSignInCode.expires_at > now)
+        .order_by(EmailSignInCode.id)
         .with_for_update()  # two tabs with the same code: the second waits, then sees it used
-    ).first()
-    if row is None or row.used_at is not None or row.expires_at <= now:
+    ).all()
+    if not rows:
         raise Refusal(400, "email_code_invalid")
-    if row.attempts >= MAX_ATTEMPTS:
+    wanted = hash_code(key, email, code)
+    # Every row is compared, so the time taken does not tell which one matched.
+    matches = [row for row in rows if hmac.compare_digest(row.code_hash, wanted)]
+    if any(row.attempts >= MAX_ATTEMPTS for row in matches) or all(row.attempts >= MAX_ATTEMPTS for row in rows):
         raise Refusal(400, "email_code_locked")
-    if not hmac.compare_digest(row.code_hash, hash_code(key, email, code)):
-        row.attempts += 1
+    if not matches:
+        for row in rows:
+            row.attempts += 1
         db.flush()
         raise Refusal(400, "email_code_invalid")
-    row.used_at = now
+    for row in rows:
+        row.used_at = now
     db.flush()
 
 

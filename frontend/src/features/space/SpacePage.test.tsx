@@ -108,7 +108,9 @@ describe('SpacePage', () => {
     placeResponses.push(() => jsonResponse(room))
     const router = renderAt('/spaces/3', { book: true, finder: '?q=EM' })
     await screen.findByRole('heading', { name: 'הזמנה מראש' })
-    expect(document.activeElement?.id).toBe('book')
+    // The focus moves in an effect, after the render that shows the heading:
+    // under load the heading can be found a moment before it.
+    await vi.waitFor(() => expect(document.activeElement?.id).toBe('book'))
     // Used once: a reload or "back" here does not open the booking again,
     // and the way back to the search stays.
     await vi.waitFor(() => expect(router.state.location.state).toEqual({ finder: '?q=EM' }))

@@ -298,7 +298,16 @@ def test_a_code_works_once(client, mailer):
     assert response.json()["detail"] == "email_code_invalid"
 
 
-def test_a_code_expires_after_ten_minutes(client, mailer):
+def test_a_code_lasts_twenty_minutes(client, mailer):
+    # A college mailbox (Microsoft's scanning) held a code for minutes, and it
+    # had expired by the time it arrived.
+    assert CODE_LIFETIME == timedelta(minutes=20)
+    start(client)
+    client.clock.now += CODE_LIFETIME - timedelta(seconds=1)
+    assert verify(client, mailer.last_code()).status_code == 200
+
+
+def test_a_code_expires_after_its_lifetime(client, mailer):
     start(client)
     client.clock.now += CODE_LIFETIME
     response = verify(client, mailer.last_code())
@@ -306,14 +315,48 @@ def test_a_code_expires_after_ten_minutes(client, mailer):
     assert response.json()["detail"] == "email_code_invalid"
 
 
-def test_only_the_newest_code_counts(client, mailer):
+def test_an_earlier_code_still_in_time_works(client, mailer):
+    # The first email came late; meanwhile a new code was asked for. The late
+    # one, still in time, signs in.
     start(client)
-    old = mailer.last_code()
+    late = mailer.last_code()
     start(client)
-    new = mailer.last_code()
-    if old != new:
-        assert verify(client, old).status_code == 400
-    assert verify(client, new).status_code == 200
+    assert verify(client, late).status_code == 200
+
+
+def test_signing_in_uses_up_every_open_code_of_the_address(client, mailer):
+    start(client)
+    first = mailer.last_code()
+    start(client)
+    second = mailer.last_code()
+    assert verify(client, second).status_code == 200
+    if first != second:
+        response = verify(client, first)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "email_code_invalid"
+
+
+def test_a_wrong_try_counts_on_every_open_code(client, mailer):
+    # Several codes at once do not multiply the guesses: five wrong tries in
+    # all, and every code open at the time is locked.
+    start(client)
+    first = mailer.last_code()
+    start(client)
+    second = mailer.last_code()
+    wrong = next(c for c in ("000000", "111111", "222222") if c not in (first, second))
+    for _ in range(MAX_ATTEMPTS):
+        assert verify(client, wrong).status_code == 400
+    for code in (first, second):
+        assert verify(client, code).json()["detail"] == "email_code_locked"
+
+
+def test_a_code_asked_for_after_a_lock_works(client, mailer):
+    start(client)
+    wrong = "000000" if mailer.last_code() != "000000" else "111111"
+    for _ in range(MAX_ATTEMPTS):
+        verify(client, wrong)
+    start(client)
+    assert verify(client, mailer.last_code()).status_code == 200
 
 
 def test_a_wrong_code_is_refused(client, mailer):

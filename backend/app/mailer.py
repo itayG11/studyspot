@@ -31,7 +31,7 @@ def _subject(code: str) -> str:
 def _text(code: str) -> str:
     return (
         f"קוד הכניסה שלך הוא {code}.\n"
-        "הקוד תקף ל-10 דקות, ולשימוש אחד.\n"
+        "הקוד תקף ל-20 דקות, ולשימוש אחד.\n"
         "אם לא ביקשת להתחבר, אפשר להתעלם מההודעה הזאת."
     )
 
@@ -41,7 +41,7 @@ def _html(code: str) -> str:
         '<div dir="rtl" style="font-family:Arial,sans-serif;font-size:16px">'
         "<p>קוד הכניסה שלך ל-StudySpot:</p>"
         f'<p style="font-size:32px;font-weight:bold;letter-spacing:6px" dir="ltr">{code}</p>'
-        "<p>הקוד תקף ל-10 דקות, ולשימוש אחד.</p>"
+        "<p>הקוד תקף ל-20 דקות, ולשימוש אחד.</p>"
         "<p>אם לא ביקשת להתחבר, אפשר להתעלם מההודעה הזאת.</p>"
         "</div>"
     )
