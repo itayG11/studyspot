@@ -205,8 +205,7 @@ def test_many_places_at_once_take_a_fixed_number_of_queries(session, braude):
             count(session, place, at(weeks_ago, 10), 3)
     session.expire_all()
     places = _all_places(braude)
-    for p in places:  # the opening hours are loaded by the callers' query
-        p.opening_hours
+    assert all(p.opening_hours for p in places)  # loaded here, as the callers' queries do
     _, few = _queries(session, lambda: forecast_many(session, places[:2], SUNDAY, SUNDAY_10AM))
     _, all_of_them = _queries(session, lambda: forecast_many(session, places, SUNDAY, SUNDAY_10AM))
     assert len(places) > 5
