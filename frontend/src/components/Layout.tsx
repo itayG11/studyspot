@@ -13,10 +13,8 @@ import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
 import { BookingsDrawer } from './BookingsDrawer'
 import { CampusTodayProvider, useCampusToday } from '../features/load/campusToday'
-import { cancelBooking, myBookings } from '../api/student'
-import { REFRESH_INTERVAL_MS } from '../config'
-import { useApi } from '../hooks/useApi'
-import { activeBookings } from '../logic/bookings'
+import { cancelBooking } from '../api/student'
+import { MyBookingsProvider, useBookingsAhead } from '../me/myBookings'
 
 const ROLE_LABELS: Record<UserRole, string> = {
   student: 'סטודנט',
@@ -50,6 +48,7 @@ export function Layout() {
 
   return (
     <CampusTodayProvider slug={institution.slug}>
+    <MyBookingsProvider userId={status === 'signed-in' && user ? user.id : null}>
     <div className={styles.app}>
       {/* The first stop of the keyboard: past the header to the page itself. */}
       <a href="#main" className={styles.skip}>
@@ -77,7 +76,7 @@ export function Layout() {
           >
             חיפוש מקום
           </NavLink>
-          {status === 'signed-in' && user && <MyAreaLink userId={user.id} />}
+          {status === 'signed-in' && user && <MyAreaLink />}
           {user && user.role !== 'student' && (
             // An institution's admin manages their own; the system admin, the one shown.
             <NavLink
@@ -121,6 +120,7 @@ export function Layout() {
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration getKey={scrollKey} />
     </div>
+    </MyBookingsProvider>
     </CampusTodayProvider>
   )
 }
@@ -133,14 +133,9 @@ function Pulse({ home }: { home: string }) {
 // "My area", with how many bookings are still ahead: the count is also in
 // its name, for a screen reader. With bookings ahead, a button next to it
 // opens them in a drawer, to see or cancel one without leaving the page.
-function MyAreaLink({ userId }: { userId: number }) {
+function MyAreaLink() {
   const { slug, timezone } = useInstitution()
-  // Counted when the answer arrives, against the clock at that moment.
-  const bookings = useApi(
-    () => myBookings().then((all) => activeBookings(all, new Date()).toSorted((a, b) => a.starts_at.localeCompare(b.starts_at))),
-    `my-bookings-${userId}`,
-    REFRESH_INTERVAL_MS,
-  )
+  const bookings = useBookingsAhead() // shared with the my-area page (me/myBookings.tsx)
   const [drawer, setDrawer] = useState(false)
   const active = bookings.data ?? []
   const count = active.length

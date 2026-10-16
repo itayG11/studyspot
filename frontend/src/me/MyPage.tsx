@@ -6,7 +6,8 @@ import { InstallTip } from '../components/InstallTip'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, myBookings, myCheckIn, myClasses } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, myCheckIn, myClasses } from '../api/student'
+import { useMyBookings } from './myBookings'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { REFRESH_INTERVAL_MS } from '../config'
@@ -31,7 +32,7 @@ export function MyPage() {
   const { user } = useAuth()
   const { slug } = useInstitution()
   const current = useApi(myCheckIn, 'my-check-in', REFRESH_INTERVAL_MS)
-  const bookings = useApi(myBookings, 'my-bookings', REFRESH_INTERVAL_MS)
+  const bookings = useMyBookings()
   // For each booking's picture, and for the favourites.
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
   const classes = useApi(myClasses, 'my-classes')

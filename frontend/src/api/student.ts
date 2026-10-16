@@ -1,6 +1,6 @@
 // What a signed-in student can do: book, check in, and manage both.
 
-import { api, ApiError } from './client'
+import { api } from './client'
 import type { Availability, BetweenClasses, Booking, CheckIn, ClassSlot, ImportRow, NewClass } from './types'
 
 export const getAvailability = (placeId: number, date: string) =>
@@ -24,15 +24,8 @@ export function checkIn(code: string, seatId: number | null) {
   return api<CheckIn>('/check-ins', { method: 'POST', body, auth: true })
 }
 
-// The current check-in, or null when there is none (the server says 404).
-export async function myCheckIn(): Promise<CheckIn | null> {
-  try {
-    return await api<CheckIn>('/me/check-in', { auth: true })
-  } catch (error) {
-    if (error instanceof ApiError && error.code === 'no_active_check_in') return null
-    throw error
-  }
-}
+// The current check-in, or null when there is none.
+export const myCheckIn = () => api<CheckIn | null>('/me/check-in', { auth: true })
 
 export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`, { method: 'POST', auth: true })
 

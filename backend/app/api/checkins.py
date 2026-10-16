@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, Depends, Path, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.actions import run_action
@@ -59,12 +59,12 @@ def create_check_in(
     return _out(result.check_in, result.cut_short_by)
 
 
-@router.get("/me/check-in", response_model=CheckInOut)
+@router.get("/me/check-in", response_model=CheckInOut | None)
 def get_my_check_in(user: UserDep, session: SessionDep, now: NowDep):
+    """The current check-in, or null. Not being checked in is the usual
+    state, not an error (wave 7.4)."""
     row = current_check_in(session, user, now)
-    if row is None:
-        raise HTTPException(404, "no_active_check_in")
-    return _out(row)
+    return None if row is None else _out(row)
 
 
 @router.post(

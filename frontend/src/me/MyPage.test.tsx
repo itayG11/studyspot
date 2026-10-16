@@ -54,7 +54,7 @@ beforeEach(() => {
     if (path === '/me/between-classes') return Promise.resolve(jsonResponse({ weekday: 6, gaps: [] }))
     if (path === '/institutions/braude/buildings') return Promise.resolve(jsonResponse([]))
     if (path === '/me/check-in')
-      return Promise.resolve(checkIn ? jsonResponse(checkIn) : jsonResponse({ detail: 'no_active_check_in' }, 404))
+      return Promise.resolve(checkIn ? jsonResponse(checkIn) : jsonResponse(null))
     if (path === '/bookings/7/cancel') {
       bookings = [LAB]
       return Promise.resolve(jsonResponse({ ...ROOM, status: 'cancelled' }))

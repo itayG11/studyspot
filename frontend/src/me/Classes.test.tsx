@@ -67,7 +67,7 @@ beforeEach(() => {
       return Promise.resolve(jsonResponse([building({ code: 'M' }), building({ id: 2, code: 'EF' }), building({ id: 3, code: 'NG', status: 'under_construction' })]))
     if (path === '/institutions/braude/places') return Promise.resolve(jsonResponse([]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse([]))
-    if (path === '/me/check-in') return Promise.resolve(jsonResponse({ detail: 'no_active_check_in' }, 404))
+    if (path === '/me/check-in') return Promise.resolve(jsonResponse(null))
     if (path === '/me/between-classes') {
       // Another weekday asked for: that day's gaps (the fixture's, renumbered).
       const day = new URL(url).searchParams.get('weekday')

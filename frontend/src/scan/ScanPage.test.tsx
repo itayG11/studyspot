@@ -60,7 +60,7 @@ beforeEach(() => {
           : jsonResponse({ detail: 'invalid_session' }, 401),
       )
     if (path === '/me/check-in')
-      return Promise.resolve(current ? jsonResponse(current) : jsonResponse({ detail: 'no_active_check_in' }, 404))
+      return Promise.resolve(current ? jsonResponse(current) : jsonResponse(null))
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
     const placeMatch = /^\/places\/(\d+)$/.exec(path)
@@ -206,7 +206,7 @@ describe('ScanPage', () => {
         return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
       if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
       if (path === '/places/5') return Promise.resolve(jsonResponse(AREA))
-      if (path === '/me/check-in') return Promise.resolve(jsonResponse({ detail: 'no_active_check_in' }, 404))
+      if (path === '/me/check-in') return Promise.resolve(jsonResponse(null))
       return Promise.resolve(jsonResponse({ detail: 'oops' }, 503))
     })
     renderScan(`/scan#c=p5.v1.${SIG}`)

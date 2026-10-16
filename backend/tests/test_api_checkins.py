@@ -95,7 +95,8 @@ def test_expired_check_in_is_not_counted(client, braude):
     check_in(client, area)
     client.clock.now = SUNDAY_10AM + timedelta(hours=2, minutes=1)
     assert occupied(client, area) == 0
-    assert client.get("/me/check-in").status_code == 404
+    expired = client.get("/me/check-in")
+    assert (expired.status_code, expired.json()) == (200, None)
     # A new check-in closes the expired one instead of tripping over it.
     assert check_in(client, area).status_code == 201
 
@@ -231,3 +232,10 @@ def test_cannot_check_out_someone_else(client, braude, other_student):
     client.user = other_student
     assert client.post(f"/check-ins/{created['id']}/checkout").status_code == 404
     assert occupied(client, area) == 1
+
+
+def test_no_check_in_is_an_ordinary_answer_not_an_error(client, braude):
+    """Most of the time a student is not checked in: 200 with null, not a
+    404 that every page has to catch (wave 7.4)."""
+    answer = client.get("/me/check-in")
+    assert (answer.status_code, answer.json()) == (200, None)

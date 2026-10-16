@@ -9,7 +9,8 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { CircleCheck, KeyRound, ScanLine } from 'lucide-react'
 import { getPlace } from '../api/campus'
-import { checkIn, myBookings, myCheckIn } from '../api/student'
+import { checkIn, myCheckIn } from '../api/student'
+import { useMyBookings } from '../me/myBookings'
 import { useAuth } from '../auth/AuthContext'
 import type { CheckIn } from '../api/types'
 import { SeatGrid } from '../components/SeatGrid'
@@ -101,7 +102,7 @@ function ScanPlace({ code, placeId }: { code: string; placeId: number }) {
   // Kept fresh while the page is open: a student who arrives early waits
   // here until the booking's arrival window opens.
   const place = useApi(() => getPlace(placeId), `scan-place-${placeId}`, REFRESH_INTERVAL_MS)
-  const bookings = useApi(myBookings, 'my-bookings', REFRESH_INTERVAL_MS)
+  const bookings = useMyBookings()
   const current = useApi(myCheckIn, 'my-check-in', REFRESH_INTERVAL_MS)
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
