@@ -15,7 +15,7 @@ from app.api.deps import get_session
 from app.bookings import MIN_WALK_IN, holding
 from app.clock import get_now
 from app.config import Settings, get_settings
-from app.forecast import forecast
+from app.forecast import forecast, forecast_many
 from app.hours import opening_status, place_status
 from app.load_today import campus_today, place_today
 from app.models import (
@@ -125,6 +125,13 @@ def _place_views(
     occupied = occupied_by_place(session, [p.id for p in places], now)
     rooms = [p.id for p in places if p.kind == PlaceKind.GROUP_ROOM]
     held_until = _room_held_until(session, rooms, now)
+    # "Usually frees at" for the full places, all in one go (wave 7.2).
+    full = [
+        p for p in places
+        if p.kind != PlaceKind.GROUP_ROOM and occupied.get(p.id, 0) >= p.capacity
+        and opening_status(p.opening_hours, local_now, p.id in all_day).is_open
+    ]
+    usually_frees = forecast_many(session, full, local_now.weekday(), now) if full else {}
     views = []
     for place in places:
         taken = occupied.get(place.id, 0)
@@ -134,7 +141,7 @@ def _place_views(
             free_from = held_until.get(place.id) if is_open else None
             free_now = is_open and free_from is None
         elif is_open and taken >= place.capacity:
-            frees_at = forecast(session, place, local_now.weekday(), now).frees_at
+            frees_at = usually_frees[place.id].frees_at
         views.append(
             PlaceOut(
                 id=place.id,

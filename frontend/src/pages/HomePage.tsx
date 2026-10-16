@@ -1,7 +1,7 @@
 // The home page: the scroll story, then the finder. Both read the same
 // live data, refreshed every 30 seconds.
 
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useLocation } from 'react-router'
 import { getBuildings, getPlaces } from '../api/campus'
 import { REFRESH_INTERVAL_MS } from '../config'
@@ -11,6 +11,7 @@ import { FinderReveal } from '../features/finder/FinderReveal'
 import { StoryPlaceholder, StoryScroller } from '../features/story/StoryScroller'
 import { useApi } from '../hooks/useApi'
 import { useCampusToday } from '../features/load/campusToday'
+import { withLiveTotals } from '../logic/buildingTotals'
 import { hasFilters, readFilters } from '../logic/filters'
 import { useInstitution } from '../institution'
 
@@ -39,8 +40,16 @@ const smoothToFinder = () => toFinder(true)
 
 export function HomePage() {
   const { slug } = useInstitution()
-  const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`, REFRESH_INTERVAL_MS)
+  // The buildings load once; their live numbers follow the places, which
+  // refresh (logic/buildingTotals.ts). One list worked out on the server per
+  // refresh instead of two.
+  const buildingList = useApi(() => getBuildings(slug), `buildings-${slug}`)
   const places = useApi(() => getPlaces(slug), `places-${slug}`, REFRESH_INTERVAL_MS)
+  const buildingData = useMemo(
+    () => (buildingList.data && places.data ? withLiveTotals(buildingList.data, places.data) : buildingList.data),
+    [buildingList.data, places.data],
+  )
+  const buildings = { ...buildingList, data: buildingData }
   const today = useCampusToday() // shared with the header's pulse (Layout)
   const location = useLocation()
   const ready = places.data !== null && buildings.data !== null

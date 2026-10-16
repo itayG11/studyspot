@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
 
-from app.forecast import Forecast, _quarter_hours, forecast
+from app.forecast import Forecast, _quarter_hours, forecast_many
 from app.history import SLOT
 from app.hours import opening_status
 from app.models import Institution, Place, PlaceKind
@@ -144,7 +144,7 @@ def _work_out(session: Session, institution: Institution, now: datetime) -> Camp
     ).all()
     # Exams and the like: open around the clock today, whatever the weekly hours.
     all_day = open_all_day_place_ids(session, institution.id, local.date())
-    forecasts: dict[int, Forecast] = {p.id: forecast(session, p, weekday, now) for p in places}
+    forecasts: dict[int, Forecast] = forecast_many(session, list(places), weekday, now)
     counts = today_counts(session, places, zone, now)
     live = occupied_by_place(session, [p.id for p in places], now)
 

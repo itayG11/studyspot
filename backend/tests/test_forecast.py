@@ -159,3 +159,55 @@ def test_in_an_exam_period_it_does_not_promise_a_time(session, braude):
     for weeks_ago in (1, 2):
         count(session, area, exam_sunday - timedelta(weeks=weeks_ago), 50)
     assert forecast(session, area, SUNDAY, exam_sunday).frees_at is None
+
+
+# Wave 7.2: the whole campus in a fixed number of queries, not three per place.
+
+
+def _queries(session, run):
+    from sqlalchemy import event
+
+    seen = []
+    engine = session.get_bind()
+    listener = lambda *args: seen.append(1)
+    event.listen(engine, "before_cursor_execute", listener)
+    try:
+        result = run()
+    finally:
+        event.remove(engine, "before_cursor_execute", listener)
+    return result, len(seen)
+
+
+def _all_places(braude):
+    return [p for b in braude.buildings for p in b.places]
+
+
+def test_many_places_at_once_give_the_same_forecast_as_one_by_one(session, braude):
+    from app.forecast import forecast_many
+
+    places = _all_places(braude)
+    area = place_named(braude, "L", "מתחם לימוד")
+    for weeks_ago, people in ((1, 20), (2, 30), (3, 40)):
+        count(session, area, at(weeks_ago, 10), people)
+    count(session, places[0], at(2, 9), 4, simulated=True)
+    many = forecast_many(session, places, SUNDAY, SUNDAY_10AM)
+    assert set(many) == {p.id for p in places}
+    for place in places:
+        assert many[place.id] == forecast(session, place, SUNDAY, SUNDAY_10AM)
+
+
+def test_many_places_at_once_take_a_fixed_number_of_queries(session, braude):
+    from app.forecast import forecast_many
+
+    places = _all_places(braude)
+    for place in places:
+        for weeks_ago in (1, 2):
+            count(session, place, at(weeks_ago, 10), 3)
+    session.expire_all()
+    places = _all_places(braude)
+    for p in places:  # the opening hours are loaded by the callers' query
+        p.opening_hours
+    _, few = _queries(session, lambda: forecast_many(session, places[:2], SUNDAY, SUNDAY_10AM))
+    _, all_of_them = _queries(session, lambda: forecast_many(session, places, SUNDAY, SUNDAY_10AM))
+    assert len(places) > 5
+    assert all_of_them == few <= 4

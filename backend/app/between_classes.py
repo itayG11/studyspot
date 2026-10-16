@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.bookings import HORIZON, MAX_UPCOMING, holding
-from app.forecast import Forecast, forecast, full_at
+from app.forecast import Forecast, forecast_many, full_at
 from app.models import (
     Booking,
     BookingSource,
@@ -195,8 +195,10 @@ def suggest(session: Session, user: User, now: datetime, weekday: int | None = N
                 if available <= 0:
                     continue
             if not under_way and place.kind != PlaceKind.GROUP_ROOM:
-                if place.id not in forecasts:
-                    forecasts[place.id] = forecast(session, place, weekday, now)
+                if not forecasts:  # the first gap that needs one: all places at once
+                    forecasts.update(forecast_many(
+                        session, [p for p in places if p.kind != PlaceKind.GROUP_ROOM], weekday, now
+                    ))
                 usual = _busiest(forecasts[place.id], sit_from.time(), sit_until.time())
                 if usual is not None and usual >= full_at(place) - 0.5:
                     continue  # usually full at some point of the stay
