@@ -36,17 +36,6 @@ def _text(code: str) -> str:
     )
 
 
-def _html(code: str) -> str:
-    return (
-        '<div dir="rtl" style="font-family:Arial,sans-serif;font-size:16px">'
-        "<p>קוד הכניסה שלך ל-StudySpot:</p>"
-        f'<p style="font-size:32px;font-weight:bold;letter-spacing:6px" dir="ltr">{code}</p>'
-        "<p>הקוד תקף ל-20 דקות, ולשימוש אחד.</p>"
-        "<p>אם לא ביקשת להתחבר, אפשר להתעלם מההודעה הזאת.</p>"
-        "</div>"
-    )
-
-
 class BrevoMailer:
     def __init__(self, http: httpx.Client, api_key: str, sender: str, sender_name: str = "StudySpot"):
         self.http, self.api_key, self.sender, self.sender_name = http, api_key, sender, sender_name
@@ -60,8 +49,9 @@ class BrevoMailer:
                     "sender": {"name": self.sender_name, "email": self.sender},
                     "to": [{"email": to}],
                     "subject": _subject(code),
+                    # Plain text only: Brevo adds a hidden image to an HTML
+                    # email and logs when it is opened. Here it has nowhere to go.
                     "textContent": _text(code),
-                    "htmlContent": _html(code),
                 },
                 timeout=10,
             )

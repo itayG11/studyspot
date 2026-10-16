@@ -461,6 +461,21 @@ def test_brevo_is_called_with_the_key_in_a_header_and_the_code_in_the_body():
     assert "test-key" not in body
 
 
+def test_the_code_email_is_plain_text_so_it_carries_no_tracking_image():
+    # Brevo adds a hidden image to an HTML email and logs when it is opened;
+    # a plain-text email has nowhere to put one. The privacy page says so.
+    import json
+
+    import httpx
+
+    seen: list[httpx.Request] = []
+    http = httpx.Client(transport=httpx.MockTransport(lambda r: seen.append(r) or httpx.Response(201, json={})))
+    BrevoMailer(http, api_key="k", sender="noreply@studyspot.example").send_code("a@e.braude.ac.il", "123456")
+    body = json.loads(seen[0].read())
+    assert "htmlContent" not in body
+    assert "123456" in body["textContent"]
+
+
 def test_a_brevo_error_becomes_email_not_sent():
     import httpx
 

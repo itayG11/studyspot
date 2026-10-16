@@ -28,6 +28,15 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/אין עוגיות של פרסום/)).toBeInTheDocument()
   })
 
+  it('says what the email service records, and why the code email is plain text', () => {
+    // Brevo adds a hidden image to the email and logs when it is opened:
+    // tracking, which the page must not hide behind "no tracking tools".
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByText(/Brevo.*שומר יומן/)).toBeInTheDocument()
+    expect(screen.getByText(/מתי המייל נפתח.*כטקסט בלבד/)).toBeInTheDocument()
+    expect(screen.getByText(/אין כלי מעקב באתר/)).toBeInTheDocument()
+  })
+
   it('says how long things are kept, and that the server log has no addresses or queries', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'כמה זמן נשמר' })).toBeInTheDocument()
