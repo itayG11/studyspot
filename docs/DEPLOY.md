@@ -140,6 +140,24 @@
 - **טסט שבודק את זה:** `test_the_site_address_is_the_same_everywhere_it_is_written`, ב-`backend/tests/test_site.py`. הוא נכשל אם אחד מהשלושה נשכח.
 - **ובנוסף:** `SITE_URL` ב-`Render`, וכתובות החזרה של ההתחברות אצל גוגל ומיקרוסופט, לפי `docs/AUTH_SETUP.md`.
 
+## מיילים: `Brevo`
+- **מה זה:** השירות ששולח את קוד הכניסה. בתוכנית החינמית 300 מיילים ביום, ובקוד יש תקרה של 250 קודים ביום לכל האתר (`app/email_codes.py`).
+- **החשבון:** תוכנית `Free`, עם אימות דו-שלבי. מספר טלפון נדרש לאימות החשבון אצלם.
+- **הדומיין ב-`Brevo`:** אומת ב-`Senders, Domains & Dedicated IPs`, בדרך `Manual`. בלי תת-דומיין ממותג: במייל שלנו אין קישורים.
+- **הרשומות שנוספו ב-`Namecheap`:**
+
+| סוג | `Host` | ערך |
+|---|---|---|
+| `TXT` | `@` | `brevo-code:...`, מ-`Brevo` |
+| `CNAME` | `brevo1._domainkey` | `b1.getstudyspot-me.dkim.brevo.com` |
+| `CNAME` | `brevo2._domainkey` | `b2.getstudyspot-me.dkim.brevo.com` |
+| `TXT` | `_dmarc` | `v=DMARC1; p=none; ...`, מ-`Brevo` |
+
+- **רשומת `SPF`:** לא נוספה. `Brevo` לא ביקש אותה, והרשומה הקיימת, של העברת המיילים של `Namecheap`, נשארת כמו שהיא.
+- **השולח:** `no-reply@getstudyspot.me`, בשם `StudySpot`.
+- **ב-`Render`:** `BREVO_API_KEY`, המפתח מ-`SMTP & API`, ואז `API Keys`. ו-`EMAIL_SENDER`, הכתובת למעלה. השרת לא עולה עם מפתח בלי שולח.
+- **אם קוד לא מגיע:** ב-`Brevo`, `Transactional`, ואז `Logs`. `Delivered` אומר שהשרת של הנמען קיבל את המייל. מכאן העיכוב אצלו.
+
 ## אם משהו לא עובד
 
 | מה רואים | מה בודקים |
