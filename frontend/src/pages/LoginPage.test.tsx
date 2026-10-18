@@ -256,3 +256,85 @@ describe('LoginPage email code', () => {
     expect(screen.queryByLabelText('כתובת המייל של המכללה')).not.toBeInTheDocument()
   })
 })
+
+describe('LoginPage password', () => {
+  const STUDENT = { ...ME, email: 'noa@e.braude.ac.il', display_name: 'Noa', has_password: true, can_set_password: true }
+
+  beforeEach(() => {
+    providers = { providers: [], demo: false, email: true }
+    const base = fetchMock.getMockImplementation() as (url: string) => Promise<Response>
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname
+      const body = init?.body ? JSON.parse(String(init.body)) : {}
+      const token = { access_token: 't', token_type: 'bearer', expires_in: 900, user: STUDENT }
+      if (path === '/auth/password/login')
+        return Promise.resolve(body.password === 'Kfar-Tavor 7 rain' ? jsonResponse(token) : jsonResponse({ detail: 'password_invalid' }, 401))
+      if (path === '/auth/email/start') return Promise.resolve(jsonResponse({ expires_in: 1200 }, 202))
+      if (path === '/auth/password/set') return Promise.resolve(jsonResponse(token))
+      return base(url)
+    })
+  })
+
+  function bodyOf(path: string) {
+    const call = fetchMock.mock.calls.findLast(([url]) => String(url).endsWith(path))
+    return JSON.parse(call![1].body)
+  }
+
+  async function passwordTab() {
+    renderLogin()
+    await userEvent.click(await screen.findByRole('button', { name: 'סיסמה' }))
+  }
+
+  it('starts on the code, and the password tab signs in with one', async () => {
+    renderLogin()
+    expect(await screen.findByRole('button', { name: 'קוד למייל' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'סיסמה' }))
+    await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
+    const field = screen.getByLabelText('סיסמה')
+    expect(field).toHaveAttribute('autocomplete', 'current-password')
+    await userEvent.type(field, 'Kfar-Tavor 7 rain')
+    await userEvent.click(screen.getByRole('button', { name: 'כניסה' }))
+    expect(await screen.findByText('מפה')).toBeInTheDocument()
+    expect(bodyOf('/auth/password/login')).toEqual({ email: 'noa@e.braude.ac.il', password: 'Kfar-Tavor 7 rain' })
+  })
+
+  it('says one thing for any failure, and points to the code', async () => {
+    await passwordTab()
+    await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
+    await userEvent.type(screen.getByLabelText('סיסמה'), 'Wrong-Password 1')
+    await userEvent.click(screen.getByRole('button', { name: 'כניסה' }))
+    expect(await screen.findByText(/המייל או הסיסמה שגויים/)).toHaveTextContent('אפשר תמיד להיכנס בקוד למייל')
+  })
+
+  it('forgot it: a code first, then a new password that meets the rules', async () => {
+    await passwordTab()
+    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }))
+    expect(screen.getByRole('heading', { name: 'סיסמה חדשה' })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    await userEvent.type(await screen.findByLabelText('הקוד מהמייל'), '123456')
+    const field = screen.getByLabelText('סיסמה חדשה')
+    expect(field).toHaveAttribute('autocomplete', 'new-password')
+    const save = screen.getByRole('button', { name: 'שמירת הסיסמה' })
+    await userEvent.type(field, 'NoSymbolsHere7')
+    expect(save).toBeDisabled()
+    expect(screen.getByText(/סימן, למשל/)).toHaveTextContent('חסר')
+    await userEvent.clear(field)
+    await userEvent.type(field, 'Kfar-Tavor 7 rain')
+    expect(save).toBeEnabled()
+    await userEvent.click(save)
+    expect(await screen.findByText('מפה')).toBeInTheDocument()
+    expect(bodyOf('/auth/password/set')).toEqual({ email: 'noa@e.braude.ac.il', code: '123456', password: 'Kfar-Tavor 7 rain' })
+  })
+
+  it('can show what was typed', async () => {
+    await passwordTab()
+    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }))
+    await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
+    await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
+    const field = await screen.findByLabelText('סיסמה חדשה')
+    expect(field).toHaveAttribute('type', 'password')
+    await userEvent.click(screen.getByRole('button', { name: 'להציג' }))
+    expect(field).toHaveAttribute('type', 'text')
+  })
+})

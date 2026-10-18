@@ -468,6 +468,9 @@ class MeOut(BaseModel):
     institution_slug: str
     is_demo: bool = False  # a shared demo user: no e-mail of its own, cannot be deleted
     has_password: bool = False  # may sign in with a password too (app/passwords.py)
+    # Signed in by an emailed code before: only then may a password be set,
+    # or a Microsoft student setting one would get a second, separate account.
+    can_set_password: bool = False
 
 
 class TokenOut(BaseModel):

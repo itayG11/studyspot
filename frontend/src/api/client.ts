@@ -166,6 +166,20 @@ export async function emailVerify(email: string, code: string): Promise<Me> {
   return result.user
 }
 
+// A password is set only after an emailed code proves the address: this
+// signs up, changes and resets it, and signs out every other device.
+export async function passwordSet(email: string, code: string, password: string): Promise<Me> {
+  const result = await send<TokenResponse>('/auth/password/set', { method: 'POST', body: { email, code, password } })
+  setSession(result.access_token, result.user)
+  return result.user
+}
+
+export async function passwordLogin(email: string, password: string): Promise<Me> {
+  const result = await send<TokenResponse>('/auth/password/login', { method: 'POST', body: { email, password } })
+  setSession(result.access_token, result.user)
+  return result.user
+}
+
 export async function logout(): Promise<void> {
   try {
     await send<void>('/auth/logout', { method: 'POST' })

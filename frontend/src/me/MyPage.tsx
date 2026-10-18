@@ -3,6 +3,7 @@
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
+import { PasswordCard } from './PasswordCard'
 import { PushToggle } from './PushToggle'
 import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
@@ -147,6 +148,8 @@ export function MyPage() {
       <PushToggle isDemo={user?.is_demo ?? false} />
 
       <InstallTip variant="section" />
+
+      <PasswordCard />
 
       <Account />
     </div>

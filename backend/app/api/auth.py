@@ -543,6 +543,9 @@ def _is_demo(db: Session, user: User) -> bool:
 
 def _me(db: Session, user: User) -> MeOut:
     institution = db.get(Institution, user.institution_id)
+    email = db.scalars(
+        select(UserIdentity).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.EMAIL)
+    ).first()
     return MeOut(
         id=user.id,
         email=user.email,
@@ -550,8 +553,6 @@ def _me(db: Session, user: User) -> MeOut:
         role=user.role,
         institution_slug=institution.slug,
         is_demo=_is_demo(db, user),
-        has_password=db.scalar(
-            select(UserIdentity.id).where(UserIdentity.user_id == user.id, UserIdentity.password_hash.is_not(None))
-        )
-        is not None,
+        has_password=email is not None and email.password_hash is not None,
+        can_set_password=email is not None,
     )

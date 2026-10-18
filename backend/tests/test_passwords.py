@@ -227,4 +227,13 @@ def test_a_user_without_one_says_so(client, mailer, session):
     start(client)
     signed_in = client.post("/auth/email/verify", json={"email": STUDENT, "code": mailer.last_code()})
     assert signed_in.json()["user"]["has_password"] is False
+    assert signed_in.json()["user"]["can_set_password"] is True
     assert session.get(User, identity(session).user_id) is not None
+
+
+def test_a_user_who_never_used_a_code_cannot_set_one(client, session, student):
+    """A Microsoft or Google student: a code would make a second account."""
+    from app.api.auth import _me
+
+    me = _me(session, student)
+    assert (me.has_password, me.can_set_password) == (False, False)

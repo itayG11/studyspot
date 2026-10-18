@@ -141,6 +141,8 @@ export interface Me {
   role: UserRole
   institution_slug: string
   is_demo: boolean // a shared demo user: no e-mail of its own, cannot be deleted
+  has_password: boolean // may sign in with a password too
+  can_set_password: boolean // signed in by an emailed code before: may set one
 }
 
 export interface TokenResponse {
