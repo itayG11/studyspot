@@ -36,6 +36,10 @@ services:
       # a timetable from a photo (Claude). Without it the option is hidden.
       - key: ANTHROPIC_API_KEY
         sync: false
+      # From openrouteservice.org (free plan), entered in Render's dashboard
+      # only: real walking times between buildings. Without it, the estimate.
+      - key: ORS_API_KEY
+        sync: false
       # From Microsoft Entra (docs/AUTH_SETUP.md), also entered in Render's
       # dashboard only. Without them the Microsoft button stays hidden.
       - key: MICROSOFT_CLIENT_ID

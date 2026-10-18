@@ -50,6 +50,7 @@ def test_the_gap_under_way_gets_three_nearby_places_with_room(session, braude, s
     result = suggest(session, student, SUNDAY_10AM)
     [gap] = result.gaps
     assert (gap.from_building, gap.to_building, gap.now) == ("M", "EF", True)
+    assert not result.routed_walks  # no routing service in the tests: the estimate
     assert len(gap.suggestions) == 3
     # The far building (P) loses time walking: never ahead of the near ones.
     assert all(s.building_code != "P" for s in gap.suggestions)

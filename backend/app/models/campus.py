@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Numeric,
+    SmallInteger,
     String,
     UniqueConstraint,
     false,
@@ -124,6 +125,10 @@ class Institution(Base):
     # When the counting began: from then on, a quarter hour with no row had
     # no one in it, rather than no one counting (app/forecast.py).
     counting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Real walking times (app/walking.py): the fingerprint of the building
+    # places they were fetched for, and the last time asking was tried.
+    walks_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    walks_tried_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"
@@ -168,6 +173,23 @@ class Building(Base):
         cascade="all, delete-orphan",
         order_by="Place.id",
     )
+
+
+class WalkTime(Base):
+    """Minutes on foot from one building to another, by a routing service.
+    No row: the map estimate (app/between_classes.py) is used instead."""
+
+    __tablename__ = "walk_times"
+    __table_args__ = (
+        CheckConstraint("minutes >= 1", name="minutes_positive"),
+        CheckConstraint("from_building_id <> to_building_id", name="two_buildings"),
+    )
+
+    from_building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id", ondelete="CASCADE"), primary_key=True)
+    to_building_id: Mapped[int] = mapped_column(
+        ForeignKey("buildings.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    minutes: Mapped[int] = mapped_column(SmallInteger)
 
 
 class Place(Base):

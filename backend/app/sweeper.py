@@ -1,6 +1,7 @@
 """Background sweep: release no-shows, complete ended bookings, close
-expired check-ins, count the past quarter hours (app/history.py), and
-delete check-ins older than 90 days.
+expired check-ins, count the past quarter hours (app/history.py),
+delete check-ins older than 90 days, and fetch real walking times when a
+campus's buildings moved (app/walking.py).
 
 Every step is a single UPDATE whose condition is the state it fixes, so
 running it twice, or in several server processes at once, does no harm.
@@ -28,6 +29,7 @@ from app.history import delete_old_check_ins, record_history
 from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, EmailSignInCode, Institution
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
+from app.walking import matrix_from_settings, refresh_walks
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +106,13 @@ def run_once() -> SweepResult:
             session.commit()
         if removed:
             log.info("demo campus reset: %s buildings, %s places removed", *removed)
+    # Last, after the reset: it may remove buildings. Its own session, and
+    # never a reason for the sweep to fail (app/walking.py).
+    try:
+        with SessionLocal(bind=get_engine()) as session:
+            refresh_walks(session, matrix_from_settings(settings), now)
+    except Exception:
+        log.exception("walking times not refreshed; the next round tries again")
     return result
 
 

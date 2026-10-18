@@ -12,7 +12,7 @@ const PARTS: { group: string; items: [string, string][] }[] = [
   { group: 'סמלים', items: [['Lucide', 'ISC']] },
   {
     group: 'מפה',
-    items: [['Leaflet', 'BSD-2-Clause'], ['React Leaflet', 'Hippocratic-2.1'], ['OpenStreetMap, נתוני המפה', 'ODbL']],
+    items: [['Leaflet', 'BSD-2-Clause'], ['React Leaflet', 'Hippocratic-2.1'], ['OpenStreetMap, נתוני המפה', 'ODbL'], ['OpenRouteService, זמני הליכה', 'תנאי השימוש של HeiGIT']],
   },
   {
     group: 'האתר',

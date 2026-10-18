@@ -44,6 +44,7 @@ beforeEach(() => {
   between = {
     weekday: 6,
     date: '2026-10-11',
+    routed_walks: false,
     gaps: [{
       starts: '10:00:00', ends: '11:30:00', from_building: 'M', to_building: 'EF', from_listed: true, to_listed: true, now: true,
       suggestions: [
@@ -135,23 +136,38 @@ describe('between classes', () => {
     expect(within(items[0]).getByRole('link', { name: 'ספרייה' })).toHaveAttribute('href', '/braude/spaces/5')
   })
 
+  it('says walking times are an estimate, unless the campus has routed ones, which are credited', async () => {
+    renderMe()
+    const section = await betweenSection()
+    expect(await within(section).findByText(/הערכה לפי המפה/)).toBeInTheDocument()
+    expect(within(section).queryByText(/openrouteservice/i)).not.toBeInTheDocument()
+  })
+
+  it('credits OpenRouteService when the walking times come from it', async () => {
+    between = { ...between, routed_walks: true }
+    renderMe()
+    const section = await betweenSection()
+    expect(await within(section).findByText(/לפי מסלולי הליכה/)).toBeInTheDocument()
+    expect(within(section).getByText(/© openrouteservice.org by HeiGIT \| Map data © OpenStreetMap contributors/)).toBeInTheDocument()
+  })
+
   it('without a timetable, says how to start', async () => {
     classes = []
-    between = { weekday: 6, date: '2026-10-11', gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/הוסף את השיעורים שלך/)).toBeInTheDocument()
   })
 
   it('a day without gaps says so', async () => {
     classes = [DATA]
-    between = { weekday: 6, date: '2026-10-11', gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/אין היום הפסקות/)).toBeInTheDocument()
   })
 
   it('a gap that is over says so, instead of "no gaps today"', async () => {
     // Today has a gap, 10:00–11:30, but the server no longer lists it.
-    between = { weekday: 6, date: '2026-10-11', gaps: [] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [] }
     renderMe()
     const section = await betweenSection()
     expect(await within(section).findByText(/ההפסקה של היום כבר נגמרה/)).toBeInTheDocument()
@@ -160,7 +176,7 @@ describe('between classes', () => {
   })
 
   it('a gap with nowhere fitting says so', async () => {
-    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [] }] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [{ ...between.gaps[0], suggestions: [] }] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/אין מקום פתוח ופנוי/)).toBeInTheDocument()
   })
@@ -213,7 +229,7 @@ describe('the timetable', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-12T07:05:00Z')) // Monday: the Sunday break is another day
     otherDay = between
-    between = { weekday: 0, date: '2026-10-12', gaps: [] }
+    between = { weekday: 0, date: '2026-10-12', routed_walks: false, gaps: [] }
     const scrolled = vi.fn()
     Element.prototype.scrollIntoView = scrolled
     const user = userEvent.setup()
@@ -346,13 +362,13 @@ describe('the timetable', () => {
   })
 
   it('one minute is said in proper Hebrew', async () => {
-    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [suggestion({ walk_there: 1 })] }] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [{ ...between.gaps[0], suggestions: [suggestion({ walk_there: 1 })] }] }
     renderMe()
     expect(await within(await betweenSection()).findByText(/דקת הליכה אחת/)).toBeInTheDocument()
   })
 
   it('a free room with no bookings left is not offered as bookable', async () => {
-    between = { weekday: 6, date: '2026-10-11', gaps: [{ ...between.gaps[0], suggestions: [suggestion({ name: 'EM107', kind: 'group_room', bookable: false, available: null })] }] }
+    between = { weekday: 6, date: '2026-10-11', routed_walks: false, gaps: [{ ...between.gaps[0], suggestions: [suggestion({ name: 'EM107', kind: 'group_room', bookable: false, available: null })] }] }
     renderMe()
     const section = await betweenSection()
     expect(await within(section).findByText(/החדר פנוי/)).toBeInTheDocument()

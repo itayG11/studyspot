@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     # Reading a timetable from a photo (app/timetable_photo.py): on when an
     # Anthropic API key is set. Set it in the host's settings, never in code.
     anthropic_api_key: SecretStr | None = None
+    # Real walking times between buildings (app/walking.py), from
+    # OpenRouteService's free plan: on when its API key is set. Without it,
+    # the map estimate is used.
+    ors_api_key: SecretStr | None = None
+    ors_matrix_url: str = "https://api.openrouteservice.org/v2/matrix/foot-walking"
     email_login_dev_log: bool = False
 
     # Where the API and the web app live; used for redirect URLs and CORS.
@@ -108,7 +113,7 @@ class Settings(BaseSettings):
             self.public_api_url = f"{site}/api"
         return self
 
-    @field_validator("brevo_api_key", "email_sender", "anthropic_api_key", mode="before")
+    @field_validator("brevo_api_key", "email_sender", "anthropic_api_key", "ors_api_key", mode="before")
     @classmethod
     def _blank_is_unset(cls, value):
         """BREVO_API_KEY= copied empty from .env.example means "not set"."""
