@@ -161,8 +161,14 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
   const toast = useToast()
   const leave = useAction()
   const stay = useAction()
-  // Offered near the end, as the "still here?" notice is (backend/app/reminders.py).
-  const ending = Date.parse(checkIn.expires_at) - Date.now() <= STILL_HERE_OFFER_MS
+  // The clock moves on while the page is open: the offer appears near the end,
+  // as the "still here?" notice does (backend/app/reminders.py).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  const ending = Date.parse(checkIn.expires_at) - now <= STILL_HERE_OFFER_MS
   return (
     <>
       <div className={styles.now}>
