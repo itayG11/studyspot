@@ -35,3 +35,13 @@ class NoticeEmail(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ClosingNotice(Base):
+    """A student told that their institution is closing (app/closing.py):
+    once each, and only when a notice actually went out."""
+
+    __tablename__ = "closing_notices"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

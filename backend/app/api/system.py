@@ -1,6 +1,7 @@
 """What only the system admin does: create institutions and invite their
 admins. Plus the two calls the invited admin makes with the link."""
 
+import logging
 from datetime import datetime
 from typing import Annotated
 
@@ -9,12 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import campus_setup, institutions
+from app import campus_setup, closing, institutions
+from app.api.auth import get_mailer
 from app.api.deps import get_session
 from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
+from app.mailer import Mailer
 from app.models import AdminInvite, Building, Institution, InstitutionLoginRule, User, UserRole
 from app.permissions import require_role
 from app.ratelimit import write_limit
@@ -31,6 +34,7 @@ from app.schemas import (
 
 router = APIRouter(tags=["system"])
 
+log = logging.getLogger(__name__)
 SessionDep = Annotated[Session, Depends(get_session)]
 OwnerDep = Annotated[User, Depends(require_role(UserRole.SYSTEM_ADMIN))]
 UserDep = Annotated[User, Depends(get_current_user)]
@@ -64,7 +68,8 @@ def list_all(owner: OwnerDep, db: SessionDep):
     rows = db.execute(select(Institution, buildings, admins).order_by(Institution.name)).all()
     return [
         SystemInstitutionOut(
-            slug=i.slug, name=i.name, timezone=i.timezone, is_active=i.is_active, buildings=b, admins=a
+            slug=i.slug, name=i.name, timezone=i.timezone, is_active=i.is_active, buildings=b, admins=a,
+            closes_at=i.closes_at,
         )
         for i, b, a in rows
     ]
@@ -93,6 +98,65 @@ def create(body: InstitutionCreateIn, owner: OwnerDep, db: SessionDep):
     )
 
 
+def _kept(settings: Settings) -> set[str]:
+    return {settings.demo_institution} | ({settings.open_sign_in_institution} - {None})
+
+
+@router.post("/system/institutions/{slug}/close", response_model=SystemInstitutionOut, dependencies=[Depends(write_limit)])
+def close(
+    slug: Slug,
+    owner: OwnerDep,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+    mailer: Annotated[Mailer | None, Depends(get_mailer)],
+):
+    """Hidden now, deleted in 14 days (app/closing.py). Its admins get an
+    email outside the notices' budget: few, and they must not miss it."""
+    institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
+    if institution is None:
+        raise HTTPException(404, "institution_not_found")
+    try:
+        closed = closing.close(db, institution, now, _kept(settings), settings.system_admins())
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    if mailer is not None:
+        subject, text = closing.admin_email(institution)
+        for to in closed.admin_emails:
+            try:
+                mailer.send(to, subject, text)
+            except Refusal:
+                log.warning("closing %s: the email to an admin did not go out", slug)
+    return _row(db, institution)
+
+
+@router.post("/system/institutions/{slug}/reopen", response_model=SystemInstitutionOut, dependencies=[Depends(write_limit)])
+def reopen(slug: Slug, owner: OwnerDep, db: SessionDep):
+    institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
+    if institution is None:
+        raise HTTPException(404, "institution_not_found")
+    try:
+        closing.reopen(db, institution)
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    return _row(db, institution)
+
+
+def _row(db: Session, institution: Institution) -> SystemInstitutionOut:
+    buildings = db.scalar(select(func.count()).select_from(Building).where(Building.institution_id == institution.id))
+    admins = db.scalar(
+        select(func.count()).select_from(User).where(
+            User.institution_id == institution.id, User.role == UserRole.INSTITUTION_ADMIN
+        )
+    )
+    return SystemInstitutionOut(
+        slug=institution.slug, name=institution.name, timezone=institution.timezone,
+        is_active=institution.is_active, buildings=buildings, admins=admins, closes_at=institution.closes_at,
+    )
+
+
 @router.delete(
     "/system/institutions/{slug}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)]
 )
@@ -100,9 +164,8 @@ def delete(slug: Slug, owner: OwnerDep, db: SessionDep, settings: SettingsDep) -
     institution = db.scalars(select(Institution).where(Institution.slug == slug).with_for_update()).first()
     if institution is None:
         raise HTTPException(404, "institution_not_found")
-    kept = {settings.demo_institution} | ({settings.open_sign_in_institution} - {None})
     try:
-        institutions.delete_institution(db, institution, kept, settings.system_admins())
+        institutions.delete_institution(db, institution, _kept(settings), settings.system_admins())
     except Refusal as refusal:
         raise HTTPException(refusal.status, refusal.code) from None
     db.commit()

@@ -141,7 +141,9 @@ def inspect_invite(db: Session, token: str, now: datetime, key: bytes) -> Instit
 def accept_invite(db: Session, user: User, token: str, now: datetime, key: bytes) -> Institution:
     # The institution's row before the invite's, in the order deleting the
     # institution takes them: the other order could deadlock with a delete.
-    db.get(Institution, _open_invite(db, token, now, key, lock=False).institution_id, with_for_update=True)
+    target = db.get(Institution, _open_invite(db, token, now, key, lock=False).institution_id, with_for_update=True)
+    if target is not None and target.closes_at is not None:
+        raise Refusal(409, "institution_closing")
     invite = _open_invite(db, token, now, key, lock=True)  # gone if the institution was deleted meanwhile
     # Locked too: a booking made in another tab between the deletes and the
     # move below would block the move (the keys tie it to the institution).

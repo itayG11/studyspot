@@ -31,7 +31,7 @@ from app.models.people import (
     UserIdentity,
     UserRole,
 )
-from app.models.push import NoticeEmail, PushSubscription
+from app.models.push import ClosingNotice, NoticeEmail, PushSubscription
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
@@ -48,6 +48,7 @@ __all__ = [
     "CheckIn",
     "CheckInEndReason",
     "ClassSlot",
+    "ClosingNotice",
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",

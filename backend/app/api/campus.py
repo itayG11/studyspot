@@ -94,6 +94,7 @@ def get_institution(slug: Slug, session: SessionDep):
         timezone=institution.timezone,
         booking_rules=BOOKING_RULES,
         live_simulated=is_simulated_campus(institution),
+        closes_at=institution.closes_at,
     )
 
 

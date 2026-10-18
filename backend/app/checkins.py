@@ -30,6 +30,7 @@ from app.bookings import (
     release_no_shows,
     renew,
 )
+from app.closing import refuse_if_closing
 from app.codes import InvalidCode, read_code
 from app.errors import Refusal
 from app.hours import place_status
@@ -73,6 +74,7 @@ def check_in(
     place = _place_from_code(session, code, secret)
     if place.institution_id != user.institution_id:
         raise Refusal(403, "other_institution")
+    refuse_if_closing(session, place.institution_id)
 
     _expire(session, CheckIn.user_id == user.id, now)
     current = session.scalars(

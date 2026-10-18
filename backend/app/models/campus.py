@@ -129,6 +129,9 @@ class Institution(Base):
     # places they were fetched for, and the last time asking was tried.
     walks_fingerprint: Mapped[str | None] = mapped_column(String(64))
     walks_tried_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Closing (app/closing.py): when everything in it is deleted. Until then
+    # it is hidden, nothing new starts in it, and its students are told.
+    closes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

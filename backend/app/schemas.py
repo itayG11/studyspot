@@ -63,6 +63,7 @@ class InstitutionOut(BaseModel):
     booking_rules: BookingRules
     # The live numbers include made-up students (the demo campus, app/seed/live.py).
     live_simulated: bool = False
+    closes_at: datetime | None = None  # closing: everything in it is deleted then (app/closing.py)
 
 
 class BuildingLocationIn(BaseModel):
@@ -614,6 +615,7 @@ class SystemInstitutionOut(BaseModel):
     is_active: bool
     buildings: int
     admins: int
+    closes_at: datetime | None = None
 
 
 class InviteCreatedOut(BaseModel):
