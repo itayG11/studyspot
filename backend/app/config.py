@@ -71,7 +71,8 @@ class Settings(BaseSettings):
     # OpenRouteService's free plan: on when its API key is set. Without it,
     # the map estimate is used.
     ors_api_key: SecretStr | None = None
-    ors_matrix_url: str = "https://api.openrouteservice.org/v2/matrix/foot-walking"
+    # The address in their API documentation (ORS core 9.10, October 2026).
+    ors_matrix_url: str = "https://api.heigit.org/openrouteservice/v2/matrix/foot-walking"
     email_login_dev_log: bool = False
 
     # Where the API and the web app live; used for redirect URLs and CORS.
