@@ -32,6 +32,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -42,7 +43,7 @@ import httpx
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from py_vapid import Vapid02
-from sqlalchemy import func, select, text
+from sqlalchemy import exists, func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
@@ -56,6 +57,7 @@ TTL_SECONDS = 15 * 60  # a reminder older than this is no use
 TOKEN_SECONDS = 30 * 60  # VAPID tokens: short-lived, under every push service's limit
 _PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com")
 _PUSH_SUFFIXES = (".push.apple.com", ".notify.windows.com")
+_TOKEN = re.compile(r"[0-9]{1,12}\.[0-9a-f]{32}")
 EMAILS_PER_DAY = 40  # for the whole site; see the module docstring
 EMAILS_PER_USER_DAY = 3
 _EMAIL_BUDGET_LOCK = 0x5715_E3A1  # pg_advisory_xact_lock: one counter at a time
@@ -141,6 +143,15 @@ class PushSender:
             return None
 
 
+def reachable(user_id):
+    """A condition on a user id column: someone we can tell, by a subscribed
+    browser or by email notices on a proved address."""
+    return or_(
+        exists().where(PushSubscription.user_id == user_id),
+        exists().where(User.id == user_id, User.email_notices, User.email_verified),
+    )
+
+
 def unsubscribe_key(jwt_secret: bytes) -> bytes:
     """A key of its own for the links that turn email notices off."""
     return hmac.new(jwt_secret, b"studyspot email notices unsubscribe", hashlib.sha256).digest()
@@ -153,10 +164,9 @@ def unsubscribe_token(key: bytes, user_id: int) -> str:
 
 def read_unsubscribe_token(key: bytes, token: str) -> int | None:
     """The user the token was made for, or None if it is not ours."""
-    head, _, _ = token.partition(".")
-    if not head.isdigit() or len(head) > 12:
+    if not _TOKEN.fullmatch(token):  # ASCII only: compare_digest refuses anything else
         return None
-    user_id = int(head)
+    user_id = int(token.partition(".")[0])
     return user_id if hmac.compare_digest(unsubscribe_token(key, user_id), token) else None
 
 
@@ -192,8 +202,10 @@ def _email(session: Session, user_id: int, notice: Notice, email: EmailSender, n
     sent = select(func.count()).select_from(NoticeEmail).where(NoticeEmail.sent_at > since)
     if session.scalar(sent) >= EMAILS_PER_DAY:
         log.warning("email notices: the daily budget is spent")
+        session.commit()  # lets the lock go: the next pushes must not hold it
         return False
     if session.scalar(sent.where(NoticeEmail.user_id == user_id)) >= EMAILS_PER_USER_DAY:
+        session.commit()
         return False
     session.add(NoticeEmail(user_id=user_id, sent_at=now))
     address = user.email
@@ -215,7 +227,9 @@ def notify(
 ) -> int:
     """Tell the user on every browser they subscribed; by email if none got
     it and they asked for email. The number delivered.
-    A browser the push service no longer knows (404, 410) is forgotten."""
+    A browser the push service no longer knows (404, 410) is forgotten.
+    An email is counted and committed before it is sent: so this commits
+    the caller's session. Mark what is being sent, and commit, first."""
     delivered = 0
     if push is not None:
         for subscription in session.scalars(select(PushSubscription).where(PushSubscription.user_id == user_id)).all():

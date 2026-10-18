@@ -54,6 +54,10 @@ test('a clash on a group room: wait for it to free, see it in my area, remove it
   const room = `/braude/spaces/${places.find((p: { name: string }) => p.name === 'EM107').id}`
   const first = await signedInStudent(browser, 'first')
   const second = await signedInStudent(browser, 'second')
+  // Only a student we can tell may wait: notices by email on first.
+  await second.goto('/me')
+  await second.getByRole('button', { name: 'להפעיל התראות במייל' }).click()
+  await expect(second.getByRole('button', { name: 'לכבות התראות במייל' })).toBeVisible()
   await first.goto(room)
   await second.goto(room)
   const formA = first.getByRole('complementary')
@@ -66,7 +70,7 @@ test('a clash on a group room: wait for it to free, see it in my area, remove it
   await formB.getByRole('button', { name: 'להזמין', exact: true }).click()
   await expect(second.getByRole('alert').filter({ hasText: 'מישהו הזמין את הזמן הזה ממש עכשיו' })).toBeVisible()
   await second.getByRole('button', { name: 'להודיע לי אם יתפנה' }).click()
-  await expect(second.getByText(/נרשמת. אם הזמן יתפנה/)).toBeVisible()
+  await expect(second.getByRole('status').filter({ hasText: /נרשמת. אם הזמן יתפנה/ })).toBeVisible()
 
   await second.goto('/me')
   const waiting = second.getByRole('region', { name: 'ממתין שיתפנה' })

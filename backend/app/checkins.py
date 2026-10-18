@@ -149,7 +149,8 @@ def _counted_check_in(session, user, place, seat_id, current, now) -> CheckInRes
     expires_at = _capped(now + CHECK_IN_DURATION, closes_at)
     if current is not None and current.place_id == place.id:
         # Scanning the same place again means "I'm still here": extend.
-        current.expires_at = max(current.expires_at, expires_at)
+        if expires_at > current.expires_at:
+            current.expires_at, current.reminded_at = expires_at, None  # a new end: ask again then
         session.flush()
         return CheckInResult(current, created=False)
 

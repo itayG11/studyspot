@@ -195,16 +195,17 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
           ) : (
             <span>אין ביום הזה זמן פנוי מאוחר יותר באורך הזה. נסה אורך קצר יותר או יום אחר.</span>
           )}
-          {canWait &&
-            (waitingFor === clash.from ? (
-              <span role="status">
-                נרשמת. אם הזמן יתפנה, נודיע לך בהתראה או במייל, לפי מה שהפעלת ב"האזור שלי". מי שמזמין ראשון מקבל.
-              </span>
-            ) : (
-              <Button variant="ghost" size="sm" icon={<BellRing aria-hidden="true" />} busy={waiting.busy} onClick={() => void waitForIt()}>
-                להודיע לי אם יתפנה
-              </Button>
-            ))}
+          {canWait && waitingFor !== clash.from && (
+            <Button variant="ghost" size="sm" icon={<BellRing aria-hidden="true" />} busy={waiting.busy} onClick={() => void waitForIt()}>
+              להודיע לי אם יתפנה
+            </Button>
+          )}
+          {/* Always there, so a screen reader announces the change. */}
+          <span role="status">
+            {canWait && waitingFor === clash.from
+              ? 'נרשמת. אם הזמן יתפנה, נודיע לך בהתראה או במייל, לפי מה שהפעלת ב"האזור שלי". מי שמזמין ראשון מקבל.'
+              : ''}
+          </span>
           {canWait && <ActionError action={waiting} />}
         </div>
       )}

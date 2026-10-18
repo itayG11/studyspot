@@ -34,6 +34,14 @@ def lab(braude):
     return place_named(braude, "M", "M206")
 
 
+@pytest.fixture(autouse=True)
+def reachable_students(session, student, other_student):
+    """Only a student we can tell may wait: by default, everyone can."""
+    for user in (student, other_student):
+        user.email_verified, user.email_notices = True, True
+    session.flush()
+
+
 def wait(client, place, start, end):
     return client.post(f"/places/{place.id}/waitlist", json={"starts_at": start.isoformat(), "ends_at": end.isoformat()})
 
@@ -79,7 +87,7 @@ def test_a_few_at_most(client, room, session, braude):
     from factories import make_user
 
     starts = [MONDAY_14 + timedelta(days=d, hours=h) for d in (0, 1) for h in (-4, 0)][: MAX_WAITING + 1]
-    for n, start in enumerate(starts):
+    for n, start in enumerate(starts):  # the bookers need no notices
         taken_by(client, make_user(session, braude, f"booker{n}@braude.example"), room, start)
     assert all(wait(client, room, s, s + HOURS_2).status_code == 201 for s in starts[:MAX_WAITING])
     over = starts[MAX_WAITING]
@@ -170,6 +178,7 @@ def test_the_first_in_line_gets_a_head_start(session, client, room, other_studen
     booking = taken_by(client, other_student, room)
     wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2)
     third = make_user(session, braude, "third@braude.example")
+    opt_in(session, third)
     client.user = third
     wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2)
     client.user = other_student
@@ -214,3 +223,34 @@ def test_it_goes_with_the_user(session, client, room, other_student, student):
     session.flush()
     assert session.query(WaitlistEntry).count() == 0
     assert session.query(Booking).filter(Booking.status == BookingStatus.BOOKED).count() == 1
+
+
+def test_no_way_to_be_told_no_waiting(client, session, room, student, other_student):
+    taken_by(client, other_student, room)
+    student.email_notices = False
+    session.flush()
+    assert refused(wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2), 409, "waitlist_no_notices")
+
+
+def test_one_who_turned_notices_off_does_not_hold_up_the_next(session, client, room, student, other_student, braude):
+    from factories import make_user
+
+    booking = taken_by(client, other_student, room)
+    wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2)
+    third = make_user(session, braude, "third@braude.example")
+    opt_in(session, third)
+    client.user = third
+    wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2)
+    student.email_notices = False  # the first in line can no longer be told
+    client.user = other_student
+    client.post(f"/bookings/{booking['id']}/cancel")
+    assert [f.user_id for f in take_freed(session, SUNDAY_10AM)] == [third.id]
+
+
+def test_asking_twice_at_once_is_one_request(client, session, room, other_student):
+    """The second request waits on the user's lock, then finds the first."""
+    taken_by(client, other_student, room)
+    first = wait(client, room, MONDAY_14, MONDAY_14 + HOURS_2).json()
+    again = wait(client, room, MONDAY_14, MONDAY_14 + timedelta(hours=1))
+    assert again.status_code == 201 and again.json()["id"] == first["id"]
+    assert session.query(WaitlistEntry).count() == 1

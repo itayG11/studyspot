@@ -21,13 +21,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import waitlist
 from app.bookings import NO_SHOW_AFTER
-from app.models import Booking, BookingStatus, CheckIn, Institution, PushSubscription, User
-from app.notify import EmailSender, Notice, PushSender, notify
+from app.hours import place_status
+from app.models import Booking, BookingStatus, CheckIn, Institution
+from app.notify import EmailSender, Notice, PushSender, notify, reachable
 
 START_AHEAD = timedelta(minutes=10)
 RELEASE_WARNING_AFTER = timedelta(minutes=5)
@@ -67,11 +68,8 @@ ALARM = Alarm()
 
 
 def _subscribed(user_id=Booking.user_id):
-    """Someone to tell: a subscribed browser, or email notices on."""
-    return or_(
-        exists().where(PushSubscription.user_id == user_id),
-        exists().where(User.id == user_id, User.email_notices, User.email_verified),
-    )
+    """Someone to tell (app/notify.py reachable)."""
+    return reachable(user_id)
 
 
 def _asking_still_here(now: datetime):
@@ -125,6 +123,9 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
     ).all()
     for c in asking:
         c.reminded_at = now
+        closes_at = place_status(session, c.place, now).closes_at
+        if closes_at is not None and c.expires_at >= closes_at:
+            continue  # it ends at closing time: nothing to extend
         at = _hhmm(c.expires_at, zones[c.institution_id])
         out.append(_Due(c.user_id, Notice("עדיין כאן?", f"הכניסה ל-{c.place.name} נגמרת ב-{at}. אפשר להאריך ב\"האזור שלי\".", "/me")))
     # A room someone waits for has freed (app/waitlist.py).

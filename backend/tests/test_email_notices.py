@@ -244,3 +244,31 @@ def test_the_sweep_forgets_old_counts(session, braude):
     session.flush()
     sweep(session, SUNDAY_10AM)
     assert session.query(NoticeEmail).count() == 1
+
+
+def test_a_token_in_any_other_shape_is_refused_not_a_server_error(client: TestClient):
+    """compare_digest refuses non-ASCII text: it must never get that far."""
+    client.user = None
+    for junk in ("5.é", "٥.abc", "5." + "g" * 32, "5." + "A" * 32):
+        refused = client.post("/notices/unsubscribe", params={"t": junk})
+        assert refused.status_code == 404, junk
+
+
+def test_a_refusal_lets_go_of_the_budget_lock(session, braude, monkeypatch):
+    """The lock is a transaction lock: a refusal must commit, or the pushes
+    that follow in the same round would hold it. (The test session sits in
+    an outer transaction that keeps every lock, so the commit is what is checked.)"""
+    user, email = opted_in(session, braude), channel()
+    for n in range(EMAILS_PER_USER_DAY):
+        notify(session, user.id, NOTICE, None, email, SUNDAY_10AM + timedelta(minutes=n))
+    commits = []
+    real_commit = session.commit
+    monkeypatch.setattr(session, "commit", lambda: (commits.append(1), real_commit()))
+    assert notify(session, user.id, NOTICE, None, email, SUNDAY_10AM + timedelta(minutes=9)) == 0
+    assert commits == [1]
+
+
+def test_google_proves_only_gmail_or_its_own_workspace(session):
+    open_campus = make_institution(session, "open-campus")
+    other = ProviderIdentity("g-2", None, "old@yahoo.com", "Me", email_verified=True)
+    assert not sign_in(session, AuthProvider.GOOGLE, other, SUNDAY_10AM, open_slug=open_campus.slug).email_verified

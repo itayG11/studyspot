@@ -4,9 +4,12 @@ A student whose booking was refused because the time is taken asks to be
 told if it frees. Nothing marks a room as freed: a booking can end by being
 cancelled, by a no-show, by the sweep or lazily on the next booking. So the
 sweep simply asks, for each waiting request, whether its whole range is free
-now (take_freed). Cancelling wakes the sweep at once (the alarm); a booking
-that may turn into a no-show wakes it when its arrival window closes
-(next_due).
+now (take_freed). A cancel is a visit, so the sweep runs within the minute
+(app/activity.py); a booking that may turn into a no-show wakes it, by the
+alarm, when its arrival window closes (next_due).
+
+Only a student we can tell may wait: one with no browser subscribed and no
+email notices would be "told" into nothing, and hold up the next in line.
 
 The first in line is told first. The others for that time get a head start
 of HEAD_START behind them: if the first did not book, the next is told then.
@@ -25,7 +28,7 @@ from app.bookings import NO_SHOW_AFTER, check_times, floor_to_slot, holding, sam
 from app.errors import Refusal
 from app.models import AuthProvider, Booking, BookingStatus, Institution, Place, PlaceKind, User, UserIdentity
 from app.models.waitlist import WaitlistEntry
-from app.notify import Notice
+from app.notify import Notice, reachable
 
 MAX_WAITING = 3  # open requests per student
 HEAD_START = timedelta(minutes=10)  # the first in line gets this long alone
@@ -71,6 +74,11 @@ def join(session: Session, user: User, place_id: int, starts_at: datetime, ends_
     check_times(session, place, starts_at, ends_at, now)
     if not session.scalar(select(_taken(place, starts_at, ends_at, now))):
         raise Refusal(409, "waitlist_slot_free")  # it is free: book it
+    if not session.scalar(select(reachable(user.id))):
+        raise Refusal(409, "waitlist_no_notices")
+    # The user's row first: two requests at once (a double tap) then wait for
+    # each other, and the second finds the first's row instead of failing.
+    session.scalars(select(User).where(User.id == user.id).with_for_update()).one()
     existing = session.scalars(
         select(WaitlistEntry).where(
             WaitlistEntry.user_id == user.id, WaitlistEntry.place_id == place.id, WaitlistEntry.starts_at == starts_at
@@ -80,8 +88,6 @@ def join(session: Session, user: User, place_id: int, starts_at: datetime, ends_
         existing.ends_at, existing.notified_at = ends_at, None
         session.flush()
         return existing
-    # The user's row is locked so two requests at once cannot both pass the count.
-    session.scalars(select(User).where(User.id == user.id).with_for_update()).one()
     waiting = session.scalar(
         select(func.count()).select_from(WaitlistEntry).where(WaitlistEntry.user_id == user.id, _still_useful(now))
     )
@@ -123,7 +129,7 @@ def take_freed(session: Session, now: datetime) -> list[Freed]:
     never tell the same one."""
     pending = session.scalars(
         select(WaitlistEntry)
-        .where(WaitlistEntry.notified_at.is_(None), _still_useful(now))
+        .where(WaitlistEntry.notified_at.is_(None), _still_useful(now), reachable(WaitlistEntry.user_id))
         .order_by(WaitlistEntry.created_at, WaitlistEntry.id)
         .with_for_update(skip_locked=True)
     ).all()

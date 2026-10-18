@@ -82,3 +82,26 @@ def test_signed_out_is_refused(client, braude):
     row = checked_in(client, braude)
     client.user = None
     assert client.post(f"/check-ins/{row['id']}/still-here").status_code == 401
+
+
+def test_not_asked_when_it_ends_at_closing_time(client, session, braude, student):
+    row = checked_in(client, braude)
+    opt_in(session, student)
+    entry = session.get(CheckIn, row["id"])
+    from app.hours import place_status
+
+    closes = place_status(session, entry.place, SUNDAY_10AM).closes_at
+    entry.expires_at = closes
+    email = channel(FakeMailer())
+    send_reminders(session, None, closes - STILL_HERE_AHEAD, email)
+    assert email.mailer.sent == [] and entry.reminded_at is not None  # not asked again either
+
+
+def test_a_rescan_asks_again_about_the_new_end(client, session, braude, student):
+    row = checked_in(client, braude)
+    opt_in(session, student)
+    entry = session.get(CheckIn, row["id"])
+    entry.reminded_at = SUNDAY_10AM
+    client.clock.now = SUNDAY_10AM + timedelta(minutes=30)
+    client.post("/check-ins", json={"code": code_for(place_named(braude, "L", "מתחם לימוד"))})
+    assert entry.reminded_at is None
