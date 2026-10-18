@@ -42,6 +42,7 @@ from app.notify import email_from_settings, sender_from_settings
 from app.reminders import ALARM, Alarm, next_due, send_reminders
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
+from app.waitlist import delete_past as delete_past_waits
 from app.walking import matrix_from_settings, refresh_walks
 
 log = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     old_codes = session.execute(delete(EmailSignInCode).where(EmailSignInCode.created_at < now - KEEP_FOR)).rowcount
     # The email notices' daily count looks one day back (app/notify.py).
     session.execute(delete(NoticeEmail).where(NoticeEmail.sent_at < now - NOTICE_EMAILS_KEPT))
+    delete_past_waits(session, now)
     session.flush()
     return SweepResult(
         no_shows=no_shows,

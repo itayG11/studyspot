@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app import waitlist
 from app.bookings import NO_SHOW_AFTER
 from app.models import Booking, BookingStatus, Institution, PushSubscription, User
 from app.notify import EmailSender, Notice, PushSender, notify
@@ -107,6 +108,8 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
         b.reminded_start_at = b.reminded_start_at or now  # past the start: that one is no use any more
         at = _hhmm(b.starts_at + NO_SHOW_AFTER, zones[b.institution_id])
         out.append(_Due(b.user_id, Notice("עוד לא נכנסת", f"{b.place.name} ישוחרר ב-{at}, אם לא תסרוק את השלט.", "/me")))
+    # A room someone waits for has freed (app/waitlist.py).
+    out.extend(_Due(f.user_id, f.notice) for f in waitlist.take_freed(session, now))
     return out
 
 
@@ -137,7 +140,7 @@ def next_due(session: Session, now: datetime) -> datetime | None:
             pending, Booking.reminded_release_at.is_(None), Booking.starts_at + NO_SHOW_AFTER > now
         )
     )
-    times = [t for t in (first_start, first_release) if t is not None]
+    times = [t for t in (first_start, first_release, waitlist.next_due(session, now)) if t is not None]
     return min(times) if times else None
 
 

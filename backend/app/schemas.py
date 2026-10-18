@@ -484,6 +484,24 @@ class BookingCreate(BaseModel):
     ends_at: AwareDatetime
 
 
+class WaitlistIn(BaseModel):
+    """"Tell me if this time frees", for a group room (app/waitlist.py)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    starts_at: AwareDatetime
+    ends_at: AwareDatetime
+
+
+class WaitlistOut(BaseModel):
+    id: int
+    place_id: int
+    place_name: str
+    starts_at: datetime
+    ends_at: datetime
+    notified: bool  # we told them it freed
+
+
 class BookingOut(BaseModel):
     id: int
     place_id: int
