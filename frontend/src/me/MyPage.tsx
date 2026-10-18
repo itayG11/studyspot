@@ -4,6 +4,7 @@
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
 import { PushToggle } from './PushToggle'
+import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
@@ -128,6 +129,8 @@ export function MyPage() {
           </ul>
         )}
       </section>
+
+      <Waitlist />
 
       <Classes
         classes={classes}

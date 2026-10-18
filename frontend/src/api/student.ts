@@ -73,3 +73,17 @@ export const setEmailNotices = (enabled: boolean) =>
 // The signed link in every such email. No sign-in needed.
 export const unsubscribeEmail = (token: string) =>
   api<void>(`/notices/unsubscribe?t=${encodeURIComponent(token)}`, { method: 'POST' })
+
+// The waiting list for a group room (backend/app/waitlist.py).
+export interface WaitlistEntry {
+  id: number
+  place_id: number
+  place_name: string
+  starts_at: string
+  ends_at: string
+  notified: boolean
+}
+export const joinWaitlist = (placeId: number, starts_at: string, ends_at: string) =>
+  api<WaitlistEntry>(`/places/${placeId}/waitlist`, { method: 'POST', body: { starts_at, ends_at }, auth: true })
+export const myWaitlist = () => api<WaitlistEntry[]>('/me/waitlist', { auth: true })
+export const leaveWaitlist = (id: number) => api<void>(`/me/waitlist/${id}`, { method: 'DELETE', auth: true })

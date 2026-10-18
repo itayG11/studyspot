@@ -29,6 +29,7 @@ const ROOM: PlaceDetail = {
 
 let fetchMock: ReturnType<typeof vi.fn>
 let bookingBody: unknown = null
+let waitlistBody: unknown = null
 // The next answers to POST /bookings; when empty, the booking succeeds.
 let bookingAnswers: (() => Response)[] = []
 // When set, the availability answer waits until it is released.
@@ -59,6 +60,10 @@ beforeEach(() => {
       bookingBody = JSON.parse(String(init.body))
       const answer = bookingAnswers.shift()
       return Promise.resolve(answer ? answer() : jsonResponse(BOOKED, 201))
+    }
+    if (path === '/places/3/waitlist') {
+      waitlistBody = JSON.parse(String(init.body))
+      return Promise.resolve(jsonResponse({ id: 1, place_id: 3, place_name: 'EM107', notified: false, ...(waitlistBody as object) }, 201))
     }
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
   })
@@ -160,6 +165,22 @@ describe('BookingForm', () => {
     await user.click(screen.getByRole('button', { name: 'להזמין' }))
     expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
     expect(bookingBody).toMatchObject({ starts_at: '2026-10-11T08:30:00.000Z', ends_at: '2026-10-11T10:00:00.000Z' })
+  })
+
+  it('after a clash, offers to wait for the same time to free', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    waitlistBody = null
+    bookingAnswers.push(() => {
+      busy = [...busy, { seat_id: null, starts_at: '2026-10-11T07:00:00Z', ends_at: '2026-10-11T08:30:00Z' }]
+      return jsonResponse({ detail: 'slot_taken' }, 409)
+    })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    await user.click(await screen.findByRole('button', { name: 'להודיע לי אם יתפנה' }))
+    expect(await screen.findByText(/נרשמת. אם הזמן יתפנה/)).toBeInTheDocument()
+    expect(waitlistBody).toEqual({ starts_at: '2026-10-11T07:00:00.000Z', ends_at: '2026-10-11T08:30:00.000Z' })
   })
 
   it('adds the booking to a calendar by a link, with no file to download', async () => {
