@@ -456,6 +456,8 @@ class CheckInOut(BaseModel):
     # Set when a walk-in got less than the full time, so the app can warn:
     # "booking" = the seat is booked soon, "closing" = the place closes soon.
     cut_short_by: Literal["booking", "closing"] | None = None
+    # "Still here" can extend it from the app: no booking, not used yet.
+    can_extend: bool = False
 
 
 class MeOut(BaseModel):
@@ -482,6 +484,24 @@ class BookingCreate(BaseModel):
     # AwareDatetime rejects times without a timezone: "14:00" alone is ambiguous.
     starts_at: AwareDatetime
     ends_at: AwareDatetime
+
+
+class WaitlistIn(BaseModel):
+    """"Tell me if this time frees", for a group room (app/waitlist.py)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    starts_at: AwareDatetime
+    ends_at: AwareDatetime
+
+
+class WaitlistOut(BaseModel):
+    id: int
+    place_id: int
+    place_name: str
+    starts_at: datetime
+    ends_at: datetime
+    notified: bool  # we told them it freed
 
 
 class BookingOut(BaseModel):

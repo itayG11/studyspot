@@ -135,7 +135,7 @@ def create_booking(
     if not is_bookable(place.kind):
         raise Refusal(409, "not_bookable")
     _check_seat(session, place, seat_id)
-    _check_times(session, place, starts_at, ends_at, now)
+    check_times(session, place, starts_at, ends_at, now)
 
     # Lock the student's row so two simultaneous requests cannot both pass
     # the quota check. (Overlaps need no lock: the database refuses them.)
@@ -288,7 +288,7 @@ def _on_grid(moment: datetime) -> bool:
     return moment.second == 0 and moment.microsecond == 0 and moment.minute % 15 == 0
 
 
-def _check_times(
+def check_times(
     session: Session, place: Place, starts_at: datetime, ends_at: datetime, now: datetime
 ) -> None:
     if ends_at <= starts_at:

@@ -28,6 +28,8 @@ export function checkIn(code: string, seatId: number | null) {
 export const myCheckIn = () => api<CheckIn | null>('/me/check-in', { auth: true })
 
 export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`, { method: 'POST', auth: true })
+// "Still here": extends a check-in without a booking, once (backend/app/checkins.py).
+export const stillHere = (id: number) => api<CheckIn>(`/check-ins/${id}/still-here`, { method: 'POST', auth: true })
 
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })
@@ -59,3 +61,31 @@ export const subscribePush = (subscription: PushSubscriptionJson) =>
 export const unsubscribePush = (endpoint: string) =>
   api<void>('/me/push', { method: 'DELETE', body: { endpoint }, auth: true })
 export const testPush = () => api<{ delivered: number }>('/me/push/test', { method: 'POST', auth: true })
+
+// Notices by email too (backend/app/api/push.py): only to a proved address.
+export interface EmailNotices {
+  enabled: boolean
+  available: boolean
+  reason: 'demo' | 'unverified' | 'off' | null
+  address: string
+}
+export const emailNotices = () => api<EmailNotices>('/me/email-notices', { auth: true })
+export const setEmailNotices = (enabled: boolean) =>
+  api<EmailNotices>('/me/email-notices', { method: 'POST', body: { enabled }, auth: true })
+// The signed link in every such email. No sign-in needed.
+export const unsubscribeEmail = (token: string) =>
+  api<void>(`/notices/unsubscribe?t=${encodeURIComponent(token)}`, { method: 'POST' })
+
+// The waiting list for a group room (backend/app/waitlist.py).
+export interface WaitlistEntry {
+  id: number
+  place_id: number
+  place_name: string
+  starts_at: string
+  ends_at: string
+  notified: boolean
+}
+export const joinWaitlist = (placeId: number, starts_at: string, ends_at: string) =>
+  api<WaitlistEntry>(`/places/${placeId}/waitlist`, { method: 'POST', body: { starts_at, ends_at }, auth: true })
+export const myWaitlist = () => api<WaitlistEntry[]>('/me/waitlist', { auth: true })
+export const leaveWaitlist = (id: number) => api<void>(`/me/waitlist/${id}`, { method: 'DELETE', auth: true })

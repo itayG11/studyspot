@@ -7,11 +7,11 @@
 // so plainly, reloads the day and offers the nearest free start that still
 // fits the same length.
 
-import { CalendarClock } from 'lucide-react'
+import { BellRing, CalendarClock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import type { Booking, BookingRules, PlaceDetail, Seat } from '../../api/types'
-import { createBooking, getAvailability } from '../../api/student'
+import { createBooking, getAvailability, joinWaitlist } from '../../api/student'
 import { useAuth } from '../../auth/AuthContext'
 import { useAction } from '../../hooks/useAction'
 import { useApi } from '../../hooks/useApi'
@@ -20,7 +20,7 @@ import { bookableDays, daySlots, durationsFrom, type Slot } from '../../logic/sl
 import { formatTime, weekdayName } from '../../logic/time'
 import { nearestFree } from '../../logic/timeline'
 import { weekdayOfDate } from '../../logic/zoned'
-import { Button, ButtonLink, Chip, ErrorAction, ErrorState } from '../../ui'
+import { ActionError, Button, ButtonLink, Chip, ErrorAction, ErrorState } from '../../ui'
 import { Ticket } from './Ticket'
 import styles from './booking.module.css'
 
@@ -57,6 +57,8 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
   // taken time still looks free), so nothing is offered until fresh ones come.
   const [clash, setClash] = useState<{ from: string; minutes: number; seen: unknown } | null>(null)
   const action = useAction()
+  const waiting = useAction()
+  const [waitingFor, setWaitingFor] = useState<string | null>(null) // the clash start we wait for
 
   const availability = useApi(() => getAvailability(place.id, day!), day ? `availability-${place.id}-${day}` : null)
   const seatId = seat?.id ?? null
@@ -77,8 +79,18 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
     setSlot(next)
     setMinutes(length)
     setClash(null)
+    setWaitingFor(null)
     action.clearError()
+    waiting.clearError()
   }
+
+  async function waitForIt() {
+    if (!clash) return
+    const joined = await waiting.run(() => joinWaitlist(place.id, clash.from, endOf(clash.from, clash.minutes)))
+    if (joined) setWaitingFor(clash.from)
+  }
+  // Only a whole room has a waiting list: a lab has other stations.
+  const canWait = clash !== null && place.kind === 'group_room' && !user?.is_demo
 
   async function book() {
     if (!slot || !minutes) return
@@ -183,6 +195,18 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
           ) : (
             <span>אין ביום הזה זמן פנוי מאוחר יותר באורך הזה. נסה אורך קצר יותר או יום אחר.</span>
           )}
+          {canWait && waitingFor !== clash.from && (
+            <Button variant="ghost" size="sm" icon={<BellRing aria-hidden="true" />} busy={waiting.busy} onClick={() => void waitForIt()}>
+              להודיע לי אם יתפנה
+            </Button>
+          )}
+          {/* Always there, so a screen reader announces the change. */}
+          <span role="status">
+            {canWait && waitingFor === clash.from
+              ? 'נרשמת. אם הזמן יתפנה, נודיע לך בהתראה או במייל, לפי מה שהפעלת ב"האזור שלי". מי שמזמין ראשון מקבל.'
+              : ''}
+          </span>
+          {canWait && <ActionError action={waiting} />}
         </div>
       )}
 

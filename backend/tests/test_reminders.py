@@ -144,3 +144,16 @@ def test_the_alarm_keeps_a_sooner_time_set_during_a_sweep():
     assert alarm.due(START)
     alarm.settle(None, START + timedelta(minutes=1))  # that time has passed: the database's answer wins
     assert not alarm.due(START + timedelta(days=1))
+
+
+def test_a_reminder_by_email_when_there_is_no_browser(session, braude, student):
+    from test_email_notices import FakeMailer, channel
+
+    student.email_verified, student.email_notices = True, True
+    booking = book(session, braude, student)
+    assert next_due(session, SUNDAY_10AM) == START - START_AHEAD  # the alarm counts email users too
+    email = channel(FakeMailer())
+    assert send_reminders(session, None, START - START_AHEAD, email) == 1
+    [(to, _subject, text, _headers)] = email.mailer.sent
+    assert to == student.email and "11:00" in text
+    assert booking.reminded_start_at is not None

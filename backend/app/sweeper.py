@@ -17,7 +17,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
@@ -28,14 +28,26 @@ from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
 from app.clock import get_now
 from app.email_codes import KEEP_FOR
 from app.history import delete_old_check_ins, record_history
-from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, EmailSignInCode, Institution
-from app.notify import sender_from_settings
+from app.models import (
+    AuthSession,
+    Booking,
+    BookingStatus,
+    CheckIn,
+    CheckInEndReason,
+    EmailSignInCode,
+    Institution,
+    NoticeEmail,
+)
+from app.notify import email_from_settings, sender_from_settings
 from app.reminders import ALARM, Alarm, next_due, send_reminders
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
+from app.waitlist import delete_past as delete_past_waits
 from app.walking import matrix_from_settings, refresh_walks
 
 log = logging.getLogger(__name__)
+
+NOTICE_EMAILS_KEPT = timedelta(days=2)
 
 
 @dataclass(frozen=True)
@@ -81,6 +93,9 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     # Sign-in codes are kept a day (the privacy page says so; the daily
     # count needs that long), whether or not the address asks again.
     old_codes = session.execute(delete(EmailSignInCode).where(EmailSignInCode.created_at < now - KEEP_FOR)).rowcount
+    # The email notices' daily count looks one day back (app/notify.py).
+    session.execute(delete(NoticeEmail).where(NoticeEmail.sent_at < now - NOTICE_EMAILS_KEPT))
+    delete_past_waits(session, now)
     session.flush()
     return SweepResult(
         no_shows=no_shows,
@@ -120,11 +135,11 @@ def run_once() -> SweepResult:
     # the sweep for it even with no visitors (app/reminders.py).
     try:
         with SessionLocal(bind=get_engine()) as session:
-            push = sender_from_settings(settings)
-            send_reminders(session, push, now)
-            # No push: nothing would ever mark them, and a due alarm would
+            push, email = sender_from_settings(settings), email_from_settings(settings)
+            send_reminders(session, push, now, email)
+            # Neither: nothing would ever mark them, and a due alarm would
             # wake the database every minute.
-            ALARM.settle(next_due(session, now) if push else None, now)
+            ALARM.settle(next_due(session, now) if push or email else None, now)
     except Exception:
         log.exception("reminders not sent; the next round tries again")
     return result

@@ -7,15 +7,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
+from app import waitlist
 from app.api.actions import run_action
 from app.api.deps import get_session
 from app.auth import get_current_user
 from app.bookings import busy_ranges, cancel_booking, create_booking, extend_booking, upcoming_bookings
 from app.clock import get_now
 from app.models import Booking, Place, User
+from app.models.waitlist import WaitlistEntry
 from app.ratelimit import write_limit
 from app.reminders import ALARM, START_AHEAD
-from app.schemas import Availability, BookingCreate, BookingOut, BusyRange
+from app.schemas import Availability, BookingCreate, BookingOut, BusyRange, WaitlistIn, WaitlistOut
 
 router = APIRouter(tags=["bookings"])
 
@@ -92,3 +94,32 @@ def availability(
         for b in busy_ranges(session, place, day, now)
     ]
     return Availability(place_id=place.id, date=day, busy=busy)
+
+
+# --- The waiting list for group rooms (app/waitlist.py) -------------------------------
+
+
+def _wait_out(entry: WaitlistEntry) -> WaitlistOut:
+    return WaitlistOut(
+        id=entry.id, place_id=entry.place_id, place_name=entry.place.name,
+        starts_at=entry.starts_at, ends_at=entry.ends_at, notified=entry.notified_at is not None,
+    )
+
+
+@router.post(
+    "/places/{place_id}/waitlist", response_model=WaitlistOut, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(write_limit)],
+)
+def join_waitlist(place_id: Annotated[int, Path(gt=0)], body: WaitlistIn, user: UserDep, session: SessionDep, now: NowDep):
+    entry = run_action(session, lambda: waitlist.join(session, user, place_id, body.starts_at, body.ends_at, now))
+    return _wait_out(entry)
+
+
+@router.get("/me/waitlist", response_model=list[WaitlistOut])
+def my_waitlist(user: UserDep, session: SessionDep, now: NowDep):
+    return [_wait_out(e) for e in waitlist.my_entries(session, user, now)]
+
+
+@router.delete("/me/waitlist/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(write_limit)])
+def leave_waitlist(entry_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep):
+    run_action(session, lambda: waitlist.leave(session, user, entry_id))

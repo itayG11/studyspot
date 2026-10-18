@@ -31,7 +31,8 @@ from app.models.people import (
     UserIdentity,
     UserRole,
 )
-from app.models.push import PushSubscription
+from app.models.push import NoticeEmail, PushSubscription
+from app.models.waitlist import WaitlistEntry
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -50,6 +51,7 @@ __all__ = [
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
+    "NoticeEmail",
     "OccupancyHistory",
     "OpeningHours",
     "Place",
@@ -64,6 +66,7 @@ __all__ = [
     "User",
     "UserIdentity",
     "UserRole",
+    "WaitlistEntry",
     "WalkTime",
     "floor_exists",
     "is_bookable",

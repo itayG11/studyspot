@@ -42,7 +42,7 @@ from app.email_codes import (
     normalize_email,
 )
 from app.errors import Refusal, is_duplicate
-from app.mailer import BrevoMailer, LogMailer, Mailer
+from app.mailer import Mailer, mailer_from_settings
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.ratelimit import email_start_limit, refresh_address_limit, refresh_limit, sign_in_limit, write_limit
@@ -142,11 +142,7 @@ def list_providers(
 def get_mailer(
     settings: SettingsDep, http: Annotated[httpx.Client, Depends(get_http_client)]
 ) -> Mailer | None:
-    if settings.brevo_api_key is not None:
-        return BrevoMailer(http, settings.brevo_api_key.get_secret_value(), settings.email_sender)
-    if settings.email_login_dev_log:
-        return LogMailer()
-    return None
+    return mailer_from_settings(settings, http)
 
 
 @router.post(

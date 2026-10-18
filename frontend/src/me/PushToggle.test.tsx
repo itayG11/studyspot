@@ -16,6 +16,8 @@ const api = vi.hoisted(() => ({
   subscribePush: vi.fn(() => Promise.resolve()),
   unsubscribePush: vi.fn(() => Promise.resolve()),
   testPush: vi.fn(() => Promise.resolve({ delivered: 1 })),
+  emailNotices: vi.fn(() => Promise.resolve({ enabled: false, available: false, reason: 'off', address: 'a@b.c' })),
+  setEmailNotices: vi.fn(),
 }))
 vi.mock('../api/student', () => api)
 

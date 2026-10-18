@@ -61,6 +61,11 @@ class User(Base):
     # One of the demo campus's made-up students (app/seed/live.py). It has no
     # identity, so nobody can sign in as it.
     simulated: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # The address above was proved at the last sign-in: a code sent to it,
+    # or Google's email_verified. Only then may notices go to it by email.
+    email_verified: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # The user asked for notices by email too (app/notify.py). Off by default.
+    email_notices: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class UserIdentity(Base):

@@ -33,6 +33,7 @@ INVITE_LIFETIME = timedelta(days=7)
 RESERVED_SLUGS = frozenset({
     "admin", "api", "assets", "design", "icons", "images", "institutions", "invite",
     "accessibility", "licenses", "login", "terms", "me", "places", "privacy", "scan", "signed-in", "spaces", "system",
+    "unsubscribe",
     # The demo campus's own name: an institution created under it would get
     # the demo's made-up live occupancy (app/seed/live.py).
     "demo",

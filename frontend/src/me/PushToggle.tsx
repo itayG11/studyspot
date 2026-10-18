@@ -8,6 +8,7 @@ import { useAction } from '../hooks/useAction'
 import { currentDevice, detectPlatform } from '../logic/install'
 import { currentPushEnvironment, keyBytes, pushSupport } from '../logic/push'
 import { ActionError, Button } from '../ui'
+import { EmailNoticesToggle } from './EmailNoticesToggle'
 import { askPermission, currentSubscription, permission, subscribeDevice } from './pushDevice'
 import styles from './me.module.css'
 
@@ -104,6 +105,7 @@ export function PushToggle({ isDemo }: { isDemo: boolean }) {
           להפעיל התראות
         </Button>
       ) : null}
+      {!isDemo && <EmailNoticesToggle />}
       {note && <p role="status">{note}</p>}
       <ActionError action={action} />
     </section>

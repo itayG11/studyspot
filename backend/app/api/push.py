@@ -1,9 +1,10 @@
-"""Push notifications: the site's public key, and a user's browsers
-subscribing, unsubscribing and asking for a test notification."""
+"""Notifications: the site's push key; a user's browsers subscribing,
+unsubscribing and asking for a test notification; and notices by email,
+turned on and off, also from the signed link in every such email."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -21,10 +22,12 @@ from app.notify import (
     decode_key,
     notify,
     public_key_b64,
+    read_unsubscribe_token,
     sender_from_settings,
+    unsubscribe_key,
     vapid_key,
 )
-from app.ratelimit import write_limit
+from app.ratelimit import sign_in_limit, write_limit
 
 router = APIRouter(tags=["push"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -116,3 +119,64 @@ def test_push(user: UserDep, db: SessionDep, push: Annotated[PushSender | None, 
     delivered = notify(db, user.id, Notice("StudySpot", "ההתראות פועלות במכשיר הזה.", "/me"), push)
     db.commit()
     return {"delivered": delivered}
+
+
+class EmailNoticesIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool
+
+
+def _email_notices_out(db: Session, user: User, settings: Settings) -> dict:
+    """Whether notices may go by email, and if not, why: the shown reason."""
+    if _shared_demo(db, user):
+        reason = "demo"
+    elif not user.email_verified:
+        reason = "unverified"  # signed in with an address nobody proved
+    elif not settings.email_login_enabled():
+        reason = "off"  # no mailer on this site
+    else:
+        reason = None
+    return {"enabled": user.email_notices and reason is None, "available": reason is None,
+            "reason": reason, "address": user.email}
+
+
+@router.get("/me/email-notices")
+def my_email_notices(user: UserDep, db: SessionDep, settings: Annotated[Settings, Depends(get_settings)]):
+    return _email_notices_out(db, user, settings)
+
+
+@router.post("/me/email-notices", dependencies=[Depends(write_limit)])
+def set_email_notices(
+    body: EmailNoticesIn, user: UserDep, db: SessionDep, settings: Annotated[Settings, Depends(get_settings)]
+):
+    def act() -> None:
+        if body.enabled:
+            reason = _email_notices_out(db, user, settings)["reason"]
+            if reason == "demo":
+                raise Refusal(403, "push_demo_account")
+            if reason is not None:
+                raise Refusal(409, f"email_notices_{reason}")
+        user.email_notices = body.enabled
+
+    run_action(db, act)
+    db.commit()
+    return _email_notices_out(db, user, settings)
+
+
+@router.post("/notices/unsubscribe", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(sign_in_limit)])
+def unsubscribe_email(
+    db: SessionDep,
+    settings: Annotated[Settings, Depends(get_settings)],
+    t: Annotated[str, Query(max_length=60)],
+):
+    """The link in every email notice, and the mail app's one-click button
+    (RFC 8058). No sign-in: the signature says whose it is. It only ever
+    turns notices off, so a stolen link can do no harm."""
+    user_id = read_unsubscribe_token(unsubscribe_key(settings.jwt_secret_bytes()), t)
+    if user_id is None:
+        raise HTTPException(404, "unsubscribe_invalid")
+    user = db.get(User, user_id)
+    if user is not None and user.email_notices:
+        user.email_notices = False
+        db.commit()
+

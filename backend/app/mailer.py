@@ -1,4 +1,4 @@
-"""Sending the one-time sign-in codes by email.
+"""Sending email: the one-time sign-in codes, and notices (app/notify.py).
 
 Production uses Brevo's HTTPS API: the free hosting blocks the SMTP ports,
 and an HTTPS call needs nothing but an API key. Development can print the
@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 
 
 class Mailer(Protocol):
+    def send(self, to: str, subject: str, text: str, headers: dict[str, str] | None = None) -> None:
+        """Send a plain-text email, or raise Refusal(502, "email_not_sent")."""
+
     def send_code(self, to: str, code: str) -> None:
         """Send the code, or raise Refusal(502, "email_not_sent")."""
 
@@ -40,19 +43,22 @@ class BrevoMailer:
     def __init__(self, http: httpx.Client, api_key: str, sender: str, sender_name: str = "StudySpot"):
         self.http, self.api_key, self.sender, self.sender_name = http, api_key, sender, sender_name
 
-    def send_code(self, to: str, code: str) -> None:
+    def send(self, to: str, subject: str, text: str, headers: dict[str, str] | None = None) -> None:
+        body = {
+            "sender": {"name": self.sender_name, "email": self.sender},
+            "to": [{"email": to}],
+            "subject": subject,
+            # Plain text only: Brevo adds a hidden image to an HTML
+            # email and logs when it is opened. Here it has nowhere to go.
+            "textContent": text,
+        }
+        if headers:
+            body["headers"] = headers
         try:
             response = self.http.post(
                 BREVO_URL,
                 headers={"api-key": self.api_key, "accept": "application/json"},
-                json={
-                    "sender": {"name": self.sender_name, "email": self.sender},
-                    "to": [{"email": to}],
-                    "subject": _subject(code),
-                    # Plain text only: Brevo adds a hidden image to an HTML
-                    # email and logs when it is opened. Here it has nowhere to go.
-                    "textContent": _text(code),
-                },
+                json=body,
                 timeout=10,
             )
         except httpx.HTTPError:
@@ -63,9 +69,24 @@ class BrevoMailer:
             log.warning("Brevo refused the email: HTTP %s", response.status_code)
             raise Refusal(502, "email_not_sent")
 
+    def send_code(self, to: str, code: str) -> None:
+        self.send(to, _subject(code), _text(code))
+
 
 class LogMailer:
     """Development only: the code goes to the server log."""
 
+    def send(self, to: str, subject: str, text: str, headers: dict[str, str] | None = None) -> None:
+        log.warning("EMAIL_LOGIN_DEV_LOG: email to %s: %s", to, subject)
+
     def send_code(self, to: str, code: str) -> None:
         log.warning("EMAIL_LOGIN_DEV_LOG: sign-in code for %s is %s", to, code)
+
+
+def mailer_from_settings(settings, http: httpx.Client) -> Mailer | None:
+    """Brevo when its key is set; the log in development; else none."""
+    if settings.brevo_api_key is not None:
+        return BrevoMailer(http, settings.brevo_api_key.get_secret_value(), settings.email_sender)
+    if settings.email_login_dev_log:
+        return LogMailer()
+    return None

@@ -40,6 +40,7 @@ export const routes = [
       { path: 'institutions', ...page(() => import('./pages/InstitutionsPage').then((m) => m.InstitutionsPage)) },
       { path: 'login', Component: LoginPage },
       { path: 'signed-in', ...page(() => import('./pages/SignedInPage').then((m) => m.SignedInPage)) },
+      { path: 'unsubscribe', ...page(() => import('./pages/UnsubscribePage').then((m) => m.UnsubscribePage)) },
       { path: 'terms', ...page(() => import('./pages/TermsPage').then((m) => m.TermsPage)) },
       { path: 'privacy', ...page(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage)) },
       { path: 'accessibility', ...page(() => import('./pages/AccessibilityPage').then((m) => m.AccessibilityPage)) },
