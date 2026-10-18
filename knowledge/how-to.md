@@ -13,3 +13,12 @@
 **2026-10-16 - `Playwright` מקומית:** `PYTHON=$PWD/../backend/.venv/bin/python CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test`, מתוך `frontend`.
 
 **2026-10-16 - שעון מזויף ב-`vitest`:** `vi.useFakeTimers({ shouldAdvanceTime: true })`, ואז `act(() => vi.advanceTimersByTimeAsync(ms))`. פוקוס שנקבע בתוך `effect` מחכים לו עם `vi.waitFor`.
+
+**2026-10-18 - פתיחת גיבוי אצל המשתמש:** בתיקייה `C:\Users\itayg\Projects\StudySpot-keys`, `Expand-Archive <zip> -DestinationPath .`, ואז `age -d -i studyspot-backup-key.txt -o studyspot.dump <file>.dump.age`. מדריך מלא ב-`docs/DEPLOY.md`.
+
+**2026-10-18 - עדכון דף ההתקדמות בסוף גל:** הדף "התקדמות StudySpot", `https://claude.ai/artifact/YLL4rTzB18D4wH81dSpE9D`, מוצמד לצד של `claude.ai`.
+1. מעדכנים את `knowledge/progress.json`: הגל הנוכחי, הצעד הבא, מה ממתין למשתמש, והצפי.
+2. מריצים `python3 knowledge/progress_export.py <scratchpad>/progress`. נוצרים `waves.json` ו-`summary.json`.
+3. מעלים כל קובץ עם `Artifact`, `asset: true`, וה-`url` של הדף.
+4. ב-`ArtifactData`, `update` ל-`datasets/waves` ול-`datasets/summary`: ה-`url` החדש בתוך `source`, ו-`updated`.
+- **בתוך הסשן יש גם תוסף:** `studyspot-progress`, עם שורת מצב והפקודה `/progress`. הוא חי רק בסשן שבו נבנה.

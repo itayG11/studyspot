@@ -57,6 +57,27 @@ def test_the_sweep_waits_while_the_site_is_quiet():
     assert rounds  # busy: it sweeps again
 
 
+def test_a_reminder_due_wakes_the_sweep_on_a_quiet_site():
+    from datetime import UTC, datetime, timedelta
+
+    from app.reminders import Alarm
+
+    activity, alarm = Activity(idle_after=600, clock=FakeClock()), Alarm()
+    rounds: list[int] = []
+
+    async def scenario() -> None:
+        task = asyncio.create_task(run_forever(0.001, activity, sweep=lambda: rounds.append(1), alarm=alarm))
+        alarm.set(datetime.now(UTC) + timedelta(days=1))
+        await asyncio.sleep(0.05)
+        assert rounds == []  # a reminder tomorrow: still asleep
+        alarm.set(datetime.now(UTC) - timedelta(seconds=1))
+        await asyncio.sleep(0.05)
+        task.cancel()
+
+    asyncio.run(scenario())
+    assert rounds  # due: it sweeps, though nobody visits
+
+
 def test_the_health_check_is_not_a_visit(monkeypatch):
     activity = Activity(idle_after=600, clock=FakeClock())
     monkeypatch.setattr(main, "activity", activity)

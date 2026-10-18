@@ -373,6 +373,7 @@ export interface BetweenClasses {
   weekday: number
   date: string // "YYYY-MM-DD": today, or the next date of that weekday
   gaps: Gap[]
+  routed_walks: boolean // walking times from OpenRouteService: credit it
 }
 
 // One class read from a timetable file (POST /me/classes/import).

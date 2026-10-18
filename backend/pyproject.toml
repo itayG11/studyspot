@@ -18,6 +18,11 @@ dependencies = [
     "defusedxml>=0.7",
     "anthropic>=1.13,<2",  # reading a timetable photo (app/timetable_photo.py)
     "starlette>=1.7",  # its gzip leaves already-compressed types alone (app/site.py)
+    # Push notifications (app/notify.py): the standard encryption of the
+    # message (RFC 8291) and the signed VAPID header (RFC 8292). Both need
+    # only cryptography; the request itself goes through httpx.
+    "http-ece>=1.2",
+    "py-vapid>=1.9",
 ]
 
 [project.optional-dependencies]

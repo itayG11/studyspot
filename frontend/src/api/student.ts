@@ -48,3 +48,14 @@ export const removeClass = (id: number) => api<void>(`/me/classes/${id}`, { meth
 export const betweenClasses = (weekday?: number) =>
   api<BetweenClasses>(`/me/between-classes${weekday === undefined ? '' : `?weekday=${weekday}`}`, { auth: true })
 
+// Push notifications (backend/app/api/push.py).
+export interface PushSubscriptionJson {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+export const pushKey = () => api<{ key: string }>('/push/key')
+export const subscribePush = (subscription: PushSubscriptionJson) =>
+  api<void>('/me/push', { method: 'POST', body: subscription, auth: true })
+export const unsubscribePush = (endpoint: string) =>
+  api<void>('/me/push', { method: 'DELETE', body: { endpoint }, auth: true })
+export const testPush = () => api<{ delivered: number }>('/me/push/test', { method: 'POST', auth: true })

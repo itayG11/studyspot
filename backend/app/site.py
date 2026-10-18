@@ -51,6 +51,8 @@ SECURITY_HEADERS = {
 }
 
 ONE_YEAR = "public, max-age=31536000, immutable"  # file names carry a hash
+# Fixed addresses that must update at once: the push service worker.
+FRESH = {"sw.js"}
 ONE_WEEK = "public, max-age=604800"
 
 
@@ -93,6 +95,8 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
             raise HTTPException(404)  # an API address the API did not take
         file = files.get(path)
         if file is not None:
+            if path in FRESH:
+                return FileResponse(file, headers={"Cache-Control": "no-cache"})
             return FileResponse(file, headers={"Cache-Control": ONE_YEAR if path.startswith("assets/") else ONE_WEEK})
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(404)  # a missing file, not a page of the app

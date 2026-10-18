@@ -1,6 +1,8 @@
 """Background sweep: release no-shows, complete ended bookings, close
-expired check-ins, count the past quarter hours (app/history.py), and
-delete check-ins older than 90 days.
+expired check-ins, count the past quarter hours (app/history.py),
+delete check-ins older than 90 days, fetch real walking times when a
+campus's buildings moved (app/walking.py), and send booking reminders
+(app/reminders.py).
 
 Every step is a single UPDATE whose condition is the state it fixes, so
 running it twice, or in several server processes at once, does no harm.
@@ -23,11 +25,15 @@ from sqlalchemy.orm import Session
 from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
+from app.clock import get_now
 from app.email_codes import KEEP_FOR
 from app.history import delete_old_check_ins, record_history
 from app.models import AuthSession, Booking, BookingStatus, CheckIn, CheckInEndReason, EmailSignInCode, Institution
+from app.notify import sender_from_settings
+from app.reminders import ALARM, Alarm, next_due, send_reminders
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
+from app.walking import matrix_from_settings, refresh_walks
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +93,6 @@ def sweep(session: Session, now: datetime) -> SweepResult:
 
 
 def run_once() -> SweepResult:
-    from app.clock import get_now
     from app.config import get_settings
     from app.db import SessionLocal, get_engine
 
@@ -104,6 +109,24 @@ def run_once() -> SweepResult:
             session.commit()
         if removed:
             log.info("demo campus reset: %s buildings, %s places removed", *removed)
+    # Last, after the reset: it may remove buildings. Its own session, and
+    # never a reason for the sweep to fail (app/walking.py).
+    try:
+        with SessionLocal(bind=get_engine()) as session:
+            refresh_walks(session, matrix_from_settings(settings), now)
+    except Exception:
+        log.exception("walking times not refreshed; the next round tries again")
+    # Booking reminders, and when the next one falls due: the alarm wakes
+    # the sweep for it even with no visitors (app/reminders.py).
+    try:
+        with SessionLocal(bind=get_engine()) as session:
+            push = sender_from_settings(settings)
+            send_reminders(session, push, now)
+            # No push: nothing would ever mark them, and a due alarm would
+            # wake the database every minute.
+            ALARM.settle(next_due(session, now) if push else None, now)
+    except Exception:
+        log.exception("reminders not sent; the next round tries again")
     return result
 
 
@@ -117,11 +140,14 @@ async def sweep_safely(sweep: Callable[[], object] = run_once) -> None:
         log.exception("sweep failed; retrying next round")
 
 
-async def run_forever(interval_seconds: float, activity: Activity, sweep: Callable[[], object] = run_once) -> None:
+async def run_forever(
+    interval_seconds: float, activity: Activity, sweep: Callable[[], object] = run_once, alarm: Alarm = ALARM
+) -> None:
     """Started by the app's lifespan. Sweeps only while the site is in use
-    (app/activity.py), so a quiet site leaves the database asleep."""
+    (app/activity.py), so a quiet site leaves the database asleep, or when
+    a reminder is due (app/reminders.py)."""
     while True:
-        if activity.busy():
+        if activity.busy() or alarm.due(get_now()):
             await sweep_safely(sweep)
         await asyncio.sleep(interval_seconds)
 

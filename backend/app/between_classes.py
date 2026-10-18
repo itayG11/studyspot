@@ -9,9 +9,10 @@ not full: now for the gap under way (live counts), or usually at that
 hour for a gap later today (the load forecast). The best three, by time to
 sit and then by how free, are suggested, each with its numbers.
 
-Walking times are an estimate from the map, not a route: the straight line
-times a detour factor, at a slow walking pace. Each suggestion shows them,
-so a student can judge."""
+Walking times come from a routing service when the campus has them
+(app/walking.py); otherwise they are an estimate from the map: the straight
+line times a detour factor, at a slow walking pace. Each suggestion shows
+them, so a student can judge."""
 
 import math
 from dataclasses import dataclass
@@ -34,6 +35,7 @@ from app.models import (
     Place,
     PlaceKind,
     User,
+    WalkTime,
 )
 from app.occupancy import occupied_by_place, open_all_day_place_ids
 
@@ -49,12 +51,28 @@ UNKNOWN_WALK_MINUTES = 5  # a building not yet placed on the map, or not listed
 EARTH_METRES = 6_371_000
 
 
-def walk_minutes(a: Building | None, b: Building | None) -> int:
-    """None: a place the campus does not list yet, so not on the map either."""
+WalkTable = dict[tuple[int, int], int]
+
+
+def walk_table(session: Session, institution: Institution) -> WalkTable:
+    """The campus's routed walking times (app/walking.py), in one query."""
+    rows = session.execute(
+        select(WalkTime.from_building_id, WalkTime.to_building_id, WalkTime.minutes)
+        .join(Building, Building.id == WalkTime.from_building_id)
+        .where(Building.institution_id == institution.id)
+    ).all()
+    return {(a, b): minutes for a, b, minutes in rows}
+
+
+def walk_minutes(a: Building | None, b: Building | None, routed: WalkTable | None = None) -> int:
+    """None: a place the campus does not list yet, so not on the map either.
+    A routed time wins; without one, the estimate from the map."""
     if a is None or b is None:
         return UNKNOWN_WALK_MINUTES
     if a.id == b.id:
         return SAME_BUILDING_MINUTES
+    if routed and (a.id, b.id) in routed:
+        return routed[(a.id, b.id)]
     if None in (a.latitude, a.longitude, b.latitude, b.longitude):
         return UNKNOWN_WALK_MINUTES
     lat1, lon1, lat2, lon2 = (math.radians(float(v)) for v in (a.latitude, a.longitude, b.latitude, b.longitude))
@@ -117,6 +135,7 @@ class BetweenClasses:
     weekday: int
     date: date  # the day the gaps are on: today, or the next such weekday
     gaps: list[GapSuggestions]
+    routed_walks: bool = False  # some walking times come from a routing service
 
 
 def suggest(session: Session, user: User, now: datetime, weekday: int | None = None) -> BetweenClasses:
@@ -143,6 +162,7 @@ def suggest(session: Session, user: User, now: datetime, weekday: int | None = N
         .options(selectinload(Place.opening_hours), selectinload(Place.building))
         .order_by(Place.id)
     ).all()
+    routed = walk_table(session, institution)
     all_day = open_all_day_place_ids(session, institution.id, today)
     occupied = occupied_by_place(session, [p.id for p in places], now)
     forecasts: dict[int, Forecast] = {}
@@ -170,8 +190,8 @@ def suggest(session: Session, user: User, now: datetime, weekday: int | None = N
         begin = (max(start, now) if live else start).astimezone(zone)  # local: opening hours are local times
         found = []
         for place in places:
-            there = walk_minutes(gap.before.building, place.building)
-            after = walk_minutes(place.building, gap.after.building)
+            there = walk_minutes(gap.before.building, place.building, routed)
+            after = walk_minutes(place.building, gap.after.building, routed)
             sit_from = begin + timedelta(minutes=there)
             sit_until = end - timedelta(minutes=after)
             minutes = int((sit_until - sit_from).total_seconds() // 60)
@@ -217,7 +237,7 @@ def suggest(session: Session, user: User, now: datetime, weekday: int | None = N
             gap.starts, gap.ends, end, _where(gap.before), _where(gap.after), under_way,
             gap.before.building is not None, gap.after.building is not None, found[:MAX_SUGGESTIONS],
         ))
-    return BetweenClasses(weekday, today, out)
+    return BetweenClasses(weekday, today, out, routed_walks=bool(routed))
 
 
 def _where(row: ClassSlot) -> str:

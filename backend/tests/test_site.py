@@ -18,6 +18,7 @@ def built(tmp_path: Path) -> Path:
     (tmp_path / "images").mkdir()
     (tmp_path / "images" / "hero-800.webp").write_bytes(b"RIFF....WEBP")
     (tmp_path / "manifest.webmanifest").write_text('{"name": "StudySpot"}')
+    (tmp_path / "sw.js").write_text("self.addEventListener('push', () => {})")
     (tmp_path / "index.html").write_text("<!doctype html><title>StudySpot</title>")
     (tmp_path.parent / "secret.txt").write_text("not for the web")
     return tmp_path
@@ -225,3 +226,11 @@ def test_a_link_in_the_build_that_points_outside_is_not_served(built: Path):
     (built / "assets" / "leak.txt").symlink_to(built.parent / "secret.txt")
     site = TestClient(create_site(built))
     assert site.get("/assets/leak.txt").status_code == 404
+
+
+def test_the_service_worker_is_never_kept_stale(site: TestClient):
+    """Its address has no hash: cached a week, a fix would wait a week."""
+    response = site.get("/sw.js")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
+    assert "javascript" in response.headers["content-type"]

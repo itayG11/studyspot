@@ -3,6 +3,7 @@
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
+import { PushToggle } from './PushToggle'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
@@ -139,6 +140,8 @@ export function MyPage() {
       />
 
       <Favorites places={places.data} />
+
+      <PushToggle isDemo={user?.is_demo ?? false} />
 
       <InstallTip variant="section" />
 

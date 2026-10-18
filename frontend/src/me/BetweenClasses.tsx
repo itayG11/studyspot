@@ -168,8 +168,17 @@ export function BetweenClasses({ between, classes, day, onDay }: Props) {
         </p>
       )}
       {body}
-      {data && data.gaps.length > 0 && (
+      {data && data.gaps.length > 0 && !data.routed_walks && (
         <p className={styles.idleText}>זמני ההליכה הם הערכה לפי המפה, ולא מסלול מדויק.</p>
+      )}
+      {data && data.gaps.length > 0 && data.routed_walks && (
+        <>
+          <p className={styles.idleText}>זמני ההליכה לפי מסלולי הליכה בין הבניינים. בניין בלי מסלול: הערכה לפי המפה.</p>
+          {/* The credit OpenRouteService's terms ask for, as they word it. */}
+          <p className={styles.idleText} dir="ltr">
+            © openrouteservice.org by HeiGIT | Map data © OpenStreetMap contributors
+          </p>
+        </>
       )}
     </section>
   )

@@ -28,3 +28,17 @@
 - Security is part of every stage (see "אבטחה" in the plan): no secrets in code, input validation, authorization checks with tests, rate limiting.
 - Double-booking prevention must be enforced by the database (PostgreSQL exclusion constraint), with a concurrency test.
 - Every stage ends with passing tests and a commit with a clear message.
+
+## When a wave is done
+A wave starts with a plan the user approves (plan mode), and is done only when every item below holds. Then explain it to the user and stop for approval.
+1. All tests: `pytest`, `vitest`, `Playwright`, and the edge tests on three devices (`-c playwright.edge.config.ts`).
+2. `ruff check`, `tsc -b`, `oxlint`, `alembic check`, and `npm run build` within the bundle cap.
+3. A code + security review agent; every blocking finding fixed, with a test.
+4. Docs updated: `docs/INTERVIEW_REPORT.md`, `docs/DEPLOY.md`, `docs/SERVICES.md`, `docs/ROADMAP.md`; the privacy page if new data is handled, the licenses page if a library was added.
+5. Committed and pushed; every GitHub check green, CodeQL included.
+6. On the live site: the new version is up and the feature checked. What Claude cannot check, the user checks from a short list.
+7. A pull request to `main`, which the user merges.
+8. Harvest to `knowledge/` (session-harvest), `knowledge/NEXT.md` updated, and the progress file `knowledge/progress.json`.
+
+## Between waves
+Harvest at the end of a wave, never mid-wave. Then the user starts a new session (cheaper) or runs COMPACT, and the next session reads only `knowledge/NEXT.md` and `TODO.md` before proposing the next wave's plan.

@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import * as client from '../api/client'
 import type { DemoPersona, Me } from '../api/types'
+import { forgetPushHere } from '../me/pushDevice'
 import { clearPendingInvite } from './pendingInvite'
 
 type Status = 'loading' | 'signed-in' | 'signed-out'
@@ -46,9 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await client.emailVerify(email, code)
     },
     // An invite waiting in this tab is the signed-in person's: it goes too.
-    logout: () => { clearPendingInvite(); return client.logout() },
-    logoutAll: () => { clearPendingInvite(); return client.logoutAll() },
-    deleteAccount: () => { clearPendingInvite(); return client.deleteAccount() },
+    // And this browser's push subscription: the next person here must not
+    // get the reminders of the one who left.
+    logout: async () => { clearPendingInvite(); await forgetPushHere(); return client.logout() },
+    logoutAll: async () => { clearPendingInvite(); await forgetPushHere(); return client.logoutAll() },
+    deleteAccount: async () => { clearPendingInvite(); await forgetPushHere(); return client.deleteAccount() },
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

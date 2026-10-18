@@ -13,8 +13,9 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.activity import Activity
-from app.api import admin, auth, bookings, campus, checkins, classes, system
+from app.api import admin, auth, bookings, campus, checkins, classes, push, system
 from app.config import Settings, get_settings
+from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
 
 # Seconds between background sweeps; 0 turns the sweep off (tests do this).
@@ -51,6 +52,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.warning(warning)
     task = None
     if SWEEP_INTERVAL > 0:
+        # The first reminder ahead, so the alarm rings even if nobody visits
+        # after a restart (app/reminders.py). One query; never fatal.
+        with contextlib.suppress(Exception):
+            await asyncio.to_thread(prime_alarm)
         task = asyncio.create_task(run_forever(SWEEP_INTERVAL, activity))
     app.state.sweeping = task is not None
     yield
@@ -107,3 +112,4 @@ app.include_router(bookings.router)
 app.include_router(classes.router)
 app.include_router(admin.router)
 app.include_router(system.router)
+app.include_router(push.router)

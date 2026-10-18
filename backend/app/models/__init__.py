@@ -12,6 +12,7 @@ from app.models.campus import (
     PlaceKind,
     Seat,
     SuitedFor,
+    WalkTime,
     floor_exists,
     is_bookable,
     is_counted,
@@ -30,6 +31,7 @@ from app.models.people import (
     UserIdentity,
     UserRole,
 )
+from app.models.push import PushSubscription
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -54,6 +56,7 @@ __all__ = [
     "PlaceAmenity",
     "PlaceAtmosphere",
     "PlaceKind",
+    "PushSubscription",
     "Seat",
     "SpecialPeriod",
     "SpecialPeriodPlace",
@@ -61,6 +64,7 @@ __all__ = [
     "User",
     "UserIdentity",
     "UserRole",
+    "WalkTime",
     "floor_exists",
     "is_bookable",
     "is_counted",

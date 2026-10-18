@@ -12,7 +12,7 @@ const PARTS: { group: string; items: [string, string][] }[] = [
   { group: 'סמלים', items: [['Lucide', 'ISC']] },
   {
     group: 'מפה',
-    items: [['Leaflet', 'BSD-2-Clause'], ['React Leaflet', 'Hippocratic-2.1'], ['OpenStreetMap, נתוני המפה', 'ODbL']],
+    items: [['Leaflet', 'BSD-2-Clause'], ['React Leaflet', 'Hippocratic-2.1'], ['OpenStreetMap, נתוני המפה', 'ODbL'], ['OpenRouteService, זמני הליכה', 'תנאי השימוש של HeiGIT']],
   },
   {
     group: 'האתר',
@@ -24,6 +24,7 @@ const PARTS: { group: string; items: [string, string][] }[] = [
       ['FastAPI', 'MIT'], ['Uvicorn', 'BSD-3-Clause'], ['SQLAlchemy', 'MIT'], ['Alembic', 'MIT'],
       ['psycopg', 'LGPL-3.0'], ['PostgreSQL', 'PostgreSQL License'], ['pydantic-settings', 'MIT'], ['PyJWT', 'MIT'],
       ['HTTPX', 'BSD-3-Clause'], ['openpyxl', 'MIT'], ['defusedxml', 'PSF'], ['Anthropic SDK', 'MIT'],
+      ['http-ece', 'MIT'], ['py-vapid', 'MPL-2.0'],
     ],
   },
 ]

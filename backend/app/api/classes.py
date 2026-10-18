@@ -171,6 +171,7 @@ def between_classes(
     return BetweenClassesOut(
         weekday=result.weekday,
         date=result.date,
+        routed_walks=result.routed_walks,
         gaps=[
             GapOut(
                 starts=g.starts, ends=g.ends, from_building=g.from_building, to_building=g.to_building, now=g.now,
