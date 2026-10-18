@@ -25,3 +25,5 @@
 **2026-10-16 - `| tail` מסתיר את קוד היציאה.** `ruff check | tail -1 && git push` דחף למרות שגיאה, כי היציאה היא של `tail`. בשרשרת שמסתיימת בדחיפה: `set -o pipefail`, או בלי צינור בכלל.
 
 **2026-10-16 - הסקיל `session-harvest` נמצא אצל המשתמש, ב-`C:\Users\itayg\.claude\skills\session-harvest`.** סשן בענן לא רואה אותו. המשתמש העלה את `SKILL.md` לצ'אט, והקציר הזה נעשה לפיו. עד שיותקן ב-`claude.ai`, מבקשים מהמשתמש להעלות אותו, או עובדים לפי `knowledge/README.md`.
+
+**2026-10-18 - שינוי בבדיקות הדפדפן נבדק גם ב-`npm run build`.** `tsc -b` בודק גם את `e2e/`, ו-`npx tsc --noEmit -p tsconfig.json` לא. ייבוא בלי סיומת עבר ב-`Playwright` ונכשל בגיטהאב.
