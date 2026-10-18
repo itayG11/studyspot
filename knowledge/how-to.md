@@ -13,3 +13,5 @@
 **2026-10-16 - `Playwright` מקומית:** `PYTHON=$PWD/../backend/.venv/bin/python CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test`, מתוך `frontend`.
 
 **2026-10-16 - שעון מזויף ב-`vitest`:** `vi.useFakeTimers({ shouldAdvanceTime: true })`, ואז `act(() => vi.advanceTimersByTimeAsync(ms))`. פוקוס שנקבע בתוך `effect` מחכים לו עם `vi.waitFor`.
+
+**2026-10-18 - פתיחת גיבוי אצל המשתמש:** בתיקייה `C:\Users\itayg\Projects\StudySpot-keys`, `Expand-Archive <zip> -DestinationPath .`, ואז `age -d -i studyspot-backup-key.txt -o studyspot.dump <file>.dump.age`. מדריך מלא ב-`docs/DEPLOY.md`.
