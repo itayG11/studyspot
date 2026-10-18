@@ -57,6 +57,14 @@ ONE_WEEK = "public, max-age=604800"
 def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     root = static_dir.resolve()
     index = root / "index.html"
+    # Every file the build made, listed once at start: an address only looks
+    # a name up here, so no path is ever built from it, and nothing outside
+    # the build folder can be reached, a link pointing out of it included.
+    files = {
+        file.relative_to(root).as_posix(): file
+        for file in root.rglob("*")
+        if file.is_file() and file.resolve().is_relative_to(root)
+    }
     # The API's own lifespan (the background sweep) runs with this app: a
     # mounted app's lifespan is not started by Starlette.
     site = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
@@ -83,13 +91,8 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     def web_app(path: str) -> FileResponse:
         if path == "api" or path.startswith("api/"):
             raise HTTPException(404)  # an API address the API did not take
-        try:
-            file = (root / path).resolve()
-            # Never outside the build folder, whatever the address says.
-            found = bool(path) and file.is_relative_to(root) and file.is_file()
-        except (ValueError, OSError):  # a NUL byte, a name too long for the disk
-            raise HTTPException(404) from None
-        if found:
+        file = files.get(path)
+        if file is not None:
             return FileResponse(file, headers={"Cache-Control": ONE_YEAR if path.startswith("assets/") else ONE_WEEK})
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(404)  # a missing file, not a page of the app

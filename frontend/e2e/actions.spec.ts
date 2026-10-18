@@ -1,3 +1,4 @@
+import { isMapTile } from './tiles'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { expect, test, type APIRequestContext } from '@playwright/test'
@@ -36,7 +37,7 @@ async function signInAsStudent(page: import('@playwright/test').Page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
+  await page.route(isMapTile, (route) => route.abort())
 })
 
 test('a student books a lab station, sees it, and cancels it', async ({ page, request }) => {

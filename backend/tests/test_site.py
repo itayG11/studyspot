@@ -109,7 +109,8 @@ def test_security_headers_on_every_answer(site: TestClient, path: str):
     assert "frame-ancestors 'none'" in csp
     assert "object-src 'none'" in csp
     # The map's tiles are the only outside content.
-    assert "https://tile.openstreetmap.org" in csp and "https://server.arcgisonline.com" in csp
+    img_src = next(d.split()[1:] for d in csp.split(";") if d.split()[:1] == ["img-src"])
+    assert {"https://tile.openstreetmap.org", "https://server.arcgisonline.com"} <= set(img_src)
     assert headers["x-content-type-options"] == "nosniff"
     assert headers["x-frame-options"] == "DENY"
     assert headers["referrer-policy"] == "strict-origin-when-cross-origin"
@@ -218,3 +219,9 @@ def test_text_files_are_sent_compressed_and_pictures_as_they_are(built):
     picture = client.get("/images/big.webp", headers={"Accept-Encoding": "gzip"})
     assert "content-encoding" not in picture.headers  # already compressed: no work for nothing
     assert script.headers.get("content-security-policy")  # the headers survive compression
+
+
+def test_a_link_in_the_build_that_points_outside_is_not_served(built: Path):
+    (built / "assets" / "leak.txt").symlink_to(built.parent / "secret.txt")
+    site = TestClient(create_site(built))
+    assert site.get("/assets/leak.txt").status_code == 404

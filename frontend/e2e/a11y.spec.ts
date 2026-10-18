@@ -3,13 +3,14 @@
 // a third of real problems: keyboard use and screen readers are still
 // checked by hand (docs/INTERVIEW_REPORT.md).
 
+import { isMapTile } from './tiles'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 const API = 'http://localhost:8001'
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
+  await page.route(isMapTile, (route) => route.abort())
 })
 
 async function check(page: Page, what: string, exclude?: string) {

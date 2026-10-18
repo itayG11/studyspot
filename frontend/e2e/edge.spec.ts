@@ -6,6 +6,7 @@
 
 /// <reference lib="dom" />
 
+import { isMapTile } from './tiles'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import jsQRModule from 'jsqr'
 
@@ -87,7 +88,7 @@ async function chooseLastDayFirstTime(form: Locator, length: string) {
 let policyErrors: string[] = []
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
+  await page.route(isMapTile, (route) => route.abort())
   // Anything the security policy blocks would be broken for real visitors.
   policyErrors = []
   page.on('console', (message) => {

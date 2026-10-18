@@ -1,8 +1,9 @@
+import { isMapTile } from './tiles'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
   // Map tiles come from outside servers; the test does not need them.
-  await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
+  await page.route(isMapTile, (route) => route.abort())
 })
 
 test('a demo student finds a computer lab through the story and the search', async ({ page }) => {

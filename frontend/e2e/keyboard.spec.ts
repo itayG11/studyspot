@@ -1,10 +1,11 @@
 // The site without a mouse, and for someone who asked their device for
 // less motion.
 
+import { isMapTile } from './tiles'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/tile\.openstreetmap\.org|arcgisonline\.com/, (route) => route.abort())
+  await page.route(isMapTile, (route) => route.abort())
 })
 
 test('the keyboard can skip the story, search and open a place', async ({ page }) => {

@@ -602,3 +602,16 @@ def test_one_code_typed_in_two_tabs_at_once_signs_in_once(engine, race_email):
         db.commit()
     outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY))
     assert sorted(outcomes) == ["email_code_invalid", "ok"]
+
+
+def test_a_long_run_of_dashes_is_refused_at_once():
+    """No address makes the check try every way to split it (CodeQL's
+    polynomial-regex finding): the longest allowed one, refused fast."""
+    import time
+
+    for raw in ["a@" + "-" * 250 + "!", "a@" + "a-" * 125 + ".", "a@" + "a." * 125 + "!"]:
+        start = time.perf_counter()
+        with pytest.raises(Refusal):
+            normalize_email(raw)
+        assert time.perf_counter() - start < 0.05
+    assert normalize_email("a@x-y.e.braude.ac.il") == "a@x-y.e.braude.ac.il"

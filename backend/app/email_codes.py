@@ -40,7 +40,9 @@ KEEP_FOR = timedelta(days=1)  # older rows are deleted; the daily count needs on
 # Plain on purpose: a domain with at least one dot. The real check is that
 # the email arrives. The part before the @ is letters, digits, dots, dashes
 # and underscores only: no "+tag", which would give one inbox many accounts.
-_EMAIL = re.compile(r"[a-z0-9._-]+@(?:[a-z0-9-]+\.)+[a-z0-9-]{2,}")
+# Possessive (++): a label never gives back what it took, so a long run of
+# dashes cannot make the match try every way to split it.
+_EMAIL = re.compile(r"[a-z0-9._-]++@(?:[a-z0-9-]++\.)++[a-z0-9-]{2,}")
 
 
 def normalize_email(raw: str) -> str:
