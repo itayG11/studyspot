@@ -138,3 +138,13 @@ def test_anything_else_is_refused_so_the_server_cannot_be_aimed_elsewhere(endpoi
     with pytest.raises(Refusal) as refused:
         check_endpoint(endpoint)
     assert refused.value.code == "push_endpoint"
+
+
+def test_a_redirect_from_the_push_service_is_not_followed():
+    """A redirect could point the server anywhere: the allowlist would mean nothing."""
+    from types import SimpleNamespace
+
+    from app.notify import sender_from_settings
+
+    settings = SimpleNamespace(frontend_url="https://site.example", jwt_secret="set", jwt_secret_bytes=lambda: b"x" * 32)
+    assert sender_from_settings(settings).http.follow_redirects is False

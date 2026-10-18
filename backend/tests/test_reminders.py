@@ -109,3 +109,38 @@ def test_the_alarm_keeps_the_earliest_and_rings_on_time():
     assert alarm.due(START)
     alarm.set(None)
     assert not alarm.due(START + timedelta(days=1))
+
+
+def test_after_a_round_the_next_reminder_is_never_in_the_past(session, braude, student):
+    """Otherwise the alarm stays due and wakes the database every minute."""
+    subscribe(session, student, Browser())
+    book(session, braude, student)
+    moments = [START - START_AHEAD, START - timedelta(seconds=1), START, START + RELEASE_WARNING_AFTER,
+               START + NO_SHOW_AFTER - timedelta(seconds=1), START + NO_SHOW_AFTER]
+    for now in moments:
+        send_reminders(session, push([]), now)
+        ahead = next_due(session, now)
+        assert ahead is None or ahead > now, now
+
+
+def test_a_warning_past_the_start_also_closes_the_start_reminder(session, braude, student):
+    subscribe(session, student, Browser())
+    booking = book(session, braude, student)
+    send_reminders(session, push([]), START + RELEASE_WARNING_AFTER)  # the server slept through the first
+    assert booking.reminded_release_at is not None and booking.reminded_start_at is not None
+
+
+def test_without_push_nothing_is_sent_or_marked(session, braude, student):
+    subscribe(session, student, Browser())
+    booking = book(session, braude, student)
+    assert send_reminders(session, None, START - START_AHEAD) == 0
+    assert booking.reminded_start_at is None
+
+
+def test_the_alarm_keeps_a_sooner_time_set_during_a_sweep():
+    alarm = Alarm()
+    alarm.earliest(START)  # a booking made while the sweep was reading
+    alarm.settle(START + timedelta(hours=2), START - timedelta(hours=1))
+    assert alarm.due(START)
+    alarm.settle(None, START + timedelta(minutes=1))  # that time has passed: the database's answer wins
+    assert not alarm.due(START + timedelta(days=1))

@@ -37,6 +37,7 @@
 | `GitHub Actions` | הבדיקות האוטומטיות בכל דחיפה: שרת, אתר, דפדפן, `Docker` ואבטחה | [הריצות](https://github.com/itayG11/studyspot/actions) | חינם למאגר ציבורי | אחרי כל דחיפה בודקים שהכול ירוק |
 | `CodeQL` | סריקה של הקוד לבאגי אבטחה | `.github/workflows/codeql.yml` | חינם למאגר ציבורי | |
 | `Dependabot` | התראות ובקשות עדכון לספריות עם חולשות | [הגדרות האבטחה](https://github.com/itayG11/studyspot/settings/security_analysis) | חינם | |
+| שירותי ההתראות של הדפדפנים | מעבירים את ההתראות לטלפון: גוגל, אפל, מוזילה ומיקרוסופט | אין חשבון | חינם | אין מפתח לשמור. המפתח שלנו נגזר מ-`JWT_SECRET` |
 | `OpenRouteService` | זמני הליכה אמיתיים בין בניינים | [openrouteservice.org](https://openrouteservice.org) | חינם, 500 בקשות ביום | המפתח `ORS_API_KEY` ב-`Render` בלבד. בלעדיו: הערכה לפי המפה |
 | `gitleaks` | בודק שאין סוד בכל היסטוריית הגיט | `.github/workflows/ci.yml` | חינם, קוד פתוח | |
 | גיבוי לילי | `pg_dump` מוצפן עם `age`, נשמר 30 יום בגיטהאב, ונבדק בשחזור בכל לילה | `.github/workflows/backup.yml` | חינם | המפתח הפרטי רק אצלך. מדריך: `docs/DEPLOY.md` |

@@ -5,7 +5,8 @@
   place is released at 11:15" (app/bookings.py NO_SHOW_AFTER).
 
 Each is marked on the booking before it is sent, so it goes out once at
-most, whatever runs twice. Only bookings of users with a subscribed browser
+most; the rows are locked while marked (FOR UPDATE SKIP LOCKED), so two
+processes sweeping at once never take the same one. Only bookings of users with a subscribed browser
 are looked at, and a reminder whose moment passed (the server was asleep)
 is dropped: late, it would only confuse.
 
@@ -47,6 +48,14 @@ class Alarm:
             if self._at is None or at < self._at:
                 self._at = at
 
+    def settle(self, at: datetime | None, now: datetime) -> None:
+        """After a sweep: the next reminder from the database. An earlier
+        time still ahead stays: a booking made while the sweep was reading."""
+        with self._lock:
+            if self._at is not None and now < self._at and (at is None or self._at < at):
+                return
+            self._at = at
+
     def due(self, now: datetime) -> bool:
         with self._lock:
             return self._at is not None and self._at <= now
@@ -75,13 +84,13 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
         select(Booking).where(
             Booking.status == BookingStatus.BOOKED, Booking.reminded_start_at.is_(None),
             Booking.starts_at - START_AHEAD <= now, Booking.starts_at > now, _subscribed(),
-        ).options(selectinload(Booking.place))
+        ).options(selectinload(Booking.place)).with_for_update(skip_locked=True, of=Booking)
     ).all()
     releasing = session.scalars(
         select(Booking).where(
             Booking.status == BookingStatus.BOOKED, Booking.reminded_release_at.is_(None),
             Booking.starts_at + RELEASE_WARNING_AFTER <= now, Booking.starts_at + NO_SHOW_AFTER > now, _subscribed(),
-        ).options(selectinload(Booking.place))
+        ).options(selectinload(Booking.place)).with_for_update(skip_locked=True, of=Booking)
     ).all()
     zones = {i.id: i.timezone for i in session.scalars(select(Institution))}
     out = []

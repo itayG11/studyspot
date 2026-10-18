@@ -10,8 +10,15 @@ self.addEventListener('push', (event) => {
   } catch {
     // Not JSON: show a plain notice rather than nothing.
   }
-  // Only a path on this site: a notification never sends anyone elsewhere.
-  const url = typeof message.url === 'string' && message.url.startsWith('/') && !message.url.startsWith('//') ? message.url : '/'
+  // Only a page of this site: a notification never sends anyone elsewhere
+  // (a path like "/\\evil.example" would, so the origin itself is compared).
+  let url = '/'
+  try {
+    const target = new URL(typeof message.url === 'string' ? message.url : '/', self.location.origin)
+    if (target.origin === self.location.origin) url = target.pathname + target.search + target.hash
+  } catch {
+    // Not a URL: the home page.
+  }
   event.waitUntil(
     self.registration.showNotification(typeof message.title === 'string' ? message.title : 'StudySpot', {
       body: typeof message.body === 'string' ? message.body : '',

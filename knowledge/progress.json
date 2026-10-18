@@ -1,0 +1,29 @@
+{
+  "updated": "2026-10-18",
+  "current_wave": 10,
+  "total_waves": 16,
+  "estimate_finish": "25 עד 28 באוקטובר 2026, הערכה לפי הקצב",
+  "waiting_for_user": [
+    "בדיקת גל 9 מחר: הצלחות בהליכה בגרף של HeiGIT, והשורה מתחת להפסקות",
+    "גל 10, בסופו: להפעיל התראות בטלפון ולשלוח התראת ניסיון"
+  ],
+  "next_step": "גל 10: גיטהאב ירוק, ואז בדיקה שלך בטלפון. אחר כך בקשת איחוד ל-main",
+  "waves": [
+    { "n": 1, "title": "יסודות הבדיקות", "status": "done" },
+    { "n": 2, "title": "תיקונים מהביקורת", "status": "done" },
+    { "n": 3, "title": "מה שרואים ראשון", "status": "done" },
+    { "n": 4, "title": "אבטחה אוטומטית", "status": "done" },
+    { "n": 5, "title": "רכיבים מפרויקט הייחוס", "status": "done" },
+    { "n": 6, "title": "ליטוש", "status": "done" },
+    { "n": 7, "title": "ביצועים", "status": "done" },
+    { "n": 8, "title": "גיבוי לילי", "status": "done" },
+    { "n": 9, "title": "זמן הליכה אמיתי", "status": "waiting" },
+    { "n": 10, "title": "התראות בטלפון", "status": "active" },
+    { "n": 11, "title": "מייל, סיסמה ורשימת המתנה", "status": "todo" },
+    { "n": 12, "title": "קובץ יומן חתום", "status": "todo" },
+    { "n": 13, "title": "קוד כניסה מתחלף", "status": "todo" },
+    { "n": 14, "title": "API למוסדות", "status": "todo" },
+    { "n": 15, "title": "המסמכים לראיון", "status": "todo" },
+    { "n": 16, "title": "סיום", "status": "todo" }
+  ]
+}

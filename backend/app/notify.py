@@ -121,7 +121,7 @@ class PushSender:
             "Urgency": "high",
         }
         try:
-            return self.http.post(subscription.endpoint, content=body, headers=headers, timeout=10).status_code
+            return self.http.post(subscription.endpoint, content=body, headers=headers, timeout=5).status_code
         except httpx.HTTPError as error:
             log.warning("push not delivered: %s", type(error).__name__)
             return None

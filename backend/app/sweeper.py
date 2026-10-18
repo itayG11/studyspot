@@ -120,8 +120,11 @@ def run_once() -> SweepResult:
     # the sweep for it even with no visitors (app/reminders.py).
     try:
         with SessionLocal(bind=get_engine()) as session:
-            send_reminders(session, sender_from_settings(settings), now)
-            ALARM.set(next_due(session, now))
+            push = sender_from_settings(settings)
+            send_reminders(session, push, now)
+            # No push: nothing would ever mark them, and a due alarm would
+            # wake the database every minute.
+            ALARM.settle(next_due(session, now) if push else None, now)
     except Exception:
         log.exception("reminders not sent; the next round tries again")
     return result
