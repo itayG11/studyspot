@@ -110,6 +110,11 @@ def sign_in(
         user.email, user.display_name = identity.email, identity.display_name[:100]
     if provider == AuthProvider.GOOGLE:
         _sync_system_admin(db, user, identity, system_admins)
+    # Notices go by email only to an address this sign-in proved. A sign-in
+    # that did not (Microsoft) may bring another address, so they stop.
+    user.email_verified = provider == AuthProvider.EMAIL or identity.email_verified
+    if not user.email_verified:
+        user.email_notices = False
     user.last_login_at = now
     db.flush()
     return user

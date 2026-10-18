@@ -6,8 +6,8 @@
 
 Each is marked on the booking before it is sent, so it goes out once at
 most; the rows are locked while marked (FOR UPDATE SKIP LOCKED), so two
-processes sweeping at once never take the same one. Only bookings of users with a subscribed browser
-are looked at, and a reminder whose moment passed (the server was asleep)
+processes sweeping at once never take the same one. Only bookings of users
+with a subscribed browser, or email notices on, are looked at, and a reminder whose moment passed (the server was asleep)
 is dropped: late, it would only confuse.
 
 The background sweep runs only while people visit (app/activity.py), so the
@@ -21,12 +21,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.bookings import NO_SHOW_AFTER
-from app.models import Booking, BookingStatus, Institution, PushSubscription
-from app.notify import Notice, PushSender, notify
+from app.models import Booking, BookingStatus, Institution, PushSubscription, User
+from app.notify import EmailSender, Notice, PushSender, notify
 
 START_AHEAD = timedelta(minutes=10)
 RELEASE_WARNING_AFTER = timedelta(minutes=5)
@@ -65,7 +65,11 @@ ALARM = Alarm()
 
 
 def _subscribed():
-    return exists().where(PushSubscription.user_id == Booking.user_id)
+    """Someone to tell: a subscribed browser, or email notices on."""
+    return or_(
+        exists().where(PushSubscription.user_id == Booking.user_id),
+        exists().where(User.id == Booking.user_id, User.email_notices, User.email_verified),
+    )
 
 
 @dataclass(frozen=True)
@@ -106,16 +110,16 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
     return out
 
 
-def send_reminders(session: Session, push: PushSender | None, now: datetime) -> int:
+def send_reminders(session: Session, push: PushSender | None, now: datetime, email: EmailSender | None = None) -> int:
     """Send what is due. Marked and committed first: the push services are
     called outside any transaction, and a crash after sending never repeats it."""
-    if push is None:
+    if push is None and email is None:
         return 0
     due = _take_due(session, now)
     session.commit()
     sent = 0
     for item in due:
-        sent += notify(session, item.user_id, item.notice, push)
+        sent += notify(session, item.user_id, item.notice, push, email, now)
     session.commit()
     return sent
 

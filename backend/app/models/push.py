@@ -1,4 +1,4 @@
-"""Push notification subscriptions (app/notify.py).
+"""Push notification subscriptions, and the notices sent by email (app/notify.py).
 
 One row per browser that agreed to get notifications: where to send them
 (the push service's endpoint) and the two keys the browser gave for
@@ -23,3 +23,15 @@ class PushSubscription(Base):
     p256dh: Mapped[str] = mapped_column(String(100))  # the browser's public key, base64url
     auth: Mapped[str] = mapped_column(String(40))  # its shared secret, base64url
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class NoticeEmail(Base):
+    """One notice sent by email: counted against the daily budget
+    (app/notify.py), as Brevo's free plan sends 300 a day in all. Kept two
+    days, then removed by the sweep."""
+
+    __tablename__ = "notice_emails"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

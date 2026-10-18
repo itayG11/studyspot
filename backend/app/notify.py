@@ -1,5 +1,6 @@
-"""The notification channel (wave 10): one way to tell a user something,
-whatever carries it. Today that is Web Push; email joins in wave 11.
+"""The notification channel: one way to tell a user something, whatever
+carries it. Web Push first (wave 10); email when no browser got it and the
+user asked for email too (wave 11).
 
 Web Push, in short:
 - the browser subscribes with its push service (Google's, Mozilla's,
@@ -16,6 +17,14 @@ secret to keep. Changing JWT_SECRET means every browser subscribes again.
 The endpoint comes from the browser, so it is checked against the known push
 services before the server ever sends anything there: otherwise anyone could
 aim the server at any address (server-side request forgery).
+
+Email, in short:
+- only to an address the last sign-in proved (User.email_verified), and only
+  if the user turned it on (User.email_notices);
+- a daily budget: Brevo's free plan sends 300 a day, and the sign-in codes
+  keep 250 of them (app/email_codes.py CODES_PER_DAY), so notices get 40,
+  and 3 a user;
+- every email has a signed link that turns it off, with no sign-in needed.
 """
 
 import base64
@@ -25,6 +34,7 @@ import json
 import logging
 import time
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
 import http_ece
@@ -32,11 +42,12 @@ import httpx
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from py_vapid import Vapid02
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import PushSubscription
+from app.mailer import Mailer, mailer_from_settings
+from app.models import NoticeEmail, PushSubscription, User
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +56,9 @@ TTL_SECONDS = 15 * 60  # a reminder older than this is no use
 TOKEN_SECONDS = 30 * 60  # VAPID tokens: short-lived, under every push service's limit
 _PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com")
 _PUSH_SUFFIXES = (".push.apple.com", ".notify.windows.com")
+EMAILS_PER_DAY = 40  # for the whole site; see the module docstring
+EMAILS_PER_USER_DAY = 3
+_EMAIL_BUDGET_LOCK = 0x5715_E3A1  # pg_advisory_xact_lock: one counter at a time
 _P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
 
 
@@ -127,21 +141,98 @@ class PushSender:
             return None
 
 
-def notify(session: Session, user_id: int, notice: Notice, push: PushSender | None) -> int:
-    """Tell the user on every browser they subscribed. The number delivered.
+def unsubscribe_key(jwt_secret: bytes) -> bytes:
+    """A key of its own for the links that turn email notices off."""
+    return hmac.new(jwt_secret, b"studyspot email notices unsubscribe", hashlib.sha256).digest()
+
+
+def unsubscribe_token(key: bytes, user_id: int) -> str:
+    mac = hmac.new(key, f"unsubscribe {user_id}".encode(), hashlib.sha256).hexdigest()[:32]
+    return f"{user_id}.{mac}"
+
+
+def read_unsubscribe_token(key: bytes, token: str) -> int | None:
+    """The user the token was made for, or None if it is not ours."""
+    head, _, _ = token.partition(".")
+    if not head.isdigit() or len(head) > 12:
+        return None
+    user_id = int(head)
+    return user_id if hmac.compare_digest(unsubscribe_token(key, user_id), token) else None
+
+
+@dataclass(frozen=True)
+class EmailSender:
+    mailer: Mailer
+    site: str  # https://..., no trailing slash
+    key: bytes  # unsubscribe_key
+
+    def send(self, to: str, user_id: int, notice: Notice) -> None:
+        token = unsubscribe_token(self.key, user_id)
+        text_body = (
+            f"{notice.body}\n\n"
+            f"לפתיחה: {self.site}{notice.url}\n\n"
+            f"להפסקת ההתראות במייל: {self.site}/unsubscribe#t={token}"
+        )
+        headers = {
+            # One click in the mail app turns them off (RFC 8058).
+            "List-Unsubscribe": f"<{self.site}/api/notices/unsubscribe?t={token}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
+        self.mailer.send(to, notice.title, text_body, headers)
+
+
+def _email(session: Session, user_id: int, notice: Notice, email: EmailSender, now: datetime) -> bool:
+    user = session.get(User, user_id)
+    if user is None or not (user.email_notices and user.email_verified):
+        return False
+    # Counted and committed before sending, under one lock, so two
+    # processes never both take the last one.
+    session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _EMAIL_BUDGET_LOCK})
+    since = now - timedelta(days=1)
+    sent = select(func.count()).select_from(NoticeEmail).where(NoticeEmail.sent_at > since)
+    if session.scalar(sent) >= EMAILS_PER_DAY:
+        log.warning("email notices: the daily budget is spent")
+        return False
+    if session.scalar(sent.where(NoticeEmail.user_id == user_id)) >= EMAILS_PER_USER_DAY:
+        return False
+    session.add(NoticeEmail(user_id=user_id, sent_at=now))
+    address = user.email
+    session.commit()
+    try:
+        email.send(address, user_id, notice)
+    except Refusal:
+        return False  # logged by the mailer; the budget stays spent
+    return True
+
+
+def notify(
+    session: Session,
+    user_id: int,
+    notice: Notice,
+    push: PushSender | None,
+    email: EmailSender | None = None,
+    now: datetime | None = None,
+) -> int:
+    """Tell the user on every browser they subscribed; by email if none got
+    it and they asked for email. The number delivered.
     A browser the push service no longer knows (404, 410) is forgotten."""
-    if push is None:
-        return 0
     delivered = 0
-    for subscription in session.scalars(select(PushSubscription).where(PushSubscription.user_id == user_id)).all():
-        status = push.send(subscription, notice)
-        if status in (404, 410):
-            session.delete(subscription)
-        elif status is not None and 200 <= status < 300:
-            delivered += 1
-        else:
-            log.warning("push refused: status %s", status)
-    session.flush()
+    if push is not None:
+        for subscription in session.scalars(select(PushSubscription).where(PushSubscription.user_id == user_id)).all():
+            status = push.send(subscription, notice)
+            if status in (404, 410):
+                session.delete(subscription)
+            elif status is not None and 200 <= status < 300:
+                delivered += 1
+            else:
+                log.warning("push refused: status %s", status)
+        session.flush()
+    if delivered == 0 and email is not None:
+        if now is None:
+            from app.clock import get_now
+
+            now = get_now()
+        delivered += _email(session, user_id, notice, email, now)
     return delivered
 
 
@@ -158,3 +249,20 @@ def sender_from_settings(settings) -> PushSender | None:
     if _http is None:
         _http = httpx.Client()
     return PushSender(_http, vapid_key(settings.jwt_secret_bytes()), site)
+
+
+def email_from_settings(settings, http: httpx.Client | None = None) -> EmailSender | None:
+    """Email notices are on when a mailer is, the site has an https address
+    for the links, and there is a JWT secret to sign them with."""
+    global _http
+    site = settings.frontend_url.rstrip("/")
+    if not site.startswith("https://") or settings.jwt_secret is None:
+        return None
+    if http is None:
+        if _http is None:
+            _http = httpx.Client()
+        http = _http
+    mailer = mailer_from_settings(settings, http)
+    if mailer is None:
+        return None
+    return EmailSender(mailer, site, unsubscribe_key(settings.jwt_secret_bytes()))

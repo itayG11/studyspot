@@ -31,7 +31,7 @@ from app.models.people import (
     UserIdentity,
     UserRole,
 )
-from app.models.push import PushSubscription
+from app.models.push import NoticeEmail, PushSubscription
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -50,6 +50,7 @@ __all__ = [
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
+    "NoticeEmail",
     "OccupancyHistory",
     "OpeningHours",
     "Place",
