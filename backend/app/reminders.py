@@ -26,11 +26,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app import waitlist
 from app.bookings import NO_SHOW_AFTER
-from app.models import Booking, BookingStatus, Institution, PushSubscription, User
+from app.models import Booking, BookingStatus, CheckIn, Institution, PushSubscription, User
 from app.notify import EmailSender, Notice, PushSender, notify
 
 START_AHEAD = timedelta(minutes=10)
 RELEASE_WARNING_AFTER = timedelta(minutes=5)
+STILL_HERE_AHEAD = timedelta(minutes=15)  # "still here?" before a check-in ends
 
 
 class Alarm:
@@ -65,11 +66,21 @@ class Alarm:
 ALARM = Alarm()
 
 
-def _subscribed():
+def _subscribed(user_id=Booking.user_id):
     """Someone to tell: a subscribed browser, or email notices on."""
     return or_(
-        exists().where(PushSubscription.user_id == Booking.user_id),
-        exists().where(User.id == Booking.user_id, User.email_notices, User.email_verified),
+        exists().where(PushSubscription.user_id == user_id),
+        exists().where(User.id == user_id, User.email_notices, User.email_verified),
+    )
+
+
+def _asking_still_here(now: datetime):
+    """Check-ins to ask about: open, no booking (a booked one ends with it),
+    not asked yet, ending within STILL_HERE_AHEAD, a real student to tell."""
+    return and_(
+        CheckIn.ended_at.is_(None), CheckIn.booking_id.is_(None), ~CheckIn.simulated,
+        CheckIn.reminded_at.is_(None), CheckIn.still_here_at.is_(None),
+        CheckIn.expires_at > now, _subscribed(CheckIn.user_id),
     )
 
 
@@ -108,6 +119,14 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
         b.reminded_start_at = b.reminded_start_at or now  # past the start: that one is no use any more
         at = _hhmm(b.starts_at + NO_SHOW_AFTER, zones[b.institution_id])
         out.append(_Due(b.user_id, Notice("עוד לא נכנסת", f"{b.place.name} ישוחרר ב-{at}, אם לא תסרוק את השלט.", "/me")))
+    asking = session.scalars(
+        select(CheckIn).where(_asking_still_here(now), CheckIn.expires_at - STILL_HERE_AHEAD <= now)
+        .options(selectinload(CheckIn.place)).with_for_update(skip_locked=True, of=CheckIn)
+    ).all()
+    for c in asking:
+        c.reminded_at = now
+        at = _hhmm(c.expires_at, zones[c.institution_id])
+        out.append(_Due(c.user_id, Notice("עדיין כאן?", f"הכניסה ל-{c.place.name} נגמרת ב-{at}. אפשר להאריך ב\"האזור שלי\".", "/me")))
     # A room someone waits for has freed (app/waitlist.py).
     out.extend(_Due(f.user_id, f.notice) for f in waitlist.take_freed(session, now))
     return out
@@ -140,7 +159,10 @@ def next_due(session: Session, now: datetime) -> datetime | None:
             pending, Booking.reminded_release_at.is_(None), Booking.starts_at + NO_SHOW_AFTER > now
         )
     )
-    times = [t for t in (first_start, first_release, waitlist.next_due(session, now)) if t is not None]
+    first_still_here = session.scalar(
+        select(func.min(CheckIn.expires_at - STILL_HERE_AHEAD)).where(_asking_still_here(now))
+    )
+    times = [t for t in (first_start, first_release, first_still_here, waitlist.next_due(session, now)) if t is not None]
     return min(times) if times else None
 
 

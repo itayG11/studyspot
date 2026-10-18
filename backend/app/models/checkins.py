@@ -93,6 +93,10 @@ class CheckIn(Base):
     )
     # A made-up student of the demo campus's live simulation (app/seed/live.py).
     simulated: Mapped[bool] = mapped_column(default=False, server_default=false())
+    # "Still here?" (app/reminders.py): when we asked, and when the student
+    # answered from the app. The answer extends once; after that, a scan.
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    still_here_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Read-only links: ids are set explicitly, because the composite
     # foreign keys share columns and would fight over copying them.

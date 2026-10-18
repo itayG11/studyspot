@@ -108,6 +108,31 @@ def check_out(session: Session, user: User, check_in_id: int, now: datetime) -> 
     return row
 
 
+def still_here(session: Session, user: User, check_in_id: int, now: datetime) -> CheckIn:
+    """"Still here" from the app: extends like scanning the same place again,
+    but once only. A check-in proves the student came; one tap from anywhere
+    must not keep a place taken all day, so the next time is a scan.
+    Only a check-in without a booking: a booked one ends with its booking."""
+    row = session.scalars(
+        select(CheckIn)
+        .where(CheckIn.id == check_in_id, CheckIn.user_id == user.id, is_active(now))
+        .with_for_update()
+    ).first()
+    if row is None:
+        raise Refusal(404, "check_in_not_found")
+    if row.booking_id is not None:
+        raise Refusal(409, "still_here_booked")
+    if row.still_here_at is not None:
+        raise Refusal(409, "still_here_used")
+    place = session.get(Place, row.place_id)
+    longer = _capped(now + CHECK_IN_DURATION, _closing_time_if_open(session, place, now))
+    if longer <= row.expires_at:
+        raise Refusal(409, "still_here_closing")  # it closes then anyway
+    row.expires_at, row.still_here_at = longer, now
+    session.flush()
+    return row
+
+
 def current_check_in(session: Session, user: User, now: datetime) -> CheckIn | None:
     return session.scalars(
         select(CheckIn).where(CheckIn.user_id == user.id, is_active(now))

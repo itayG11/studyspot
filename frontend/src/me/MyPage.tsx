@@ -1,14 +1,14 @@
 // "My area": where I am checked in now, where to study between my classes,
 // my bookings, my timetable, my favourite places, and my account.
 
-import { CalendarX2, LogOut, MapPin, ScanLine, Star } from 'lucide-react'
+import { CalendarX2, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
 import { PushToggle } from './PushToggle'
 import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, myCheckIn, myClasses } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, myCheckIn, myClasses, stillHere } from '../api/student'
 import { useMyBookings } from './myBookings'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -153,11 +153,16 @@ export function MyPage() {
   )
 }
 
+const STILL_HERE_OFFER_MS = 30 * 60_000
+
 // The check-in that is running: a dark card with a live dot.
 function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) {
   const { timezone } = useInstitution()
   const toast = useToast()
   const leave = useAction()
+  const stay = useAction()
+  // Offered near the end, as the "still here?" notice is (backend/app/reminders.py).
+  const ending = Date.parse(checkIn.expires_at) - Date.now() <= STILL_HERE_OFFER_MS
   return (
     <>
       <div className={styles.now}>
@@ -185,8 +190,25 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
         >
           יציאה
         </Button>
+        {checkIn.can_extend && ending && (
+          <Button
+            variant="secondary"
+            icon={<Timer aria-hidden="true" />}
+            busy={stay.busy}
+            onClick={() =>
+              void stay.run(async () => {
+                const longer = await stillHere(checkIn.id)
+                toast(`הכניסה הוארכה עד ${formatTime(longer.expires_at, timezone)}. בפעם הבאה מאריכים בסריקה.`, 'success')
+                onLeft()
+              })
+            }
+          >
+            עדיין כאן
+          </Button>
+        )}
       </div>
       <ActionError action={leave} />
+      <ActionError action={stay} />
     </>
   )
 }

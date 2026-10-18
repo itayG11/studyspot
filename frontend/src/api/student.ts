@@ -28,6 +28,8 @@ export function checkIn(code: string, seatId: number | null) {
 export const myCheckIn = () => api<CheckIn | null>('/me/check-in', { auth: true })
 
 export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`, { method: 'POST', auth: true })
+// "Still here": extends a check-in without a booking, once (backend/app/checkins.py).
+export const stillHere = (id: number) => api<CheckIn>(`/check-ins/${id}/still-here`, { method: 'POST', auth: true })
 
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })

@@ -27,7 +27,7 @@ const LAB: Booking = {
 const CHECK_IN: CheckIn = {
   id: 3, place_id: 1, place_name: 'M206', building_code: 'M', seat_id: 1, seat_label: 'A1',
   started_at: '2026-10-11T07:00:00Z', expires_at: '2026-10-11T08:00:00Z', ended_at: null, end_reason: null,
-  booking_id: 8, cut_short_by: null,
+  booking_id: 8, cut_short_by: null, can_extend: false,
 }
 
 let bookings: Booking[]
@@ -60,6 +60,8 @@ beforeEach(() => {
       return Promise.resolve(jsonResponse({ ...ROOM, status: 'cancelled' }))
     }
     if (path === '/bookings/8/extend') return Promise.resolve(jsonResponse({ detail: 'no_time_to_extend' }, 409))
+    if (path === '/check-ins/3/still-here')
+      return Promise.resolve(jsonResponse({ ...CHECK_IN, can_extend: false, expires_at: '2026-10-11T10:00:00Z' }))
     if (path === '/check-ins/3/checkout') {
       checkIn = null
       return Promise.resolve(jsonResponse({ ...CHECK_IN, ended_at: '2026-10-11T07:30:00Z', end_reason: 'checkout' }))
@@ -126,6 +128,23 @@ describe('MyPage', () => {
     await userEvent.click(await within(current).findByRole('button', { name: 'יציאה' }))
     expect(calls).toContain('/check-ins/3/checkout')
     expect(await screen.findByText('אין לך כניסה פעילה.')).toBeInTheDocument()
+  })
+
+  it('near the end of a check-in without a booking, "still here" extends it once', async () => {
+    checkIn = { ...CHECK_IN, booking_id: null, can_extend: true, expires_at: new Date(Date.now() + 10 * 60_000).toISOString() }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    await userEvent.click(await within(current).findByRole('button', { name: 'עדיין כאן' }))
+    expect(calls).toContain('/check-ins/3/still-here')
+    expect(await screen.findByText(/הכניסה הוארכה עד/)).toBeInTheDocument()
+  })
+
+  it('offers no "still here" long before the end, or for a booked check-in', async () => {
+    checkIn = { ...CHECK_IN, booking_id: null, can_extend: true, expires_at: new Date(Date.now() + 90 * 60_000).toISOString() }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    await within(current).findByRole('button', { name: 'יציאה' })
+    expect(within(current).queryByRole('button', { name: 'עדיין כאן' })).not.toBeInTheDocument()
   })
 
   it('signs out of every device after asking', async () => {

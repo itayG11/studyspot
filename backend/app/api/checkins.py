@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.actions import run_action
 from app.api.deps import get_code_secret, get_session
 from app.auth import get_current_user
-from app.checkins import check_in, check_out, current_check_in
+from app.checkins import check_in, check_out, current_check_in, still_here
 from app.clock import get_now
 from app.models import CheckIn, User
 from app.ratelimit import write_limit
@@ -36,6 +36,7 @@ def _out(row: CheckIn, cut_short_by=None) -> CheckInOut:
         expires_at=row.expires_at,
         ended_at=row.ended_at,
         end_reason=row.end_reason,
+        can_extend=row.booking_id is None and row.still_here_at is None and row.ended_at is None,
     )
 
 
@@ -76,3 +77,14 @@ def check_out_endpoint(
     check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
 ):
     return _out(run_action(session, lambda: check_out(session, user, check_in_id, now)))
+
+
+@router.post(
+    "/check-ins/{check_in_id}/still-here",
+    response_model=CheckInOut,
+    dependencies=[Depends(write_limit)],
+)
+def still_here_endpoint(
+    check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
+):
+    return _out(run_action(session, lambda: still_here(session, user, check_in_id, now)))

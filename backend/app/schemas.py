@@ -456,6 +456,8 @@ class CheckInOut(BaseModel):
     # Set when a walk-in got less than the full time, so the app can warn:
     # "booking" = the seat is booked soon, "closing" = the place closes soon.
     cut_short_by: Literal["booking", "closing"] | None = None
+    # "Still here" can extend it from the app: no booking, not used yet.
+    can_extend: bool = False
 
 
 class MeOut(BaseModel):

@@ -202,6 +202,7 @@ export interface CheckIn {
   end_reason: 'checkout' | 'expired' | 'moved' | null
   booking_id: number | null
   cut_short_by: 'booking' | 'closing' | null
+  can_extend: boolean // "still here" may extend it once (no booking, not used yet)
 }
 
 export interface PlaceCode {
