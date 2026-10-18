@@ -370,3 +370,12 @@
   justify-items: start;
   gap: var(--s-2);
 }
+
+.emailNotices {
+  display: grid;
+  gap: var(--s-2);
+  justify-items: start;
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hairline);
+}

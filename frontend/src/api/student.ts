@@ -59,3 +59,17 @@ export const subscribePush = (subscription: PushSubscriptionJson) =>
 export const unsubscribePush = (endpoint: string) =>
   api<void>('/me/push', { method: 'DELETE', body: { endpoint }, auth: true })
 export const testPush = () => api<{ delivered: number }>('/me/push/test', { method: 'POST', auth: true })
+
+// Notices by email too (backend/app/api/push.py): only to a proved address.
+export interface EmailNotices {
+  enabled: boolean
+  available: boolean
+  reason: 'demo' | 'unverified' | 'off' | null
+  address: string
+}
+export const emailNotices = () => api<EmailNotices>('/me/email-notices', { auth: true })
+export const setEmailNotices = (enabled: boolean) =>
+  api<EmailNotices>('/me/email-notices', { method: 'POST', body: { enabled }, auth: true })
+// The signed link in every such email. No sign-in needed.
+export const unsubscribeEmail = (token: string) =>
+  api<void>(`/notices/unsubscribe?t=${encodeURIComponent(token)}`, { method: 'POST' })

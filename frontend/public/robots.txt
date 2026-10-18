@@ -9,6 +9,7 @@ Disallow: /invite$
 Disallow: /scan$
 Disallow: /login$
 Disallow: /signed-in$
+Disallow: /unsubscribe$
 # An institution's own pages: /braude/me, /braude/admin
 Disallow: /*/me$
 Disallow: /*/admin$

@@ -4,7 +4,7 @@ turned on and off, also from the signed link in every such email."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -145,17 +145,20 @@ def my_email_notices(user: UserDep, db: SessionDep, settings: Annotated[Settings
     return _email_notices_out(db, user, settings)
 
 
-@router.put("/me/email-notices", dependencies=[Depends(write_limit)])
+@router.post("/me/email-notices", dependencies=[Depends(write_limit)])
 def set_email_notices(
     body: EmailNoticesIn, user: UserDep, db: SessionDep, settings: Annotated[Settings, Depends(get_settings)]
 ):
-    if body.enabled:
-        reason = _email_notices_out(db, user, settings)["reason"]
-        if reason == "demo":
-            raise Refusal(403, "push_demo_account")
-        if reason is not None:
-            raise Refusal(409, f"email_notices_{reason}")
-    user.email_notices = body.enabled
+    def act() -> None:
+        if body.enabled:
+            reason = _email_notices_out(db, user, settings)["reason"]
+            if reason == "demo":
+                raise Refusal(403, "push_demo_account")
+            if reason is not None:
+                raise Refusal(409, f"email_notices_{reason}")
+        user.email_notices = body.enabled
+
+    run_action(db, act)
     db.commit()
     return _email_notices_out(db, user, settings)
 
@@ -171,7 +174,7 @@ def unsubscribe_email(
     turns notices off, so a stolen link can do no harm."""
     user_id = read_unsubscribe_token(unsubscribe_key(settings.jwt_secret_bytes()), t)
     if user_id is None:
-        raise Refusal(404, "unsubscribe_invalid")
+        raise HTTPException(404, "unsubscribe_invalid")
     user = db.get(User, user_id)
     if user is not None and user.email_notices:
         user.email_notices = False
