@@ -23,6 +23,8 @@ dependencies = [
     # only cryptography; the request itself goes through httpx.
     "http-ece>=1.2",
     "py-vapid>=1.9",
+    # Password hashing with argon2id (app/passwords.py), the first choice of OWASP.
+    "argon2-cffi>=25.1",
 ]
 
 [project.optional-dependencies]
@@ -53,3 +55,7 @@ build-backend = "setuptools.build_meta"
 # Only app/ is the Python package; migrations/ and tests/ are not installed.
 [tool.setuptools.packages.find]
 include = ["app*"]
+
+# The list of common passwords (app/passwords.py) ships inside the package.
+[tool.setuptools.package-data]
+app = ["data/*.txt"]

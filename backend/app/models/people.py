@@ -73,10 +73,16 @@ class UserIdentity(Base):
 
     Microsoft: "<tid>:<oid>" (tenant and object id). Google: the "sub" claim.
     These never change and cannot be chosen by the user, unlike an email.
+    Email: the address itself, proved by a code; only such an identity may
+    also have a password (app/passwords.py), set after a code proves it.
     """
 
     __tablename__ = "user_identities"
-    __table_args__ = (UniqueConstraint("provider", "subject"),)
+    __table_args__ = (
+        UniqueConstraint("provider", "subject"),
+        CheckConstraint("password_hash IS NULL OR provider = 'email'", name="password_only_email"),
+        CheckConstraint("failed_logins >= 0", name="failed_logins_nonnegative"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -85,6 +91,11 @@ class UserIdentity(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # An argon2id hash, never the password. Wrong tries in a row lock it for a while.
+    password_hash: Mapped[str | None] = mapped_column(String(255))
+    password_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class InstitutionLoginRule(Base):

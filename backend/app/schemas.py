@@ -467,6 +467,7 @@ class MeOut(BaseModel):
     role: UserRole
     institution_slug: str
     is_demo: bool = False  # a shared demo user: no e-mail of its own, cannot be deleted
+    has_password: bool = False  # may sign in with a password too (app/passwords.py)
 
 
 class TokenOut(BaseModel):
@@ -561,6 +562,19 @@ class EmailVerifyIn(BaseModel):
     email: str = Field(max_length=320)
     # [0-9], not \d: \d would also take digits of other scripts.
     code: str = Field(pattern=r"^[0-9]{6}$")
+
+
+class PasswordLoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PasswordSetIn(EmailVerifyIn):
+    """A code proves the address; only then is the password set."""
+
+    password: str = Field(min_length=1, max_length=128)
 
 
 # --- The system admin: institutions and their admins' invites ---------------
