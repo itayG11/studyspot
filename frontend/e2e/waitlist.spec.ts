@@ -29,13 +29,24 @@ async function signedInStudent(browser: Browser, name: string): Promise<Page> {
   return page
 }
 
-// The last bookable day's first free hour: the same choice in both windows.
-async function chooseLastDayFirstHour(form: Locator) {
+// The first day with a free start, and its first free hour: the same choice
+// in both windows. Not the last day: the booking window is four days to the
+// minute, so around midnight the last day has no time open yet.
+async function chooseFirstFreeHour(form: Locator) {
   const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
+  const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
   await expect(days.first()).toBeVisible()
-  await days.last().click()
-  await expect(days.last()).toHaveAttribute('aria-pressed', 'true')
-  await form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false }).first().click()
+  const count = await days.count()
+  for (let i = 0; i < count; i++) {
+    await days.nth(i).click()
+    await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
+    // The day's times load after the click: wait for them, or for the note that none are left.
+    await expect(
+      form.getByRole('group', { name: 'שעת התחלה', exact: true }).or(form.getByText('לא נשארו ביום הזה שעות להזמנה')),
+    ).toBeVisible()
+    if ((await starts.count()) > 0) break
+  }
+  await starts.first().click()
   await form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: 'שעה', exact: true }).click()
 }
 
@@ -62,8 +73,8 @@ test('a clash on a group room: wait for it to free, see it in my area, remove it
   await second.goto(room)
   const formA = first.getByRole('complementary')
   const formB = second.getByRole('complementary')
-  await chooseLastDayFirstHour(formA)
-  await chooseLastDayFirstHour(formB)
+  await chooseFirstFreeHour(formA)
+  await chooseFirstFreeHour(formB)
   await formA.getByRole('button', { name: 'להזמין', exact: true }).click()
   await expect(first.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
 
