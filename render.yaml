@@ -1,0 +1,54 @@
+# Render Blueprint: the live demo site, one free web service.
+# The database is on Neon (Render's free database is deleted after 30 days);
+# its address is pasted in once, as DATABASE_URL. Steps: docs/DEPLOY.md.
+services:
+  - type: web
+    name: studyspot
+    runtime: docker
+    plan: free
+    region: frankfurt # the closest region to Israel
+    healthCheckPath: /api/health
+    envVars:
+      # From Neon's dashboard, asked for when the Blueprint is created.
+      - key: DATABASE_URL
+        sync: false
+      # Random 256-bit values made by Render, never seen by anyone.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CHECKIN_CODE_SECRET
+        generateValue: true
+      # Visitors try everything in the demo campus (app/seed/demo.py).
+      # The server refuses this for an institution with real sign-in rules.
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"
+      - key: DEMO_INSTITUTION
+        value: demo
+      # Any Google account that is not an institution's joins the demo
+      # campus as a student (app/accounts.py); never one with sign-in rules.
+      - key: OPEN_SIGN_IN_INSTITUTION
+        value: demo
+      # From Google Cloud, entered in Render's dashboard, never in this file.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # From the Anthropic Console, entered in Render's dashboard only: reading
+      # a timetable from a photo (Claude). Without it the option is hidden.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # From Microsoft Entra (docs/AUTH_SETUP.md), also entered in Render's
+      # dashboard only. Without them the Microsoft button stays hidden.
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      # Who runs the service (creates institutions, invites their admins):
+      # Google addresses, comma-separated. Entered in the dashboard only.
+      - key: SYSTEM_ADMIN_EMAILS
+        sync: false
+      # Render's proxy adds the visitor's address at the end of
+      # X-Forwarded-For. If there are in fact more hops, the limits count
+      # by a proxy's address instead: stricter, never fooled by the visitor.
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      # The site's address comes from Render itself (RENDER_EXTERNAL_URL).

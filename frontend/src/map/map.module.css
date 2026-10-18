@@ -1,0 +1,147 @@
+/* --- The map frame ---------------------------------------------------- */
+
+.frame {
+  position: relative;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  background: var(--stone-2);
+}
+
+.map {
+  height: min(70vh, 640px);
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .map {
+    height: min(55vh, 420px);
+  }
+}
+
+/* "Live" tag in the corner of the map. */
+.live {
+  position: absolute;
+  z-index: 800;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  font: 600 var(--text-xs) var(--font-body);
+  color: var(--on-night);
+  background: var(--night);
+  border-radius: var(--r-pill);
+  direction: rtl;
+}
+
+.liveDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #4fd18f;
+  animation: beat 1.8s ease-in-out infinite;
+}
+
+@keyframes beat {
+  50% {
+    box-shadow: 0 0 0 6px rgb(15 157 88 / 0%);
+    transform: scale(0.8);
+  }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(15 157 88 / 55%);
+  }
+}
+
+/* Leaflet draws its own elements; these rules reach them with :global. */
+.frame :global(.leaflet-tooltip.map-label) {
+  padding: 0;
+  font: 700 var(--text-md) / 1 var(--font-mono);
+  color: #fff;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+  pointer-events: none;
+}
+
+.frame :global(.leaflet-tooltip.map-label-dark) {
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.frame :global(.leaflet-tooltip.map-label::before) {
+  display: none;
+}
+
+/* A soft dark glow lifts the building circles off the aerial photo. */
+.frame :global(path.leaflet-interactive) {
+  filter: drop-shadow(0 0 5px rgb(0 0 0 / 65%));
+}
+
+.frame :global(.marker-selected) {
+  animation: ring 1.4s var(--ease-out) infinite;
+}
+
+@keyframes ring {
+  0% {
+    stroke-width: 3;
+    stroke-opacity: 1;
+  }
+
+  100% {
+    stroke-width: 18;
+    stroke-opacity: 0;
+  }
+}
+
+.frame :global(.leaflet-control-layers),
+.frame :global(.leaflet-bar) {
+  border: 0;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveDot,
+  .frame :global(.marker-selected) {
+    animation: none;
+  }
+}
+
+/* At night the map's pictures are dimmed a little, so a bright map does
+   not glare in a dark page (--map-tiles is "none" in the light theme). */
+.frame :global(.leaflet-tile-pane) {
+  filter: var(--map-tiles);
+}
+
+/* Leaflet's own grey under the tiles, and its white layers box, in the
+   site's colours: in the dark theme they had stayed light. */
+.frame :global(.leaflet-container) {
+  background: var(--stone-2);
+}
+
+.frame :global(.leaflet-control-layers) {
+  color: var(--ink);
+  background: var(--stone-0);
+}
+
+/* Leaflet's own zoom buttons and credit line, in the site's colours. */
+.frame :global(.leaflet-bar a) {
+  color: var(--ink);
+  background: var(--stone-0);
+  border-color: var(--stone-3);
+}
+
+.frame :global(.leaflet-control-attribution) {
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--stone-0) 85%, transparent);
+}
+
+.frame :global(.leaflet-control-attribution a) {
+  color: var(--ink);
+}

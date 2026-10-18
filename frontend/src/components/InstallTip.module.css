@@ -1,0 +1,48 @@
+/* The "add to home screen" tip: a quiet card, not a pop-up. */
+.card,
+.section {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-3);
+}
+
+.card {
+  margin: var(--s-8) auto;
+  max-width: 34rem;
+  padding: var(--s-5);
+  background: var(--stone-1);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font: 600 var(--text-xl) / 1.2 var(--font-heading);
+}
+
+.title svg {
+  width: 20px;
+  height: 20px;
+  color: var(--ink-2);
+}
+
+.text {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.steps {
+  margin: 0;
+  padding-inline-start: var(--s-5);
+  color: var(--ink);
+  line-height: 1.8;
+}
+
+.icon {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+}

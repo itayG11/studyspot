@@ -1,0 +1,104 @@
+# The nightly backup (wave 8). Neon's free plan restores only the last six
+# hours; a mistake found the next morning is past that. So every night:
+#
+#   1. pg_dump of the whole database, with the pg_dump of the server's own
+#      major version, as a read-only role (BACKUP_DATABASE_URL).
+#   2. Restore it into an empty database here, and check every table came
+#      back. A backup nobody has restored is a hope, not a backup.
+#   3. Encrypt it with age, to a PUBLIC key (BACKUP_AGE_RECIPIENT). The
+#      private key never leaves the owner's computer: the repository is
+#      public, any signed-in GitHub user can download a run's files, and
+#      even someone holding every secret here cannot open the backup.
+#   4. Keep the encrypted file 30 days, as this run's artifact.
+#
+# A failed scheduled run emails the repository owner. Restoring by hand:
+# docs/DEPLOY.md, "גיבוי ושחזור". Logs show table names and row counts only,
+# never data.
+name: Backup
+
+on:
+  schedule:
+    - cron: "43 0 * * *" # 02:43 or 03:43 in Israel; quiet, and off the hour
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/backup.yml] # one run when this file changes
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB: ${{ secrets.BACKUP_DATABASE_URL }}
+      RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+    steps:
+      - name: Secrets are set
+        id: ready
+        run: |
+          if [ -n "$DB" ] && [ -n "$RECIPIENT" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "::warning::BACKUP_DATABASE_URL or BACKUP_AGE_RECIPIENT is not set: no backup."
+          # On a schedule, a missing secret is a failure the owner must hear about.
+          [ "${{ github.event_name }}" != "schedule" ]
+
+      - name: The server's Postgres version
+        if: steps.ready.outputs.ok == 'true'
+        id: version
+        run: |
+          num=$(docker run --rm -e DB postgres:17 sh -c 'psql "$DB" -tAc "show server_version_num"')
+          echo "major=$((num / 10000))" >> "$GITHUB_OUTPUT"
+          echo "Server major version: $((num / 10000))"
+
+      - name: Dump
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          docker run --rm -e DB -v "$PWD:/out" "postgres:${{ steps.version.outputs.major }}" \
+            sh -c 'pg_dump --format=custom --no-owner --no-acl --file=/out/studyspot.dump "$DB"'
+          ls -l studyspot.dump
+
+      - name: Restore into an empty database, and compare the tables
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          image="postgres:${{ steps.version.outputs.major }}"
+          docker run -d --name scratch -e POSTGRES_PASSWORD=scratch -v "$PWD:/in" "$image"
+          until docker exec scratch pg_isready -U postgres -q; do sleep 1; done
+          docker exec scratch pg_restore --no-owner --no-acl --exit-on-error -U postgres -d postgres /in/studyspot.dump
+          # Every table, with its exact row count, from any database.
+          query="select table_schema || '.' || table_name || ' ' ||
+                   (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
+                 from information_schema.tables
+                 where table_type = 'BASE TABLE' and table_schema not in ('pg_catalog', 'information_schema')
+                 order by 1"
+          docker exec scratch psql -U postgres -d postgres -tAc "$query" > restored.txt
+          docker run --rm -e DB -e Q="$query" "$image" sh -c 'psql "$DB" -tAc "$Q"' > live.txt
+          echo "Restored tables and rows:"; cat restored.txt
+          # The same tables. Row counts may differ by a few: the site kept
+          # running after the dump's snapshot.
+          diff <(cut -d' ' -f1 live.txt) <(cut -d' ' -f1 restored.txt)
+          test "$(wc -l < restored.txt)" -gt 5
+          # The schema's version, from the migrations, came back too.
+          docker exec scratch psql -U postgres -d postgres -tAc "select version_num from alembic_version" | grep -q .
+
+      - name: Encrypt
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          sudo apt-get install -y -qq age > /dev/null
+          name="studyspot-$(date -u +%Y-%m-%d).dump.age"
+          age --recipient "$RECIPIENT" --output "$name" studyspot.dump
+          shred -u studyspot.dump
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          ls -l "$name"
+
+      - name: Keep for 30 days
+        if: steps.ready.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.NAME }}
+          retention-days: 30
+          if-no-files-found: error

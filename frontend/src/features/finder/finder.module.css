@@ -1,0 +1,631 @@
+.finder {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-10) var(--s-4) var(--s-16);
+  scroll-margin-top: var(--header-h, 0px);
+}
+
+.finder:focus {
+  outline: none;
+}
+
+/* The search stays in reach while the results scroll. */
+.bar {
+  position: sticky;
+  top: var(--header-h, 0px);
+  z-index: var(--z-sticky);
+  display: grid;
+  gap: var(--s-3);
+  margin: 0 calc(-1 * var(--s-4));
+  padding: var(--s-3) var(--s-4);
+  /* Glass over the page's light: an edge of its own, so that it reads as
+     a panel and not as a hole in the glow. */
+  background: color-mix(in srgb, var(--stone-1) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+}
+
+.heading {
+  margin: 0 0 var(--s-3);
+  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  color: var(--ink);
+  /* In the site's colours (tokens.css --headline); plain ink where the
+     system forces its own colours. */
+  background: var(--headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@media (forced-colors: active) {
+  .heading {
+    background: none;
+    -webkit-text-fill-color: CanvasText;
+  }
+}
+
+/* One scrolling row on a phone, wrapping lines on a wide screen. */
+.chips {
+  display: flex;
+  gap: var(--s-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--s-4));
+  padding: 2px var(--s-4) var(--s-1);
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .chips {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  margin: var(--s-1) var(--s-1);
+  background: var(--stone-3);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  margin: var(--s-4) 0;
+}
+
+.count {
+  margin: 0;
+  font: 600 var(--text-md) var(--font-body);
+  color: var(--ink-2);
+}
+
+.live {
+  margin-inline-end: auto;
+  color: var(--ink-2);
+}
+
+.near {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.near select {
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-pill);
+}
+
+.near select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* List / map: a two-part switch. */
+/* The building chosen on the map */
+.buildingPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin: 0 0 var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-0);
+  border: 1px solid var(--hairline);
+  border-inline-start: 4px solid var(--primary);
+  border-radius: var(--r-md);
+}
+
+.buildingTitle {
+  margin: 0;
+  font: 700 var(--text-lg) / 1.2 var(--font-heading);
+}
+
+.buildingTitle span {
+  font-weight: 500;
+}
+
+.buildingFacts {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.buildingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* --- Cards ------------------------------------------------------------- */
+
+.grid,
+.list {
+  display: grid;
+  gap: var(--s-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-ui) ease;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+/* The card's own focus ring, drawn when its link has the keyboard. */
+.card:has(.link:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.art {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  /* A new card (after a filter is cleared) shows stone, not white, for the
+     moment its lazy picture takes to decode. */
+  background: var(--stone-2);
+}
+
+.artPhoto {
+  width: 100%;
+  height: 100%;
+}
+
+.artPhoto img {
+  transition: transform 600ms var(--ease-out);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    box-shadow: var(--shadow-3);
+  }
+  .card:hover .artPhoto img {
+    transform: scale(1.04);
+  }
+}
+
+.body {
+  display: grid;
+  align-content: start;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.demo {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.title {
+  margin: var(--s-1) 0 0;
+  font: 700 var(--text-xl) / 1.15 var(--font-heading);
+}
+
+.link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+/* The name's link covers the whole card, so the card is one big target. */
+.link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.meta,
+.facts {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-3);
+  margin: var(--s-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.amenities li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.amenities svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-2);
+}
+
+/* Above the card's link, so they get their own clicks. */
+.actions {
+  position: absolute;
+  top: var(--s-3);
+  inset-inline-end: var(--s-3);
+  z-index: 1;
+  display: flex;
+  gap: var(--s-1);
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--stone-0) 88%, transparent);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(6px);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-ui) ease;
+}
+
+.iconButton svg {
+  width: 20px;
+  height: 20px;
+}
+
+.iconButton:active {
+  transform: scale(0.92);
+}
+
+.iconButton:focus-visible {
+  outline: 3px solid var(--ink);
+}
+
+@media (hover: hover) {
+  .iconButton:hover {
+    background: var(--stone-0);
+  }
+}
+
+.starOn {
+  color: #c98a00;
+  fill: #f2b522;
+}
+
+/* --- Map view ---------------------------------------------------------- */
+
+.mapLayout {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.mapBox {
+  position: relative;
+  z-index: 0; /* Leaflet's layers stay inside, under the sticky search */
+  isolation: isolate;
+  min-height: 420px;
+  order: -1; /* on a phone the map comes first, the list under it */
+}
+
+@media (min-width: 900px) {
+  .mapLayout {
+    grid-template-columns: minmax(300px, 380px) 1fr;
+    align-items: start;
+  }
+
+  .mapBox {
+    position: sticky;
+    top: calc(var(--header-h, 0px) + 200px);
+    order: 0;
+  }
+
+  .list {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .artPhoto img,
+  .iconButton {
+    transition: none;
+  }
+  .card:active,
+  .iconButton:active {
+    transform: none;
+  }
+}
+
+/* Open areas and libraries: said on the card, before anyone looks for a
+   booking button that is not there. */
+.walkIn {
+  margin: var(--s-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+/* "Book" on a group room's card: above the card's own link, so it is a
+   target of its own. */
+.bookLink {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-top: var(--s-2);
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--on-primary);
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-radius: var(--r-pill);
+  transition: transform var(--dur-press) ease-out;
+}
+
+.bookLink:active {
+  transform: scale(0.97);
+}
+
+.bookLink:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* --- The expanded filters ------------------------------------------------ */
+
+.moreRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: var(--s-3) 0;
+}
+
+.moreToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: transform var(--dur-press) ease-out, color var(--dur-ui) ease;
+}
+
+.moreToggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.moreToggle:active {
+  transform: scale(0.97);
+}
+
+.moreToggle[aria-expanded='true'] {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.moreToggle:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .moreToggle:hover {
+    color: var(--ink);
+  }
+}
+
+.moreCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font: 700 var(--text-xs) / 1 var(--font-mono);
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: var(--r-pill);
+}
+
+.advanced {
+  margin-bottom: var(--s-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-3) var(--s-4);
+  padding: var(--s-4);
+  background: var(--stone-0);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+}
+
+.field {
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.field select {
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--stone-1);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+}
+
+.field select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.amenityField {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.amenityField legend {
+  margin-bottom: var(--s-1);
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.amenityChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* --- Quick: where to study now ------------------------------------------- */
+
+.quickButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--on-primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border: 0;
+  border-radius: var(--r-pill);
+  box-shadow: 0 4px 14px -6px var(--primary-glow);
+  cursor: pointer;
+  transition: transform var(--dur-press) ease-out;
+}
+
+.quickButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.quickButton:active {
+  transform: scale(0.97);
+}
+
+.quickButton:disabled {
+  color: var(--ink-3);
+  background: var(--stone-2);
+  box-shadow: none;
+  cursor: default;
+}
+
+.quickButton:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.quickQuestions {
+  display: grid;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.quickList {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quickPick {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-1);
+  border-radius: var(--r-md);
+}
+
+.quickName {
+  font: 700 var(--text-lg) / 1.2 var(--font-heading);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The whole row is the link's target. */
+.quickName::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.quickName:focus-visible {
+  outline: none;
+}
+
+.quickPick:has(.quickName:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.quickWhere {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.quickWhy {
+  font-size: var(--text-sm);
+  color: var(--free);
+}
+
+.quickEmpty {
+  margin: 0;
+  color: var(--ink-2);
+}

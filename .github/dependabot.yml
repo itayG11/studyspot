@@ -1,0 +1,26 @@
+# Dependabot opens a pull request when a library we use has a newer
+# version, or a known vulnerability (with the repository's Dependabot
+# alerts on). Once a week, grouped, so it is a few requests and not dozens.
+version: 2
+updates:
+  - package-ecosystem: pip # reads backend/pyproject.toml and the lock files
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      web:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

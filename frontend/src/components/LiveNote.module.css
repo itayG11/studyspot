@@ -1,0 +1,38 @@
+.note {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--free);
+  border-radius: 50%;
+  animation: pulse 1.8s ease-out infinite;
+}
+
+.demo {
+  font-weight: 400;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--free) 55%, transparent);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--free) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}

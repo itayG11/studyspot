@@ -33,3 +33,10 @@ desktop.ini
 *.sqlite3
 *.db
 pgdata/
+
+# uv writes this when running the tests locally. The one lock file is
+# backend/requirements.lock (pip-tools, with hashes), so this stays out.
+backend/uv.lock
+
+# A local `pip install .` leaves its build output here.
+backend/build/

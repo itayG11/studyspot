@@ -1,0 +1,9 @@
+# Secret scan of the whole history (gitleaks, in CI). The default rules,
+# and one exception: the made-up secret the tests sign with. It is a test
+# value, not a key of any real deployment (the real ones live in Render).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test-only values"
+regexes = ['''test-jwt-secret-that-is-long-enough-0123456789''']

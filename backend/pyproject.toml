@@ -6,14 +6,45 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.1",
+    "alembic>=1.16",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
+    "pyjwt[crypto]>=2.10",
+    "httpx>=0.28",
+    # Reading a timetable exported from the college (app/timetable_import.py);
+    # with defusedxml installed, openpyxl parses the file's XML safely.
+    "openpyxl>=3.1",
+    "defusedxml>=0.7",
+    "anthropic>=1.13,<2",  # reading a timetable photo (app/timetable_photo.py)
+    "starlette>=1.7",  # its gzip leaves already-compressed types alone (app/site.py)
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
     "httpx2>=2",
+    "ruff~=0.16.10",  # pinned: a new release can add rules and turn CI red
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# A SQLAlchemy warning usually means data was silently not saved: fail on it.
+filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
+
+# Lint only (no formatter rules): the code's own layout stays as written.
+[tool.ruff]
+line-length = 120
+extend-exclude = ["migrations"]  # written by Alembic, kept as generated
+
+[tool.ruff.lint]
+ignore = ["FLY002"]  # a list joined with "; " reads better for headers
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Only app/ is the Python package; migrations/ and tests/ are not installed.
+[tool.setuptools.packages.find]
+include = ["app*"]

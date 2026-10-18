@@ -1,0 +1,112 @@
+import { MapPin, Star } from 'lucide-react'
+import type { CSSProperties } from 'react'
+import { Link, useLocation } from 'react-router'
+import type { Place } from '../../api/types'
+import { useFavorites } from '../../hooks/useFavorites'
+import { AMENITY_LABELS, ATMOSPHERE_LABELS, floorLabel, KIND_LABELS } from '../../i18n/labels'
+import { useInstitution } from '../../institution'
+import { spaceStatus } from '../../logic/availability'
+import { levelWord } from '../../logic/forecast'
+import { HIGH_FROM, MEDIUM_FROM } from '../../logic/occupancy'
+import { KIND_PHOTO } from '../../media/photos'
+import { Badge, Photo } from '../../ui'
+import { artTransitionName } from '../space/transition'
+import { AMENITY_ICONS, topAmenities } from './amenityIcons'
+import styles from './finder.module.css'
+
+const UNIT: Record<Place['kind'], string> = {
+  computer_lab: 'תאים',
+  open_area: 'מקומות',
+  library: 'מקומות',
+  group_room: 'אנשים',
+}
+
+interface SpaceCardProps {
+  place: Place
+  nextHour?: number | null // usual share of full in the coming hour (the campus today)
+  onShowOnMap?: (buildingCode: string) => void
+}
+
+// One place, as a card. The name is the link and it covers the whole card;
+// the star and "on the map" are separate buttons above it (a button inside
+// a link is not valid HTML, and a screen reader could not tell them apart).
+export function SpaceCard({ place, nextHour = null, onShowOnMap }: SpaceCardProps) {
+  const { slug, timezone } = useInstitution()
+  const { isFavorite, toggle } = useFavorites()
+  const status = spaceStatus(place, timezone)
+  const favorite = isFavorite(place.id)
+  const amenities = topAmenities(place.amenities)
+  const { search } = useLocation()
+
+  return (
+    <li className={styles.card}>
+      {/* Named like the space page header: the browser grows one into the other. */}
+      <div className={styles.art} style={{ viewTransitionName: artTransitionName(place.id) } as CSSProperties}>
+        <Photo name={KIND_PHOTO[place.kind]} variant="card" decorative className={styles.artPhoto} />
+      </div>
+      <div className={styles.body}>
+        <div className={styles.top}>
+          <Badge tone={status.tone}>{status.label}</Badge>
+          {place.details_are_demo && <span className={styles.demo}>נתוני דמו</span>}
+        </div>
+        <h3 className={styles.title}>
+          <Link to={`/${slug}/spaces/${place.id}`} state={{ finder: search }} className={styles.link} viewTransition>
+            {place.name}
+          </Link>
+        </h3>
+        <p className={styles.meta}>
+          {KIND_LABELS[place.kind]} · בניין {place.building_code} · {floorLabel(place.floor)}
+        </p>
+        <ul className={styles.amenities} aria-label="ציוד">
+          {amenities.map((amenity) => {
+            const Icon = AMENITY_ICONS[amenity]
+            return (
+              <li key={amenity}>
+                <Icon aria-hidden="true" />
+                {AMENITY_LABELS[amenity]}
+              </li>
+            )
+          })}
+        </ul>
+        <p className={styles.facts}>
+          {ATMOSPHERE_LABELS[place.atmosphere]} · עד {place.capacity} {UNIT[place.kind]}
+        </p>
+        {!place.bookable && <p className={styles.walkIn}>בלי הזמנה: נכנסים בסריקה</p>}
+        {/* A group room has no station to choose first: straight to its booking. */}
+        {place.bookable && place.kind === 'group_room' && (
+          <Link
+            to={`/${slug}/spaces/${place.id}`}
+            state={{ finder: search, book: true }}
+            className={styles.bookLink}
+            aria-label={`להזמין את ${place.name}`}
+            viewTransition
+          >
+            להזמין
+          </Link>
+        )}
+        {nextHour !== null && place.is_open && (
+          <p className={styles.facts}>בעוד שעה: בדרך כלל {levelWord(nextHour >= HIGH_FROM ? 'high' : nextHour >= MEDIUM_FROM ? 'medium' : 'low', place.kind)}</p>
+        )}
+        {place.available === 0 && place.usually_frees_at && (
+          <p className={styles.facts}>בדרך כלל מתפנה ב-{place.usually_frees_at.slice(0, 5)}</p>
+        )}
+      </div>
+      <div className={styles.actions}>
+        {onShowOnMap && (
+          <button type="button" className={styles.iconButton} aria-label={`${place.name} במפה`} onClick={() => onShowOnMap(place.building_code)}>
+            <MapPin aria-hidden="true" />
+          </button>
+        )}
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-pressed={favorite}
+          aria-label={`מועדף: ${place.name}`}
+          onClick={() => toggle(place.id)}
+        >
+          <Star aria-hidden="true" className={favorite ? styles.starOn : undefined} />
+        </button>
+      </div>
+    </li>
+  )
+}

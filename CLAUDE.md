@@ -5,7 +5,11 @@
 - This is a portfolio project for the CV (1–2 weeks of work). The user must be able to explain every part in a job interview.
 
 ## How to work with the user
-- Communicate in Hebrew. Keep Hebrew text right-to-left friendly: start lines with Hebrew, put English terms in `code` or in separate table cells, avoid mixing languages mid-sentence when possible.
+- Communicate in Hebrew. The user reads with a global right-to-left mod, so every Hebrew output must be RTL-friendly. This applies to chat replies, tool-question text, plans and docs alike:
+  - Start every line, bullet, heading and table cell with Hebrew, never with an English word, a code span or a number.
+  - Put English terms, commands and file names in `code`, or in a separate table cell.
+  - Avoid switching languages mid-sentence; no English inside parentheses in a Hebrew sentence.
+  - Prefer short lines and tables over long mixed sentences.
 - Before each stage: explain in simple Hebrew what we are about to do and why. After each stage: short summary of what was done and what was learned.
 - Do not start a new stage without the user's approval.
 - Rely on official, current documentation before and during work. Answer only when sure; say clearly when something is not verified.
@@ -15,6 +19,8 @@
 
 ## Source of truth
 - Plan: `docs/PLAN.md` (Hebrew). Follow its stages in order.
+- Remaining work, from the 12 Oct 2026 audit to the end: `docs/ROADMAP.md`, 16 waves in order. It overrides the order in `PLAN.md`. Each wave needs the user's approval; mark it done there when finished. Audit findings: `docs/AUDIT_2026-10-12.md`.
+- After every push, check that the GitHub CI run is green (it was red for 16 runs unnoticed once).
 - Competitive analysis: `docs/COMPETITIVE_ANALYSIS.md`.
 - Keep `docs/INTERVIEW_REPORT.md` updated as we go (decisions + trade-offs, challenges, weaknesses and honest answers, competitors, expected interview questions with answers). It becomes the final summary report.
 

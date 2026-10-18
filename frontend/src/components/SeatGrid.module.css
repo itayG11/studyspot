@@ -1,0 +1,166 @@
+.wrap {
+  margin: 0;
+  padding: var(--s-5) var(--s-4);
+  /* A dotted floor plan under the stations. */
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--ink) 14%, transparent) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-lg);
+  overflow-x: auto;
+}
+
+.front {
+  width: 60%;
+  margin: 0 auto var(--s-4);
+  padding: 2px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--ink-2);
+  background: var(--stone-2);
+  border-radius: var(--r-pill);
+}
+
+.grid {
+  display: grid;
+  gap: var(--s-2);
+  /* "safe": when the lab is wider than the screen, it scrolls from its
+     first column instead of losing it off the edge. */
+  justify-content: safe center;
+  margin: 0;
+  padding: 0;
+}
+
+/* One station: the colour, and a shape inside, say its state. */
+.seat {
+  --seat: var(--closed);
+  --seat-tint: var(--closed-tint);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font: 600 var(--text-xs) var(--font-mono);
+  color: var(--seat);
+  background: var(--seat-tint);
+  border: 1.5px solid var(--seat);
+  border-radius: 10px 10px 6px 6px;
+  animation: pop 320ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 10ms);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.cell {
+  list-style: none;
+}
+
+/* A station that can be chosen is a real button. */
+button.seat {
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-ui) ease;
+}
+
+button.seat:active {
+  transform: scale(0.94);
+}
+
+button.seat:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  button.seat:hover {
+    box-shadow: var(--shadow-2);
+  }
+}
+
+.selected,
+.selected.free {
+  color: var(--on-ink);
+  background: var(--ink);
+  border-color: var(--ink);
+  box-shadow: var(--ring);
+}
+
+.free {
+  --seat: var(--free);
+  --seat-tint: var(--free-tint);
+}
+
+/* Taken is also striped, so it never depends on colour alone. */
+.taken {
+  --seat: var(--full);
+  --seat-tint: var(--full-tint);
+  background-image: repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in srgb, var(--full) 16%, transparent) 4px 8px);
+}
+
+.held {
+  --seat: var(--busy);
+  --seat-tint: var(--busy-tint);
+}
+
+.closed {
+  --seat: var(--closed);
+  --seat-tint: var(--closed-tint);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.legend .seat {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  animation: none;
+}
+
+/* A phone: smaller stations (still above the 24px touch minimum), so a
+   lab of eight columns fits without scrolling. */
+@media (max-width: 420px) {
+  .wrap {
+    padding-inline: var(--s-3);
+  }
+
+  .grid {
+    gap: var(--s-1);
+  }
+
+  .seat {
+    width: 32px;
+    height: 32px;
+    font-size: 0.6875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat,
+  button.seat {
+    animation: none;
+    transition: none;
+  }
+}

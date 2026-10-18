@@ -1,0 +1,93 @@
+// A map that reports where it was clicked. The admin uses it to place a
+// building: click on the building's roof in the aerial photo.
+
+import 'leaflet/dist/leaflet.css'
+import { latLngBounds } from 'leaflet'
+import { useEffect } from 'react'
+import { CircleMarker, LayerGroup, MapContainer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import type { Building } from '../api/types'
+import { position, SELECTED_COLOR } from '../logic/occupancy'
+import { SourceLayer } from '../map/CampusMap'
+import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS } from '../map/tiles'
+import styles from './admin.module.css'
+
+interface Props {
+  buildings: Building[]
+  selected: string | null
+  onPick: (latitude: number, longitude: number) => void
+  flyTo?: [number, number] | null // a searched place, or "my location"
+  picked?: [number, number] | null // the point chosen for a new building
+}
+
+// Moves the map when a new place to look at comes in.
+function FlyTo({ target }: { target: [number, number] | null | undefined }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo(target, 17, { duration: 0.8 })
+  }, [map, target])
+  return null
+}
+
+function ClickCatcher({ onPick }: { onPick: Props['onPick'] }) {
+  useMapEvents({
+    click: (event) => {
+      // A map scrolled past the date line repeats the world; wrap() brings
+      // the longitude back into -180..180, which the server accepts.
+      const point = event.latlng.wrap()
+      onPick(point.lat, point.lng)
+    },
+  })
+  return null
+}
+
+export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
+  const points = buildings.map(position).filter((p): p is [number, number] => p !== null)
+  // With nothing placed yet there is no campus to frame: start on Israel.
+  const view = points.length > 0 ? { bounds: latLngBounds(points).pad(0.3) } : { center: [31.5, 34.9] as [number, number], zoom: 8 }
+
+  return (
+    <div dir="ltr" className={styles.pickMap}>
+      <MapContainer {...view} maxZoom={MAX_ZOOM} style={{ height: '100%' }}>
+        {AERIAL_ENABLED ? (
+          <LayerGroup>
+            <SourceLayer source={AERIAL} />
+            <SourceLayer source={AERIAL_LABELS} />
+          </LayerGroup>
+        ) : (
+          <SourceLayer source={STREETS} />
+        )}
+        {buildings.map((b) => {
+          const at = position(b)
+          if (!at) return null
+          return (
+            <CircleMarker
+              key={`${b.code}-${b.latitude}-${b.longitude}-${b.code === selected}`}
+              center={at}
+              radius={b.code === selected ? 14 : 10}
+              interactive={false}
+              pathOptions={{ color: '#ffffff', weight: 3, fillColor: b.code === selected ? SELECTED_COLOR : '#141a2e', fillOpacity: 0.95 }}
+            >
+              <Tooltip permanent direction="top" offset={[0, -10]}>
+                {b.code}
+              </Tooltip>
+            </CircleMarker>
+          )
+        })}
+        {picked && (
+          <CircleMarker
+            center={picked}
+            radius={12}
+            interactive={false}
+            pathOptions={{ color: '#ffffff', weight: 3, fillColor: SELECTED_COLOR, fillOpacity: 0.95 }}
+          >
+            <Tooltip permanent direction="top" offset={[0, -10]}>
+              הבניין החדש
+            </Tooltip>
+          </CircleMarker>
+        )}
+        <FlyTo target={flyTo} />
+        <ClickCatcher onPick={onPick} />
+      </MapContainer>
+    </div>
+  )
+}

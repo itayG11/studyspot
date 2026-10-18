@@ -1,0 +1,125 @@
+/* Importing from the college's file: one button, then the list to check. */
+
+.import {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.pick {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--s-2);
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--stone-0);
+  border: 1px solid var(--stone-3);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out);
+}
+
+.pick:active {
+  transform: scale(0.97);
+}
+
+.pick:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.pick svg {
+  width: 18px;
+  height: 18px;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.preview {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background: var(--stone-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.rows {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  padding-block: var(--s-2);
+  border-bottom: 1px solid var(--stone-2);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  cursor: pointer;
+}
+
+.check input {
+  margin-top: 4px;
+}
+
+.check > span {
+  display: grid;
+}
+
+.when {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.building {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.building select {
+  min-width: 7rem;
+}
+
+.said {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.refused {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  color: var(--full);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.lead {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* "10:30–12:20" stays on one line. */
+.times {
+  white-space: nowrap;
+}

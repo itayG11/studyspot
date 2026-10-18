@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Installing to the home screen: the app's name, icons and colours -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f5f2eb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131823" media="(prefers-color-scheme: dark)" />
+    <script src="/theme-init.js"></script>
+    <meta name="description" content="מקום פנוי ללמוד בקמפוס: חיפוש, הזמנה מראש וכניסה בסריקה." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>StudySpot</title>
+    <!-- How a shared link looks (WhatsApp, LinkedIn). An address change
+         changes these, robots.txt and sitemap.xml together (docs/DEPLOY.md). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StudySpot" />
+    <meta property="og:title" content="StudySpot: מקום ללמוד בקמפוס" />
+    <meta property="og:description" content="מה פנוי עכשיו, מה בדרך כלל פנוי, ואיפה לשבת בין שיעורים." />
+    <meta property="og:image" content="https://getstudyspot.me/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="הדמיה של קמפוס מאבן בהירה על גבעה, ועליה השם StudySpot" />
+    <meta property="og:locale" content="he_IL" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

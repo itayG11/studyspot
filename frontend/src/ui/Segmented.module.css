@@ -1,0 +1,76 @@
+/* One row always: on a narrow screen it scrolls sideways rather than break
+   a label onto two lines. */
+.group {
+  display: inline-flex;
+  justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 3px;
+  background: var(--stone-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+}
+
+.option {
+  position: relative;
+  flex: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--s-4);
+  font: 600 var(--text-sm) var(--font-body);
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-ui) ease;
+}
+
+/* The chosen option has the blue itself, under the mark: its white label
+   never stands on the pale group, even on a first paint before Motion has
+   drawn the mark. On a change the blue comes in only after the slide
+   (the delay), so the mark is seen moving rather than the option jumping;
+   the option left behind loses it at once (the base rule has no delay). */
+.option[aria-pressed='true'] {
+  color: var(--on-selected);
+  background: var(--selected);
+  transition:
+    color var(--dur-ui) ease,
+    background-color 0s linear 300ms;
+}
+
+/* Inside the option: the group scrolls, which clips anything outside it. */
+.option:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
+@media (hover: hover) {
+  .option[aria-pressed='false']:hover {
+    color: var(--ink);
+  }
+}
+
+/* The mark under the chosen option: the same "chosen" as a chip or a time. */
+.mark {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--selected);
+}
+
+.label {
+  position: relative; /* above the mark */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label svg {
+  width: 16px;
+  height: 16px;
+}

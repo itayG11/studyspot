@@ -1,0 +1,126 @@
+/* Page-wide rules. Everything specific to one component is in that
+   component's .module.css; the shared building blocks are in src/ui. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light; /* dark in tokens.css, when the dark theme is on */
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background-color: var(--stone-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The page's light: a blue glow at the top right, a violet one at the
+   left, and a faint grid of dots. On a fixed layer of its own, so that
+   scrolling does not repaint it; under everything, and never in the way. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 32rem at 100% 0%, var(--glow-a), transparent 70%),
+    radial-gradient(38rem 30rem at 0% 35%, var(--glow-b), transparent 70%),
+    radial-gradient(var(--dots) 1px, transparent 1px) 0 0 / 24px 24px;
+}
+
+@media print {
+  body::before {
+    display: none;
+  }
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 0.4em;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Read by screen readers, not shown on screen. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Page changes ---------------------------------------------------- */
+
+/* A place's picture moving from its card to the space page (and back). */
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-drawer);
+}
+
+/* The rest of the page: the old one fades quickly, the new one rises. */
+::view-transition-old(root) {
+  animation: var(--dur-exit) ease-out both page-out;
+}
+
+::view-transition-new(root) {
+  animation: 360ms var(--ease-out) both page-in;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Printing (the admin's signs): no header, a white page. */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  header {
+    display: none !important;
+  }
+}

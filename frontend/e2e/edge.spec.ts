@@ -1,0 +1,429 @@
+// The edge cases a person would try by hand, on a computer, a tablet and a
+// phone (playwright.edge.config.ts), against the production build.
+//
+// What this cannot do, and is left to a real device: Safari's own engine,
+// a real camera, signing in to Google Calendar, and "add to home screen".
+
+/// <reference lib="dom" />
+
+import { isMapTile } from './tiles.ts'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import jsQRModule from 'jsqr'
+
+// jsqr is a CommonJS package: under Node's ESM rules its function is .default.
+const jsQR = jsQRModule.default
+
+const SITE = 'http://localhost:8002'
+const API = `${SITE}/api`
+
+// --- helpers ---------------------------------------------------------------
+
+async function apiToken(request: APIRequestContext, persona: 'student' | 'admin'): Promise<string> {
+  const response = await request.post(`${API}/auth/demo/login`, { data: { persona }, headers: { Origin: SITE } })
+  expect(response.ok()).toBeTruthy()
+  return (await response.json()).access_token
+}
+
+async function placeId(request: APIRequestContext, name: string): Promise<number> {
+  const places = await (await request.get(`${API}/institutions/demo/places`)).json()
+  return places.find((p: { name: string }) => p.name === name).id
+}
+
+// The demo student is shared: every test starts with no advance bookings.
+async function cancelAllBookings(request: APIRequestContext) {
+  const headers = { Authorization: `Bearer ${await apiToken(request, 'student')}` }
+  const bookings = await (await request.get(`${API}/me/bookings`, { headers })).json()
+  for (const booking of bookings) {
+    if (booking.status === 'booked' && booking.source === 'advance') {
+      await request.post(`${API}/bookings/${booking.id}/cancel`, { headers })
+    }
+  }
+}
+
+async function signIn(page: Page, persona: 'student' | 'admin') {
+  await page.context().clearCookies()
+  await page.goto('/login')
+  const button = persona === 'student' ? 'כניסה כסטודנט לדוגמה' : 'כניסה כמנהל מוסד לדוגמה'
+  await page.getByRole('button', { name: button }).click()
+  // Signed in: the header offers to sign out (on a phone it shows no name).
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+}
+
+// Narrow screens book in a sheet from the bottom; wider ones in a side panel.
+function isTall(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 1280) <= 760
+}
+
+async function openBookingForm(page: Page): Promise<Locator> {
+  if (isTall(page)) {
+    await page.getByRole('button', { name: 'להזמין', exact: true }).click()
+    return page.getByRole('dialog')
+  }
+  return page.getByRole('complementary')
+}
+
+const minutesOf = (label: string) => {
+  const [h, m] = label.split(':').map(Number)
+  return h * 60 + m
+}
+
+// The latest day that still has a free start time. Usually the last day,
+// but between midnight and opening its times are past the 4-day limit.
+// laterFreeMinutes: the day must also have a free start that many minutes
+// after its first one. The limit is exact to the minute, so on the last day
+// only the times before the clock's time of day are bookable: at 07:23 that
+// is 07:00 alone, and a test that needs a second, later time fails there.
+async function chooseLastDayFirstTime(form: Locator, length: string, { laterFreeMinutes = 0 } = {}) {
+  const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
+  const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  await expect(days.first()).toBeVisible() // the form loads its days first
+  for (let i = (await days.count()) - 1; i >= 0; i--) {
+    await days.nth(i).click()
+    // Count only once the form shows this day, not the one before it.
+    await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
+    // The day's times load after the click: wait for them, free or not, or
+    // for the note that this day has none left.
+    await expect(
+      form.getByRole('group', { name: 'שעת התחלה', exact: true }).or(form.getByText('לא נשארו ביום הזה שעות להזמנה')),
+    ).toBeVisible()
+    const free = (await starts.allTextContents()).map((label) => minutesOf(label.trim()))
+    if (free.length > 0 && free.some((t) => t >= free[0] + laterFreeMinutes)) break
+  }
+  await starts.first().click()
+  await form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: length, exact: true }).click()
+}
+
+// --- every test ------------------------------------------------------------
+
+let policyErrors: string[] = []
+
+test.beforeEach(async ({ page }) => {
+  await page.route(isMapTile, (route) => route.abort())
+  // Anything the security policy blocks would be broken for real visitors.
+  policyErrors = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' && /Content Security Policy/.test(message.text())) policyErrors.push(message.text())
+  })
+})
+
+test.afterEach(() => {
+  expect(policyErrors).toEqual([])
+})
+
+// --- the phone list --------------------------------------------------------
+
+test('the story scrolls to the search without jumps or missing pictures', async ({ page }) => {
+  // Shifts inside the story are left out: its photo opens with a clip-path
+  // and a transform as you scroll, which Chrome reports as a shift although
+  // nothing jumps (checked frame by frame). Every other shift counts.
+  await page.addInitScript(`
+    window.__shift = 0
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const inStory = entry.sources.every((s) => s.node && s.node.closest && s.node.closest('[aria-label^="סיפור"]'))
+        if (!entry.hadRecentInput && !inStory) window.__shift += entry.value
+      }
+    }).observe({ type: 'layout-shift', buffered: true })
+  `)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // Measured without transforms (offsetTop): the finder rises tilted back
+  // in 3D (FinderReveal), and a tall tilted box measures far off the page.
+  const pageTop = (el: Element) => {
+    let y = 0
+    for (let node = el as HTMLElement | null; node; node = node.offsetParent as HTMLElement | null) y += node.offsetTop
+    return y
+  }
+  const finderTop = await page.locator('#finder').evaluate(pageTop)
+  const step = (page.viewportSize()?.height ?? 800) / 2
+  for (let y = 0; y <= finderTop; y += step) {
+    await page.evaluate((top) => window.scrollTo(0, top), y)
+    await page.waitForTimeout(80)
+  }
+  // The last step may stop short: what loads above (the live numbers) can
+  // move the finder down after it was measured. A real shift is still
+  // caught below, by the layout-shift count.
+  await page.evaluate((top) => window.scrollTo(0, top), await page.locator('#finder').evaluate(pageTop))
+  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeInViewport()
+  // A picture that finished loading with no size is a broken one.
+  const broken = await page.locator('img').evaluateAll((images) =>
+    (images as HTMLImageElement[]).filter((img) => img.complete && img.naturalWidth === 0).map((img) => img.currentSrc || img.src),
+  )
+  expect(broken).toEqual([])
+  expect(await page.evaluate('window.__shift')).toBeLessThan(0.1)
+})
+
+test('on a phone the sticky search takes under a quarter of the screen', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'the phone is where the screen is short')
+  await page.goto('/#finder')
+  const search = page.getByRole('searchbox', { name: 'חיפוש מקום' })
+  await expect(search).toBeVisible()
+  // The part that stays on screen while the results scroll under it.
+  const share = await search.evaluate((input) => {
+    let box: HTMLElement | null = input as HTMLElement
+    while (box && getComputedStyle(box).position !== 'sticky') box = box.parentElement
+    return box ? box.getBoundingClientRect().height / window.innerHeight : 1
+  })
+  expect(share, `the sticky panel is ${Math.round(share * 100)}% of the screen`).toBeLessThan(0.25)
+})
+
+test('the finder\'s tilt never makes the page longer, on any device', async ({ page }) => {
+  // The finder rises tilted in 3D. Once it was taller than the tilt's depth
+  // (a phone's one long column of cards) its end was drawn twenty times its
+  // size: the page grew to 100,000 px and the accessibility check crashed
+  // the browser (CI run 97, src/features/finder/reveal.ts).
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.locator('#finder').getByRole('link').first()).toBeAttached() // the cards are in
+  const tilted = await page.evaluate(() => document.documentElement.scrollHeight)
+  await page.locator('#finder').scrollIntoViewIfNeeded()
+  await expect.poll(() => page.locator('#finder').evaluate((el) => (el.closest('[style*="transform-origin"]') as HTMLElement).style.transform)).toBe('none')
+  const flat = await page.evaluate(() => document.documentElement.scrollHeight)
+  expect(tilted, `the page is ${tilted}px with the finder tilted, ${flat}px flat`).toBeLessThanOrEqual(flat + 2)
+})
+
+test('search, then a quick filter, then the map', async ({ page }) => {
+  await page.goto('/#finder')
+  await page.getByRole('searchbox', { name: 'חיפוש מקום' }).fill('מחשב')
+  await page.getByRole('group', { name: 'סינון' }).getByRole('button', { name: /^שקט/ }).click()
+  await expect(page).toHaveURL(/q=/)
+  await expect(page).toHaveURL(/quiet/)
+  await expect(page.getByRole('link', { name: 'M206' })).toBeVisible()
+
+  await page.getByRole('group', { name: 'תצוגה' }).getByRole('button', { name: 'מפה' }).click()
+  await page.getByRole('button', { name: 'M206 במפה' }).click()
+  await expect(page.getByRole('region', { name: /^בניין M/ }).getByRole('button', { name: 'הסרת הבחירה' })).toBeVisible()
+})
+
+test('a booking, its calendar link, and the dark theme on every page', async ({ page, request }) => {
+  await cancelAllBookings(request)
+  await signIn(page, 'student')
+  await page.goto(`/spaces/${await placeId(request, 'EM107')}`)
+  const form = await openBookingForm(page)
+  await chooseLastDayFirstTime(form, 'שעה וחצי')
+  await form.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
+
+  const google = page.getByRole('link', { name: /הוספה ליומן Google/ })
+  await expect(google).toHaveAttribute('href', /^https:\/\/calendar\.google\.com\/calendar\/render\?action=TEMPLATE&/)
+  await expect(google).toHaveAttribute('href', /dates=\d{8}T\d{6}Z%2F\d{8}T\d{6}Z/)
+  await expect(google).toHaveAttribute('target', '_blank')
+  if (isTall(page)) await page.keyboard.press('Escape') // the sheet closes
+
+  // The switch is on every page, and the choice stays after a reload.
+  await page.getByRole('switch', { name: 'מצב כהה' }).click()
+  for (const path of ['/', '/me', '/login', `/spaces/${await placeId(request, 'M206')}`]) {
+    await page.goto(path)
+    await expect(page.getByRole('switch', { name: 'מצב כהה' })).toHaveAttribute('aria-checked', 'true')
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark')
+  }
+  await page.reload()
+  await expect(page.getByRole('switch', { name: 'מצב כהה' })).toHaveAttribute('aria-checked', 'true')
+  await cancelAllBookings(request)
+})
+
+test('the site can be installed: its manifest and icons are served', async ({ request }) => {
+  const response = await request.get(`${SITE}/manifest.webmanifest`)
+  expect(response.headers()['content-type']).toContain('application/manifest+json')
+  const manifest = await response.json()
+  expect(manifest.display).toBe('standalone')
+  expect(manifest.icons.some((icon: { purpose?: string }) => icon.purpose === 'maskable')).toBe(true)
+  for (const icon of manifest.icons as { src: string; sizes: string }[]) {
+    const file = await request.get(`${SITE}${icon.src}`)
+    expect(file.headers()['content-type']).toBe('image/png')
+    // A PNG's width and height are at bytes 16-23 of the file.
+    const bytes = await file.body()
+    expect(`${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`).toBe(icon.sizes)
+  }
+})
+
+// --- edge cases ------------------------------------------------------------
+
+test('two tabs, one time: a clash, the next free time, the limit, cancel and book again', async ({ page, request }) => {
+  await cancelAllBookings(request)
+  await signIn(page, 'student')
+  const room = `/spaces/${await placeId(request, 'EM107')}`
+  const second = await page.context().newPage()
+  await page.goto(room)
+  await second.goto(room)
+
+  const formA = await openBookingForm(page)
+  const formB = await openBookingForm(second)
+  // A later free hour on the same day, for "the next free time" below.
+  await chooseLastDayFirstTime(formA, 'שעה', { laterFreeMinutes: 60 })
+  await chooseLastDayFirstTime(formB, 'שעה', { laterFreeMinutes: 60 })
+  await formA.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
+
+  // The second tab still shows the time as free; the database says no.
+  await formB.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(second.getByRole('alert').filter({ hasText: 'מישהו הזמין את הזמן הזה ממש עכשיו' })).toBeVisible()
+  await second.getByRole('button', { name: /הזמן הפנוי הקרוב/ }).click()
+  await formB.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(second.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
+
+  // Two is the limit.
+  await page.reload()
+  const formC = await openBookingForm(page)
+  await chooseLastDayFirstTime(formC, 'שעה')
+  await formC.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(page.getByText('יש לך כבר את מספר ההזמנות המרבי')).toBeVisible()
+
+  // Cancel one, and the same kind of booking goes through again.
+  await page.goto('/me')
+  const booking = page.getByRole('listitem', { name: /EM107/ }).first()
+  await booking.getByRole('button', { name: 'לבטל' }).click()
+  await booking.getByRole('button', { name: 'כן, לבטל' }).click()
+  await expect(page.getByRole('listitem', { name: /EM107/ })).toHaveCount(1)
+  await page.goto(room)
+  const formD = await openBookingForm(page)
+  await chooseLastDayFirstTime(formD, 'שעה')
+  await formD.getByRole('button', { name: 'להזמין', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
+  await cancelAllBookings(request)
+})
+
+test('reload, "back to search" and the browser\'s back keep the place and the search', async ({ page }) => {
+  await page.goto('/#finder')
+  await page.getByRole('searchbox', { name: 'חיפוש מקום' }).fill('EM')
+  await expect(page).toHaveURL(/q=EM/)
+  await page.getByRole('link', { name: 'EM107', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'חזרה לחיפוש' }).click()
+  await expect(page).toHaveURL(/q=EM/)
+  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toHaveValue('EM')
+
+  await page.getByRole('link', { name: 'EM107', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toHaveValue('EM')
+})
+
+test('the keyboard alone: every stop has a visible focus mark', async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'computer', 'A keyboard is used on the computer.')
+  for (const path of ['/', `/spaces/${await placeId(request, 'M206')}`, '/login']) {
+    await page.goto(path)
+    await expect(page.getByRole('switch', { name: 'מצב כהה' })).toBeVisible()
+    const unmarked: string[] = []
+    for (let i = 0; i < 25; i++) {
+      await page.keyboard.press('Tab')
+      const mark = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null
+        if (!el || el === document.body) return null
+        const marked = (node: Element | null) => {
+          if (!node) return false
+          const style = getComputedStyle(node)
+          return (style.outlineStyle !== 'none' && style.outlineWidth !== '0px') || style.boxShadow !== 'none'
+        }
+        // A place card draws the mark around the whole card, its list item.
+        const visible = marked(el) || (el.tagName === 'A' && marked(el.closest('li')))
+        return visible ? '' : `${el.tagName} ${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}`
+      })
+      if (mark) unmarked.push(`${path}: ${mark}`)
+    }
+    expect(unmarked).toEqual([])
+  }
+})
+
+// --- the admin -------------------------------------------------------------
+
+test('signs: one per printed page, a QR that opens the place, and a revoked code that stops working', async ({ page }, testInfo) => {
+  await signIn(page, 'admin')
+  await page.getByRole('link', { name: 'ניהול' }).click()
+  await expect(page.getByRole('img', { name: /קוד QR/ })).toHaveCount(10)
+
+  if (testInfo.project.name === 'computer') {
+    // Printing is the same on every device: checked once, as a real PDF.
+    await page.emulateMedia({ media: 'print' })
+    const pdf = (await page.pdf({ format: 'A4', printBackground: true })).toString('latin1')
+    expect(pdf.match(/\/Type\s*\/Page[^s]/g)?.length).toBe(10)
+    await page.emulateMedia({ media: 'screen' })
+  }
+
+  // Read the QR code off the sign, as a phone camera would.
+  const sign = page.getByRole('listitem', { name: 'מתחם לימוד, בניין L' })
+  const pixels = await sign.getByRole('img', { name: /קוד QR/ }).evaluate((img: HTMLImageElement) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const context = canvas.getContext('2d')!
+    context.drawImage(img, 0, 0)
+    const data = context.getImageData(0, 0, canvas.width, canvas.height)
+    return { width: data.width, height: data.height, data: Array.from(data.data) }
+  })
+  const decoded = jsQR(Uint8ClampedArray.from(pixels.data), pixels.width, pixels.height)
+  expect(decoded?.data).toMatch(new RegExp(`^${SITE}/scan#c=`))
+  const oldAddress = decoded!.data
+
+  const phone = await page.context().newPage()
+  await phone.goto(oldAddress)
+  await expect(phone.getByRole('heading', { name: 'מתחם לימוד' })).toBeVisible()
+
+  await sign.getByRole('button', { name: 'לבטל את הקוד' }).click()
+  await sign.getByRole('button', { name: 'כן, קוד חדש' }).click()
+  await expect(sign.getByText(/השלט הישן כבר לא עובד/)).toBeVisible()
+
+  await phone.goto('about:blank')
+  await phone.goto(oldAddress)
+  await expect(phone.getByRole('heading', { name: 'מתחם לימוד' })).toBeVisible()
+  await phone.getByRole('button', { name: 'אני כאן' }).click()
+  await expect(phone.getByText(/הקוד לא תקין/)).toBeVisible()
+})
+
+test('a building moved on the admin map moves in the API too', async ({ page, request }) => {
+  const buildings = async () => (await (await request.get(`${API}/institutions/demo/buildings`)).json()) as { id: number; code: string; latitude: number; longitude: number }[]
+  const before = (await buildings()).find((b) => b.code === 'L')!
+
+  await signIn(page, 'admin')
+  await page.getByRole('link', { name: 'ניהול' }).click()
+  await page.getByRole('button', { name: 'מיקום בניינים' }).click()
+  await page.getByRole('button', { name: /בניין L/ }).click()
+  const map = page.getByRole('region', { name: 'מיקום בניינים' }).locator('.leaflet-container')
+  await map.scrollIntoViewIfNeeded() // below the list on a narrow screen
+  const box = (await map.boundingBox())!
+  try {
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3)
+    await expect(page.getByRole('status').filter({ hasText: 'בניין L מוקם על המפה' })).toBeVisible()
+    const after = (await buildings()).find((b) => b.code === 'L')!
+    expect([after.latitude, after.longitude]).not.toEqual([before.latitude, before.longitude])
+  } finally {
+    // Put it back, even when the test failed: the other devices and runs
+    // must see the campus as it was.
+    const token = await apiToken(request, 'admin')
+    const restored = await request.post(`${API}/admin/buildings/${before.id}/location`, {
+      data: { latitude: before.latitude, longitude: before.longitude },
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(restored.ok()).toBeTruthy()
+  }
+})
+
+// Between a phone and a wide screen, everything in the header stays on the
+// screen: the sign-out button had gone off the side at tablet widths, hidden
+// by the page's overflow clip.
+test('the header fits at every width between a phone and a computer', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'computer', 'widths are set by hand; once is enough')
+  for (const persona of [null, 'student', 'admin'] as const) {
+    if (persona) await signIn(page, persona)
+    else await page.context().clearCookies()
+    for (const width of [641, 720, 768, 820, 900, 1000, 1024, 1100, 1180, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      await expect(page.getByRole('banner')).toBeVisible()
+      const outside = await page.getByRole('banner').evaluate((header) =>
+        [...header.querySelectorAll('a, button, [role="switch"]')]
+          .filter((el) => el.getClientRects().length > 0)
+          .filter((el) => {
+            const box = el.getBoundingClientRect()
+            return box.left < -1 || box.right > window.innerWidth + 1
+          })
+          .map((el) => el.textContent?.trim() || el.getAttribute('aria-label')),
+      )
+      expect(outside, `${persona ?? 'guest'} at ${width}px`).toEqual([])
+    }
+  }
+})
