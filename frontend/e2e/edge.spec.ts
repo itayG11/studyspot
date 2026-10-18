@@ -62,9 +62,18 @@ async function openBookingForm(page: Page): Promise<Locator> {
   return page.getByRole('complementary')
 }
 
+const minutesOf = (label: string) => {
+  const [h, m] = label.split(':').map(Number)
+  return h * 60 + m
+}
+
 // The latest day that still has a free start time. Usually the last day,
 // but between midnight and opening its times are past the 4-day limit.
-async function chooseLastDayFirstTime(form: Locator, length: string) {
+// laterFreeMinutes: the day must also have a free start that many minutes
+// after its first one. The limit is exact to the minute, so on the last day
+// only the times before the clock's time of day are bookable: at 07:23 that
+// is 07:00 alone, and a test that needs a second, later time fails there.
+async function chooseLastDayFirstTime(form: Locator, length: string, { laterFreeMinutes = 0 } = {}) {
   const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
   const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
   await expect(days.first()).toBeVisible() // the form loads its days first
@@ -77,7 +86,8 @@ async function chooseLastDayFirstTime(form: Locator, length: string) {
     await expect(
       form.getByRole('group', { name: 'שעת התחלה', exact: true }).or(form.getByText('לא נשארו ביום הזה שעות להזמנה')),
     ).toBeVisible()
-    if ((await starts.count()) > 0) break
+    const free = (await starts.allTextContents()).map((label) => minutesOf(label.trim()))
+    if (free.length > 0 && free.some((t) => t >= free[0] + laterFreeMinutes)) break
   }
   await starts.first().click()
   await form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: length, exact: true }).click()
@@ -239,8 +249,9 @@ test('two tabs, one time: a clash, the next free time, the limit, cancel and boo
 
   const formA = await openBookingForm(page)
   const formB = await openBookingForm(second)
-  await chooseLastDayFirstTime(formA, 'שעה')
-  await chooseLastDayFirstTime(formB, 'שעה')
+  // A later free hour on the same day, for "the next free time" below.
+  await chooseLastDayFirstTime(formA, 'שעה', { laterFreeMinutes: 60 })
+  await chooseLastDayFirstTime(formB, 'שעה', { laterFreeMinutes: 60 })
   await formA.getByRole('button', { name: 'להזמין', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: 'ההזמנה נקלטה' })).toBeVisible()
 
