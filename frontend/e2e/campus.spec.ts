@@ -1,4 +1,4 @@
-import { isMapTile } from './tiles'
+import { isMapTile } from './tiles.ts'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {

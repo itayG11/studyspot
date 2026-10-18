@@ -1,7 +1,7 @@
 // The site without a mouse, and for someone who asked their device for
 // less motion.
 
-import { isMapTile } from './tiles'
+import { isMapTile } from './tiles.ts'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {

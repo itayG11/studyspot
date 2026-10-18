@@ -6,7 +6,7 @@
 
 /// <reference lib="dom" />
 
-import { isMapTile } from './tiles'
+import { isMapTile } from './tiles.ts'
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import jsQRModule from 'jsqr'
 

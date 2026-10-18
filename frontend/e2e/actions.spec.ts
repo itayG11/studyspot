@@ -1,4 +1,4 @@
-import { isMapTile } from './tiles'
+import { isMapTile } from './tiles.ts'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { expect, test, type APIRequestContext } from '@playwright/test'

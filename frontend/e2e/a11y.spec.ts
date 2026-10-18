@@ -3,7 +3,7 @@
 // a third of real problems: keyboard use and screen readers are still
 // checked by hand (docs/INTERVIEW_REPORT.md).
 
-import { isMapTile } from './tiles'
+import { isMapTile } from './tiles.ts'
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
