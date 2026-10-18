@@ -14,6 +14,7 @@ from app.bookings import busy_ranges, cancel_booking, create_booking, extend_boo
 from app.clock import get_now
 from app.models import Booking, Place, User
 from app.ratelimit import write_limit
+from app.reminders import ALARM, START_AHEAD
 from app.schemas import Availability, BookingCreate, BookingOut, BusyRange
 
 router = APIRouter(tags=["bookings"])
@@ -52,6 +53,8 @@ def create(body: BookingCreate, user: UserDep, session: SessionDep, now: NowDep)
             session, user, body.place_id, body.seat_id, body.starts_at, body.ends_at, now
         ),
     )
+    # Its reminder may be sooner than any the sweep knew of (app/reminders.py).
+    ALARM.earliest(booking.starts_at - START_AHEAD)
     return _out(booking)
 
 

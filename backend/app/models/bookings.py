@@ -86,6 +86,9 @@ class Booking(Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[BookingStatus] = mapped_column(_enum_column(BookingStatus, "booking_status"))
     source: Mapped[BookingSource] = mapped_column(_enum_column(BookingSource, "booking_source"))
+    # Push reminders already sent (app/reminders.py): each once at most.
+    reminded_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reminded_release_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     place: Mapped[Place] = relationship(
         primaryjoin="Booking.place_id == Place.id", foreign_keys="Booking.place_id", viewonly=True

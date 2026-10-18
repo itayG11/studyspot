@@ -31,6 +31,7 @@ from app.models.people import (
     UserIdentity,
     UserRole,
 )
+from app.models.push import PushSubscription
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -55,6 +56,7 @@ __all__ = [
     "PlaceAmenity",
     "PlaceAtmosphere",
     "PlaceKind",
+    "PushSubscription",
     "Seat",
     "SpecialPeriod",
     "SpecialPeriodPlace",
