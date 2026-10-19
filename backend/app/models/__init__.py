@@ -1,5 +1,6 @@
 """All database models. Importing this package registers every table on Base.metadata."""
 
+from app.models.api_keys import ApiKey
 from app.models.bookings import ACTIVE_STATUSES, Booking, BookingSource, BookingStatus
 from app.models.calendar import CalendarFeed
 from app.models.campus import (
@@ -41,6 +42,7 @@ __all__ = [
     "ACTIVE_STATUSES",
     "AdminInvite",
     "Amenity",
+    "ApiKey",
     "AuthProvider",
     "AuthSession",
     "Booking",

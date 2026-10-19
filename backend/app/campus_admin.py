@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.classes import same_place
 from app.errors import Refusal
 from app.models import (
+    ApiKey,
     Building,
     BuildingStatus,
     CheckInMode,
@@ -208,6 +209,8 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
     db.execute(
         update(Place).where(Place.institution_id == institution.id).values(code_version=1, check_in_mode=CheckInMode.SIGN)
     )
+    # Wave 14: the keys visitors made for the demo campus stop working.
+    db.execute(delete(ApiKey).where(ApiKey.institution_id == institution.id))
     db.flush()
     db.expire_all()
     return (len(extra_buildings), len(extra_places))

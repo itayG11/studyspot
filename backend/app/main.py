@@ -13,7 +13,21 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.activity import Activity
-from app.api import admin, auth, bookings, calendar, campus, checkins, classes, push, screens, shares, system
+from app.api import (
+    admin,
+    auth,
+    bookings,
+    calendar,
+    campus,
+    checkins,
+    classes,
+    connections,
+    push,
+    screens,
+    shares,
+    system,
+    v1,
+)
 from app.config import Settings, get_settings
 from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
@@ -114,5 +128,7 @@ app.include_router(calendar.router)
 app.include_router(screens.router)
 app.include_router(shares.router)
 app.include_router(admin.router)
+app.include_router(connections.router)
+app.include_router(v1.router)
 app.include_router(system.router)
 app.include_router(push.router)

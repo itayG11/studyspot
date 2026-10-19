@@ -13,6 +13,7 @@ export function SiteFooter() {
         <Link to="/privacy">פרטיות</Link>
         <Link to="/accessibility">הצהרת נגישות</Link>
         <Link to="/licenses">רישיונות</Link>
+        <Link to="/developers">למפתחים</Link>
       </nav>
     </footer>
   )

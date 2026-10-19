@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { ApiKey, ApiKeyCreated, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -62,3 +62,10 @@ export const verifyLoginRule = (id: number) =>
 // Where a place is, through our server to OpenStreetMap (one search a press).
 export const geocode = (query: string) =>
   api<GeocodeResult[]>(`/admin/geocode?${new URLSearchParams({ q: query })}`, { auth: true })
+
+// Wave 14.2: the institution's API keys, in the "Connections" tab.
+export const getApiKeys = (slug: string) => api<ApiKey[]>(`${own(slug)}/api-keys`, { auth: true })
+export const makeApiKey = (slug: string, name: string) =>
+  api<ApiKeyCreated>(`${own(slug)}/api-keys`, { method: 'POST', body: { name }, auth: true })
+export const revokeApiKey = (slug: string, id: number) =>
+  api<void>(`${own(slug)}/api-keys/${id}`, { method: 'DELETE', auth: true })

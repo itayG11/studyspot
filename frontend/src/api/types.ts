@@ -469,3 +469,18 @@ export interface CampusSaved {
   places_added: number
   places_skipped: number
 }
+
+// Wave 14.2: an institution's API key (backend app/api/connections.py).
+export interface ApiKey {
+  id: number
+  name: string
+  prefix: string // "ss_live_AbCd": the start of the key, to tell them apart
+  created_at: string
+  last_used_at: string | null
+  revoked_at: string | null
+}
+
+export interface ApiKeyCreated {
+  key: string // shown once: the server keeps only an HMAC of it
+  api_key: ApiKey
+}

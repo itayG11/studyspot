@@ -47,6 +47,7 @@ export const routes = [
       { path: 'terms', ...page(() => import('./pages/TermsPage').then((m) => m.TermsPage)) },
       { path: 'privacy', ...page(() => import('./pages/PrivacyPage').then((m) => m.PrivacyPage)) },
       { path: 'accessibility', ...page(() => import('./pages/AccessibilityPage').then((m) => m.AccessibilityPage)) },
+      { path: 'developers', ...page(() => import('./pages/DevelopersPage').then((m) => m.DevelopersPage)) },
       { path: 'licenses', ...page(() => import('./pages/LicensesPage').then((m) => m.LicensesPage)) },
       // The living style guide, in development only; the build leaves it out.
       ...(import.meta.env.DEV
