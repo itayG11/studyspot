@@ -237,3 +237,52 @@ def test_a_user_who_never_used_a_code_cannot_set_one(client, session, student):
 
     me = _me(session, student)
     assert (me.has_password, me.can_set_password) == (False, False)
+
+
+# --- what the review found --------------------------------------------------------------
+
+
+def test_hashing_is_light_enough_for_a_small_server():
+    """64 MiB a hash (the library's default) runs a 512 MB server out of memory
+    with eight logins at once: OWASP's 19 MiB setting instead."""
+    from app import passwords
+
+    params = passwords._hasher
+    assert (params.memory_cost, params.time_cost, params.parallelism) == (19_456, 2, 1)
+    assert hash_password(GOOD).startswith("$argon2id$v=19$m=19456,t=2,p=1$")
+
+
+def test_too_many_hashes_at_once_wait_then_are_refused(monkeypatch):
+    import threading
+
+    from app import passwords
+
+    monkeypatch.setattr(passwords, "_hashing", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(passwords, "WAIT_FOR_HASH", 0.01)
+    passwords._hashing.acquire()  # someone else is hashing
+    try:
+        with pytest.raises(Refusal) as refused:
+            hash_password(GOOD)
+        assert (refused.value.status, refused.value.code) == (429, "password_busy")
+    finally:
+        passwords._hashing.release()
+    assert verify_password(hash_password(GOOD), GOOD)  # free again
+
+
+def test_a_gone_domain_answers_the_same_for_any_password(client, mailer, session):
+    """Checked before the password: otherwise the right one would get 403
+    and a wrong one 401, telling a guesser which was right."""
+    set_password(client, mailer)
+    session.execute(delete(InstitutionLoginRule).where(InstitutionLoginRule.value == "e.braude.ac.il"))
+    session.flush()
+    answers = {(r.status_code, r.json()["detail"]) for r in (login(client), login(client, "Wrong-Password 1"))}
+    assert answers == {(403, "email_domain_not_supported")}
+    assert identity(session).failed_logins == 0  # no password was even tried
+
+
+def test_a_locked_one_looks_like_any_other_failure(client, mailer):
+    set_password(client, mailer)
+    for _ in range(MAX_FAILURES):
+        login(client, "Wrong-Password 1")
+    locked = login(client)
+    assert (locked.status_code, locked.json()["detail"]) == (401, "password_invalid")

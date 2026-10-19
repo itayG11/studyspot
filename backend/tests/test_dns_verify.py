@@ -199,3 +199,26 @@ def test_tries_are_limited(manager, dns):
 
 def teardown_module():
     app.dependency_overrides.clear()
+
+
+def test_a_closing_institution_proves_nothing(manager, session, dns, tel_hai):
+    from datetime import UTC, datetime
+
+    rule = add_rule(manager)
+    tel_hai.closes_at = datetime(2026, 11, 1, tzinfo=UTC)
+    session.flush()
+    dns["body"] = answer(f'"{rule["verify_value"]}"')
+    refused = verify(manager, rule["id"])
+    assert (refused.status_code, refused.json()["detail"]) == (409, "institution_closing")
+    assert dns["seen"] == []
+
+
+def test_the_open_campus_cannot_be_closed_by_a_rule(manager, session, dns, tel_hai, monkeypatch):
+    """An approved rule ends an open campus being open (app/accounts.py)."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "open_sign_in_institution", "tel-hai")
+    rule = add_rule(manager)
+    dns["body"] = answer(f'"{rule["verify_value"]}"')
+    refused = verify(manager, rule["id"])
+    assert (refused.status_code, refused.json()["detail"]) == (403, "demo_campus_locked")

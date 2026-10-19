@@ -5,7 +5,7 @@
 // happened with Braude's). So the page says so, any code still in time
 // works (app/email_codes.py), and a new code is offered only after a minute.
 
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { KeyRound, Mail } from 'lucide-react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
@@ -44,9 +44,11 @@ interface Props {
   // The account's own address (my area): no address field to fill.
   fixedEmail?: string
   title?: string
+  // Opened by a button that is now gone ("forgot it"): focus comes here.
+  focusTitle?: boolean
 }
 
-export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title }: Props) {
+export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title, focusTitle = false }: Props) {
   const { emailStart, emailVerify, passwordSet } = useAuth()
   const setting = purpose === 'set-password'
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -63,6 +65,10 @@ export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title
   const [sentAt, setSentAt] = useState<number | null>(null)
   const wait = useCountdown(sentAt)
   const id = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (focusTitle) titleRef.current?.focus() // once, when it opens
+  }, [focusTitle])
 
   async function run(action: 'send' | 'verify', work: () => Promise<void>) {
     setBusy(action)
@@ -100,7 +106,7 @@ export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title
 
   return (
     <div className={styles.emailBox}>
-      <h2 className={styles.demoTitle}>
+      <h2 className={styles.demoTitle} tabIndex={-1} ref={titleRef}>
         {setting ? <KeyRound aria-hidden="true" /> : <Mail aria-hidden="true" />} {title ?? (setting ? 'סיסמה חדשה' : 'כניסה בקוד למייל')}
       </h2>
       {setting && step === 'email' && (

@@ -9,7 +9,7 @@ import styles from './Layout.module.css'
 export function ClosingBanner({ closesAt }: { closesAt: string }) {
   const { slug, name, timezone } = useInstitution()
   return (
-    <div className={styles.closingBanner} role="status">
+    <div className={styles.closingBanner} role="note" aria-label="המוסד נסגר">
       <strong>{name} נסגר ב-StudySpot.</strong> ב-{formatDay(closesAt, timezone)} יימחקו החשבונות וכל הנתונים שבו.{' '}
       <Link to={`/${slug}/me`}>אפשר למחוק את החשבון כבר עכשיו</Link>
     </div>

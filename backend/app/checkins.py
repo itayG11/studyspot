@@ -122,6 +122,7 @@ def still_here(session: Session, user: User, check_in_id: int, now: datetime) ->
     ).first()
     if row is None:
         raise Refusal(404, "check_in_not_found")
+    refuse_if_closing(session, row.institution_id)
     if row.booking_id is not None:
         raise Refusal(409, "still_here_booked")
     if row.still_here_at is not None:

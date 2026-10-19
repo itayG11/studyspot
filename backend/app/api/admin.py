@@ -351,6 +351,8 @@ def update_institution(
     # Locked: waiting behind a delete of it ends in a clean 404, not a 500.
     institution = _managed(db, admin, slug, lock=True)
     _refuse_demo(institution, settings)
+    if institution.closes_at is not None:
+        raise HTTPException(409, "institution_closing")  # it would show again in the list
     for field, value in body.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(institution, field, value)
     db.commit()
@@ -369,6 +371,8 @@ def add_login_rule(
 ):
     institution = _managed(db, admin, slug)
     _refuse_demo(institution, settings)
+    if institution.closes_at is not None:
+        raise HTTPException(409, "institution_closing")
     try:
         # The system admin's own rule works at once; anyone else's waits for them.
         approved = admin.role == UserRole.SYSTEM_ADMIN
@@ -399,6 +403,11 @@ def verify_login_rule(
     if found is None or not can_manage(admin, institution):
         raise HTTPException(404, "login_rule_not_found")
     _refuse_demo(institution, settings)
+    # The open campus too: an approved rule there would stop it being open.
+    if institution.slug == settings.open_sign_in_institution:
+        raise HTTPException(403, "demo_campus_locked")
+    if institution.closes_at is not None:
+        raise HTTPException(409, "institution_closing")
     if found.approved or found.verify_token is None:
         raise HTTPException(409, "login_rule_not_verifiable")  # a Microsoft tenant has no domain
     value, token = found.value, found.verify_token
@@ -406,8 +415,10 @@ def verify_login_rule(
     if not dns_verify.has_proof(http, settings.dns_resolver_url, value, token):
         raise HTTPException(409, "dns_record_not_found")
     rule = db.get(InstitutionLoginRule, rule_id, with_for_update=True)
-    if rule is None or rule.verify_token != token:
-        raise HTTPException(404, "login_rule_not_found")  # removed, or approved, meanwhile
+    if rule is None:
+        raise HTTPException(404, "login_rule_not_found")  # removed meanwhile
+    if rule.verify_token != token:
+        raise HTTPException(409, "login_rule_not_verifiable")  # approved meanwhile
     try:
         campus_setup.approve_login_rule(db, rule)
     except Refusal as refusal:

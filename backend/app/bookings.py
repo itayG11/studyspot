@@ -235,6 +235,7 @@ def extend_booking(session: Session, user: User, booking_id: int, now: datetime)
     ).first()
     if booking is None:
         raise Refusal(404, "booking_not_found")
+    refuse_if_closing(session, booking.institution_id)
     if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
         raise Refusal(409, "not_checked_in")
     if not renew(session, booking, now):

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
@@ -27,9 +28,11 @@ from app.models import (
     ClosingNotice,
     Institution,
     InstitutionLoginRule,
+    Place,
     User,
     UserRole,
 )
+from app.models.waitlist import WaitlistEntry
 from app.notify import EmailSender, Notice, PushSender, notify, reachable
 
 log = logging.getLogger(__name__)
@@ -64,10 +67,17 @@ def close(db: Session, institution: Institution, now: datetime, kept_slugs: set[
         raise Refusal(409, "institution_has_system_admin")  # it would delete you
     institution.is_active = False
     institution.closes_at = now + CLOSING_PERIOD
+    # Every booking not checked in yet, the one starting now too: a scan is
+    # refused from now on, and its reminder would say "scan the sign".
     db.execute(
         update(Booking)
-        .where(Booking.institution_id == institution.id, Booking.status == BookingStatus.BOOKED, Booking.starts_at > now)
+        .where(Booking.institution_id == institution.id, Booking.status == BookingStatus.BOOKED)
         .values(status=BookingStatus.CANCELLED)
+    )
+    # And whoever waits for a room there: the cancelled bookings would read
+    # as "the room is free", and booking it is refused.
+    db.execute(
+        delete(WaitlistEntry).where(WaitlistEntry.place_id.in_(select(Place.id).where(Place.institution_id == institution.id)))
     )
     db.execute(delete(ClosingNotice).where(ClosingNotice.user_id.in_(select(User.id).where(User.institution_id == institution.id))))
     admins = db.scalars(
@@ -132,7 +142,12 @@ def send_notices(db: Session, push: PushSender | None, email: EmailSender | None
         day = f"{closes_at.astimezone(ZoneInfo(zone)):%d.%m}"
         notice = Notice("המוסד שלך נסגר", f"{name} נסגר ב-StudySpot. ב-{day} החשבון והנתונים יימחקו.", "/me")
         if notify(db, user_id, notice, push, email, now):
-            db.add(ClosingNotice(user_id=user_id, sent_at=now))
+            # Marked after sending, unlike the reminders (app/notify.py): a
+            # student the budget missed today is told tomorrow. The price:
+            # two rounds at once, or a crash right here, may tell one twice.
+            # ON CONFLICT: the second mark is a no-op, not an error that
+            # would stop the round.
+            db.execute(pg_insert(ClosingNotice).values(user_id=user_id, sent_at=now).on_conflict_do_nothing())
             db.commit()
             sent += 1
     return sent
@@ -143,7 +158,15 @@ def next_due(db: Session, now: datetime) -> datetime | None:
     # sweep every minute; any later round tries it again.
     deleting = db.scalar(select(func.min(Institution.closes_at)).where(Institution.closes_at > now))
     waiting = db.scalar(select(exists(_waiting(now).subquery())))
-    times = [t for t in (deleting, now + NOTICES_AGAIN_AFTER if waiting else None) if t is not None]
+    again = None
+    if waiting:
+        # A full round a moment ago: more are likely to go now. Otherwise
+        # (the budget is spent, or few are left) wait hours, not minutes.
+        just_sent = db.scalar(
+            select(func.count()).select_from(ClosingNotice).where(ClosingNotice.sent_at > now - timedelta(minutes=5))
+        )
+        again = now + (timedelta(minutes=1) if just_sent >= NOTICES_PER_ROUND else NOTICES_AGAIN_AFTER)
+    times = [t for t in (deleting, again) if t is not None]
     return min(times) if times else None
 
 
@@ -163,5 +186,8 @@ def delete_due(db: Session, now: datetime, kept_slugs: set[str], system_admins: 
             deleted += 1
         except Refusal as refusal:
             log.warning("closing %s: not deleted (%s)", institution.slug, refusal.code)
+        except Exception:
+            # Anything else in one must not keep the others from going.
+            log.exception("closing %s: not deleted", institution.slug)
     db.flush()
     return deleted

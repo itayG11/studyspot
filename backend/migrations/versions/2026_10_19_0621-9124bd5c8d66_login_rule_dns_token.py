@@ -25,7 +25,7 @@ def upgrade() -> None:
     # ### end Alembic commands ###
     # Email rules already waiting get a token too, so they can be proved.
     op.execute(
-        "UPDATE institution_login_rules SET verify_token = md5(random()::text || id::text) "
+        "UPDATE institution_login_rules SET verify_token = replace(gen_random_uuid()::text, '-', '') "
         "WHERE NOT approved AND provider = 'email'"
     )
 

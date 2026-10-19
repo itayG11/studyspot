@@ -289,10 +289,12 @@ def password_login(
         raise HTTPException(404, "email_login_disabled")
     try:
         email = normalize_email(body.email)
-        check_password(db, email, body.password, now)
-        # As with a code: the domain must still have its rule.
+        # As with a code: the domain must still have its rule. First, before
+        # the password: after it, a right password and a wrong one would get
+        # different answers, and that tells a guesser which one was right.
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
+        check_password(db, email, body.password, now)
         with db.begin_nested():
             user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
             issued = start_session(db, user, now)

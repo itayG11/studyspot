@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from test_api_bookings import HOURS_2, MONDAY_14, book
 from test_email_notices import FakeMailer, channel
 
+from app import closing as closing_module
 from app.accounts import sign_in
 from app.api.auth import get_mailer
 from app.closing import CLOSING_PERIOD, NOTICES_AGAIN_AFTER, delete_due, next_due, send_notices
@@ -240,3 +241,101 @@ def test_one_that_cannot_be_deleted_is_left_and_logged(session, braude, caplog):
 
 def teardown_module():
     app.dependency_overrides.clear()
+
+
+# --- what the review found --------------------------------------------------------------
+
+
+def test_closing_ends_the_waits_and_a_booking_starting_now(client, session, braude, owner, room, mail):
+    """Cancelled bookings would read as "the room is free" to whoever waits,
+    and booking it is refused. A booking starting now would be told to scan."""
+    from app.models.waitlist import WaitlistEntry
+
+    other = make_user(session, braude, "other@e.braude.ac.il")
+    me, client.user = client.user, other
+    taken = book(client, room, MONDAY_14, MONDAY_14 + HOURS_2).json()
+    client.user = me
+    other.email_verified, other.email_notices = True, True
+    student = client.user
+    student.email_verified, student.email_notices = True, True
+    session.flush()
+    waited = client.post(f"/places/{room.id}/waitlist", json={"starts_at": MONDAY_14.isoformat(), "ends_at": (MONDAY_14 + HOURS_2).isoformat()})
+    assert waited.status_code == 201, waited.text
+    starting = Booking(
+        user_id=student.id, institution_id=braude.id, place_id=place_named(braude, "M", "M206").id,
+        status=BookingStatus.BOOKED, source=BookingSource.ADVANCE,
+        starts_at=SUNDAY_10AM - timedelta(minutes=5), ends_at=SUNDAY_10AM + timedelta(minutes=55),
+    )
+    session.add(starting)
+    session.flush()
+    close(client, owner)
+    assert session.query(WaitlistEntry).count() == 0
+    assert session.get(Booking, taken["id"]).status == BookingStatus.CANCELLED
+    assert starting.status == BookingStatus.CANCELLED
+
+
+def test_its_admin_cannot_show_it_again_or_add_rules(client, session, braude, owner, mail):
+    close(client, owner)
+    admin = make_user(session, braude, "dalit@braude.ac.il")
+    admin.role = UserRole.INSTITUTION_ADMIN
+    session.flush()
+    client.user = admin
+    shown = client.patch("/admin/institutions/braude", json={"is_active": True})
+    assert (shown.status_code, shown.json()["detail"]) == (409, "institution_closing")
+    rule = client.post("/admin/institutions/braude/login-rules", json={"provider": "email", "value": "new.ac.il"})
+    assert (rule.status_code, rule.json()["detail"]) == (409, "institution_closing")
+    assert braude.is_active is False
+
+
+def test_no_admin_invite_is_taken_while_closing(session, braude):
+    from app.institutions import accept_invite, create_invite
+
+    key = b"k" * 32
+    _, token = create_invite(session, braude, None, SUNDAY_10AM, key)
+    braude.closes_at = ENDS
+    newcomer = make_user(session, braude, "new@gmail.com")
+    with pytest.raises(Refusal) as refused:
+        accept_invite(session, newcomer, token, SUNDAY_10AM, key)
+    assert refused.value.code == "institution_closing"
+
+
+def test_a_mark_already_there_does_not_stop_the_round(session, braude):
+    """Two rounds at once may tell one twice; the second mark is a no-op."""
+    first = opted_in(session, braude, "a@e.braude.ac.il")
+    braude.closes_at = ENDS
+    session.flush()
+
+    original = closing_module.notify
+
+    def notify_then_race(db, user_id, *args):
+        sent = original(db, user_id, *args)
+        db.add(ClosingNotice(user_id=user_id, sent_at=SUNDAY_10AM))  # the other round marked it meanwhile
+        db.flush()
+        return sent
+
+    closing_module.notify = notify_then_race
+    try:
+        assert send_notices(session, None, channel(FakeMailer()), SUNDAY_10AM) == 1
+    finally:
+        closing_module.notify = original
+    assert told(session) == {first.id}
+
+
+def test_after_a_full_round_the_next_one_comes_in_a_minute(session, braude, monkeypatch):
+    monkeypatch.setattr(closing_module, "NOTICES_PER_ROUND", 2)
+    for n in range(3):
+        opted_in(session, braude, f"s{n}@e.braude.ac.il")
+    braude.closes_at = ENDS
+    session.flush()
+    assert send_notices(session, None, channel(FakeMailer()), SUNDAY_10AM) == 2
+    assert next_due(session, SUNDAY_10AM) == SUNDAY_10AM + timedelta(minutes=1)
+    assert next_due(session, SUNDAY_10AM + timedelta(minutes=10)) == SUNDAY_10AM + timedelta(minutes=10) + NOTICES_AGAIN_AFTER
+
+
+def test_extending_is_refused_while_closing(client, session, braude):
+    scan = client.post("/check-ins", json={"code": code_for(place_named(braude, "L", "מתחם לימוד"))})
+    assert scan.status_code == 201
+    braude.closes_at = ENDS
+    session.flush()
+    again = client.post(f"/check-ins/{scan.json()['id']}/still-here")
+    assert (again.status_code, again.json()["detail"]) == (409, "institution_closing")

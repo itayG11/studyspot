@@ -14,7 +14,7 @@ describe('ClosingBanner', () => {
         <ClosingBanner closesAt="2026-10-31T23:30:00Z" />
       </MemoryRouter>,
     )
-    const banner = screen.getByRole('status')
+    const banner = screen.getByRole('note', { name: 'המוסד נסגר' })
     expect(banner).toHaveTextContent('מכללת בראודה נסגר ב-StudySpot.')
     expect(banner).toHaveTextContent('01/11') // 01:30 on 1 November in Israel
     expect(screen.getByRole('link', { name: 'אפשר למחוק את החשבון כבר עכשיו' })).toHaveAttribute('href', '/braude/me')

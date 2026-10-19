@@ -309,7 +309,7 @@ describe('LoginPage password', () => {
   it('forgot it: a code first, then a new password that meets the rules', async () => {
     await passwordTab()
     await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }))
-    expect(screen.getByRole('heading', { name: 'סיסמה חדשה' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'סיסמה חדשה' })).toHaveFocus() // the button pressed is gone
     await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     await userEvent.type(await screen.findByLabelText('הקוד מהמייל'), '123456')

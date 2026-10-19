@@ -140,7 +140,7 @@ function EmailOrPassword({ onSignedIn }: { onSignedIn: () => void }) {
       />
       {way === 'code' && <EmailSignIn onSignedIn={onSignedIn} />}
       {way === 'password' && <PasswordSignIn onSignedIn={onSignedIn} onForgot={() => setWay('set-password')} />}
-      {way === 'set-password' && <EmailSignIn purpose="set-password" onSignedIn={onSignedIn} />}
+      {way === 'set-password' && <EmailSignIn purpose="set-password" onSignedIn={onSignedIn} focusTitle />}
     </>
   )
 }

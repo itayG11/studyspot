@@ -12,6 +12,7 @@ code, so a lock never shuts anyone out.
 """
 
 import re
+import threading
 from datetime import datetime, timedelta
 from functools import cache
 from importlib.resources import files
@@ -29,7 +30,23 @@ MAX_LENGTH = 128  # hashing a huge text is slow: a way to tie up the server
 MAX_FAILURES = 10
 LOCK_FOR = timedelta(minutes=15)
 
-_hasher = PasswordHasher()
+# OWASP's second argon2id setting: 19 MiB, 2 passes, 1 lane. The library's
+# default takes 64 MiB a hash: on the free server (512 MB), eight logins at
+# once would run it out of memory, and anyone can send them.
+_hasher = PasswordHasher(time_cost=2, memory_cost=19_456, parallelism=1)
+# And at most this many hashes at once; the rest wait a little, then 429.
+HASHES_AT_ONCE = 4
+_hashing = threading.BoundedSemaphore(HASHES_AT_ONCE)
+WAIT_FOR_HASH = 5.0  # seconds
+
+
+def _bounded(work):
+    if not _hashing.acquire(timeout=WAIT_FOR_HASH):
+        raise Refusal(429, "password_busy")
+    try:
+        return work()
+    finally:
+        _hashing.release()
 
 
 @cache
@@ -63,14 +80,17 @@ def check_strength(password: str, email: str) -> None:
 
 
 def hash_password(password: str) -> str:
-    return _hasher.hash(password)
+    return _bounded(lambda: _hasher.hash(password))
 
 
 def verify_password(hashed: str, password: str) -> bool:
-    try:
-        return _hasher.verify(hashed, password)
-    except (VerificationError, InvalidHashError):
-        return False
+    def check() -> bool:
+        try:
+            return _hasher.verify(hashed, password)
+        except (VerificationError, InvalidHashError):
+            return False
+
+    return _bounded(check)
 
 
 @cache
@@ -109,3 +129,6 @@ def check_password(db: Session, email: str, password: str, now: datetime) -> Use
         identity.password_hash = hash_password(password)
     db.flush()
     return identity
+
+
+_dummy_hash()  # made now, not on the first unknown address: that one would take twice as long
