@@ -29,25 +29,35 @@ async function signedInStudent(browser: Browser, name: string): Promise<Page> {
   return page
 }
 
-// The first day with a free start, and its first free hour: the same choice
-// in both windows. Not the last day: the booking window is four days to the
-// minute, so around midnight the last day has no time open yet.
+// The first start, from the first day on, that an hour can be booked from:
+// the same choice in both windows. Not just the first free start: the test
+// database keeps earlier runs' bookings, and one may begin within the hour.
+// Not the last day: the window is four days to the minute, so around
+// midnight the last day has no time open yet.
 async function chooseFirstFreeHour(form: Locator) {
   const days = form.getByRole('group', { name: 'יום' }).getByRole('button')
   const starts = form.getByRole('group', { name: 'שעת התחלה' }).getByRole('button', { disabled: false })
+  const hour = form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: 'שעה', exact: true })
   await expect(days.first()).toBeVisible()
-  const count = await days.count()
-  for (let i = 0; i < count; i++) {
-    await days.nth(i).click()
-    await expect(days.nth(i)).toHaveAttribute('aria-pressed', 'true')
+  const dayCount = await days.count()
+  for (let d = 0; d < dayCount; d++) {
+    await days.nth(d).click()
+    await expect(days.nth(d)).toHaveAttribute('aria-pressed', 'true')
     // The day's times load after the click: wait for them, or for the note that none are left.
     await expect(
       form.getByRole('group', { name: 'שעת התחלה', exact: true }).or(form.getByText('לא נשארו ביום הזה שעות להזמנה')),
     ).toBeVisible()
-    if ((await starts.count()) > 0) break
+    const startCount = await starts.count()
+    for (let s = 0; s < startCount; s++) {
+      await starts.nth(s).click()
+      await expect(form.getByRole('group', { name: 'אורך' })).toBeVisible() // the lengths for this start
+      if ((await hour.count()) > 0 && (await hour.isEnabled())) {
+        await hour.click()
+        return
+      }
+    }
   }
-  await starts.first().click()
-  await form.getByRole('group', { name: 'אורך' }).getByRole('button', { name: 'שעה', exact: true }).click()
+  throw new Error('no start in the booking window that an hour can be booked from')
 }
 
 test('email notices: on and off, shown with the address they go to', async ({ browser }) => {
