@@ -14,7 +14,7 @@ import { useApi } from '../hooks/useApi'
 import { useInstitution } from '../institution'
 import { googleSubscribeLink, webcalLink } from '../logic/calendarFeed'
 import { formatDay, formatTime } from '../logic/time'
-import { ActionError, Button, ConfirmButton, ExternalButtonLink } from '../ui'
+import { ActionError, AppButtonLink, Button, ConfirmButton, ExternalButtonLink } from '../ui'
 import styles from './me.module.css'
 
 export function CalendarFeedCard() {
@@ -73,18 +73,18 @@ function Card() {
       {url ? (
         <div className={styles.feed}>
           <p ref={ready} tabIndex={-1} className={styles.feedReady}>
-            הקישור מוכן. בוחרים יומן:
+            הקישור מוכן. בוחרים לפי היומן שבו אתה משתמש:
           </p>
           <p className={styles.privacyNote}>
             מי שיש לו את הקישור רואה את ההזמנות ואת המערכת שלך. אפשר לבטל אותו וליצור חדש בכל רגע. הכתובת מוצגת רק עכשיו.
           </p>
           <div className={styles.actions}>
             <ExternalButtonLink variant="primary" icon={<CalendarPlus aria-hidden="true" />} href={googleSubscribeLink(url)}>
-              הוספה ליומן <span dir="ltr">Google</span>
+              יומן <span dir="ltr">Google</span>: אנדרואיד ומחשב
             </ExternalButtonLink>
-            <a className={styles.feedLink} href={webcalLink(url)}>
-              אייפון, אייפד ומק
-            </a>
+            <AppButtonLink variant="primary" icon={<CalendarPlus aria-hidden="true" />} href={webcalLink(url)}>
+              יומן של אפל: אייפון, אייפד ומק
+            </AppButtonLink>
           </div>
           <p className={styles.feedAddress}>
             <bdi dir="ltr">{url}</bdi>

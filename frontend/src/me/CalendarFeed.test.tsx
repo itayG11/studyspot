@@ -30,10 +30,12 @@ describe('CalendarFeedCard', () => {
     expect(new URL(google.getAttribute('href')!).searchParams.get('cid')).toBe(
       'webcal://getstudyspot.me/api/calendar.ics?t=secret-token-123',
     )
-    expect(screen.getByRole('link', { name: /אייפון/ })).toHaveAttribute('href', 'webcal://getstudyspot.me/api/calendar.ics?t=secret-token-123')
+    expect(google).toHaveTextContent('אנדרואיד')
+    expect(screen.getByRole('link', { name: /יומן של אפל/ })).not.toHaveAttribute('target')
+    expect(screen.getByRole('link', { name: /יומן של אפל/ })).toHaveAttribute('href', 'webcal://getstudyspot.me/api/calendar.ics?t=secret-token-123')
     expect(screen.getByText(URL_)).toBeInTheDocument()
     expect(screen.getByText(/מי שיש לו את הקישור/)).toBeInTheDocument()
-    expect(screen.getByText('הקישור מוכן. בוחרים יומן:')).toHaveFocus()
+    expect(screen.getByText('הקישור מוכן. בוחרים לפי היומן שבו אתה משתמש:')).toHaveFocus()
   })
 
   it('copies the address', async () => {

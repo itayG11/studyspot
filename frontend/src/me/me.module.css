@@ -415,13 +415,6 @@
   font-weight: 600;
 }
 
-.feedLink {
-  align-self: center;
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .feedAddress {
   margin: 0;
   padding: var(--s-2) var(--s-3);

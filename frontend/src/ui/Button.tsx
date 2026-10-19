@@ -64,3 +64,14 @@ export function ExternalButtonLink({ variant, size, icon, block, className, chil
     </a>
   )
 }
+
+// A link that looks like a button and hands the address to an app on the
+// device (webcal:// opens the calendar app): no new tab.
+export function AppButtonLink({ variant, size, icon, block, className, children, ...rest }: Look & AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return (
+    <a className={lookClass({ variant, size, block }, className)} {...rest}>
+      {icon}
+      <span>{children}</span>
+    </a>
+  )
+}

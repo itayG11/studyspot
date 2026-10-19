@@ -1,6 +1,6 @@
 // The shared building blocks of every screen.
 export { Badge, type Availability } from './Badge'
-export { Button, ButtonLink, ExternalButtonLink } from './Button'
+export { Button, ButtonLink, AppButtonLink, ExternalButtonLink } from './Button'
 export { Chip } from './Chip'
 export { ConfirmButton } from './ConfirmButton'
 export { ActionError } from './ActionError'
