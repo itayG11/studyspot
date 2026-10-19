@@ -192,6 +192,9 @@ forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60
 # so a repeat costs one query. Its own limit, and generous, so that a
 # campus network behind one address does not use up the forecasts' limit.
 load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limit=6000)
+# A calendar app reads a feed every few hours; this is far above that, and
+# keeps someone guessing tokens slow (they are 256 bits anyway).
+calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=1200)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:
