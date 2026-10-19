@@ -403,3 +403,26 @@
   font-weight: 600;
   color: var(--free);
 }
+
+/* The calendar feed (CalendarFeed.tsx). */
+.feed {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.feedReady {
+  margin: 0;
+  font-weight: 600;
+}
+
+.feedAddress {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-sm);
+  background: var(--stone-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  user-select: all;
+}

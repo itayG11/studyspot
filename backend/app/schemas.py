@@ -843,3 +843,13 @@ class ImportRowOut(BaseModel):
 
 class BulkResultOut(BaseModel):
     refused: str | None  # the reason code, or None when the class was added
+
+
+class CalendarFeedOut(BaseModel):
+    """The student's calendar feed. The address comes back only when made:
+    the token is not kept, so it cannot be shown again."""
+
+    active: bool
+    url: str | None = None
+    created_at: datetime | None = None
+    last_read_at: datetime | None = None

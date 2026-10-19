@@ -75,6 +75,7 @@
 | `Anthropic` | קורא צילום של מערכת שעות | [console.anthropic.com](https://console.anthropic.com) | בתשלום לפי שימוש, תקרה של 10 דולר בחודש, בלי טעינה אוטומטית | המפתח ב-`Render`: `ANTHROPIC_API_KEY` |
 | `OpenStreetMap` | אריחי המפה | [operations.osmfoundation.org/policies/tiles](https://operations.osmfoundation.org/policies/tiles/) | חינם, לפי מדיניות שימוש | לא להעמיס. באתר עם הרבה משתמשים צריך ספק אריחים אחר |
 | `Nominatim` | חיפוש מקום על המפה, בדף הניהול | [מדיניות השימוש](https://operations.osmfoundation.org/policies/nominatim/) | חינם, בקשה אחת בשנייה | עובר דרך השרת שלנו, עם מטמון |
+| יומן `Google`, אפל, `Outlook` | קוראים את קישור היומן של סטודנט שנרשם | | חינם, בלי חשבון אצלנו | הם פונים אלינו, לא אנחנו אליהם. גוגל מעדכן לפעמים רק פעם ביום |
 | `Esri` | תצלום אוויר במפה | | כבוי באתר הציבורי | נראה שהתנאים דורשים חשבון. נדלק בהגדרה אחת |
 
 ### כלים שעזרו בבנייה, בלי חשבון שצריך לנהל
