@@ -5,7 +5,7 @@ Find a place to study on campus: what is free right now, what is usually free la
 > **Live demo:** https://studyspot-yetb.onrender.com. It opens on a demo campus; sign in as the demo student or demo admin, or with Google.
 > The free server sleeps after 15 idle minutes, so the first visit can take about a minute.
 >
-> A portfolio project, built in October 2026 by a first-year software engineering student at Braude College.
+> A portfolio project, built in October 2026 by a second-year software engineering student at Braude College.
 
 ![Searching for a computer lab and opening its page](docs/screenshots/flow.gif)
 

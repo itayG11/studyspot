@@ -1,7 +1,7 @@
 # StudySpot – instructions for Claude
 
 ## Who the user is
-- First-year software engineering student at Braude College (Karmiel, Israel). Knows Python and C. New to JavaScript/React, web backends, Docker.
+- Second-year software engineering student at Braude College (Karmiel, Israel). Knows Python and C. New to JavaScript/React, web backends, Docker.
 - This is a portfolio project for the CV (1–2 weeks of work). The user must be able to explain every part in a job interview.
 
 ## How to work with the user
