@@ -63,6 +63,13 @@ class PlaceAtmosphere(enum.StrEnum):
     MIXED = "mixed"  # depends on the hour and the crowd
 
 
+class CheckInMode(enum.StrEnum):
+    """How students prove they are at the place (wave 13)."""
+
+    SIGN = "sign"  # a printed QR code that never changes until revoked
+    SCREEN = "screen"  # a screen by the door with a new code every minute
+
+
 class SuitedFor(enum.StrEnum):
     SOLO = "solo"
     GROUP = "group"
@@ -234,6 +241,13 @@ class Place(Base):
     lab_cols: Mapped[int | None]
     # Part of the signed check-in code. Raising it invalidates printed codes.
     code_version: Mapped[int] = mapped_column(default=1, server_default="1")
+    # On SCREEN, the printed code is refused: only the screen's code, which
+    # changes every minute, lets a student in.
+    check_in_mode: Mapped[CheckInMode] = mapped_column(
+        _enum_column(CheckInMode, "check_in_mode"),
+        default=CheckInMode.SIGN,
+        server_default=CheckInMode.SIGN.value,
+    )
     # What the place is like. For Braude these are demo values for now
     # (details_are_demo), and the site labels them as such.
     atmosphere: Mapped[PlaceAtmosphere] = mapped_column(
