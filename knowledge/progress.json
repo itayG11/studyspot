@@ -1,14 +1,13 @@
 {
-  "updated": "2026-10-18",
-  "current_wave": 11,
+  "updated": "2026-10-19",
+  "current_wave": 12,
   "total_waves": 16,
   "estimate_finish": "25 עד 28 באוקטובר 2026, הערכה לפי הקצב",
   "waiting_for_user": [
-    "19.10 אחרי 07:00: בדיקת גל 9 בגרף של HeiGIT",
-    "19.10 אחרי 07:00: מייל לפני הזמנה וקישור ההסרה באתר החי",
-    "מיזוג itayG11/studyspot#7"
+    "מיזוג itayG11/studyspot#8",
+    "20.10: לבדוק ב-Search Console שמפת האתר נקראה"
   ],
-  "next_step": "אחרי הבדיקות: תוכנית לגל 11ב, סיסמה, סגירת מוסד, אימות סיומת ו-Search Console",
+  "next_step": "אחרי המיזוג: תוכנית לגל 12, קובץ יומן חתום",
   "waves": [
     {
       "n": 1,
@@ -53,7 +52,7 @@
     {
       "n": 9,
       "title": "זמן הליכה אמיתי",
-      "status": "waiting"
+      "status": "done"
     },
     {
       "n": 10,
@@ -62,13 +61,13 @@
     },
     {
       "n": 11,
-      "title": "מייל, רשימת המתנה וסיסמה",
-      "status": "active"
+      "title": "מייל, סיסמה וסגירת מוסד",
+      "status": "done"
     },
     {
       "n": 12,
       "title": "קובץ יומן חתום",
-      "status": "todo"
+      "status": "active"
     },
     {
       "n": 13,
