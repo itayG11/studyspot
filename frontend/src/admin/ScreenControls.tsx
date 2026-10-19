@@ -23,9 +23,12 @@ export function ScreenControls({ code, onChanged }: { code: PlaceCode; onChanged
   const action = useAction()
   const [url, setUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // A switch takes effect at once for students at the door: asked first.
+  const [asking, setAsking] = useState<CheckInMode | null>(null)
 
   const choose = (mode: CheckInMode) =>
     void action.run(async () => {
+      setAsking(null)
       setUrl(null)
       onChanged(await setCheckInMode(code.place_id, mode))
     })
@@ -53,7 +56,29 @@ export function ScreenControls({ code, onChanged }: { code: PlaceCode; onChanged
   const seen = code.screen_last_seen_at
   return (
     <div className={`${styles.screenOnly} ${styles.screenControls}`}>
-      <Segmented label={`איך נכנסים ל${code.place_name}`} options={MODES} value={code.check_in_mode} onChange={choose} />
+      <Segmented
+        label={`איך נכנסים ל${code.place_name}`}
+        options={MODES}
+        value={code.check_in_mode}
+        onChange={(mode) => setAsking(mode === code.check_in_mode ? null : mode)}
+      />
+      {asking && (
+        <div className={styles.screenLink} role="alertdialog" aria-label="לעבור?">
+          <p>
+            {asking === 'screen'
+              ? 'השלט המודפס יפסיק לעבוד מיד, עוד לפני שיש מסך. כדאי לעבור כשהטאבלט מוכן ליד הדלת.'
+              : 'קישור המסך יבוטל מיד, והכניסה תחזור לשלט המודפס.'}
+          </p>
+          <div className={styles.signActions}>
+            <Button size="sm" busy={action.busy} onClick={() => choose(asking)}>
+              כן, לעבור
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setAsking(null)}>
+              ביטול
+            </Button>
+          </div>
+        </div>
+      )}
       {code.check_in_mode === 'screen' && (
         <>
           <p className={styles.screenNote}>במקום הזה השלט המודפס לא עובד. הכניסה רק בקוד מהמסך, שמתחלף כל דקה.</p>

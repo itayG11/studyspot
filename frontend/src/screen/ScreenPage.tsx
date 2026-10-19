@@ -16,6 +16,7 @@ import { codeStillGood, nextAskMs, tokenFromHash } from '../logic/screen'
 import styles from './screen.module.css'
 
 const RETRY_MS = 10_000 // after a network error
+const WINDOW_S = 60 // one code a minute (backend app/codes.py)
 
 interface Seen {
   view: ScreenView
@@ -49,8 +50,11 @@ function Screen({ token }: { token: string }) {
         timer = window.setTimeout(ask, nextAskMs(view.seconds_left))
       } catch (error) {
         if (stopped) return
-        // An unknown link stays unknown: asking again would not help.
-        if (error instanceof ApiError && error.status === 404) return setRefused(error.code)
+        // A wrong link stays wrong (unknown, or cut short when copied):
+        // asking again would not help. "Too many requests" passes.
+        if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429) {
+          return setRefused('screen_not_found')
+        }
         setOffline(true)
         timer = window.setTimeout(ask, RETRY_MS)
       }
@@ -102,11 +106,19 @@ function Code({ code, left, placeName }: { code: string; left: number; placeName
     <figure className={styles.code}>
       {qr ? <img className={styles.qr} src={qr} alt={`קוד QR לכניסה ל${placeName}. מתחלף כל דקה.`} /> : <div className={styles.qr} />}
       <figcaption className={styles.call}>סורקים עם המצלמה כדי להיכנס</figcaption>
-      {/* Restarts with every new code: key on the code. */}
-      <div key={code} className={styles.bar} style={{ animationDuration: `${left}s` }} aria-hidden="true" />
+      {/* A new bar for every new code: key on the code. */}
+      <Bar key={code} left={left} />
       <p className={styles.left}>קוד חדש בעוד {left} שניות</p>
     </figure>
   )
+}
+
+// The bar empties over the code's minute. Its timing is set once, when the
+// code arrives: changing the duration of a running animation every second
+// would make the browser recompute its progress and run it at double speed.
+function Bar({ left }: { left: number }) {
+  const [style] = useState(() => ({ animationDuration: `${WINDOW_S}s`, animationDelay: `${left - WINDOW_S}s` }))
+  return <div className={styles.bar} style={style} aria-hidden="true" data-testid="bar" />
 }
 
 function Message({ text, quiet = false }: { text: string; quiet?: boolean }) {
@@ -144,13 +156,21 @@ function useKeepAwake() {
   useEffect(() => {
     if (!('wakeLock' in navigator)) return
     let lock: WakeLockSentinel | null = null
+    let stopped = false
     const request = () => {
       if (document.visibilityState !== 'visible') return
-      navigator.wakeLock.request('screen').then((l) => (lock = l)).catch(() => {})
+      navigator.wakeLock
+        .request('screen')
+        .then((l) => {
+          if (stopped) void l.release().catch(() => {}) // came after the page closed
+          else lock = l
+        })
+        .catch(() => {})
     }
     request()
     document.addEventListener('visibilitychange', request)
     return () => {
+      stopped = true
       document.removeEventListener('visibilitychange', request)
       void lock?.release().catch(() => {})
     }

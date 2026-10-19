@@ -34,6 +34,31 @@ describe('the screen by the door', () => {
     expect(screen.getByText(/^קוד חדש בעוד 4[12] שניות$/)).toBeInTheDocument() // a second may pass
   })
 
+  it('the countdown bar keeps the timing it got with its code, while the seconds tick', async () => {
+    vi.useFakeTimers()
+    try {
+      api.getScreen.mockResolvedValue({ ...open, seconds_left: 40 })
+      show()
+      await act(() => vi.advanceTimersByTimeAsync(0))
+      const bar = screen.getByTestId('bar')
+      // 60 s for a whole minute, started 20 s in: empty exactly when the code changes.
+      expect(bar.style.animationDuration).toBe('60s')
+      expect(bar.style.animationDelay).toBe('-20s')
+      await act(() => vi.advanceTimersByTimeAsync(5_000))
+      expect(screen.getByTestId('bar').style.animationDelay).toBe('-20s')
+      expect(screen.getByText('קוד חדש בעוד 35 שניות')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a link cut short when copied is refused at once, not loading forever', async () => {
+    api.getScreen.mockRejectedValue(new ApiError(422, 'validation_error'))
+    show('#t=short')
+    expect(await screen.findByRole('alert')).toHaveTextContent('מבקשים קישור חדש')
+    expect(api.getScreen).toHaveBeenCalledTimes(1)
+  })
+
   it('says when the place is closed, with no code', async () => {
     api.getScreen.mockResolvedValue({ ...open, code: null })
     show()

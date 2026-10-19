@@ -309,3 +309,15 @@ def test_an_admin_of_another_campus_cannot_touch_this_one(client, session, braud
     library = _library(braude)
     assert client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"}).status_code == 404
     assert client.post(f"/admin/places/{library.id}/screen").status_code == 404
+
+
+def test_made_up_tokens_from_other_addresses_do_not_silence_a_real_screen(client, session, braude):
+    from app.ratelimit import LIMITERS
+
+    token = _screen_for(session, _library(braude))
+    # As if hundreds of addresses had sent junk all minute: no shared total exists to use up.
+    assert "screen:total" not in LIMITERS
+    window = LIMITERS["screen"]
+    for n in range(window.max_keys + 5):  # a full table of addresses drops its oldest
+        window.allow(f"203.0.113.{n}")
+    assert _ask(client, token).status_code == 200

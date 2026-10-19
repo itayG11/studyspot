@@ -100,7 +100,7 @@ function Sign({
       <span className={styles.signBrand}>StudySpot · בניין {code.building_code}</span>
       {fresh && (
         <span role="status" className={`${styles.screenOnly} ${styles.freshNote}`}>
-          קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.
+          {onScreen ? 'קוד חדש. המסך עובר אליו לבד, ואין מה להדפיס.' : 'קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.'}
         </span>
       )}
       <div className={styles.signActions}>

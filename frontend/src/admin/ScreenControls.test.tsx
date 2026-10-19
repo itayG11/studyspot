@@ -23,8 +23,21 @@ describe('ScreenControls', () => {
     const changed = vi.fn()
     render(<ScreenControls code={sign} onChanged={changed} />)
     await userEvent.click(screen.getByRole('button', { name: 'מסך' }))
+    // Asked first: the printed sign stops at once.
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('השלט המודפס יפסיק לעבוד מיד')
+    expect(api.setCheckInMode).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'כן, לעבור' }))
     expect(api.setCheckInMode).toHaveBeenCalledWith(18, 'screen')
     expect(changed).toHaveBeenCalledWith(onScreen)
+  })
+
+  it('a switch can be called off', async () => {
+    render(<ScreenControls code={onScreen} onChanged={vi.fn()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'שלט מודפס' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('קישור המסך יבוטל')
+    await userEvent.click(screen.getByRole('button', { name: 'ביטול' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(api.setCheckInMode).not.toHaveBeenCalled()
   })
 
   it('on a sign, offers no screen link', () => {

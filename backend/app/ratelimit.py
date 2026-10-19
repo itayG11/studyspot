@@ -118,13 +118,16 @@ def _trusted_hops(settings: Annotated[Settings, Depends(get_settings)]) -> int:
     return settings.trusted_proxy_hops
 
 
-def per_ip(name: str, limit: int, window_seconds: float, total_limit: int | None = None) -> Callable:
+def per_ip(
+    name: str, limit: int, window_seconds: float, total_limit: int | None = None, evict: bool = False
+) -> Callable:
     """For endpoints without a user, such as sign-in.
 
     A total over all addresses backs the per-address limit up: one small
-    server, and a last line if the proxy setup is ever wrong.
+    server, and a last line if the proxy setup is ever wrong. evict: a full
+    table of addresses drops its oldest instead of refusing new ones.
     """
-    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds))
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds, evict=evict))
     total = LIMITERS.setdefault(f"{name}:total", SlidingWindow(total_limit, window_seconds)) if total_limit else None
 
     def dependency(request: Request, trusted_hops: Annotated[int, Depends(_trusted_hops)]) -> None:
@@ -197,7 +200,10 @@ load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limi
 calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=1200)
 # A screen asks about every 20 seconds, and a campus's screens may share one
 # address: 300 a minute is about 100 screens behind one network.
-screen_limit = per_ip("screen", limit=300, window_seconds=60, total_limit=6000)
+# No total over all addresses, and a full table drops its oldest: otherwise
+# requests with made-up tokens from a few addresses could use up a shared
+# limit, and every real screen on every campus would go dark (wave 13 review).
+screen_limit = per_ip("screen", limit=300, window_seconds=60, evict=True)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:

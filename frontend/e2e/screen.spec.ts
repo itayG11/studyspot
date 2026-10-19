@@ -37,6 +37,7 @@ test('the admin turns on a screen, a student checks in with its code, the printe
     await page.getByRole('link', { name: 'ניהול' }).click()
     const sign = page.getByRole('listitem', { name: 'מתחם לימוד, בניין L' })
     await sign.getByRole('button', { name: 'מסך' }).click()
+    await sign.getByRole('button', { name: 'כן, לעבור' }).click() // the printed sign stops at once: asked first
     await expect(sign.getByText(/השלט המודפס לא עובד/)).toBeVisible()
     await sign.getByRole('button', { name: 'ליצור קישור למסך' }).click()
     const link = (await sign.getByText(/\/screen#t=/).textContent())!.trim()
