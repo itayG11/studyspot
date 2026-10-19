@@ -209,11 +209,22 @@ export interface CheckIn {
   can_extend: boolean // "still here" may extend it once (no booking, not used yet)
 }
 
+export type CheckInMode = 'sign' | 'screen'
+
 export interface PlaceCode {
   place_id: number
   building_code: string
   place_name: string
   code: string
+  // Wave 13: a printed sign, or a screen by the door with a new code every minute.
+  check_in_mode: CheckInMode
+  screen_active: boolean
+  screen_last_seen_at: string | null
+}
+
+export interface ScreenLink {
+  url: string // shown once: the server keeps only an HMAC of the token
+  place: PlaceCode
 }
 
 export interface NewBuilding {

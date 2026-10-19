@@ -1,12 +1,18 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { BuildingCreated, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
 export const revokeCode = (placeId: number) =>
   api<PlaceCode>(`/admin/places/${placeId}/revoke-code`, { method: 'POST', auth: true })
+export const setCheckInMode = (placeId: number, mode: CheckInMode) =>
+  api<PlaceCode>(`/admin/places/${placeId}/check-in-mode`, { method: 'PATCH', body: { mode }, auth: true })
+export const makeScreenLink = (placeId: number) =>
+  api<ScreenLink>(`/admin/places/${placeId}/screen`, { method: 'POST', auth: true })
+export const removeScreenLink = (placeId: number) =>
+  api<PlaceCode>(`/admin/places/${placeId}/screen`, { method: 'DELETE', auth: true })
 
 // The server keeps 6 decimals (about 10 cm); more would be refused.
 export const placeBuilding = (buildingId: number, latitude: number, longitude: number) =>

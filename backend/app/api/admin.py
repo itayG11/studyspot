@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app import campus_import, campus_setup, dns_verify
+from app import campus_import, campus_setup, dns_verify, screens
 from app.api.auth import get_http_client
 from app.api.deps import get_code_secret, get_session, limited_body
 from app.campus_admin import create_building, create_place, mentioned_places
@@ -22,7 +22,17 @@ from app.codes import make_code
 from app.config import Settings, get_settings
 from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
 from app.geocode import SHARED, Geocoder
-from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
+from app.models import (
+    AuthProvider,
+    Building,
+    CheckInMode,
+    Institution,
+    InstitutionLoginRule,
+    Place,
+    PlaceScreen,
+    User,
+    UserRole,
+)
 from app.permissions import can_manage, require_admin
 from app.ratelimit import campus_import_limit, dns_check_limit, geocode_limit, write_limit
 from app.schemas import (
@@ -65,15 +75,41 @@ class PlaceCode(BaseModel):
     building_code: str
     place_name: str
     code: str
+    # Wave 13: a printed sign, or a screen by the door with a new code every minute.
+    check_in_mode: CheckInMode = CheckInMode.SIGN
+    screen_active: bool = False  # a screen link exists
+    screen_last_seen_at: datetime | None = None
 
 
-def _code(place: Place, building_code: str, secret: bytes) -> PlaceCode:
+def _code(place: Place, building_code: str, secret: bytes, screen: PlaceScreen | None = None) -> PlaceCode:
     return PlaceCode(
         place_id=place.id,
         building_code=building_code,
         place_name=place.name,
         code=make_code(place.id, place.code_version, secret),
+        check_in_mode=place.check_in_mode,
+        screen_active=screen is not None,
+        screen_last_seen_at=screen.last_seen_at if screen else None,
     )
+
+
+class CheckInModeIn(BaseModel):
+    mode: CheckInMode
+
+
+class ScreenLink(BaseModel):
+    """The screen's address, shown once: only an HMAC of its token is kept."""
+
+    url: str
+    place: PlaceCode
+
+
+def _managed_place(db: Session, admin: User, place_id: int) -> Place:
+    place = db.scalars(select(Place).where(Place.id == place_id).with_for_update()).first()
+    institution = db.get(Institution, place.institution_id) if place else None
+    if place is None or not can_manage(admin, institution):
+        raise HTTPException(404, "place_not_found")
+    return place
 
 
 @router.get("/institutions/{slug}/codes", response_model=list[PlaceCode])
@@ -87,7 +123,9 @@ def list_codes(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: S
         .where(Place.institution_id == institution.id)
         .order_by(Building.id, Place.id)
     ).all()
-    return [_code(place, code, secret) for place, code in rows]
+    ids = [place.id for place, _ in rows]
+    shown = {row.place_id: row for row in db.scalars(select(PlaceScreen).where(PlaceScreen.place_id.in_(ids)))}
+    return [_code(place, code, secret, shown.get(place.id)) for place, code in rows]
 
 
 @router.post(
@@ -98,11 +136,52 @@ def revoke_code(
 ):
     """Invalidate every printed code of a place (for example after a photo
     of it was shared) and return the new one to print."""
-    place = db.scalars(select(Place).where(Place.id == place_id).with_for_update()).first()
-    institution = db.get(Institution, place.institution_id) if place else None
-    if place is None or not can_manage(admin, institution):
-        raise HTTPException(404, "place_not_found")
+    place = _managed_place(db, admin, place_id)
     place.code_version += 1
+    db.commit()
+    return _code(place, place.building.code, secret, db.get(PlaceScreen, place.id))
+
+
+@router.patch(
+    "/places/{place_id}/check-in-mode", response_model=PlaceCode, dependencies=[Depends(write_limit)]
+)
+def set_check_in_mode(
+    place_id: Annotated[int, Path(gt=0)], body: CheckInModeIn, admin: AdminDep, db: SessionDep, secret: SecretDep
+):
+    """A printed sign, or a screen by the door. Back on a sign, the screen's
+    link ends: a tablet left on would only show a code nobody can use."""
+    place = _managed_place(db, admin, place_id)
+    place.check_in_mode = body.mode
+    if body.mode is CheckInMode.SIGN:
+        screens.revoke(db, place)
+    db.commit()
+    return _code(place, place.building.code, secret, db.get(PlaceScreen, place.id))
+
+
+@router.post("/places/{place_id}/screen", response_model=ScreenLink, dependencies=[Depends(write_limit)])
+def make_screen_link(
+    place_id: Annotated[int, Path(gt=0)],
+    admin: AdminDep,
+    db: SessionDep,
+    secret: SecretDep,
+    now: Annotated[datetime, Depends(get_now)],
+    settings: Annotated[Settings, Depends(get_settings)],
+):
+    """A new link for the tablet by the door; the old one stops working."""
+    place = _managed_place(db, admin, place_id)
+    if place.check_in_mode is not CheckInMode.SCREEN:
+        raise HTTPException(409, "screen_mode_off")
+    token = screens.new_screen(db, place, now, screens.screen_key(settings.jwt_secret_bytes()))
+    db.commit()
+    # After "#": the browser never sends that part, so the token stays out of every log.
+    url = f"{settings.frontend_url.rstrip('/')}/screen#t={token}"
+    return ScreenLink(url=url, place=_code(place, place.building.code, secret, db.get(PlaceScreen, place.id)))
+
+
+@router.delete("/places/{place_id}/screen", response_model=PlaceCode, dependencies=[Depends(write_limit)])
+def remove_screen_link(place_id: Annotated[int, Path(gt=0)], admin: AdminDep, db: SessionDep, secret: SecretDep):
+    place = _managed_place(db, admin, place_id)
+    screens.revoke(db, place)
     db.commit()
     return _code(place, place.building.code, secret)
 

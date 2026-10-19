@@ -246,7 +246,46 @@
 
 /* --- Printing: only the signs, one per page ------------------------- */
 
+/* Wave 13: a printed sign, or a screen by the door. */
+.screenControls {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.screenNote {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.screenLink {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-sm);
+}
+
+.screenLink p {
+  margin: 0;
+}
+
+.screenAddress {
+  max-width: 100%;
+  padding: var(--s-2);
+  overflow-wrap: anywhere;
+  direction: ltr;
+  background: var(--stone-1);
+  border-radius: var(--r-sm);
+}
+
 @media print {
+  .onScreen {
+    display: none !important;
+  }
+
   .head,
   .toolbar,
   .tabs,

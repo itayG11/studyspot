@@ -215,3 +215,97 @@ def test_on_a_printed_sign_a_screen_code_is_refused(client, braude):
 
 def test_the_printed_sign_still_works_where_there_is_no_screen(client, braude):
     assert _check_in(client, code_for(_library(braude))).status_code == 201
+
+
+# --- the admin turns a place's screen on and off ------------------------------------
+
+
+@pytest.fixture
+def admin(session, braude):
+    from app.models import User, UserRole
+
+    user = User(institution_id=braude.id, email="screens-admin@braude.example", display_name="Admin",
+                role=UserRole.INSTITUTION_ADMIN)
+    session.add(user)
+    session.flush()
+    return user
+
+
+def _token_of(url: str) -> str:
+    assert "/screen#t=" in url
+    return url.split("#t=", 1)[1]
+
+
+def test_the_admin_switches_to_a_screen_makes_a_link_and_the_screen_works(client, braude, admin):
+    library = _library(braude)
+    client.user = admin
+    switched = client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"})
+    assert (switched.status_code, switched.json()["check_in_mode"]) == (200, "screen")
+    made = client.post(f"/admin/places/{library.id}/screen")
+    assert made.status_code == 200
+    assert made.json()["place"]["screen_active"] is True
+    client.user = None
+    assert _ask(client, _token_of(made.json()["url"])).status_code == 200
+
+
+def test_the_codes_list_shows_the_mode_and_when_the_screen_was_seen(client, braude, admin):
+    library = _library(braude)
+    client.user = admin
+    client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"})
+    token = _token_of(client.post(f"/admin/places/{library.id}/screen").json()["url"])
+    _ask(client, token)
+    row = next(c for c in client.get("/admin/institutions/braude/codes").json() if c["place_id"] == library.id)
+    assert (row["check_in_mode"], row["screen_active"]) == ("screen", True)
+    assert row["screen_last_seen_at"] is not None
+
+
+def test_no_link_while_the_place_is_on_a_printed_sign(client, braude, admin):
+    client.user = admin
+    refused = client.post(f"/admin/places/{_library(braude).id}/screen")
+    assert (refused.status_code, refused.json()["detail"]) == (409, "screen_mode_off")
+
+
+def test_back_on_a_sign_the_link_ends(client, braude, admin):
+    library = _library(braude)
+    client.user = admin
+    client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"})
+    token = _token_of(client.post(f"/admin/places/{library.id}/screen").json()["url"])
+    back = client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "sign"})
+    assert back.json()["screen_active"] is False
+    assert _ask(client, token).status_code == 404
+
+
+def test_removing_the_link_from_the_admin_page(client, braude, admin):
+    library = _library(braude)
+    client.user = admin
+    client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"})
+    token = _token_of(client.post(f"/admin/places/{library.id}/screen").json()["url"])
+    assert client.delete(f"/admin/places/{library.id}/screen").json()["screen_active"] is False
+    assert _ask(client, token).status_code == 404
+
+
+def test_an_unknown_mode_is_refused(client, braude, admin):
+    client.user = admin
+    assert client.patch(f"/admin/places/{_library(braude).id}/check-in-mode", json={"mode": "laser"}).status_code == 422
+
+
+def test_a_student_cannot_change_screens(client, braude):
+    library = _library(braude)
+    assert client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"}).status_code == 403
+    assert client.post(f"/admin/places/{library.id}/screen").status_code == 403
+    assert client.delete(f"/admin/places/{library.id}/screen").status_code == 403
+
+
+def test_an_admin_of_another_campus_cannot_touch_this_one(client, session, braude):
+    from app.models import User, UserRole
+    from app.seed import seed_institution
+
+    other = seed_institution(session, {"institution": {"name": "Other", "slug": "other", "timezone": "Asia/Jerusalem"},
+                                       "buildings": []})
+    stranger = User(institution_id=other.id, email="a@other.example", display_name="Other", role=UserRole.INSTITUTION_ADMIN)
+    session.add(stranger)
+    session.flush()
+    client.user = stranger
+    library = _library(braude)
+    assert client.patch(f"/admin/places/{library.id}/check-in-mode", json={"mode": "screen"}).status_code == 404
+    assert client.post(f"/admin/places/{library.id}/screen").status_code == 404
