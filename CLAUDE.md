@@ -15,6 +15,11 @@
 - Rely on official, current documentation before and during work. Answer only when sure; say clearly when something is not verified.
 - Never guess facts about the Braude campus (building names, floors, which buildings have computer labs). Ask the user.
 - Warn the user when token usage is running fast, and stop before it runs out.
+- Save usage (the user's request, 19 Oct 2026):
+  - No side tasks (videos, images, posts) in the middle of a wave.
+  - Run the full test suites only at the end of each step; while fixing, run only the affected tests.
+  - Keep replies short.
+- Follow `docs/ROADMAP.md` in order, waves 13 to 16, with nothing cut. The weekly usage resets on 25 Oct at 03:00; if it runs out first, continue after that.
 - Use agents/skills where useful: code-reviewer and security-reviewer at the end of each stage, docs lookup for current library docs, TDD while coding.
 
 ## Source of truth
