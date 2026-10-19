@@ -6,7 +6,7 @@
 // or replaced at any time.
 
 import { CalendarPlus, Copy } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { calendarFeed, createCalendarFeed, revokeCalendarFeed } from '../api/student'
 import { useAuth } from '../auth/AuthContext'
 import { useAction } from '../hooks/useAction'
@@ -30,7 +30,13 @@ function Card() {
   const [url, setUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const titleId = useId()
+  const ready = useRef<HTMLParagraphElement>(null)
   const data = state.data
+  // The button pressed is gone once the address shows: focus goes to it,
+  // so a screen reader says what appeared.
+  useEffect(() => {
+    if (url) ready.current?.focus()
+  }, [url])
   const canCopy = typeof navigator !== 'undefined' && Boolean(navigator.clipboard)
 
   async function make() {
@@ -66,6 +72,9 @@ function Card() {
 
       {url ? (
         <div className={styles.feed}>
+          <p ref={ready} tabIndex={-1} className={styles.feedReady}>
+            הקישור מוכן. בוחרים יומן:
+          </p>
           <p className={styles.privacyNote}>
             מי שיש לו את הקישור רואה את ההזמנות ואת המערכת שלך. אפשר לבטל אותו וליצור חדש בכל רגע. הכתובת מוצגת רק עכשיו.
           </p>

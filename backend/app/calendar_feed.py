@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, joinedload
 
 from app.ics import Event, calendar
@@ -24,7 +25,9 @@ WEEKS_AHEAD = 16  # the classes, week by week: no RRULE and no time zone in the 
 KEEP_PAST = timedelta(days=7)
 MARK_READ_EVERY = timedelta(hours=1)  # not a database write on every read
 UID_HOST = "getstudyspot.me"
-SHOWN = (BookingStatus.BOOKED, BookingStatus.CHECKED_IN)
+# Completed too: an attended booking stays in the calendar's history (the
+# sweep and a check-out mark it completed). Cancelled and no-show go.
+SHOWN = (BookingStatus.BOOKED, BookingStatus.CHECKED_IN, BookingStatus.COMPLETED)
 
 
 def feed_key(jwt_secret: bytes) -> bytes:
@@ -43,9 +46,13 @@ def feed_of(db: Session, user: User) -> CalendarFeed | None:
 def new_feed(db: Session, user: User, now: datetime, key: bytes) -> str:
     """A new token, shown once. The old address stops working."""
     token = secrets.token_urlsafe(32)
-    revoke(db, user)
-    db.add(CalendarFeed(user_id=user.id, token_hash=_hash(key, token), created_at=now))
-    db.flush()
+    values = {"token_hash": _hash(key, token), "created_at": now, "last_read_at": None}
+    # One statement, so two at once (two tabs) end with one row, not a 500.
+    db.execute(
+        pg_insert(CalendarFeed).values(user_id=user.id, **values)
+        .on_conflict_do_update(index_elements=[CalendarFeed.user_id], set_=values)
+    )
+    db.expire_all()
     return token
 
 

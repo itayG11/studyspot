@@ -410,6 +410,11 @@
   gap: var(--s-3);
 }
 
+.feedReady {
+  margin: 0;
+  font-weight: 600;
+}
+
 .feedLink {
   align-self: center;
   color: var(--ink);
@@ -419,7 +424,8 @@
 
 .feedAddress {
   margin: 0;
-  padding: var(--space-2) var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--stone-3);
   border-radius: var(--r-sm);
   background: var(--stone-1);
   font-family: var(--font-mono);

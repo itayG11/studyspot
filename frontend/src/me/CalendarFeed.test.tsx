@@ -33,6 +33,7 @@ describe('CalendarFeedCard', () => {
     expect(screen.getByRole('link', { name: /אייפון/ })).toHaveAttribute('href', 'webcal://getstudyspot.me/api/calendar.ics?t=secret-token-123')
     expect(screen.getByText(URL_)).toBeInTheDocument()
     expect(screen.getByText(/מי שיש לו את הקישור/)).toBeInTheDocument()
+    expect(screen.getByText('הקישור מוכן. בוחרים יומן:')).toHaveFocus()
   })
 
   it('copies the address', async () => {

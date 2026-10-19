@@ -26,6 +26,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import calendar_feed
 from app.accounts import sign_in
 from app.api.deps import get_session
 from app.auth import get_current_user
@@ -510,6 +511,8 @@ def logout_all(
     now: NowDep,
 ):
     revoke_all(db, user.id, now)
+    # "Out everywhere" after a lost phone: the calendar address goes too.
+    calendar_feed.revoke(db, user)
     db.commit()
     _clear_refresh_cookie(response, settings)
 

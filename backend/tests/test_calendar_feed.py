@@ -101,6 +101,14 @@ def test_bookings_coming_and_recent_are_in_cancelled_are_not(session, braude, st
     }
 
 
+def test_an_attended_booking_stays_a_week_then_goes(session, braude, student):
+    room = place_named(braude, "M", "M206")
+    done = book(session, student, room, SUNDAY_10AM - timedelta(days=3), BookingStatus.COMPLETED)
+    book(session, student, room, SUNDAY_10AM - timedelta(days=8), BookingStatus.COMPLETED)
+    book(session, student, room, SUNDAY_10AM - timedelta(days=1), BookingStatus.NO_SHOW)
+    assert [e["UID"] for e in events(build(session, student, SUNDAY_10AM))] == [f"booking-{done.id}@getstudyspot.me"]
+
+
 def test_a_booking_says_where(session, braude, student):
     book(session, student, place_named(braude, "M", "M206"), SUNDAY_10AM + timedelta(days=1))
     (event,) = events(build(session, student, SUNDAY_10AM))
@@ -156,6 +164,15 @@ def test_a_new_token_ends_the_old_one(session, student):
     new = new_feed(session, student, SUNDAY_10AM, KEY)
     assert user_for(session, old, SUNDAY_10AM, KEY) is None
     assert user_for(session, new, SUNDAY_10AM, KEY) == student
+
+
+def test_a_new_token_over_an_unseen_row_does_not_fail(session, student):
+    """Two tabs at once: the second insert meets the first one's row."""
+    session.add(CalendarFeed(user_id=student.id, token_hash="0" * 64, created_at=SUNDAY_10AM))
+    session.flush()
+    token = new_feed(session, student, SUNDAY_10AM, KEY)
+    assert user_for(session, token, SUNDAY_10AM, KEY) == student
+    assert len(session.scalars(select(CalendarFeed)).all()) == 1
 
 
 def test_reading_is_marked_at_most_once_an_hour(session, student):
@@ -228,3 +245,11 @@ def test_reading_is_limited(client):
     assert codes[-1] == 429
 
 
+
+
+def test_signing_out_everywhere_ends_the_feed(client, session, student):
+    """After a lost phone: "out everywhere" must not leave the timetable readable."""
+    token = feed_url_token(client.post("/me/calendar").json()["url"])
+    assert client.post("/auth/logout-all").status_code == 204
+    client.user = None
+    assert client.get("/calendar.ics", params={"t": token}).status_code == 404
