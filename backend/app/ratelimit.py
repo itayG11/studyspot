@@ -223,6 +223,8 @@ def per_person(name: str, limit: int, window_seconds: float) -> Callable:
 # use up the others' writes.
 write_limit = per_person("writes", limit=30, window_seconds=60)
 geocode_limit = per_person("geocode", limit=10, window_seconds=60)
+# Checking a domain's TXT record (app/dns_verify.py): each try asks a public resolver.
+dns_check_limit = per_person("dns_check", limit=6, window_seconds=60)
 
 
 # Suggestions between classes read every place, and the forecast of each:

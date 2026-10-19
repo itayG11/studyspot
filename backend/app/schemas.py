@@ -12,8 +12,9 @@ from decimal import Decimal
 from typing import Literal
 from zoneinfo import available_timezones
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app import dns_verify
 from app.demo import Persona
 from app.models import (
     Amenity,
@@ -700,6 +701,18 @@ class LoginRuleOut(BaseModel):
     provider: AuthProvider
     value: str
     approved: bool  # an institution admin's rule waits for the system admin
+    # Or a DNS TXT record proves it (app/dns_verify.py): its name and value.
+    verify_token: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def verify_record(self) -> str | None:
+        return dns_verify.record_name(self.value) if self.verify_token else None
+
+    @computed_field
+    @property
+    def verify_value(self) -> str | None:
+        return dns_verify.record_value(self.verify_token) if self.verify_token else None
 
 
 class SetupOut(BaseModel):

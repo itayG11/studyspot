@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # service by default; another one with the same API can replace it.
     geocoder_url: str = "https://nominatim.openstreetmap.org/search"
 
+    # Checking a login domain's TXT record (app/dns_verify.py): DNS over
+    # HTTPS, JSON format. Cloudflare's public resolver by default.
+    dns_resolver_url: str = "https://cloudflare-dns.com/dns-query"
+
     # Sign-in with a one-time code by email (app/email_codes.py). On when a
     # Brevo API key is set; EMAIL_SENDER is the From address, on a domain
     # verified at Brevo. EMAIL_LOGIN_DEV_LOG prints codes to the server log

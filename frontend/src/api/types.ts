@@ -296,6 +296,10 @@ export interface LoginRule {
   provider: 'email' | 'microsoft'
   value: string
   approved: boolean // an institution admin's rule waits for the system admin
+  // A waiting email rule: the DNS TXT record that approves it without the
+  // system admin (its name and value). Null otherwise.
+  verify_record?: string | null
+  verify_value?: string | null
 }
 
 export interface PendingRule extends LoginRule {

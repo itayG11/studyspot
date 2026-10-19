@@ -6,6 +6,7 @@
 import { useId, useState, type FormEvent } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { addLoginRule, getSetup, removeLoginRule, updateInstitution } from '../api/admin'
+import { DomainProof } from './DomainProof'
 import type { LoginRule, Setup as SetupData } from '../api/types'
 import { useAction, type Action } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
@@ -165,6 +166,9 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
               <Button variant="ghost" size="sm" disabled={data.locked || removing.busy} onClick={() => void remove(rule)}>
                 הסרה
               </Button>
+              {!data.locked && rule.verify_record && rule.verify_value && (
+                <DomainProof rule={rule} institution={data.name} onApproved={onSaved} />
+              )}
             </li>
           ))}
         </ul>
@@ -216,7 +220,8 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
       <ActionError action={addTenant} />
       <ActionError action={removing} />
       <p className={styles.lead}>
-        כלל חדש מתחיל לעבוד אחרי שמנהל המערכת בודק שהסיומת או הארגון באמת של המוסד.
+        כלל חדש מתחיל לעבוד אחרי שמנהל המערכת בודק שהסיומת או הארגון באמת של המוסד. סיומת מייל אפשר גם להוכיח לבד,
+        ברשומת <span dir="ltr">DNS</span> שמחלקת המחשוב מוסיפה, ואז היא עובדת מיד.
       </p>
       {data.microsoft_client_id &&
         tenants.map((rule) => (

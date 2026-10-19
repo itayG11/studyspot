@@ -130,6 +130,9 @@ class InstitutionLoginRule(Base):
     # it, so a rule an institution admin adds waits for the system admin.
     # Until then it lets nobody in, but it holds the value.
     approved: Mapped[bool] = mapped_column(default=True, server_default=true())
+    # An email rule waiting: the value a DNS TXT record must hold to approve
+    # it without the system admin (app/dns_verify.py). Random, one per rule.
+    verify_token: Mapped[str | None] = mapped_column(String(64))
 
 
 class AuthSession(Base):

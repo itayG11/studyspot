@@ -4,6 +4,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app import dns_verify
 from app.errors import Refusal
 from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 
@@ -54,6 +55,8 @@ def add_login_rule(
     if taken is not None:
         raise Refusal(409, "login_rule_taken")
     created = InstitutionLoginRule(institution_id=institution.id, provider=provider, value=value, approved=False)
+    if provider == AuthProvider.EMAIL and not approved:
+        created.verify_token = dns_verify.new_token()  # or a TXT record proves it (app/dns_verify.py)
     db.add(created)
     db.flush()
     if approved:
@@ -78,7 +81,7 @@ def approve_login_rule(db: Session, rule: InstitutionLoginRule) -> None:
         raise Refusal(409, "login_rule_taken")
     for rival in rivals:
         db.delete(rival)
-    rule.approved = True
+    rule.approved, rule.verify_token = True, None
     db.flush()
 
 

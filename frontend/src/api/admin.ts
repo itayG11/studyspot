@@ -49,6 +49,9 @@ export const updateInstitution = (slug: string, body: Partial<Pick<Setup, 'name'
 export const addLoginRule = (slug: string, provider: LoginRule['provider'], value: string) =>
   api<LoginRule>(`${own(slug)}/login-rules`, { method: 'POST', auth: true, body: { provider, value } })
 export const removeLoginRule = (id: number) => api<void>(`/admin/login-rules/${id}`, { method: 'DELETE', auth: true })
+// The server looks up the TXT record; there, the rule works at once.
+export const verifyLoginRule = (id: number) =>
+  api<LoginRule>(`/admin/login-rules/${id}/verify`, { method: 'POST', auth: true })
 
 // Where a place is, through our server to OpenStreetMap (one search a press).
 export const geocode = (query: string) =>

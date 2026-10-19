@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app import campus_import, campus_setup
+from app import campus_import, campus_setup, dns_verify
 from app.api.auth import get_http_client
 from app.api.deps import get_code_secret, get_session, limited_body
 from app.campus_admin import create_building, create_place, mentioned_places
@@ -24,7 +24,7 @@ from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
 from app.geocode import SHARED, Geocoder
 from app.models import AuthProvider, Building, Institution, InstitutionLoginRule, Place, User, UserRole
 from app.permissions import can_manage, require_admin
-from app.ratelimit import campus_import_limit, geocode_limit, write_limit
+from app.ratelimit import campus_import_limit, dns_check_limit, geocode_limit, write_limit
 from app.schemas import (
     BuildingCreatedOut,
     BuildingCreateIn,
@@ -382,6 +382,39 @@ def add_login_rule(
         db.rollback()
         raise HTTPException(409, "login_rule_taken") from None
     return created
+
+
+@router.post("/login-rules/{rule_id}/verify", response_model=LoginRuleOut, dependencies=[Depends(dns_check_limit)])
+def verify_login_rule(
+    rule_id: Annotated[int, Path(gt=0)],
+    admin: AdminDep,
+    db: SessionDep,
+    settings: SettingsDep,
+    http: Annotated[httpx.Client, Depends(get_http_client)],
+):
+    """The TXT record is there: the rule works now, as if the system admin
+    approved it, with the same checks (app/campus_setup.py)."""
+    found = db.get(InstitutionLoginRule, rule_id)
+    institution = db.get(Institution, found.institution_id) if found else None
+    if found is None or not can_manage(admin, institution):
+        raise HTTPException(404, "login_rule_not_found")
+    _refuse_demo(institution, settings)
+    if found.approved or found.verify_token is None:
+        raise HTTPException(409, "login_rule_not_verifiable")  # a Microsoft tenant has no domain
+    value, token = found.value, found.verify_token
+    db.rollback()  # no lock or transaction held while the resolver answers
+    if not dns_verify.has_proof(http, settings.dns_resolver_url, value, token):
+        raise HTTPException(409, "dns_record_not_found")
+    rule = db.get(InstitutionLoginRule, rule_id, with_for_update=True)
+    if rule is None or rule.verify_token != token:
+        raise HTTPException(404, "login_rule_not_found")  # removed, or approved, meanwhile
+    try:
+        campus_setup.approve_login_rule(db, rule)
+    except Refusal as refusal:
+        db.rollback()
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    return rule
 
 
 @router.delete(
