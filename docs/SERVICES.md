@@ -57,6 +57,7 @@
 | שירות | מה הוא עושה אצלנו | קישור | מנוי ועלות | מה לזכור |
 |---|---|---|---|---|
 | `Namecheap` | הדומיין `getstudyspot.me`, ורשומות ה-`DNS` | [ap.www.namecheap.com](https://ap.www.namecheap.com) | חינם לשנה, דרך חבילת הסטודנט | החידוש באוקטובר 2027. אימות דו-שלבי מופעל. הרשומות: `docs/DEPLOY.md` |
+| `Google Search Console` | איך האתר מופיע בחיפוש של גוגל, ומפת האתר | [search.google.com/search-console](https://search.google.com/search-console) | חינם | אומת ברשומת `TXT` ב-`Namecheap`. לא מוחקים אותה |
 | `Brevo` | שולח את קוד הכניסה ואת ההתראות במייל | [app.brevo.com](https://app.brevo.com) | חינם, 300 מיילים ביום | המייל נשלח כטקסט בלבד, בלי תמונת מעקב. יומן משלוחים: `Transactional`, ואז `Logs` |
 
 ### התחברות
