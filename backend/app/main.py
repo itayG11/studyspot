@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.activity import Activity
-from app.api import admin, auth, bookings, calendar, campus, checkins, classes, push, system
+from app.api import admin, auth, bookings, calendar, campus, checkins, classes, push, screens, system
 from app.config import Settings, get_settings
 from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
@@ -102,7 +102,7 @@ app.add_middleware(
     allow_origins=get_settings().allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Screen-Token"],
 )
 
 app.include_router(auth.router)
@@ -111,6 +111,7 @@ app.include_router(checkins.router)
 app.include_router(bookings.router)
 app.include_router(classes.router)
 app.include_router(calendar.router)
+app.include_router(screens.router)
 app.include_router(admin.router)
 app.include_router(system.router)
 app.include_router(push.router)

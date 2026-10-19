@@ -195,6 +195,9 @@ load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limi
 # A calendar app reads a feed every few hours; this is far above that, and
 # keeps someone guessing tokens slow (they are 256 bits anyway).
 calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=1200)
+# A screen asks about every 20 seconds, and a campus's screens may share one
+# address: 300 a minute is about 100 screens behind one network.
+screen_limit = per_ip("screen", limit=300, window_seconds=60, total_limit=6000)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:
