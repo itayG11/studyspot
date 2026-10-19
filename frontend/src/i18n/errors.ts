@@ -116,6 +116,7 @@ const MESSAGES: Record<string, string> = {
 
   // Check-in
   invalid_code: 'הקוד לא תקין, או שהוחלף בקוד חדש. סרוק את השלט שבמקום.',
+  screen_code_expired: 'הקוד על המסך כבר התחלף. סורקים שוב את המסך שליד הדלת.',
   place_closed: 'המקום סגור עכשיו.',
   place_full: 'המקום מלא כרגע.',
   no_booking_now: 'אין לך הזמנה לחדר הזה עכשיו. אפשר לאשר הגעה מעשר דקות לפני ההזמנה.',

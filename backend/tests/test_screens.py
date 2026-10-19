@@ -3,13 +3,13 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from conftest import SUNDAY_10AM, TEST_CODE_SECRET, place_named
+from conftest import SUNDAY_10AM, TEST_CODE_SECRET, code_for, place_named
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
 from app import screens
 from app.api.screens import screen_key
-from app.codes import read_code, window_at
+from app.codes import make_screen_code, read_code, window_at
 from app.config import get_settings
 from app.models import CheckInMode, Place, PlaceScreen
 
@@ -162,3 +162,56 @@ def test_seen_is_marked_now_and_then_not_on_every_poll(client, session, braude):
 def test_asking_is_limited(client):
     codes = [_ask(client, "z" * 43).status_code for _ in range(301)]
     assert codes[-1] == 429
+
+
+# --- checking in with the screen's code --------------------------------------------
+
+
+def _screen_code(place, minutes_ago=0):
+    return make_screen_code(place.id, place.code_version, window_at(SUNDAY_10AM) - minutes_ago, TEST_CODE_SECRET)
+
+
+def _check_in(client, code):
+    return client.post("/check-ins", json={"code": code})
+
+
+@pytest.mark.parametrize("minutes_ago", [0, 1])
+def test_this_minutes_or_the_last_minutes_code_lets_a_student_in(client, session, braude, minutes_ago):
+    library = _library(braude)
+    library.check_in_mode = CheckInMode.SCREEN
+    session.flush()
+    answer = _check_in(client, _screen_code(library, minutes_ago))
+    assert answer.status_code == 201
+    assert answer.json()["place_id"] == library.id
+
+
+def test_an_older_screen_code_is_refused_as_expired(client, session, braude):
+    library = _library(braude)
+    library.check_in_mode = CheckInMode.SCREEN
+    session.flush()
+    answer = _check_in(client, _screen_code(library, minutes_ago=2))
+    assert (answer.status_code, answer.json()["detail"]) == (400, "screen_code_expired")
+
+
+def test_a_code_from_the_future_is_refused(client, session, braude):
+    library = _library(braude)
+    library.check_in_mode = CheckInMode.SCREEN
+    session.flush()
+    assert _check_in(client, _screen_code(library, minutes_ago=-1)).json()["detail"] == "screen_code_expired"
+
+
+def test_on_a_screen_the_printed_sign_no_longer_works(client, session, braude):
+    library = _library(braude)
+    library.check_in_mode = CheckInMode.SCREEN
+    session.flush()
+    answer = _check_in(client, code_for(library))
+    assert (answer.status_code, answer.json()["detail"]) == (400, "invalid_code")
+
+
+def test_on_a_printed_sign_a_screen_code_is_refused(client, braude):
+    answer = _check_in(client, _screen_code(_library(braude)))
+    assert (answer.status_code, answer.json()["detail"]) == (400, "invalid_code")
+
+
+def test_the_printed_sign_still_works_where_there_is_no_screen(client, braude):
+    assert _check_in(client, code_for(_library(braude))).status_code == 201

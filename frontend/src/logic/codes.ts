@@ -1,10 +1,11 @@
-// The printed check-in code: "p<place>.v<version>.<signature>".
+// The printed check-in code: "p<place>.v<version>.<signature>". A screen by the
+// door (wave 13) adds the minute: "p<place>.v<version>.w<minute>.<signature>".
 //
 // Only the server can tell whether a code is genuine (it holds the signing
 // key). The site reads the place number just to show which place the code
 // belongs to before the student confirms.
 
-const CODE = /^p([1-9][0-9]{0,9})\.v[1-9][0-9]{0,5}\.[A-Za-z0-9_-]{43}$/
+const CODE = /^p([1-9][0-9]{0,9})\.v[1-9][0-9]{0,5}(?:\.w[1-9][0-9]{0,9})?\.[A-Za-z0-9_-]{43}$/
 
 export function cleanCode(text: string): string {
   return text.trim()
