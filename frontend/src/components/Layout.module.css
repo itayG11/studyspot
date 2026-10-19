@@ -389,3 +389,18 @@
     color: var(--ink);
   }
 }
+
+/* An institution closing: above the page, never covering it. */
+.closingBanner {
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-align: center;
+  background: var(--busy-tint);
+  border-bottom: 1px solid var(--busy);
+}
+
+.closingBanner a {
+  color: inherit;
+  font-weight: 600;
+}

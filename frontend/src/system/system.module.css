@@ -46,6 +46,15 @@
   background: var(--stone-2);
 }
 
+.closing {
+  padding: 2px var(--s-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--busy-tint);
+  border-radius: var(--r-pill);
+}
+
 .facts {
   margin: 0;
   color: var(--ink-2);

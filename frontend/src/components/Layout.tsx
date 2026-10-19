@@ -8,6 +8,7 @@ import type { UserRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
+import { ClosingBanner } from './ClosingBanner'
 import { SiteFooter } from './SiteFooter'
 import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
@@ -113,6 +114,7 @@ export function Layout() {
           )}
         </div>
       </header>
+      {institution.closes_at && <ClosingBanner closesAt={institution.closes_at} />}
       <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>

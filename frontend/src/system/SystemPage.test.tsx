@@ -50,6 +50,14 @@ beforeEach(() => {
       institutions = institutions.filter((i) => i.slug !== 'braude')
       return Promise.resolve(new Response(null, { status: 204 }))
     }
+    if (path === '/system/institutions/braude/close') {
+      institutions = institutions.map((i) => ({ ...i, is_active: false, closes_at: '2026-11-01T08:00:00Z' }))
+      return Promise.resolve(jsonResponse(institutions[0]))
+    }
+    if (path === '/system/institutions/braude/reopen') {
+      institutions = institutions.map((i) => ({ ...i, closes_at: null }))
+      return Promise.resolve(jsonResponse(institutions[0]))
+    }
     if (path === '/system/login-rules') return Promise.resolve(jsonResponse(pending))
     if (path === '/system/login-rules/9/approve') {
       pending = pending.filter((r) => r.id !== 9)
@@ -216,5 +224,32 @@ describe('SystemPage', () => {
     await user.type(within(row).getByLabelText(/כדי למחוק/), 'kept')
     await user.click(within(row).getByRole('button', { name: 'למחוק לצמיתות' }))
     expect(await within(row).findByRole('alert')).toHaveTextContent('כלל כניסה מאושר')
+  })
+
+  it('closes an institution only after its address is typed, and says when it goes', async () => {
+    const user = userEvent.setup()
+    institutions = [{ ...BRAUDE, is_active: true }]
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'לסגור את המוסד' }))
+    expect(within(row).getByText(/אחרי 14 יום יימחקו/)).toBeInTheDocument()
+    const sure = within(row).getByRole('button', { name: 'לסגור, ולמחוק בעוד 14 יום' })
+    expect(sure).toBeDisabled()
+    await user.type(within(row).getByLabelText(/כדי לסגור/), 'braude')
+    await user.click(sure)
+    expect(posts.map((p) => p.path)).toContain('/system/institutions/braude/close')
+    expect(await within(row).findByText(/נסגר, יימחק ב-/)).toHaveTextContent('01/11')
+    expect(within(row).queryByRole('button', { name: 'מחיקת המוסד' })).not.toBeInTheDocument()
+  })
+
+  it('takes a closing back, after asking once more', async () => {
+    const user = userEvent.setup()
+    institutions = [{ ...BRAUDE, closes_at: '2026-11-01T08:00:00Z' }]
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'לבטל את הסגירה' }))
+    await user.click(within(row).getByRole('button', { name: 'כן, לבטל את הסגירה' }))
+    expect(posts.map((p) => p.path)).toContain('/system/institutions/braude/reopen')
+    expect(await within(row).findByText('מוסתר')).toBeInTheDocument()
   })
 })

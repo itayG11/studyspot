@@ -38,6 +38,8 @@ export interface Institution {
   booking_rules: BookingRules
   // The live numbers include made-up people (the demo campus).
   live_simulated: boolean
+  // Closing: everything in it is deleted then. Null when it is not closing.
+  closes_at?: string | null
 }
 
 // capacity, occupied and available count seats a student can walk into now.
@@ -264,6 +266,7 @@ export interface SystemInstitution {
   is_active: boolean
   buildings: number
   admins: number
+  closes_at?: string | null
 }
 
 export interface NewInstitution {
