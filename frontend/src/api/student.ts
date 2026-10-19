@@ -89,3 +89,15 @@ export const joinWaitlist = (placeId: number, starts_at: string, ends_at: string
   api<WaitlistEntry>(`/places/${placeId}/waitlist`, { method: 'POST', body: { starts_at, ends_at }, auth: true })
 export const myWaitlist = () => api<WaitlistEntry[]>('/me/waitlist', { auth: true })
 export const leaveWaitlist = (id: number) => api<void>(`/me/waitlist/${id}`, { method: 'DELETE', auth: true })
+
+// The calendar feed (backend/app/api/calendar.py). The address comes back
+// only when made: the server keeps no copy of its token.
+export interface CalendarFeed {
+  active: boolean
+  url: string | null
+  created_at: string | null
+  last_read_at: string | null
+}
+export const calendarFeed = () => api<CalendarFeed>('/me/calendar', { auth: true })
+export const createCalendarFeed = () => api<CalendarFeed>('/me/calendar', { method: 'POST', auth: true })
+export const revokeCalendarFeed = () => api<void>('/me/calendar', { method: 'DELETE', auth: true })

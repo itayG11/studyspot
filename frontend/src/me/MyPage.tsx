@@ -3,6 +3,7 @@
 
 import { CalendarX2, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
+import { CalendarFeedCard } from './CalendarFeed'
 import { PasswordCard } from './PasswordCard'
 import { PushToggle } from './PushToggle'
 import { Waitlist } from './Waitlist'
@@ -146,6 +147,8 @@ export function MyPage() {
       <Favorites places={places.data} />
 
       <PushToggle isDemo={user?.is_demo ?? false} />
+
+      <CalendarFeedCard />
 
       <InstallTip variant="section" />
 

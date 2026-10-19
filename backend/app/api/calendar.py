@@ -47,7 +47,8 @@ def make_feed(user: UserDep, db: SessionDep, now: NowDep, settings: SettingsDep)
         raise HTTPException(403, "calendar_demo_account")
     token = calendar_feed.new_feed(db, user, now, _key(settings))
     db.commit()
-    url = f"{settings.frontend_url.rstrip('/')}/api/calendar.ics?t={token}"
+    # Where the API is: /api next to the site in production (app/site.py).
+    url = f"{settings.public_api_url.rstrip('/')}/calendar.ics?t={token}"
     return CalendarFeedOut(active=True, url=url, created_at=now)
 
 

@@ -9,6 +9,7 @@ from conftest import SUNDAY_10AM, place_named
 from sqlalchemy import select
 
 from app.calendar_feed import WEEKS_AHEAD, build, feed_key, new_feed, user_for
+from app.config import get_settings
 from app.ics import Event, calendar, escape, fold
 from app.models import (
     AuthProvider,
@@ -178,7 +179,7 @@ def test_it_goes_with_the_account(session, student):
 
 
 def feed_url_token(url: str) -> str:
-    assert "/api/calendar.ics?t=" in url
+    assert url.startswith(get_settings().public_api_url.rstrip("/") + "/calendar.ics?t=")
     return url.split("?t=", 1)[1]
 
 
