@@ -64,10 +64,11 @@ interface RequestOptions {
   body?: unknown
   file?: Blob // sent as it is (an upload), instead of a JSON body
   auth?: boolean // send the access token; refresh it once if it expired
+  headers?: Record<string, string> // more headers, such as the screen's link (api/screen.ts)
 }
 
 async function send<T>(path: string, options: RequestOptions): Promise<T> {
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...options.headers }
   if (options.file !== undefined) headers['Content-Type'] = 'application/octet-stream'
   else if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.auth && accessToken) headers.Authorization = `Bearer ${accessToken}`
