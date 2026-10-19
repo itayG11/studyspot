@@ -10,8 +10,9 @@ import { safeNext } from '../logic/next'
 import { useApi } from '../hooks/useApi'
 import { errorMessage } from '../i18n/errors'
 import { useHomeSlug } from '../institution'
-import { Button, ButtonLink, EmptyState, Notice, Photo, Skeleton } from '../ui'
+import { Button, ButtonLink, EmptyState, Notice, Photo, Segmented, Skeleton } from '../ui'
 import { EmailSignIn } from './EmailSignIn'
+import { PasswordSignIn } from './PasswordSignIn'
 import styles from './pages.module.css'
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -78,7 +79,7 @@ export function LoginPage() {
               </a>
             ))}
 
-            {available.email && <EmailSignIn onSignedIn={() => navigate(next, { replace: true })} />}
+            {available.email && <EmailOrPassword onSignedIn={() => navigate(next, { replace: true })} />}
 
             {available.demo && (
               <div className={styles.demoBox}>
@@ -119,5 +120,27 @@ export function LoginPage() {
         </p>
       </section>
     </div>
+  )
+}
+
+// The address-based ways in: a code each time, or a password set after a code.
+function EmailOrPassword({ onSignedIn }: { onSignedIn: () => void }) {
+  const [way, setWay] = useState<'code' | 'password' | 'set-password'>('code')
+  return (
+    <>
+      <Segmented
+        label="איך להיכנס עם המייל"
+        className={styles.loginTabs}
+        options={[
+          { value: 'code', label: 'קוד למייל' },
+          { value: 'password', label: 'סיסמה' },
+        ]}
+        value={way === 'code' ? 'code' : 'password'}
+        onChange={setWay}
+      />
+      {way === 'code' && <EmailSignIn onSignedIn={onSignedIn} />}
+      {way === 'password' && <PasswordSignIn onSignedIn={onSignedIn} onForgot={() => setWay('set-password')} />}
+      {way === 'set-password' && <EmailSignIn purpose="set-password" onSignedIn={onSignedIn} focusTitle />}
+    </>
   )
 }

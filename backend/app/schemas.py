@@ -12,8 +12,9 @@ from decimal import Decimal
 from typing import Literal
 from zoneinfo import available_timezones
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app import dns_verify
 from app.demo import Persona
 from app.models import (
     Amenity,
@@ -63,6 +64,7 @@ class InstitutionOut(BaseModel):
     booking_rules: BookingRules
     # The live numbers include made-up students (the demo campus, app/seed/live.py).
     live_simulated: bool = False
+    closes_at: datetime | None = None  # closing: everything in it is deleted then (app/closing.py)
 
 
 class BuildingLocationIn(BaseModel):
@@ -467,6 +469,10 @@ class MeOut(BaseModel):
     role: UserRole
     institution_slug: str
     is_demo: bool = False  # a shared demo user: no e-mail of its own, cannot be deleted
+    has_password: bool = False  # may sign in with a password too (app/passwords.py)
+    # Signed in by an emailed code before: only then may a password be set,
+    # or a Microsoft student setting one would get a second, separate account.
+    can_set_password: bool = False
 
 
 class TokenOut(BaseModel):
@@ -563,6 +569,19 @@ class EmailVerifyIn(BaseModel):
     code: str = Field(pattern=r"^[0-9]{6}$")
 
 
+class PasswordLoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PasswordSetIn(EmailVerifyIn):
+    """A code proves the address; only then is the password set."""
+
+    password: str = Field(min_length=1, max_length=128)
+
+
 # --- The system admin: institutions and their admins' invites ---------------
 
 
@@ -597,6 +616,7 @@ class SystemInstitutionOut(BaseModel):
     is_active: bool
     buildings: int
     admins: int
+    closes_at: datetime | None = None
 
 
 class InviteCreatedOut(BaseModel):
@@ -681,6 +701,18 @@ class LoginRuleOut(BaseModel):
     provider: AuthProvider
     value: str
     approved: bool  # an institution admin's rule waits for the system admin
+    # Or a DNS TXT record proves it (app/dns_verify.py): its name and value.
+    verify_token: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    @property
+    def verify_record(self) -> str | None:
+        return dns_verify.record_name(self.value) if self.verify_token else None
+
+    @computed_field
+    @property
+    def verify_value(self) -> str | None:
+        return dns_verify.record_value(self.verify_token) if self.verify_token else None
 
 
 class SetupOut(BaseModel):

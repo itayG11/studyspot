@@ -30,6 +30,7 @@ from app.bookings import (
     release_no_shows,
     renew,
 )
+from app.closing import refuse_if_closing
 from app.codes import InvalidCode, read_code
 from app.errors import Refusal
 from app.hours import place_status
@@ -73,6 +74,7 @@ def check_in(
     place = _place_from_code(session, code, secret)
     if place.institution_id != user.institution_id:
         raise Refusal(403, "other_institution")
+    refuse_if_closing(session, place.institution_id)
 
     _expire(session, CheckIn.user_id == user.id, now)
     current = session.scalars(
@@ -120,6 +122,7 @@ def still_here(session: Session, user: User, check_in_id: int, now: datetime) ->
     ).first()
     if row is None:
         raise Refusal(404, "check_in_not_found")
+    refuse_if_closing(session, row.institution_id)
     if row.booking_id is not None:
         raise Refusal(409, "still_here_booked")
     if row.still_here_at is not None:

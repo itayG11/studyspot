@@ -45,8 +45,19 @@ from app.errors import Refusal, is_duplicate
 from app.mailer import Mailer, mailer_from_settings
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
+from app.passwords import check_password, check_strength, set_password
 from app.ratelimit import email_start_limit, refresh_address_limit, refresh_limit, sign_in_limit, write_limit
-from app.schemas import DemoLoginIn, EmailStartIn, EmailStartOut, EmailVerifyIn, MeOut, ProvidersOut, TokenOut
+from app.schemas import (
+    DemoLoginIn,
+    EmailStartIn,
+    EmailStartOut,
+    EmailVerifyIn,
+    MeOut,
+    PasswordLoginIn,
+    PasswordSetIn,
+    ProvidersOut,
+    TokenOut,
+)
 from app.sessions import (
     ACCESS_TOKEN_LIFETIME,
     SESSION_LIFETIME,
@@ -214,6 +225,81 @@ def email_verify(
             raise HTTPException(409, "concurrent_sign_in") from None
     except Refusal as refusal:
         db.commit()  # keep the counted wrong try, or the used code
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    _set_refresh_cookie(response, issued.refresh_token, settings)
+    return _token_out(db, user, issued.session, now, settings)
+
+
+def _email_identity(db: Session, email: str) -> UserIdentity:
+    return db.scalars(
+        select(UserIdentity).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
+    ).one()
+
+
+@router.post("/auth/password/set", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
+def password_set(
+    body: PasswordSetIn,
+    request: Request,
+    response: Response,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+):
+    """Sign up, change or reset: always an emailed code first, even when
+    signed in, so a stolen session cannot fix a password on the account.
+    Every other device is signed out; this one gets a new session."""
+    _require_allowed_origin(request, settings)
+    if not settings.email_login_enabled():
+        raise HTTPException(404, "email_login_disabled")
+    try:
+        email = normalize_email(body.email)
+        check_strength(body.password, email)  # before the code: a weak one does not use it up
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        try:
+            with db.begin_nested():
+                user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
+                set_password(_email_identity(db, email), body.password, now)
+                revoke_all(db, user.id, now)
+                issued = start_session(db, user, now)
+        except IntegrityError as error:
+            if not is_duplicate(error):
+                raise
+            db.rollback()
+            raise HTTPException(409, "concurrent_sign_in") from None
+    except Refusal as refusal:
+        db.commit()  # keep the counted wrong try
+        raise HTTPException(refusal.status, refusal.code) from None
+    db.commit()
+    _set_refresh_cookie(response, issued.refresh_token, settings)
+    return _token_out(db, user, issued.session, now, settings)
+
+
+@router.post("/auth/password/login", response_model=TokenOut, dependencies=[Depends(sign_in_limit)])
+def password_login(
+    body: PasswordLoginIn,
+    request: Request,
+    response: Response,
+    db: SessionDep,
+    settings: SettingsDep,
+    now: NowDep,
+):
+    _require_allowed_origin(request, settings)
+    if not settings.email_login_enabled():
+        raise HTTPException(404, "email_login_disabled")
+    try:
+        email = normalize_email(body.email)
+        # As with a code: the domain must still have its rule. First, before
+        # the password: after it, a right password and a wrong one would get
+        # different answers, and that tells a guesser which one was right.
+        if not domain_is_supported(db, email):
+            raise Refusal(403, "email_domain_not_supported")
+        check_password(db, email, body.password, now)
+        with db.begin_nested():
+            user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
+            issued = start_session(db, user, now)
+    except Refusal as refusal:
+        db.commit()  # keep the counted wrong try
         raise HTTPException(refusal.status, refusal.code) from None
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
@@ -459,6 +545,9 @@ def _is_demo(db: Session, user: User) -> bool:
 
 def _me(db: Session, user: User) -> MeOut:
     institution = db.get(Institution, user.institution_id)
+    email = db.scalars(
+        select(UserIdentity).where(UserIdentity.user_id == user.id, UserIdentity.provider == AuthProvider.EMAIL)
+    ).first()
     return MeOut(
         id=user.id,
         email=user.email,
@@ -466,4 +555,6 @@ def _me(db: Session, user: User) -> MeOut:
         role=user.role,
         institution_slug=institution.slug,
         is_demo=_is_demo(db, user),
+        has_password=email is not None and email.password_hash is not None,
+        can_set_password=email is not None,
     )

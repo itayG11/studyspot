@@ -38,6 +38,8 @@ export interface Institution {
   booking_rules: BookingRules
   // The live numbers include made-up people (the demo campus).
   live_simulated: boolean
+  // Closing: everything in it is deleted then. Null when it is not closing.
+  closes_at?: string | null
 }
 
 // capacity, occupied and available count seats a student can walk into now.
@@ -141,6 +143,8 @@ export interface Me {
   role: UserRole
   institution_slug: string
   is_demo: boolean // a shared demo user: no e-mail of its own, cannot be deleted
+  has_password: boolean // may sign in with a password too
+  can_set_password: boolean // signed in by an emailed code before: may set one
 }
 
 export interface TokenResponse {
@@ -262,6 +266,7 @@ export interface SystemInstitution {
   is_active: boolean
   buildings: number
   admins: number
+  closes_at?: string | null
 }
 
 export interface NewInstitution {
@@ -291,6 +296,10 @@ export interface LoginRule {
   provider: 'email' | 'microsoft'
   value: string
   approved: boolean // an institution admin's rule waits for the system admin
+  // A waiting email rule: the DNS TXT record that approves it without the
+  // system admin (its name and value). Null otherwise.
+  verify_record?: string | null
+  verify_value?: string | null
 }
 
 export interface PendingRule extends LoginRule {

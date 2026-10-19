@@ -4,7 +4,7 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { removeLoginRule } from '../api/admin'
-import { approveRule, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getInvites, getPendingRules, revokeInvite } from '../api/system'
+import { approveRule, closeInstitution, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getInvites, getPendingRules, reopenInstitution, revokeInvite } from '../api/system'
 import type { Invite, InviteCreated, PendingRule, SystemInstitution } from '../api/types'
 import { SITE_URL } from '../config'
 import { useAction } from '../hooks/useAction'
@@ -61,7 +61,8 @@ function PendingRules() {
         כללי כניסה לאישור
       </h2>
       <p className={admin.lead}>
-        לפני אישור, בודקים שהסיומת או הארגון באמת של המוסד. למשל, באתר הרשמי של המוסד, או מול מנהל המחשוב שלו.
+        לפני אישור, בודקים שהסיומת או הארגון באמת של המוסד. למשל, באתר הרשמי של המוסד, או מול מנהל המחשוב שלו. סיומת מייל
+        שהמוסד הוכיח ברשומת DNS מאושרת לבד, ולא תופיע כאן.
       </p>
       {!rules.data && rules.error ? (
         <ErrorState error={rules.error} onRetry={rules.reload} />
@@ -166,9 +167,13 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
     <li className={styles.row}>
       <div className={styles.head}>
         <h2 className={styles.name}>{institution.name}</h2>
-        <span className={institution.is_active ? styles.active : styles.hidden}>
-          {institution.is_active ? 'פעיל' : 'מוסתר'}
-        </span>
+        {institution.closes_at ? (
+          <span className={styles.closing}>נסגר, יימחק ב-{formatDay(institution.closes_at, timezone)}</span>
+        ) : (
+          <span className={institution.is_active ? styles.active : styles.hidden}>
+            {institution.is_active ? 'פעיל' : 'מוסתר'}
+          </span>
+        )}
       </div>
       <p className={styles.facts}>
         <span dir="ltr">/{institution.slug}</span> · {institution.buildings} בניינים · {institution.admins} מנהלים
@@ -204,7 +209,12 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
         </div>
       )}
       <ActionError action={action} />
-      {!institution.is_active && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
+      {institution.closes_at ? (
+        <Reopen slug={institution.slug} onDone={onDeleted} />
+      ) : (
+        <CloseInstitution slug={institution.slug} onDone={onDeleted} />
+      )}
+      {!institution.is_active && !institution.closes_at && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
     </li>
   )
 }
@@ -259,6 +269,66 @@ function Invites({ slug, name, version }: { slug: string; name: string; version:
 
 // Only a hidden one is offered: an open institution is hidden first. To
 // delete, its address is typed, so a misclick deletes nothing.
+// Closing: hidden now, nothing new in it, its students told, and all of it
+// deleted in 14 days. Typing the address first, as for deleting.
+function CloseInstitution({ slug, onDone }: { slug: string; onDone: () => void }) {
+  const id = useId()
+  const action = useAction()
+  const [asking, setAsking] = useState(false)
+  const [typed, setTyped] = useState('')
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    if (await action.run(() => closeInstitution(slug))) onDone()
+  }
+
+  if (!asking) {
+    return (
+      <div className={styles.actions}>
+        <Button variant="ghost" size="sm" onClick={() => setAsking(true)}>
+          לסגור את המוסד
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <form className={styles.invite} onSubmit={(event) => void submit(event)}>
+      <p className={styles.note}>
+        המוסד יוסתר מיד, ההזמנות העתידיות יבוטלו, ואי אפשר יהיה להזמין או להיכנס בסריקה. המנהלים יקבלו מייל, והסטודנטים
+        הודעה. אחרי 14 יום יימחקו הבניינים, המקומות וכל החשבונות שבו. עד אז אפשר לבטל.
+      </p>
+      <label htmlFor={id} className={admin.label}>
+        כדי לסגור, הקלד את הכתובת של המוסד: <span dir="ltr">{slug}</span>
+      </label>
+      <input id={id} className={admin.field} dir="ltr" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} />
+      <div className={styles.actions}>
+        <Button type="submit" variant="danger" size="sm" busy={action.busy} disabled={typed.trim() !== slug}>
+          לסגור, ולמחוק בעוד 14 יום
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => { setAsking(false); setTyped('') }}>
+          ביטול
+        </Button>
+      </div>
+      <ActionError action={action} />
+    </form>
+  )
+}
+
+function Reopen({ slug, onDone }: { slug: string; onDone: () => void }) {
+  const action = useAction()
+  return (
+    <div className={styles.actions}>
+      <ConfirmButton
+        label="לבטל את הסגירה"
+        confirmLabel="כן, לבטל את הסגירה"
+        busy={action.busy}
+        onConfirm={() => void action.run(() => reopenInstitution(slug)).then((done) => done && onDone())}
+      />
+      <ActionError action={action} />
+    </div>
+  )
+}
+
 function DeleteInstitution({ slug, onDeleted }: { slug: string; onDeleted: () => void }) {
   const id = useId()
   const action = useAction()

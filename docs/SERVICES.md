@@ -39,6 +39,7 @@
 | `Dependabot` | התראות ובקשות עדכון לספריות עם חולשות | [הגדרות האבטחה](https://github.com/itayG11/studyspot/settings/security_analysis) | חינם | |
 | שירותי ההתראות של הדפדפנים | מעבירים את ההתראות לטלפון: גוגל, אפל, מוזילה ומיקרוסופט | אין חשבון | חינם | אין מפתח לשמור. המפתח שלנו נגזר מ-`JWT_SECRET` |
 | `OpenRouteService` | זמני הליכה אמיתיים בין בניינים | [openrouteservice.org](https://openrouteservice.org) | חינם, 500 בקשות ביום | המפתח `ORS_API_KEY` ב-`Render` בלבד. בלעדיו: הערכה לפי המפה |
+| `Cloudflare DNS over HTTPS` | בודק את רשומת ה-`TXT` שמוכיחה סיומת של מוסד | [cloudflare-dns.com](https://cloudflare-dns.com) | חינם, בלי חשבון | אין מפתח. אפשר להחליף ב-`DNS_RESOLVER_URL` |
 | `gitleaks` | בודק שאין סוד בכל היסטוריית הגיט | `.github/workflows/ci.yml` | חינם, קוד פתוח | |
 | גיבוי לילי | `pg_dump` מוצפן עם `age`, נשמר 30 יום בגיטהאב, ונבדק בשחזור בכל לילה | `.github/workflows/backup.yml` | חינם | המפתח הפרטי רק אצלך. מדריך: `docs/DEPLOY.md` |
 | חבילת הסטודנט של גיטהאב | הטבות לסטודנטים, ומשם הדומיין | [education.github.com/pack](https://education.github.com/pack) | חינם, עד 11 באוקטובר 2028 | |
@@ -56,6 +57,7 @@
 | שירות | מה הוא עושה אצלנו | קישור | מנוי ועלות | מה לזכור |
 |---|---|---|---|---|
 | `Namecheap` | הדומיין `getstudyspot.me`, ורשומות ה-`DNS` | [ap.www.namecheap.com](https://ap.www.namecheap.com) | חינם לשנה, דרך חבילת הסטודנט | החידוש באוקטובר 2027. אימות דו-שלבי מופעל. הרשומות: `docs/DEPLOY.md` |
+| `Google Search Console` | איך האתר מופיע בחיפוש של גוגל, ומפת האתר | [search.google.com/search-console](https://search.google.com/search-console) | חינם | אומת ברשומת `TXT` ב-`Namecheap`. לא מוחקים אותה |
 | `Brevo` | שולח את קוד הכניסה ואת ההתראות במייל | [app.brevo.com](https://app.brevo.com) | חינם, 300 מיילים ביום | המייל נשלח כטקסט בלבד, בלי תמונת מעקב. יומן משלוחים: `Transactional`, ואז `Logs` |
 
 ### התחברות

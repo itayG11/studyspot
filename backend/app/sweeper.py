@@ -26,6 +26,7 @@ from app.activity import Activity
 from app.bookings import NO_SHOW_AFTER
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
 from app.clock import get_now
+from app.closing import delete_due as delete_closed
 from app.email_codes import KEEP_FOR
 from app.history import delete_old_check_ins, record_history
 from app.models import (
@@ -124,6 +125,16 @@ def run_once() -> SweepResult:
             session.commit()
         if removed:
             log.info("demo campus reset: %s buildings, %s places removed", *removed)
+    # An institution whose closing period is over goes (app/closing.py).
+    # Its own transaction: one that fails never undoes the sweep above.
+    try:
+        with SessionLocal(bind=get_engine()) as session:
+            kept = {settings.demo_institution} | ({settings.open_sign_in_institution} - {None})
+            if delete_closed(session, now, kept, settings.system_admins()):
+                log.info("closed institutions deleted")
+            session.commit()
+    except Exception:
+        log.exception("closed institutions not deleted; the next round tries again")
     # Last, after the reset: it may remove buildings. Its own session, and
     # never a reason for the sweep to fail (app/walking.py).
     try:

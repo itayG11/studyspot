@@ -25,6 +25,7 @@ from sqlalchemy import and_, delete, exists, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.bookings import NO_SHOW_AFTER, check_times, floor_to_slot, holding, same_resource
+from app.closing import refuse_if_closing
 from app.errors import Refusal
 from app.models import AuthProvider, Booking, BookingStatus, Institution, Place, PlaceKind, User, UserIdentity
 from app.models.waitlist import WaitlistEntry
@@ -64,6 +65,7 @@ def join(session: Session, user: User, place_id: int, starts_at: datetime, ends_
     ).first()
     if place is None or place.institution_id != user.institution_id:
         raise Refusal(404, "place_not_found")
+    refuse_if_closing(session, place.institution_id)
     if place.kind != PlaceKind.GROUP_ROOM:
         raise Refusal(409, "waitlist_rooms_only")  # a lab has many seats: book another
     shared_demo = session.scalars(

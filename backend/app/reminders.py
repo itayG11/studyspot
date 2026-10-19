@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app import waitlist
+from app import closing, waitlist
 from app.bookings import NO_SHOW_AFTER
 from app.hours import place_status
 from app.models import Booking, BookingStatus, CheckIn, Institution
@@ -144,6 +144,7 @@ def send_reminders(session: Session, push: PushSender | None, now: datetime, ema
     for item in due:
         sent += notify(session, item.user_id, item.notice, push, email, now)
     session.commit()
+    sent += closing.send_notices(session, push, email, now)  # an institution closing (app/closing.py)
     return sent
 
 
@@ -163,7 +164,11 @@ def next_due(session: Session, now: datetime) -> datetime | None:
     first_still_here = session.scalar(
         select(func.min(CheckIn.expires_at - STILL_HERE_AHEAD)).where(_asking_still_here(now))
     )
-    times = [t for t in (first_start, first_release, first_still_here, waitlist.next_due(session, now)) if t is not None]
+    times = [
+        t
+        for t in (first_start, first_release, first_still_here, waitlist.next_due(session, now), closing.next_due(session, now))
+        if t is not None
+    ]
     return min(times) if times else None
 
 

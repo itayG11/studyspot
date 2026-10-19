@@ -28,3 +28,9 @@ export const approveRule = (id: number) =>
 // rule, the demo campus, or the system admin's own.
 export const deleteInstitution = (slug: string) =>
   api<void>(institution(slug), { method: 'DELETE', auth: true })
+// Closing: hidden now, deleted in 14 days, and its students told. Reopening
+// takes it back before then.
+export const closeInstitution = (slug: string) =>
+  api<SystemInstitution>(`${institution(slug)}/close`, { method: 'POST', auth: true })
+export const reopenInstitution = (slug: string) =>
+  api<SystemInstitution>(`${institution(slug)}/reopen`, { method: 'POST', auth: true })

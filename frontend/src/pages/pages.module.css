@@ -345,3 +345,44 @@
     transform: none;
   }
 }
+
+/* A new password: the field with a show button, and the rules ticking. */
+.passwordRow {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.passwordRow .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruleList {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.ruleList li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.ruleList svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.ruleMet {
+  color: var(--free);
+}
+
+.loginTabs {
+  justify-self: start;
+}

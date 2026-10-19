@@ -5,12 +5,14 @@
 // happened with Braude's). So the page says so, any code still in time
 // works (app/email_codes.py), and a new code is offered only after a minute.
 
-import { useEffect, useId, useState, type FormEvent } from 'react'
-import { Mail } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { KeyRound, Mail } from 'lucide-react'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { errorMessage } from '../i18n/errors'
+import { passwordReady } from '../logic/passwordRules'
 import { Button, Notice } from '../ui'
+import { NewPasswordField } from './NewPasswordField'
 import styles from './pages.module.css'
 
 // Digits only: a code pasted as "123 456" or with a dash still works.
@@ -34,11 +36,25 @@ function useCountdown(from: number | null): number {
   return Math.max(0, RESEND_AFTER_S - Math.floor(elapsed / 1000))
 }
 
-export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
-  const { emailStart, emailVerify } = useAuth()
+interface Props {
+  onSignedIn: () => void
+  // 'set-password': after the code, a new password too. The same step signs
+  // up, changes and resets it (the server's POST /auth/password/set).
+  purpose?: 'sign-in' | 'set-password'
+  // The account's own address (my area): no address field to fill.
+  fixedEmail?: string
+  title?: string
+  // Opened by a button that is now gone ("forgot it"): focus comes here.
+  focusTitle?: boolean
+}
+
+export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title, focusTitle = false }: Props) {
+  const { emailStart, emailVerify, passwordSet } = useAuth()
+  const setting = purpose === 'set-password'
   const [step, setStep] = useState<'email' | 'code'>('email')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(fixedEmail ?? '')
   const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
   // Which action is on its way: only its own button shows the spinner.
   const [busy, setBusy] = useState<'send' | 'verify' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,6 +65,10 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   const [sentAt, setSentAt] = useState<number | null>(null)
   const wait = useCountdown(sentAt)
   const id = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (focusTitle) titleRef.current?.focus() // once, when it opens
+  }, [focusTitle])
 
   async function run(action: 'send' | 'verify', work: () => Promise<void>) {
     setBusy(action)
@@ -78,18 +98,31 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
   function checkCode(event: FormEvent) {
     event.preventDefault()
     void run('verify', async () => {
-      await emailVerify(email.trim(), code)
+      if (setting) await passwordSet(email.trim(), code, password)
+      else await emailVerify(email.trim(), code)
       onSignedIn()
     })
   }
 
   return (
     <div className={styles.emailBox}>
-      <h2 className={styles.demoTitle}>
-        <Mail aria-hidden="true" /> כניסה בקוד למייל
+      <h2 className={styles.demoTitle} tabIndex={-1} ref={titleRef}>
+        {setting ? <KeyRound aria-hidden="true" /> : <Mail aria-hidden="true" />} {title ?? (setting ? 'סיסמה חדשה' : 'כניסה בקוד למייל')}
       </h2>
+      {setting && step === 'email' && (
+        <p className={styles.demoText}>קודם שולחים קוד למייל, כדי לוודא שהכתובת שלך. אחר כך בוחרים סיסמה.</p>
+      )}
 
-      {step === 'email' ? (
+      {step === 'email' && fixedEmail !== undefined ? (
+        <form className={styles.emailForm} onSubmit={sendCode}>
+          <p className={styles.demoText}>
+            הקוד יישלח אל <bdi dir="ltr">{fixedEmail}</bdi>.
+          </p>
+          <Button type="submit" block busy={busy === 'send'}>
+            שליחת קוד
+          </Button>
+        </form>
+      ) : step === 'email' ? (
         <form className={styles.emailForm} onSubmit={sendCode}>
           <label htmlFor={`${id}-email`} className={styles.fieldLabel}>
             כתובת המייל של המכללה
@@ -141,14 +174,21 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
           <span id={`${id}-code-hint`} className={styles.fieldHint}>
             קוד בן 6 ספרות. לא הגיע? כדאי לבדוק גם בתיקיית הספאם.
           </span>
-          <Button type="submit" block busy={busy === 'verify'} disabled={code.length !== 6 || busy === 'send'}>
-            כניסה
+          {setting && <NewPasswordField value={password} onChange={setPassword} />}
+          <Button
+            type="submit"
+            block
+            busy={busy === 'verify'}
+            disabled={code.length !== 6 || busy === 'send' || (setting && !passwordReady(password))}
+          >
+            {setting ? 'שמירת הסיסמה' : 'כניסה'}
           </Button>
+          {setting && <span className={styles.fieldHint}>שמירת סיסמה חדשה מנתקת את החשבון מכל שאר המכשירים.</span>}
           <div className={styles.emailActions}>
             <Button variant="ghost" size="sm" busy={busy === 'send'} disabled={busy === 'verify' || wait > 0} onClick={() => sendCode()}>
               {wait > 0 ? `שליחת קוד חדש בעוד ${wait} שניות` : 'שליחת קוד חדש'}
             </Button>
-            <Button
+            {fixedEmail === undefined && <Button
               variant="ghost"
               size="sm"
               disabled={busy !== null}
@@ -160,7 +200,7 @@ export function EmailSignIn({ onSignedIn }: { onSignedIn: () => void }) {
               }}
             >
               שינוי כתובת
-            </Button>
+            </Button>}
           </div>
         </form>
       )}

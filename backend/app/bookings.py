@@ -13,6 +13,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.closing import refuse_if_closing
 from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
 from app.hours import institution_zone, place_status
 from app.models import (
@@ -132,6 +133,7 @@ def create_booking(
         raise Refusal(404, "place_not_found")
     if place.institution_id != user.institution_id:
         raise Refusal(403, "other_institution")
+    refuse_if_closing(session, place.institution_id)
     if not is_bookable(place.kind):
         raise Refusal(409, "not_bookable")
     _check_seat(session, place, seat_id)
@@ -233,6 +235,7 @@ def extend_booking(session: Session, user: User, booking_id: int, now: datetime)
     ).first()
     if booking is None:
         raise Refusal(404, "booking_not_found")
+    refuse_if_closing(session, booking.institution_id)
     if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
         raise Refusal(409, "not_checked_in")
     if not renew(session, booking, now):

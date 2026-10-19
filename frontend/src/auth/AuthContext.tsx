@@ -16,6 +16,8 @@ interface AuthValue {
   // Resolves to how long the code lasts, in seconds.
   emailStart: (email: string) => Promise<number>
   emailVerify: (email: string, code: string) => Promise<void>
+  passwordSet: (email: string, code: string, password: string) => Promise<void>
+  passwordLogin: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
   deleteAccount: () => Promise<void>
@@ -45,6 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     emailStart: async (email) => (await client.emailStart(email)).expires_in,
     emailVerify: async (email, code) => {
       await client.emailVerify(email, code)
+    },
+    passwordSet: async (email, code, password) => {
+      await client.passwordSet(email, code, password)
+    },
+    passwordLogin: async (email, password) => {
+      await client.passwordLogin(email, password)
     },
     // An invite waiting in this tab is the signed-in person's: it goes too.
     // And this browser's push subscription: the next person here must not

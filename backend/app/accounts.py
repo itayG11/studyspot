@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.closing import refuse_if_closing
 from app.errors import Refusal
 from app.models import (
     AdminInvite,
@@ -77,6 +78,8 @@ def sign_in(
     else:
         raise Refusal(403, "institution_not_supported")
 
+    if existing is None or existing.institution_id != institution_id:
+        refuse_if_closing(db, institution_id)  # no one new joins one closing
     if link is None:
         if rule is None:  # a new user of the open campus
             joined_today = db.scalar(
