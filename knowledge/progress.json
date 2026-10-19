@@ -1,13 +1,13 @@
 {
   "updated": "2026-10-19",
-  "current_wave": 12,
+  "current_wave": 13,
   "total_waves": 16,
   "estimate_finish": "25 עד 28 באוקטובר 2026, הערכה לפי הקצב",
   "waiting_for_user": [
-    "מיזוג itayG11/studyspot#8",
-    "20.10: לבדוק ב-Search Console שמפת האתר נקראה"
+    "20.10: לבדוק ב-Search Console שמפת האתר נקראה",
+    "בטלפון: ללחוץ על 'יומן של אפל' או 'יומן Google' ולבדוק שההזמנות מופיעות"
   ],
-  "next_step": "אחרי המיזוג: תוכנית לגל 12, קובץ יומן חתום",
+  "next_step": "סשן חדש, ותוכנית לגל 13: קוד כניסה מתחלף על מסך ליד הדלת",
   "waves": [
     {
       "n": 1,
@@ -67,12 +67,12 @@
     {
       "n": 12,
       "title": "קובץ יומן חתום",
-      "status": "active"
+      "status": "done"
     },
     {
       "n": 13,
       "title": "קוד כניסה מתחלף",
-      "status": "todo"
+      "status": "active"
     },
     {
       "n": 14,
