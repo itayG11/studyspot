@@ -18,11 +18,13 @@ from app.errors import Refusal
 from app.models import (
     Building,
     BuildingStatus,
+    CheckInMode,
     ClassSlot,
     Institution,
     OccupancyHistory,
     Place,
     PlaceKind,
+    PlaceScreen,
     User,
     floor_exists,
 )
@@ -157,8 +159,8 @@ def create_place(
 
 def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
     """Put the demo campus back to its seed data: delete the buildings and
-    places visitors added, and put back seed buildings they moved and seed
-    codes they revoked. Returns (buildings, places) removed. The database
+    places visitors added, and put back seed buildings they moved, seed
+    codes they revoked and places they put on a screen. Returns (buildings, places) removed. The database
     removes the seats, hours, bookings and check-ins of what is deleted
     (ON DELETE CASCADE)."""
     if slug != _DEMO_SLUG:
@@ -197,7 +199,15 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
             .where(Building.institution_id == institution.id, Building.code == code)
             .values(latitude=latitude, longitude=longitude)
         )
-    db.execute(update(Place).where(Place.institution_id == institution.id).values(code_version=1))
+    # Back to the printed signs too (wave 13): a visitor's screen link ends.
+    db.execute(
+        delete(PlaceScreen).where(
+            PlaceScreen.place_id.in_(select(Place.id).where(Place.institution_id == institution.id))
+        )
+    )
+    db.execute(
+        update(Place).where(Place.institution_id == institution.id).values(code_version=1, check_in_mode=CheckInMode.SIGN)
+    )
     db.flush()
     db.expire_all()
     return (len(extra_buildings), len(extra_places))

@@ -1,0 +1,127 @@
+/* The screen by the door: read from a few steps away, all day. */
+
+.screen {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--s-6);
+  min-height: 100dvh;
+  padding: var(--s-8) var(--s-4);
+  text-align: center;
+  background: var(--night);
+  color: var(--on-night);
+}
+
+.head {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.building {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2.25rem, 7vw, 4.5rem);
+  line-height: 1.05;
+}
+
+.code {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  margin: 0;
+}
+
+.qr {
+  /* Large but whole on a phone held up for testing, and on a tablet. */
+  width: min(70vw, 52vh, 26rem);
+  aspect-ratio: 1;
+  padding: var(--s-3);
+  background: #fff; /* a QR code needs a light field around it, in dark mode too */
+  border-radius: var(--r-md);
+}
+
+.call {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.bar {
+  width: min(70vw, 52vh, 26rem);
+  height: 6px;
+  background: var(--primary);
+  border-radius: var(--r-pill);
+  transform-origin: right; /* empties toward the right, as Hebrew reads */
+  animation: drain linear forwards;
+}
+
+@keyframes drain {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.left {
+  margin: 0;
+  font-size: var(--text-sm);
+  opacity: 0.75;
+}
+
+.count {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.count strong {
+  font-size: var(--text-2xl);
+  color: var(--free);
+}
+
+.closed {
+  max-width: 30rem;
+  font-size: var(--text-xl);
+}
+
+.quiet {
+  opacity: 0.75;
+}
+
+.offline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  color: var(--busy);
+}
+
+.full {
+  position: fixed;
+  inset-block-end: var(--s-4);
+  inset-inline-start: var(--s-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentcolor;
+  border-radius: var(--r-pill);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+:fullscreen .full {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}

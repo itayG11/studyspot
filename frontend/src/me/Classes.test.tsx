@@ -241,7 +241,9 @@ describe('the timetable', () => {
     expect(await within(details).findByRole('link', { name: /ספרייה/ })).toBeInTheDocument()
     expect(asked).toContain('6')
     await user.click(within(details).getByRole('button', { name: 'בין שיעורים ביום ראשון' }))
-    expect(scrolled).toHaveBeenCalled()
+    // JumpTo scrolls on the next animation frame, once the new day is drawn:
+    // checked at once, a busy machine fails this before the frame comes.
+    await waitFor(() => expect(scrolled).toHaveBeenCalled())
     const section = await screen.findByRole('region', { name: 'בין שיעורים, יום ראשון' })
     await waitFor(() => expect(section).toHaveFocus())
     expect(within(section).getByRole('button', { name: 'ראשון', pressed: true })).toBeInTheDocument()

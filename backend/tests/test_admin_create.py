@@ -387,3 +387,15 @@ def test_any_other_database_refusal_is_a_bug_not_name_taken(client, admin, monke
     client.user = admin
     with pytest.raises(IntegrityError):
         add_building(client, code="Z")
+
+
+def test_the_reset_puts_screens_back_to_printed_signs(client, session, demo, demo_admin, demo_on):
+    from app.models import CheckInMode, PlaceScreen
+
+    client.user = demo_admin
+    lab = next(p for b in demo.buildings for p in b.places if p.name == "M206")
+    client.patch(f"/admin/places/{lab.id}/check-in-mode", json={"mode": "screen"})
+    assert client.post(f"/admin/places/{lab.id}/screen").status_code == 200
+    campus_admin.reset_demo_extras(session, "demo")
+    assert session.get(Place, lab.id).check_in_mode is CheckInMode.SIGN
+    assert session.get(PlaceScreen, lab.id) is None

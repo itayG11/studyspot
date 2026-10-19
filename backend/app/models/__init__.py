@@ -6,6 +6,7 @@ from app.models.campus import (
     Amenity,
     Building,
     BuildingStatus,
+    CheckInMode,
     Institution,
     Place,
     PlaceAmenity,
@@ -33,6 +34,7 @@ from app.models.people import (
     UserRole,
 )
 from app.models.push import ClosingNotice, NoticeEmail, PushSubscription
+from app.models.screens import PlaceScreen
 from app.models.waitlist import WaitlistEntry
 
 __all__ = [
@@ -49,6 +51,7 @@ __all__ = [
     "CalendarFeed",
     "CheckIn",
     "CheckInEndReason",
+    "CheckInMode",
     "ClassSlot",
     "ClosingNotice",
     "EmailSignInCode",
@@ -61,6 +64,7 @@ __all__ = [
     "PlaceAmenity",
     "PlaceAtmosphere",
     "PlaceKind",
+    "PlaceScreen",
     "PushSubscription",
     "Seat",
     "SpecialPeriod",

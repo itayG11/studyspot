@@ -853,3 +853,15 @@ class CalendarFeedOut(BaseModel):
     url: str | None = None
     created_at: datetime | None = None
     last_read_at: datetime | None = None
+
+
+class ScreenOut(BaseModel):
+    """What the screen by the door shows (app/screens.py). No names: only
+    the place, its code for this minute, and how many are in."""
+
+    place_name: str
+    building_code: str
+    code: str | None  # null while the place is closed
+    seconds_left: int  # until the next code
+    occupied: int
+    capacity: int

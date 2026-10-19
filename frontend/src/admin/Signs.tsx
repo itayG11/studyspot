@@ -13,6 +13,7 @@ import { Printer } from 'lucide-react'
 import { Link } from 'react-router'
 import { Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
+import { ScreenControls } from './ScreenControls'
 import { useQrImage } from './useQrImage'
 import { useInstitution } from '../institution'
 
@@ -21,6 +22,8 @@ export function Signs() {
   const codes = useApi(() => getCodes(slug), `admin-codes-${slug}`)
   // Codes replaced on this visit, by place, shown instead of the old ones.
   const [replaced, setReplaced] = useState<Record<number, PlaceCode>>({})
+  // A place switched to a screen or back (wave 13): the same code, not a fresh one.
+  const [updated, setUpdated] = useState<Record<number, PlaceCode>>({})
 
   if (codes.error) return <ErrorState error={codes.error} onRetry={codes.reload} />
   if (!codes.data) return <PageLoading />
@@ -43,13 +46,18 @@ export function Signs() {
       </div>
       <ul className={styles.signs}>
         {codes.data.map((original) => {
-          const code = replaced[original.place_id] ?? original
+          const fresh = replaced[original.place_id]
+          const code = updated[original.place_id] ?? fresh ?? original
           return (
             <Sign
               key={original.place_id}
               code={code}
-              fresh={code !== original}
-              onReplaced={(next) => setReplaced((all) => ({ ...all, [next.place_id]: next }))}
+              fresh={fresh !== undefined}
+              onReplaced={(next) => {
+                setUpdated(({ [next.place_id]: _, ...rest }) => rest)
+                setReplaced((all) => ({ ...all, [next.place_id]: next }))
+              }}
+              onUpdated={(next) => setUpdated((all) => ({ ...all, [next.place_id]: next }))}
             />
           )
         })}
@@ -58,23 +66,41 @@ export function Signs() {
   )
 }
 
-function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; onReplaced: (next: PlaceCode) => void }) {
+function Sign({
+  code,
+  fresh,
+  onReplaced,
+  onUpdated,
+}: {
+  code: PlaceCode
+  fresh: boolean
+  onReplaced: (next: PlaceCode) => void
+  onUpdated: (next: PlaceCode) => void
+}) {
+  const onScreen = code.check_in_mode === 'screen'
   const qr = useQrImage(scanUrl(SITE_URL, code.code))
   const action = useAction()
   const name = `${code.place_name}, בניין ${code.building_code}`
 
   return (
-    <li className={fresh ? `${styles.sign} ${styles.fresh}` : styles.sign} aria-label={name}>
+    // A place on a screen has no sign to print: its printed code no longer works.
+    <li className={[styles.sign, fresh && styles.fresh, onScreen && styles.onScreen].filter(Boolean).join(' ')} aria-label={name}>
       <div className={styles.signHead}>
         <span className={styles.building}>{code.building_code}</span>
         <h2 className={styles.signName}>{code.place_name}</h2>
       </div>
-      {qr ? <img className={styles.qr} src={qr} alt={`קוד QR לכניסה ל${code.place_name}`} /> : <div className={styles.qr} />}
-      <p className={styles.signCall}>סרקו כדי להיכנס</p>
+      {onScreen ? (
+        <p className={styles.signCall}>נכנסים עם הקוד שעל המסך ליד הדלת</p>
+      ) : (
+        <>
+          {qr ? <img className={styles.qr} src={qr} alt={`קוד QR לכניסה ל${code.place_name}`} /> : <div className={styles.qr} />}
+          <p className={styles.signCall}>סרקו כדי להיכנס</p>
+        </>
+      )}
       <span className={styles.signBrand}>StudySpot · בניין {code.building_code}</span>
       {fresh && (
         <span role="status" className={`${styles.screenOnly} ${styles.freshNote}`}>
-          קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.
+          {onScreen ? 'קוד חדש. המסך עובר אליו לבד, ואין מה להדפיס.' : 'קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.'}
         </span>
       )}
       <div className={styles.signActions}>
@@ -95,6 +121,7 @@ function Sign({ code, fresh, onReplaced }: { code: PlaceCode; fresh: boolean; on
           {action.error}
         </Notice>
       )}
+      <ScreenControls code={code} onChanged={onUpdated} />
     </li>
   )
 }

@@ -9,6 +9,11 @@ describe('placeIdFromCode', () => {
     expect(placeIdFromCode(`  p12.v3.${SIG}\n`)).toBe(12) // pasted with spaces
   })
 
+  it('and from a screen code, which carries its minute', () => {
+    expect(placeIdFromCode(`p12.v3.w29345678.${SIG}`)).toBe(12)
+    expect(placeIdFromCode(`p12.v3.w0.${SIG}`)).toBeNull()
+  })
+
   it('anything else is not a code', () => {
     expect(placeIdFromCode('hello')).toBeNull()
     expect(placeIdFromCode(`p0.v1.${SIG}`)).toBeNull()

@@ -31,7 +31,7 @@ from app.bookings import (
     renew,
 )
 from app.closing import refuse_if_closing
-from app.codes import InvalidCode, read_code
+from app.codes import InvalidCode, is_fresh, read_code
 from app.errors import Refusal
 from app.hours import place_status
 from app.models import (
@@ -40,6 +40,7 @@ from app.models import (
     BookingStatus,
     CheckIn,
     CheckInEndReason,
+    CheckInMode,
     Place,
     PlaceKind,
     Seat,
@@ -71,7 +72,7 @@ def check_in(
     now: datetime,
     secret: bytes,
 ) -> CheckInResult:
-    place = _place_from_code(session, code, secret)
+    place = _place_from_code(session, code, secret, now)
     if place.institution_id != user.institution_id:
         raise Refusal(403, "other_institution")
     refuse_if_closing(session, place.institution_id)
@@ -298,7 +299,7 @@ def _capped(moment: datetime, closes_at: datetime | None) -> datetime:
     return min(moment, closes_at) if closes_at is not None else moment
 
 
-def _place_from_code(session: Session, code: str, secret: bytes) -> Place:
+def _place_from_code(session: Session, code: str, secret: bytes, now: datetime) -> Place:
     try:
         claim = read_code(code, secret)
     except InvalidCode:
@@ -312,6 +313,15 @@ def _place_from_code(session: Session, code: str, secret: bytes) -> Place:
     # A revoked code (old version) is treated exactly like a forged one.
     if place is None or place.code_version != claim.version:
         raise Refusal(400, "invalid_code")
+    # Each place takes one kind of code (wave 13). On a screen, the printed
+    # sign is refused, or an old photo of it would still work from home.
+    on_screen = place.check_in_mode is CheckInMode.SCREEN
+    if on_screen != (claim.window is not None):
+        raise Refusal(400, "invalid_code")
+    # A genuine screen code from an earlier minute: the student scanned too
+    # long ago (or got a photo); they scan the screen again.
+    if claim.window is not None and not is_fresh(claim.window, now):
+        raise Refusal(400, "screen_code_expired")
     return place
 
 

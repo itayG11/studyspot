@@ -56,6 +56,9 @@ export const routes = [
   { path: 'places', Component: PlacesRedirect },
   { path: 'places/:placeId', Component: PlaceRedirect },
   { path: 'spaces/:placeId', Component: PlaceRedirect },
+  // The screen by the door (wave 13): a page of its own, without the site's
+  // header, which a tablet shows all day. Its link is after "#".
+  { path: 'screen', ...page(() => import('./screen/ScreenPage').then((m) => m.ScreenPage)) },
   // The admin page is at the institution's address now: /braude/admin.
   { path: 'admin', element: <ToHomeInstitution path="/admin" /> },
   // Each institution's own pages: /demo, /braude/spaces/12. A fixed address
