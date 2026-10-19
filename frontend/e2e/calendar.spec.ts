@@ -27,7 +27,12 @@ test('make a feed, read it signed out, remove it', async ({ page, playwright }) 
   await page.goto('/me')
   await page.getByRole('button', { name: 'ליצור קישור ליומן' }).click()
   const address = (await page.getByText(/calendar\.ics\?t=/).textContent())!.trim()
-  await expect(page.getByRole('link', { name: /יומן Google/ })).toHaveAttribute('href', /calendar\.google\.com/)
+  // The whole address parsed, not a pattern that could match anywhere in it.
+  const google = new URL((await page.getByRole('link', { name: /יומן Google/ }).getAttribute('href'))!)
+  expect(google.origin).toBe('https://calendar.google.com')
+  const token = new URL(address).searchParams.get('t')!
+  expect(google.searchParams.get('cid')).toMatch(/^webcal:\/\//)
+  expect(new URL(google.searchParams.get('cid')!.replace(/^webcal:/, 'https:')).searchParams.get('t')).toBe(token)
 
   // A calendar app has no cookie: a fresh request context, signed out.
   const outside = await playwright.request.newContext()
