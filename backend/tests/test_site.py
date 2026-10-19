@@ -199,6 +199,7 @@ def test_robots_keeps_personal_pages_out_of_search_and_only_them():
     for page in ("/me", "/admin", "/system", "/invite", "/scan", "/login", "/signed-in", "/*/me", "/*/admin"):
         assert f"Disallow: {page}$" in rules
     assert not re.search(r"Disallow: /[\w-]+\n", rules)  # no rule without its "$"
+    assert "Disallow: /s/\n" in rules  # shared stays (app/shares.py)
 
 
 def test_the_site_address_is_the_same_everywhere_it_is_written():

@@ -36,6 +36,9 @@ export const routes = [
         path: 'system',
         ...page(() => import('./system/SystemPage').then(({ SystemPage }) => () => <RequireSystemAdmin><SystemPage /></RequireSystemAdmin>)),
       },
+      // "I'm studying here" (wave 14): a friend's link. Its preview for chat
+      // apps is made by the server (backend app/site.py).
+      { path: 's/:token', ...page(() => import('./share/SharePage').then((m) => m.SharePage)) },
       { path: 'invite', ...page(() => import('./pages/InvitePage').then((m) => m.InvitePage)) },
       { path: 'institutions', ...page(() => import('./pages/InstitutionsPage').then((m) => m.InstitutionsPage)) },
       { path: 'login', Component: LoginPage },

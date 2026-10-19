@@ -204,6 +204,9 @@ calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=120
 # requests with made-up tokens from a few addresses could use up a shared
 # limit, and every real screen on every campus would go dark (wave 13 review).
 screen_limit = per_ip("screen", limit=300, window_seconds=60, evict=True)
+# A shared "I'm studying here" link (app/shares.py): opened by friends and by
+# chat apps fetching the preview. Per address only, like the screen.
+share_limit = per_ip("share", limit=60, window_seconds=60, evict=True)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:

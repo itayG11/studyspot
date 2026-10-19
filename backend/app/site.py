@@ -12,15 +12,24 @@ Run with:  STATIC_DIR=../frontend/dist uvicorn app.site:app
 """
 
 import os
+from datetime import datetime
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
+from sqlalchemy.orm import Session
 from starlette.middleware.gzip import GZipMiddleware
 
+from app import shares
+from app.api.deps import get_session
+from app.api.shares import TOKEN, share_key
+from app.clock import get_now
+from app.config import Settings, get_settings
 from app.edge import Edge, configure_logging
 from app.main import app as api
 from app.main import lifespan
+from app.ratelimit import share_limit
 
 # What the page may load, and from where: only this site, plus the map's
 # tiles. No inline scripts, so injected HTML cannot run code. Styles set
@@ -87,6 +96,24 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     # asks; Starlette leaves out what is compressed already (images, fonts)
     # and anything under 1 KB.
     site.add_middleware(GZipMiddleware, minimum_size=1024)
+
+    # "I'm studying here" (app/shares.py): the web app's page, with a preview
+    # for chat apps, which read the HTML and never run the scripts. Read per
+    # request: the preview changes when the stay ends.
+    index_html = index.read_text(encoding="utf-8") if index.is_file() else ""
+
+    @site.api_route(
+        "/s/{token}", methods=["GET", "HEAD"], include_in_schema=False, dependencies=[Depends(share_limit)]
+    )
+    def shared_stay(
+        token: Annotated[str, TOKEN],
+        db: Annotated[Session, Depends(get_session)],
+        now: Annotated[datetime, Depends(get_now)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> HTMLResponse:
+        view = shares.view_for(db, token, now, share_key(settings))
+        headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
+        return HTMLResponse(shares.preview_html(index_html, view), headers=headers)
 
     # HEAD too: uptime monitors and `curl -I` ask that way.
     @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)

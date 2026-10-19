@@ -426,3 +426,29 @@
   overflow-wrap: anywhere;
   user-select: all;
 }
+
+/* "I'm studying here" (ShareStay.tsx): opens under the buttons, full width. */
+.sharePanel {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-4);
+}
+
+.shareName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  cursor: pointer;
+}
+
+.shareUrl {
+  flex-basis: 100%;
+  min-width: 0;
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  direction: ltr;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+}

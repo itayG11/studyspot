@@ -16,5 +16,7 @@ Disallow: /*/admin$
 # With its tab in the address: /braude/admin?tab=signs
 Disallow: /admin?
 Disallow: /*/admin?
+# A shared "I'm studying here" link: one person's stay, never for search
+Disallow: /s/
 
 Sitemap: https://getstudyspot.me/sitemap.xml

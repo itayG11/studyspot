@@ -865,3 +865,30 @@ class ScreenOut(BaseModel):
     seconds_left: int  # until the next code
     occupied: int
     capacity: int
+
+
+class ShareIn(BaseModel):
+    """What to share (app/shares.py): the current check-in, or a booking."""
+
+    kind: Literal["check_in", "booking"]
+    id: int = Field(gt=0)
+    show_name: bool = False
+
+
+class ShareLinkOut(BaseModel):
+    url: str
+
+
+class ShareOut(BaseModel):
+    """What a friend sees. The name only if the student chose to show it."""
+
+    name: str | None
+    here_now: bool
+    starts_at: datetime
+    until: datetime
+    place_id: int
+    place_name: str
+    building_code: str
+    building_name: str | None
+    slug: str
+    timezone: str
