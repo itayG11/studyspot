@@ -68,6 +68,10 @@ function ApiKeys({ slug, keys, onChange }: { slug: string; keys: ApiKey[] | null
         מפתח מאפשר למערכות של המוסד לקרוא את הבניינים, המקומות והתפוסה החיה, בלי שם ובלי מייל של אף אחד.{' '}
         <Link to="/developers">איך משתמשים, למפתחים</Link>
       </p>
+      <p className={styles.screenNote}>
+        מפתח אחד לכל מערכת של המוסד, לא לכל מסך: השרת של המוסד מחזיק את המפתח, ומחלק את המספרים לכל המסכים שלו. כך גם
+        30 מסכים הם מפתח אחד, ואם הוא דולף מבטלים רק אותו. למסכים בלי שרת משלהם, הווידג'ט שלמטה עובד בלי מפתח בכלל.
+      </p>
       <form
         className={styles.subform}
         onSubmit={(event) => {
@@ -76,7 +80,7 @@ function ApiKeys({ slug, keys, onChange }: { slug: string; keys: ApiKey[] | null
         }}
       >
         <label className={styles.label} htmlFor="api-key-name">
-          למה המפתח? למשל "המסך בכניסה לספרייה"
+          למה המפתח? למשל "אתר המוסד" או "המסכים בלובי"
         </label>
         <input
           id="api-key-name"
