@@ -45,6 +45,7 @@ from app.seed.demo import DEMO
 from app.seed.live import simulate_live
 from app.waitlist import delete_past as delete_past_waits
 from app.walking import matrix_from_settings, refresh_walks
+from app.webhook_tester import delete_old as delete_old_test_hits
 from app.webhooks import check_in_event, deliver_due, webhook_key
 from app.webhooks import delete_old as delete_old_deliveries
 from app.webhooks import get_client as webhook_client
@@ -109,6 +110,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     session.execute(delete(NoticeEmail).where(NoticeEmail.sent_at < now - NOTICE_EMAILS_KEPT))
     delete_past_waits(session, now)
     delete_old_deliveries(session, now)  # the webhook log is kept a week
+    delete_old_test_hits(session, now)  # the demo's tester shows the last hour
     session.flush()
     return SweepResult(
         no_shows=no_shows,

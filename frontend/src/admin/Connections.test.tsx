@@ -9,7 +9,8 @@ const api = vi.hoisted(() => ({ getApiKeys: vi.fn(), makeApiKey: vi.fn(), revoke
 vi.mock('../api/admin', () => api)
 vi.mock('./Webhooks', () => ({ Webhooks: () => null }))
 vi.mock('./EmbedCode', () => ({ EmbedCode: () => null }))
-vi.mock('../institution', () => ({ useInstitution: () => ({ slug: 'braude', timezone: 'Asia/Jerusalem' }) }))
+vi.mock('./WebhookTester', () => ({ WebhookTester: () => null }))
+vi.mock('../institution', () => ({ useInstitution: () => ({ slug: 'braude', timezone: 'Asia/Jerusalem' }), useLiveSimulated: () => false }))
 
 const RAW = 'ss_live_' + 'A'.repeat(43)
 const key: ApiKey = {

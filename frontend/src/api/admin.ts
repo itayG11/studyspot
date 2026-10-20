@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, WebhookTester, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -84,3 +84,10 @@ export const testWebhook = (id: number) =>
 export const getDeliveries = (id: number) => api<WebhookDelivery[]>(`/admin/webhooks/${id}/deliveries`, { auth: true })
 export const redeliver = (deliveryId: number) =>
   api<WebhookDelivery>(`/admin/webhook-deliveries/${deliveryId}/redeliver`, { method: 'POST', auth: true })
+
+// Wave 14.5: the demo campus's webhook tester.
+export const getTester = (slug: string) => api<WebhookTester>(`${own(slug)}/webhook-tester`, { auth: true })
+export const setTesterFailing = (slug: string, failing: boolean) =>
+  api<WebhookTester>(`${own(slug)}/webhook-tester`, { method: 'PATCH', body: { failing }, auth: true })
+export const sendTesterSample = (slug: string) =>
+  api<WebhookDelivery>(`${own(slug)}/webhook-tester/send`, { method: 'POST', auth: true })

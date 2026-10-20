@@ -27,6 +27,9 @@ from app.models import (
     PlaceKind,
     PlaceScreen,
     User,
+    WebhookDelivery,
+    WebhookEndpoint,
+    WebhookTestHit,
     floor_exists,
 )
 from app.seed import _make_place, _position
@@ -211,6 +214,13 @@ def reset_demo_extras(db: Session, slug: str) -> tuple[int, int]:
     )
     # Wave 14: the keys visitors made for the demo campus stop working.
     db.execute(delete(ApiKey).where(ApiKey.institution_id == institution.id))
+    # The webhook tester (wave 14.5) starts the day empty, and working.
+    testers = select(WebhookEndpoint.id).where(WebhookEndpoint.institution_id == institution.id)
+    db.execute(delete(WebhookTestHit).where(WebhookTestHit.endpoint_id.in_(testers)))
+    db.execute(delete(WebhookDelivery).where(WebhookDelivery.endpoint_id.in_(testers)))
+    db.execute(
+        update(WebhookEndpoint).where(WebhookEndpoint.institution_id == institution.id).values(tester_failing=False)
+    )
     db.flush()
     db.expire_all()
     return (len(extra_buildings), len(extra_places))

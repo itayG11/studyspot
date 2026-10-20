@@ -27,6 +27,7 @@ from app.api import (
     shares,
     system,
     v1,
+    webhook_tester,
 )
 from app.config import Settings, get_settings
 from app.reminders import prime_alarm
@@ -130,5 +131,6 @@ app.include_router(shares.router)
 app.include_router(admin.router)
 app.include_router(connections.router)
 app.include_router(v1.router)
+app.include_router(webhook_tester.router)
 app.include_router(system.router)
 app.include_router(push.router)

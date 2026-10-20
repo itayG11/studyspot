@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<WebhookDelivery['status'], string> = {
   failed: 'נכשל, בלי עוד ניסיונות',
 }
 
-export function Webhooks() {
+export function Webhooks({ demo = false }: { demo?: boolean }) {
   const { slug } = useInstitution()
   const hooks = useApi(() => getWebhooks(slug), `webhooks-${slug}`)
   const [secret, setSecret] = useState<string | null>(null)
@@ -50,7 +50,14 @@ export function Webhooks() {
         כתובת של המוסד ש-StudySpot קורא לה כשמשהו קורה: כניסה, יציאה או הזמנה. בלי שמות ובלי מיילים, רק מקום, תפוסה
         ושעות. כל קריאה חתומה, ואם הכתובת לא עונה, מנסים שוב: אחרי דקה, 5 דקות, חצי שעה, שעתיים ו-6 שעות.
       </p>
-      <AddWebhook slug={slug} onAdded={(made) => (setSecret(made), hooks.reload())} />
+      {demo ? (
+        <p className={styles.screenNote}>
+          בקמפוס ההדגמה אי אפשר להוסיף כתובת: המנהל לדוגמה משותף לכל המבקרים, וכל אחד היה יכול לגרום לשרת לקרוא לכל
+          כתובת. הבודק שלמעלה מקבל את המשלוחים במקום.
+        </p>
+      ) : (
+        <AddWebhook slug={slug} onAdded={(made) => (setSecret(made), hooks.reload())} />
+      )}
       {secret && <SecretOnce secret={secret} />}
       {hooks.error && !hooks.data && <ErrorState error={hooks.error} onRetry={hooks.reload} compact />}
       {hooks.data && (

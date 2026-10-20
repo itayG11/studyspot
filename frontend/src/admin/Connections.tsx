@@ -9,24 +9,27 @@ import { getApiKeys, makeApiKey, revokeApiKey } from '../api/admin'
 import type { ApiKey } from '../api/types'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
-import { useInstitution } from '../institution'
+import { useInstitution, useLiveSimulated } from '../institution'
 import { apiAddress } from '../logic/apiUrl'
 import { formatDay, formatTime } from '../logic/time'
 import { ActionError, Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { EmbedCode } from './EmbedCode'
 import { Webhooks } from './Webhooks'
+import { WebhookTester } from './WebhookTester'
 
 export function Connections() {
   const { slug } = useInstitution()
   const keys = useApi(() => getApiKeys(slug), `api-keys-${slug}`)
+  const demo = useLiveSimulated() // the demo campus: its tester, and no addresses of its own
   return (
     <div className={styles.adder}>
       <ApiKeys slug={slug} keys={keys.data} onChange={keys.reload} />
       {keys.error && !keys.data && <ErrorState error={keys.error} onRetry={keys.reload} compact />}
       {!keys.data && !keys.error && <PageLoading />}
       <EmbedCode />
-      <Webhooks />
+      {demo && <WebhookTester />}
+      <Webhooks demo={demo} />
     </div>
   )
 }

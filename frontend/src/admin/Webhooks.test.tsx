@@ -102,3 +102,11 @@ describe('Webhooks', () => {
     expect(within(builtIn).getByRole('button', { name: 'לשלוח בדיקה' })).toBeInTheDocument()
   })
 })
+
+describe('Webhooks on the demo campus', () => {
+  it('has no form to add an address, and says why', async () => {
+    render(<Webhooks demo />)
+    expect(await screen.findByText(/בקמפוס ההדגמה אי אפשר להוסיף כתובת/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'להוסיף כתובת' })).not.toBeInTheDocument()
+  })
+})

@@ -514,3 +514,21 @@ export interface WebhookDelivery {
   delivered_at: string | null
   next_attempt_at: string | null
 }
+
+// Wave 14.5: the demo campus's webhook tester (backend app/webhook_tester.py).
+export interface TestHit {
+  id: number
+  received_at: string
+  event_type: string | null
+  event_id: string | null
+  headers: Record<string, string>
+  body: string // pretty-printed JSON
+  signature_ok: boolean
+  answered: number // 200, or 503 while "failing" is on
+}
+
+export interface WebhookTester {
+  webhook: Webhook
+  failing: boolean
+  hits: TestHit[]
+}

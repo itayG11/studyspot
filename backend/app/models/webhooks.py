@@ -14,7 +14,7 @@ import enum
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, false
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String, Text, false
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +39,8 @@ class WebhookEndpoint(Base):
     secret_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     # The demo campus's built-in tester (wave 14.5): made by the server, not a visitor.
     built_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # The tester answers 503 while this is on, to show a try again (wave 14.5).
+    tester_failing: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -72,3 +74,21 @@ class WebhookDelivery(Base):
     last_error: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WebhookTestHit(Base):
+    """What the demo campus's built-in tester received (wave 14.5): the last
+    20 per endpoint, kept an hour, so a visitor sees a real signed delivery."""
+
+    __tablename__ = "webhook_test_hits"
+    __table_args__ = (Index("ix_webhook_test_hits_endpoint_id", "endpoint_id", "id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint_id: Mapped[int] = mapped_column(ForeignKey("webhook_endpoints.id", ondelete="CASCADE"))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    event_type: Mapped[str | None] = mapped_column(String(32))
+    event_id: Mapped[str | None] = mapped_column(String(40))
+    headers: Mapped[dict[str, Any]] = mapped_column(JSONB)  # the StudySpot-* ones only
+    body: Mapped[str] = mapped_column(Text)  # at most MAX_TEST_BODY: the receiver cuts it
+    signature_ok: Mapped[bool] = mapped_column(Boolean)
+    answered: Mapped[int] = mapped_column(Integer)  # 200, or 503 while the tester plays broken
