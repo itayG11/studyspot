@@ -1,5 +1,6 @@
 """All database models. Importing this package registers every table on Base.metadata."""
 
+from app.models.api_keys import ApiKey
 from app.models.bookings import ACTIVE_STATUSES, Booking, BookingSource, BookingStatus
 from app.models.calendar import CalendarFeed
 from app.models.campus import (
@@ -36,11 +37,13 @@ from app.models.people import (
 from app.models.push import ClosingNotice, NoticeEmail, PushSubscription
 from app.models.screens import PlaceScreen
 from app.models.waitlist import WaitlistEntry
+from app.models.webhooks import DeliveryStatus, WebhookDelivery, WebhookEndpoint, WebhookTestHit
 
 __all__ = [
     "ACTIVE_STATUSES",
     "AdminInvite",
     "Amenity",
+    "ApiKey",
     "AuthProvider",
     "AuthSession",
     "Booking",
@@ -54,6 +57,7 @@ __all__ = [
     "CheckInMode",
     "ClassSlot",
     "ClosingNotice",
+    "DeliveryStatus",
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
@@ -75,6 +79,9 @@ __all__ = [
     "UserRole",
     "WaitlistEntry",
     "WalkTime",
+    "WebhookDelivery",
+    "WebhookEndpoint",
+    "WebhookTestHit",
     "floor_exists",
     "is_bookable",
     "is_counted",

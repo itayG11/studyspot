@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, WebhookTester, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -62,3 +62,32 @@ export const verifyLoginRule = (id: number) =>
 // Where a place is, through our server to OpenStreetMap (one search a press).
 export const geocode = (query: string) =>
   api<GeocodeResult[]>(`/admin/geocode?${new URLSearchParams({ q: query })}`, { auth: true })
+
+// Wave 14.2: the institution's API keys, in the "Connections" tab.
+export const getApiKeys = (slug: string) => api<ApiKey[]>(`${own(slug)}/api-keys`, { auth: true })
+export const makeApiKey = (slug: string, name: string) =>
+  api<ApiKeyCreated>(`${own(slug)}/api-keys`, { method: 'POST', body: { name }, auth: true })
+export const revokeApiKey = (slug: string, id: number) =>
+  api<void>(`${own(slug)}/api-keys/${id}`, { method: 'DELETE', auth: true })
+
+// Wave 14.3: webhooks, in the same tab.
+export const getWebhooks = (slug: string) => api<Webhook[]>(`${own(slug)}/webhooks`, { auth: true })
+export const addWebhook = (slug: string, url: string, events: WebhookEvent[]) =>
+  api<WebhookCreated>(`${own(slug)}/webhooks`, { method: 'POST', body: { url, events }, auth: true })
+export const updateWebhook = (id: number, change: { active?: boolean; events?: WebhookEvent[] }) =>
+  api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: change, auth: true })
+export const newWebhookSecret = (id: number) =>
+  api<WebhookCreated>(`/admin/webhooks/${id}/secret`, { method: 'POST', auth: true })
+export const deleteWebhook = (id: number) => api<void>(`/admin/webhooks/${id}`, { method: 'DELETE', auth: true })
+export const testWebhook = (id: number) =>
+  api<WebhookDelivery>(`/admin/webhooks/${id}/test`, { method: 'POST', auth: true })
+export const getDeliveries = (id: number) => api<WebhookDelivery[]>(`/admin/webhooks/${id}/deliveries`, { auth: true })
+export const redeliver = (deliveryId: number) =>
+  api<WebhookDelivery>(`/admin/webhook-deliveries/${deliveryId}/redeliver`, { method: 'POST', auth: true })
+
+// Wave 14.5: the demo campus's webhook tester.
+export const getTester = (slug: string) => api<WebhookTester>(`${own(slug)}/webhook-tester`, { auth: true })
+export const setTesterFailing = (slug: string, failing: boolean) =>
+  api<WebhookTester>(`${own(slug)}/webhook-tester`, { method: 'PATCH', body: { failing }, auth: true })
+export const sendTesterSample = (slug: string) =>
+  api<WebhookDelivery>(`${own(slug)}/webhook-tester/send`, { method: 'POST', auth: true })

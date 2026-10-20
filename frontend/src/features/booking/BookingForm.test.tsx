@@ -214,11 +214,13 @@ describe('BookingForm as time passes', () => {
   it('a chosen time that becomes too late is no longer offered for booking', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     renderPanel()
-    await user.click(await screen.findByRole('button', { name: '08:00' })) // 05:00 UTC, now is 05:00
+    await user.click(await screen.findByRole('button', { name: 'עכשיו' })) // 08:00, 05:00 UTC: it is 05:00
     await user.click(screen.getByRole('button', { name: 'רבע שעה' }))
     expect(screen.getByRole('button', { name: 'להזמין' })).toBeInTheDocument()
     await act(() => vi.advanceTimersByTimeAsync(16 * 60_000)) // 08:16: past its no-show deadline
     expect(screen.queryByRole('button', { name: 'להזמין' })).not.toBeInTheDocument()
+    // 08:15 is the running slot now, so it is the one called "now", and free.
+    expect(screen.getByRole('button', { name: 'עכשיו' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByRole('button', { name: '08:00' })).not.toBeInTheDocument()
   })
 })

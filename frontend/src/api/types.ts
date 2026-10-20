@@ -469,3 +469,66 @@ export interface CampusSaved {
   places_added: number
   places_skipped: number
 }
+
+// Wave 14.2: an institution's API key (backend app/api/connections.py).
+export interface ApiKey {
+  id: number
+  name: string
+  prefix: string // "ss_live_AbCd": the start of the key, to tell them apart
+  created_at: string
+  last_used_at: string | null
+  revoked_at: string | null
+}
+
+export interface ApiKeyCreated {
+  key: string // shown once: the server keeps only an HMAC of it
+  api_key: ApiKey
+}
+
+// Wave 14.3: webhooks (backend app/webhooks.py, app/api/connections.py).
+export type WebhookEvent = 'checkin.started' | 'checkin.ended' | 'booking.created' | 'booking.cancelled'
+
+export interface Webhook {
+  id: number
+  url: string
+  events: WebhookEvent[]
+  active: boolean
+  built_in: boolean // the demo's tester: the server's, not to edit
+  created_at: string
+}
+
+export interface WebhookCreated {
+  secret: string // shown once: derived on the server, never stored
+  webhook: Webhook
+}
+
+export interface WebhookDelivery {
+  id: number
+  event_id: string
+  event_type: string
+  status: 'pending' | 'sent' | 'failed'
+  attempts: number
+  last_status_code: number | null
+  last_error: string | null
+  created_at: string
+  delivered_at: string | null
+  next_attempt_at: string | null
+}
+
+// Wave 14.5: the demo campus's webhook tester (backend app/webhook_tester.py).
+export interface TestHit {
+  id: number
+  received_at: string
+  event_type: string | null
+  event_id: string | null
+  headers: Record<string, string>
+  body: string // pretty-printed JSON
+  signature_ok: boolean
+  answered: number // 200, or 503 while "failing" is on
+}
+
+export interface WebhookTester {
+  webhook: Webhook
+  failing: boolean
+  hits: TestHit[]
+}

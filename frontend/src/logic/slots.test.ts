@@ -53,7 +53,8 @@ describe('daySlots', () => {
     const now = new Date('2026-10-11T07:05:00Z') // 10:05 local
     const slots = daySlots({ date: SUNDAY, hours: HOURS, busy: [], seatId: null, now, rules: RULES, timeZone: TZ })
     expect(slots.find((s) => s.label === '09:45')!.state).toBe('past')
-    expect(slots.find((s) => s.label === '10:00')!.state).toBe('free')
+    // 10:00 is running: still bookable, and called "now".
+    expect(slots.find((s) => s.start === '2026-10-11T07:00:00.000Z')!).toMatchObject({ state: 'free', label: 'עכשיו' })
   })
 
   it('a closed day has no slots', () => {
@@ -72,7 +73,7 @@ describe('the server limits, exactly', () => {
   it('a start stays bookable until its no-show deadline', () => {
     const now = new Date('2026-10-11T07:14:00Z') // 10:14 local
     const slots = daySlots({ date: SUNDAY, hours: HOURS, busy: [], seatId: null, now, rules: RULES, timeZone: TZ })
-    expect(slots.find((s) => s.label === '10:00')!.state).toBe('free')
+    expect(slots.find((s) => s.start === '2026-10-11T07:00:00.000Z')!.state).toBe('free') // 10:00, "now"
     expect(slots.find((s) => s.label === '09:45')!.state).toBe('past')
   })
 
@@ -95,5 +96,15 @@ describe('bookableDays', () => {
   it('lists today and the next four days, without days the place is closed', () => {
     const friday = new Date('2026-10-16T06:00:00Z')
     expect(bookableDays(friday, HOURS, RULES, TZ)).toEqual(['2026-10-16', '2026-10-18', '2026-10-19', '2026-10-20'])
+  })
+
+  it('calls the slot already running "now", not a time gone by', () => {
+    // 11:18 in Israel: the 11:15 slot can still be booked (until 11:30), and starts at once.
+    const now = new Date('2026-10-11T08:18:00Z')
+    const slots = daySlots({ date: SUNDAY, hours: HOURS, busy: [], seatId: null, now, rules: RULES, timeZone: TZ })
+    const running = slots.find((s) => s.start === '2026-10-11T08:15:00.000Z')!
+    expect([running.label, running.state]).toEqual(['עכשיו', 'free'])
+    expect(slots.find((s) => s.label === '11:30')!.state).toBe('free')
+    expect(slots.find((s) => s.label === '11:00')!.state).toBe('past') // its window has closed
   })
 })

@@ -37,6 +37,8 @@ export default defineConfig({
         FRONTEND_URL: `http://localhost:${WEB_PORT}`,
         PUBLIC_API_URL: `http://localhost:${API_PORT}`,
         SWEEP_INTERVAL_SECONDS: '0',
+        // The demo's webhook tester lives at this localhost address (wave 14.5).
+        WEBHOOK_ALLOW_PRIVATE: 'true',
       },
       reuseExistingServer: false,
     },

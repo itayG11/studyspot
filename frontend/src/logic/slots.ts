@@ -12,7 +12,7 @@ export type SlotState = 'free' | 'busy' | 'past' | 'tooFar'
 export interface Slot {
   start: string // ISO time
   maxEnd: string // the latest end a booking starting here may have
-  label: string // "09:15" on the institution's clock
+  label: string // "09:15" on the institution's clock, or "עכשיו" for the slot already running
   state: SlotState
 }
 
@@ -27,6 +27,7 @@ interface DayInput {
 }
 
 const MINUTE = 60_000
+export const NOW_LABEL = 'עכשיו'
 
 export function daySlots({ date, hours, busy, seatId, now, rules, timeZone }: DayInput): Slot[] {
   const step = rules.slot_minutes * MINUTE
@@ -50,7 +51,9 @@ export function daySlots({ date, hours, busy, seatId, now, rules, timeZone }: Da
       slots.push({
         start: new Date(start).toISOString(),
         maxEnd: new Date(maxEnd).toISOString(),
-        label: wallClock(start, timeZone),
+        // The slot running now may still be booked (until its no-show
+        // deadline): it starts at once, so it says "now", not a time gone by.
+        label: start <= now.getTime() && !tooLate(start) ? NOW_LABEL : wallClock(start, timeZone),
         state: tooLate(start) ? 'past' : start > horizon ? 'tooFar' : taken ? 'busy' : 'free',
       })
     }

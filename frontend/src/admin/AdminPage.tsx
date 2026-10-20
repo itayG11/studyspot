@@ -6,15 +6,16 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { Adder } from './Adder'
+import { Connections } from './Connections'
 import styles from './admin.module.css'
 import { Placer } from './Placer'
 import { Setup, useSetup } from './Setup'
 import { Signs } from './Signs'
 import { Segmented } from '../ui'
 
-type Tab = 'setup' | 'signs' | 'placing' | 'adding'
+type Tab = 'setup' | 'signs' | 'placing' | 'adding' | 'connections'
 
-const TAB_LABELS: Record<Tab, string> = { setup: 'הקמה', signs: 'שלטים להדפסה', placing: 'מיקום בניינים', adding: 'הוספה' }
+const TAB_LABELS: Record<Tab, string> = { setup: 'הקמה', signs: 'שלטים להדפסה', placing: 'מיקום בניינים', adding: 'הוספה', connections: 'חיבורים' }
 
 const isTab = (value: string | null): value is Tab => value !== null && value in TAB_LABELS
 
@@ -55,6 +56,7 @@ export function AdminPage() {
       <section aria-label={TAB_LABELS[tab]}>
         {tab === 'setup' && <Setup setup={setup} onGo={(t) => setTab(t)} />}
         {tab === 'signs' && <Signs />}
+        {tab === 'connections' && <Connections />}
         {tab === 'placing' && <Placer key={toPlace ?? ''} initial={toPlace} onSaved={setup.reload} />}
         {tab === 'adding' && (
           <Adder

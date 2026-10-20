@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Connect, type Plugin } from 'vite'
 
 // https://vite.dev/config/
 const SECURITY_HEADERS = {
@@ -7,13 +7,29 @@ const SECURITY_HEADERS = {
   'Content-Security-Policy': "frame-ancestors 'none'",
 }
 
+// The same headers on the dev and preview servers, except for the occupancy
+// widget (wave 14.4): other sites may frame it, as in production (app/site.py).
+// It also serves embed.html for /embed/<slug>, as the production server does.
+function headers(): Plugin {
+  const apply = (server: { middlewares: Connect.Server }) => {
+    server.middlewares.use((request, response, next) => {
+      const path = request.url ?? '/'
+      if (path.startsWith('/embed/')) {
+        response.setHeader('Content-Security-Policy', 'frame-ancestors *')
+        request.url = '/embed.html'
+      } else {
+        for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.setHeader(name, value)
+      }
+      next()
+    })
+  }
+  return { name: 'studyspot-headers', configureServer: apply, configurePreviewServer: apply }
+}
+
 export default defineConfig({
-  plugins: [react()],
-  // The site may not be shown inside another site's frame (clickjacking:
-  // a hidden frame under a fake button). For the dev and preview servers;
-  // the production host sets the same headers (stage 7).
-  server: { headers: SECURITY_HEADERS },
-  preview: { headers: SECURITY_HEADERS },
+  // headers(): the site may not be shown inside another site's frame
+  // (clickjacking: a hidden frame under a fake button), the widget apart.
+  plugins: [react(), headers()],
   build: {
     // The main bundle is about 450 kB (147 kB gzipped): React, the router,
     // the small core of Motion, and the site's own code (about 10%). Split off, loaded only
@@ -21,6 +37,8 @@ export default defineConfig({
     // Motion's animation features (src/design/MotionProvider.tsx) and the
     // admin page (src/admin/LazyAdminPage.tsx).
     chunkSizeWarningLimit: 600,
+    // Two pages: the web app, and the small occupancy widget (embed.html).
+    rollupOptions: { input: { main: 'index.html', embed: 'embed.html' } },
     // Fonts stay files, never inlined as data: addresses. The production
     // policy allows fonts from this site only (font-src 'self', see
     // backend/app/site.py), and files are cached across pages anyway.

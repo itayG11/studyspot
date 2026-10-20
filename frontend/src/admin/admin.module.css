@@ -577,3 +577,48 @@
   flex-wrap: wrap;
   gap: var(--s-2);
 }
+
+/* Webhooks (Webhooks.tsx): an endpoint, its events, and its delivery log. */
+.events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.hookRow {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.hookRow code {
+  overflow-wrap: anywhere;
+}
+
+.log {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.log th,
+.log td {
+  padding: var(--s-1) var(--s-2);
+  text-align: start;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* The widget's live preview (EmbedCode.tsx), at the size the code gives it. */
+.embedPreview {
+  width: min(360px, 100%);
+  height: 420px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+}

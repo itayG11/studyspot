@@ -6,6 +6,7 @@ import { InstallTip } from '../components/InstallTip'
 import { CalendarFeedCard } from './CalendarFeed'
 import { PasswordCard } from './PasswordCard'
 import { PushToggle } from './PushToggle'
+import { ShareStay } from './ShareStay'
 import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
@@ -218,6 +219,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
             עדיין כאן
           </Button>
         )}
+        <ShareStay kind="check_in" id={checkIn.id} placeName={checkIn.place_name} />
       </div>
       <ActionError action={leave} />
       <ActionError action={stay} />
@@ -251,6 +253,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
         </span>
       </div>
       <div className={styles.actions}>
+        <ShareStay kind="booking" id={booking.id} placeName={booking.place_name} />
         {canExtend && (
           <Button
             size="sm"

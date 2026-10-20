@@ -141,6 +141,17 @@ def fresh_load_cache() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def fresh_alarm() -> Iterator[None]:
+    """Each test starts with no wake-up set: an event (app/webhooks.py) or a
+    booking sets the shared alarm, and a test after it would see it due."""
+    from app.reminders import ALARM
+
+    ALARM.set(None)
+    yield
+    ALARM.set(None)
+
+
+@pytest.fixture(autouse=True)
 def fresh_rate_limits() -> Iterator[None]:
     """Each test starts with empty rate-limit counters."""
     from app.ratelimit import LIMITERS

@@ -47,6 +47,7 @@ from app.models import (
     User,
 )
 from app.occupancy import is_active, occupied_by_place
+from app.webhooks import check_in_event
 
 CHECK_IN_DURATION = MAX_DURATION
 
@@ -108,6 +109,7 @@ def check_out(session: Session, user: User, check_in_id: int, now: datetime) -> 
         row.ended_at, row.end_reason = now, CheckInEndReason.CHECKOUT
     _complete_booking(session, row)
     session.flush()
+    check_in_event(session, "checkin.ended", row.place_id, row.institution_id, now)
     return row
 
 
@@ -273,6 +275,7 @@ def _new_check_in(session, user, place, seat, booking, now, expires_at) -> Check
     )
     session.add(row)
     session.flush()
+    check_in_event(session, "checkin.started", place.id, place.institution_id, now)
     return row
 
 
@@ -284,6 +287,7 @@ def _end_current(session: Session, current: CheckIn | None, now: datetime) -> No
     current.end_reason = CheckInEndReason.MOVED
     _complete_booking(session, current)
     session.flush()  # free the "one open check-in per user" slot first
+    check_in_event(session, "checkin.ended", current.place_id, current.institution_id, now)
 
 
 def _complete_booking(session: Session, row: CheckIn) -> None:
@@ -372,9 +376,13 @@ def _seat_is_taken(session: Session, seat: Seat, now: datetime) -> bool:
 def _expire(session: Session, which, now: datetime) -> None:
     """Lazy release: end expired open check-ins, so the partial unique
     indexes ("one open check-in per user / per seat") stop counting them."""
-    session.execute(
+    ended = session.execute(
         update(CheckIn)
         .where(which, CheckIn.ended_at.is_(None), CheckIn.expires_at <= now)
         .values(ended_at=CheckIn.expires_at, end_reason=CheckInEndReason.EXPIRED)
+        .returning(CheckIn.place_id, CheckIn.institution_id, CheckIn.simulated)
         .execution_options(synchronize_session="fetch")
-    )
+    ).all()
+    for place_id, institution_id, simulated in ended:
+        if not simulated:
+            check_in_event(session, "checkin.ended", place_id, institution_id, now)

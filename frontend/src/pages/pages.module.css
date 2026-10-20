@@ -386,3 +386,29 @@
 .loginTabs {
   justify-self: start;
 }
+
+/* The developers page (DevelopersPage.tsx): code to copy, and the endpoints. */
+.code {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  overflow-x: auto;
+  font: 400 var(--text-sm) / 1.5 var(--font-mono);
+  text-align: left;
+  white-space: pre;
+  background: var(--stone-1);
+  border-radius: var(--r-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--s-2) var(--s-3);
+  text-align: start;
+  vertical-align: top;
+  border-bottom: 1px solid var(--hairline);
+}

@@ -199,6 +199,7 @@ def test_robots_keeps_personal_pages_out_of_search_and_only_them():
     for page in ("/me", "/admin", "/system", "/invite", "/scan", "/login", "/signed-in", "/*/me", "/*/admin"):
         assert f"Disallow: {page}$" in rules
     assert not re.search(r"Disallow: /[\w-]+\n", rules)  # no rule without its "$"
+    assert "Disallow: /s/\n" in rules  # shared stays (app/shares.py)
 
 
 def test_the_site_address_is_the_same_everywhere_it_is_written():
@@ -234,3 +235,39 @@ def test_the_service_worker_is_never_kept_stale(site: TestClient):
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-cache"
     assert "javascript" in response.headers["content-type"]
+
+
+# --- the occupancy widget (wave 14.4): framed by other sites, and only it ---------
+
+
+@pytest.fixture
+def with_widget(built: Path) -> TestClient:
+    (built / "embed.html").write_text("<!doctype html><title>widget</title>")
+    return TestClient(create_site(built))
+
+
+def test_the_widget_page_is_its_own_page_and_may_be_framed(with_widget: TestClient):
+    page = with_widget.get("/embed/braude?building=L")
+    assert page.status_code == 200 and "widget" in page.text
+    assert "x-frame-options" not in page.headers
+    assert "frame-ancestors *" in page.headers["content-security-policy"]
+    assert "script-src 'self'" in page.headers["content-security-policy"]  # the rest of the policy stays
+
+
+def test_every_other_page_still_may_not_be_framed(with_widget: TestClient):
+    for path in ("/", "/braude", "/braude/admin", "/api/health", "/embedx", "/me", "/embed/x/y", "/embed/Bad"):
+        answer = with_widget.get(path)
+        assert answer.headers["x-frame-options"] == "DENY", path
+        assert "frame-ancestors 'none'" in answer.headers["content-security-policy"], path
+
+
+def test_a_bad_widget_address_is_404(with_widget: TestClient):
+    assert with_widget.get("/embed/Not_A_Slug").status_code == 404
+
+
+def test_under_embed_only_the_widget_exists(with_widget: TestClient):
+    # A deeper address must not fall through to the web app (which a framed
+    # page could then walk around in): 404, with the usual DENY.
+    answer = with_widget.get("/embed/braude/admin")
+    assert answer.status_code == 404
+    assert answer.headers["x-frame-options"] == "DENY"
