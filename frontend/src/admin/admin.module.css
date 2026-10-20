@@ -614,3 +614,11 @@
   white-space: nowrap;
   border-bottom: 1px solid var(--hairline);
 }
+
+/* The widget's live preview (EmbedCode.tsx), at the size the code gives it. */
+.embedPreview {
+  width: min(360px, 100%);
+  height: 420px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+}

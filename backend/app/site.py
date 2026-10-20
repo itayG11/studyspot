@@ -12,6 +12,7 @@ Run with:  STATIC_DIR=../frontend/dist uvicorn app.site:app
 """
 
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -48,6 +49,13 @@ CSP = "; ".join(
         "frame-ancestors 'none'",
     ]
 )
+
+# The occupancy widget (wave 14.4): an institution shows it inside its own
+# site, so any site may frame it. Nothing in it acts (no buttons, no
+# sign-in, no cookies sent), so a hidden frame over it gains nothing.
+EMBED_PREFIX = "/embed/"
+SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # as an institution's short name
+EMBED_CSP = CSP.replace("frame-ancestors 'none'", "frame-ancestors *")
 
 SECURITY_HEADERS = {
     "Content-Security-Policy": CSP,
@@ -115,6 +123,16 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
         headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
         return HTMLResponse(shares.preview_html(index_html, view), headers=headers)
 
+    # The widget's page: its own small build (frontend/embed.html), not the web app.
+    embed = root / "embed.html"
+
+    @site.api_route("/embed/{slug}", methods=["GET", "HEAD"], include_in_schema=False)
+    def embed_page(slug: str) -> FileResponse:
+        # A page, not the API: an address that is no institution's is "not found".
+        if not embed.is_file() or len(slug) > 64 or not SLUG.fullmatch(slug):
+            raise HTTPException(404)
+        return FileResponse(embed, headers={"Cache-Control": "no-cache"})
+
     # HEAD too: uptime monitors and `curl -I` ask that way.
     @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def web_app(path: str) -> FileResponse:
@@ -131,7 +149,9 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
     # Outside everything, so that a 500 from a crash has the headers too.
-    return Edge(site, SECURITY_HEADERS)
+    framed = {key: value for key, value in SECURITY_HEADERS.items() if key != "X-Frame-Options"}
+    framed["Content-Security-Policy"] = EMBED_CSP
+    return Edge(site, SECURITY_HEADERS, framed_prefix=EMBED_PREFIX, framed_headers=framed)
 
 
 configure_logging()

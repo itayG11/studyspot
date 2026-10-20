@@ -1,0 +1,113 @@
+/* The widget: small, its own colours, light and dark like the site. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --ink: #1b2233;
+  --ink-2: #5a6378;
+  --line: #e3e6ee;
+  --free: #1f7a4d;
+  --full: #b4232c;
+  --accent: #4f46e5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0f1629;
+    --ink: #eef1f8;
+    --ink-2: #a3acc2;
+    --line: #263049;
+    --free: #5fd39a;
+    --full: #ff8a8f;
+    --accent: #a5a1ff;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1629;
+  --ink: #eef1f8;
+  --ink-2: #a3acc2;
+  --line: #263049;
+  --free: #5fd39a;
+  --full: #ff8a8f;
+  --accent: #a5a1ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px 14px;
+  font: 15px/1.4 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.total {
+  font-size: 18px;
+}
+
+.updated,
+.where {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.state {
+  grid-row: span 2;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.free {
+  color: var(--free);
+}
+
+.full {
+  color: var(--full);
+}
+
+.closed {
+  color: var(--ink-2);
+}
+
+.more {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--accent);
+}
+
+.error {
+  margin: 0;
+  color: var(--ink-2);
+}

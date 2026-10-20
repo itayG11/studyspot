@@ -235,3 +235,31 @@ def test_the_service_worker_is_never_kept_stale(site: TestClient):
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-cache"
     assert "javascript" in response.headers["content-type"]
+
+
+# --- the occupancy widget (wave 14.4): framed by other sites, and only it ---------
+
+
+@pytest.fixture
+def with_widget(built: Path) -> TestClient:
+    (built / "embed.html").write_text("<!doctype html><title>widget</title>")
+    return TestClient(create_site(built))
+
+
+def test_the_widget_page_is_its_own_page_and_may_be_framed(with_widget: TestClient):
+    page = with_widget.get("/embed/braude?building=L")
+    assert page.status_code == 200 and "widget" in page.text
+    assert "x-frame-options" not in page.headers
+    assert "frame-ancestors *" in page.headers["content-security-policy"]
+    assert "script-src 'self'" in page.headers["content-security-policy"]  # the rest of the policy stays
+
+
+def test_every_other_page_still_may_not_be_framed(with_widget: TestClient):
+    for path in ("/", "/braude", "/braude/admin", "/api/health", "/embedx", "/me"):
+        answer = with_widget.get(path)
+        assert answer.headers["x-frame-options"] == "DENY", path
+        assert "frame-ancestors 'none'" in answer.headers["content-security-policy"], path
+
+
+def test_a_bad_widget_address_is_404(with_widget: TestClient):
+    assert with_widget.get("/embed/Not_A_Slug").status_code == 404

@@ -43,9 +43,19 @@ def configure_logging() -> None:
 
 
 class Edge:
-    def __init__(self, app: ASGIApp, headers: dict[str, str]):
+    def __init__(
+        self,
+        app: ASGIApp,
+        headers: dict[str, str],
+        framed_prefix: str | None = None,
+        framed_headers: dict[str, str] | None = None,
+    ):
+        """framed_prefix: paths that other sites may show in a frame (the
+        occupancy widget, wave 14.4) get framed_headers instead."""
         self.app = app
         self._headers = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+        self._framed_prefix = framed_prefix
+        self._framed = [(k.lower().encode(), v.encode()) for k, v in (framed_headers or headers).items()]
 
     @property
     def site(self) -> Any:
@@ -60,11 +70,15 @@ class Edge:
         started = time.perf_counter()
         status: int | str = "-"  # no answer started: the visitor left, or the app crashed first
 
+        path = scope.get("path", "")
+        framed = self._framed_prefix is not None and path.startswith(self._framed_prefix)
+        security = self._framed if framed else self._headers
+
         async def send_with_headers(message: Message) -> None:
             nonlocal status
             if message["type"] == "http.response.start":
                 status = message["status"]
-                message["headers"] = [*message.get("headers", []), *self._headers, (b"x-request-id", request_id.encode())]
+                message["headers"] = [*message.get("headers", []), *security, (b"x-request-id", request_id.encode())]
             await send(message)
 
         try:
