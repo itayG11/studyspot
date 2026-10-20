@@ -68,8 +68,8 @@ def my_bookings(user: UserDep, session: SessionDep, now: NowDep):
 @router.post(
     "/bookings/{booking_id}/cancel", response_model=BookingOut, dependencies=[Depends(write_limit)]
 )
-def cancel(booking_id: BookingId, user: UserDep, session: SessionDep):
-    return _out(run_action(session, lambda: cancel_booking(session, user, booking_id)))
+def cancel(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDep):
+    return _out(run_action(session, lambda: cancel_booking(session, user, booking_id, now)))
 
 
 @router.post(

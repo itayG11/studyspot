@@ -13,6 +13,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.clock import get_now
 from app.closing import refuse_if_closing
 from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
 from app.hours import institution_zone, place_status
@@ -28,6 +29,7 @@ from app.models import (
     User,
     is_bookable,
 )
+from app.webhooks import booking_event
 
 # Product rules (agreed with the user in stage 4).
 MAX_DURATION = timedelta(hours=2)  # one booking, and one renewal step
@@ -154,7 +156,7 @@ def create_booking(
         raise Refusal(409, "too_many_bookings")
 
     release_no_shows(session, now, place, seat_id)
-    return insert_booking(
+    booking = insert_booking(
         session,
         Booking(
             institution_id=place.institution_id,
@@ -167,9 +169,11 @@ def create_booking(
             source=BookingSource.ADVANCE,
         ),
     )
+    booking_event(session, "booking.created", booking, now)
+    return booking
 
 
-def cancel_booking(session: Session, user: User, booking_id: int) -> Booking:
+def cancel_booking(session: Session, user: User, booking_id: int, now: datetime | None = None) -> Booking:
     """Only the owner, only before arrival. Anything else looks like 404."""
     booking = session.scalars(
         select(Booking)
@@ -185,6 +189,7 @@ def cancel_booking(session: Session, user: User, booking_id: int) -> Booking:
         raise Refusal(404, "booking_not_found")
     booking.status = BookingStatus.CANCELLED
     session.flush()
+    booking_event(session, "booking.cancelled", booking, now or get_now())
     return booking
 
 

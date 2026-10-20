@@ -37,6 +37,7 @@ from app.models.people import (
 from app.models.push import ClosingNotice, NoticeEmail, PushSubscription
 from app.models.screens import PlaceScreen
 from app.models.waitlist import WaitlistEntry
+from app.models.webhooks import DeliveryStatus, WebhookDelivery, WebhookEndpoint
 
 __all__ = [
     "ACTIVE_STATUSES",
@@ -56,6 +57,7 @@ __all__ = [
     "CheckInMode",
     "ClassSlot",
     "ClosingNotice",
+    "DeliveryStatus",
     "EmailSignInCode",
     "Institution",
     "InstitutionLoginRule",
@@ -77,6 +79,8 @@ __all__ = [
     "UserRole",
     "WaitlistEntry",
     "WalkTime",
+    "WebhookDelivery",
+    "WebhookEndpoint",
     "floor_exists",
     "is_bookable",
     "is_counted",

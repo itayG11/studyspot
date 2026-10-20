@@ -484,3 +484,33 @@ export interface ApiKeyCreated {
   key: string // shown once: the server keeps only an HMAC of it
   api_key: ApiKey
 }
+
+// Wave 14.3: webhooks (backend app/webhooks.py, app/api/connections.py).
+export type WebhookEvent = 'checkin.started' | 'checkin.ended' | 'booking.created' | 'booking.cancelled'
+
+export interface Webhook {
+  id: number
+  url: string
+  events: WebhookEvent[]
+  active: boolean
+  built_in: boolean // the demo's tester: the server's, not to edit
+  created_at: string
+}
+
+export interface WebhookCreated {
+  secret: string // shown once: derived on the server, never stored
+  webhook: Webhook
+}
+
+export interface WebhookDelivery {
+  id: number
+  event_id: string
+  event_type: string
+  status: 'pending' | 'sent' | 'failed'
+  attempts: number
+  last_status_code: number | null
+  last_error: string | null
+  created_at: string
+  delivered_at: string | null
+  next_attempt_at: string | null
+}

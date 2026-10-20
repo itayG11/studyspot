@@ -45,6 +45,10 @@ from app.seed.demo import DEMO
 from app.seed.live import simulate_live
 from app.waitlist import delete_past as delete_past_waits
 from app.walking import matrix_from_settings, refresh_walks
+from app.webhooks import check_in_event, deliver_due, webhook_key
+from app.webhooks import delete_old as delete_old_deliveries
+from app.webhooks import get_client as webhook_client
+from app.webhooks import next_due as next_webhook
 
 log = logging.getLogger(__name__)
 
@@ -72,11 +76,18 @@ def sweep(session: Session, now: datetime) -> SweepResult:
         .where(Booking.status == BookingStatus.CHECKED_IN, Booking.ends_at <= now)
         .values(status=BookingStatus.COMPLETED)
     ).rowcount
-    expired = session.execute(
+    ended = session.execute(
         update(CheckIn)
         .where(CheckIn.ended_at.is_(None), CheckIn.expires_at <= now)
         .values(ended_at=CheckIn.expires_at, end_reason=CheckInEndReason.EXPIRED)
-    ).rowcount
+        .returning(CheckIn.place_id, CheckIn.institution_id, CheckIn.simulated)
+    ).all()
+    expired = len(ended)
+    # Each real one is an event for the institution's webhooks (app/webhooks.py);
+    # the demo's made-up students are not.
+    for place_id, institution_id, simulated in ended:
+        if not simulated:
+            check_in_event(session, "checkin.ended", place_id, institution_id, now)
     # Sessions past their 7 days can never be used again (revoked ones are
     # kept until then: reuse detection needs them).
     old_sessions = session.execute(delete(AuthSession).where(AuthSession.expires_at <= now)).rowcount
@@ -97,6 +108,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     # The email notices' daily count looks one day back (app/notify.py).
     session.execute(delete(NoticeEmail).where(NoticeEmail.sent_at < now - NOTICE_EMAILS_KEPT))
     delete_past_waits(session, now)
+    delete_old_deliveries(session, now)  # the webhook log is kept a week
     session.flush()
     return SweepResult(
         no_shows=no_shows,
@@ -153,6 +165,21 @@ def run_once() -> SweepResult:
             ALARM.settle(next_due(session, now) if push or email else None, now)
     except Exception:
         log.exception("reminders not sent; the next round tries again")
+    # Webhooks due now, then the alarm for the next try (app/webhooks.py).
+    # Their secrets come from the JWT secret: none set, nothing can be signed.
+    if settings.jwt_secret is None:
+        return result
+    try:
+        maker = lambda: SessionLocal(bind=get_engine())
+        deliver_due(
+            maker, webhook_client(), webhook_key(settings.jwt_secret_bytes()), now, settings.webhook_allow_private
+        )
+        with maker() as session:
+            due = next_webhook(session)
+        if due is not None:
+            ALARM.earliest(due)
+    except Exception:
+        log.exception("webhooks not sent; the next round tries again")
     return result
 
 

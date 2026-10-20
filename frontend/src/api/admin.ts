@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { ApiKey, ApiKeyCreated, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -69,3 +69,18 @@ export const makeApiKey = (slug: string, name: string) =>
   api<ApiKeyCreated>(`${own(slug)}/api-keys`, { method: 'POST', body: { name }, auth: true })
 export const revokeApiKey = (slug: string, id: number) =>
   api<void>(`${own(slug)}/api-keys/${id}`, { method: 'DELETE', auth: true })
+
+// Wave 14.3: webhooks, in the same tab.
+export const getWebhooks = (slug: string) => api<Webhook[]>(`${own(slug)}/webhooks`, { auth: true })
+export const addWebhook = (slug: string, url: string, events: WebhookEvent[]) =>
+  api<WebhookCreated>(`${own(slug)}/webhooks`, { method: 'POST', body: { url, events }, auth: true })
+export const updateWebhook = (id: number, change: { active?: boolean; events?: WebhookEvent[] }) =>
+  api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: change, auth: true })
+export const newWebhookSecret = (id: number) =>
+  api<WebhookCreated>(`/admin/webhooks/${id}/secret`, { method: 'POST', auth: true })
+export const deleteWebhook = (id: number) => api<void>(`/admin/webhooks/${id}`, { method: 'DELETE', auth: true })
+export const testWebhook = (id: number) =>
+  api<WebhookDelivery>(`/admin/webhooks/${id}/test`, { method: 'POST', auth: true })
+export const getDeliveries = (id: number) => api<WebhookDelivery[]>(`/admin/webhooks/${id}/deliveries`, { auth: true })
+export const redeliver = (deliveryId: number) =>
+  api<WebhookDelivery>(`/admin/webhook-deliveries/${deliveryId}/redeliver`, { method: 'POST', auth: true })

@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # the live demo each get a user of their own. Only an institution with no
     # sign-in rules can be open (app/accounts.py), never Braude. Off when unset.
     open_sign_in_institution: str | None = None
+    # Webhooks (app/webhooks.py) never call an address inside a private
+    # network: a server that calls any address it is given could be turned
+    # on our own network (SSRF). On for development and tests only, where
+    # the receiver is localhost.
+    webhook_allow_private: bool = False
 
     # Who runs the whole service: create institutions and invite their
     # admins. Comma-separated Google addresses, honoured only when Google

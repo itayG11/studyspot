@@ -14,6 +14,7 @@ import { apiAddress } from '../logic/apiUrl'
 import { formatDay, formatTime } from '../logic/time'
 import { ActionError, Button, ConfirmButton, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
+import { Webhooks } from './Webhooks'
 
 export function Connections() {
   const { slug } = useInstitution()
@@ -23,6 +24,7 @@ export function Connections() {
       <ApiKeys slug={slug} keys={keys.data} onChange={keys.reload} />
       {keys.error && !keys.data && <ErrorState error={keys.error} onRetry={keys.reload} compact />}
       {!keys.data && !keys.error && <PageLoading />}
+      <Webhooks />
     </div>
   )
 }
