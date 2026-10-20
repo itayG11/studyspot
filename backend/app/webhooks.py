@@ -6,9 +6,11 @@ The flow:
    the same transaction as the event itself (the outbox pattern): rolled
    back together, never one without the other.
 2. The background sweep claims due rows (FOR UPDATE SKIP LOCKED, then moves
-   their next try a minute on and commits), and only then calls out. No
-   row stays locked during a slow HTTP call, two servers never send the
-   same row, and a row whose server died mid-send comes back after the minute.
+   their next try a lease ahead and commits), and only then calls out, each
+   call under a total deadline, all of them within a time budget shorter
+   than the lease. No row stays locked during a slow HTTP call, two servers
+   never send the same row, and a row whose server died mid-send comes back
+   when its lease ends.
 3. A 2xx answer is "sent". Anything else is tried again after 1 minute,
    5 minutes, 30 minutes, 2 hours and 6 hours, and then it is "failed".
 
@@ -34,6 +36,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
+import anyio
 import httpx
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -51,8 +54,10 @@ RETRY_AFTER = (
     timedelta(hours=6),
 )
 MAX_ATTEMPTS = len(RETRY_AFTER) + 1
-LEASE = timedelta(minutes=1)  # a claimed row is free again after this, if its server died
-TIMEOUT_SECONDS = 5.0
+LEASE = timedelta(minutes=2)  # a claimed row is free again after this: longer than SWEEP_BUDGET plus one call
+TIMEOUT_SECONDS = 5.0  # each connect, read and write
+TOTAL_SECONDS = 8.0  # the whole call, whatever the server does
+SWEEP_BUDGET = timedelta(seconds=40)  # deliveries per sweep stop after this
 KEEP = timedelta(days=7)
 SIGNATURE_TOLERANCE = 300  # seconds: how old a signed request a receiver should accept
 CLAIM_BATCH = 50
@@ -120,9 +125,17 @@ def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getadd
         for *_, sockaddr in found:
             address = ipaddress.ip_address(sockaddr[0])
             mapped = getattr(address, "ipv4_mapped", None)
-            if not (mapped or address).is_global:
+            if not (mapped or address).is_global or any(address in net for net in _TUNNELS):
                 return "webhook_url_private"
     return None
+
+
+# IPv6 ranges that carry an IPv4 address inside, which Python counts as
+# global: NAT64 (64:ff9b::1.2.3.4 reaches 1.2.3.4), the old IPv4-compatible
+# form (::127.0.0.1), and 6to4. None is needed to reach a real server.
+_TUNNELS = tuple(
+    ipaddress.ip_network(net) for net in ("64:ff9b::/96", "64:ff9b:1::/48", "::/96", "2002::/16")
+)
 
 
 # --- writing an event (in the event's own transaction) ---------------------------------
@@ -131,9 +144,12 @@ def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getadd
 def _place_data(session: Session, place_id: int, now: datetime) -> dict[str, Any]:
     from app.occupancy import occupied_by_place
 
-    place, code = session.execute(
+    found = session.execute(
         select(Place, Building.code).join(Building, Building.id == Place.building_id).where(Place.id == place_id)
-    ).one()
+    ).first()
+    if found is None:  # deleted in the same transaction: the event still goes out
+        return {"place": {"id": place_id}}
+    place, code = found
     occupied = occupied_by_place(session, [place.id], now).get(place.id, 0)
     return {
         "place": {"id": place.id, "name": place.name, "building_code": code, "kind": place.kind.value},
@@ -213,16 +229,35 @@ def body_of(payload: dict[str, Any]) -> bytes:
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
 
 
+def _post(url: str, body: bytes, headers: dict[str, str], transport: httpx.AsyncBaseTransport | None) -> int:
+    """POST, and the status code. Under a deadline for the whole call:
+    httpx's own timeout counts each read separately, so a server sending a
+    byte every few seconds would hold the call (and the sweep) for hours.
+    Streamed and closed unread: the answer's body is never loaded. Redirects
+    are not followed (they could lead inside our network)."""
+
+    async def go() -> int:
+        with anyio.fail_after(TOTAL_SECONDS):
+            async with (
+                httpx.AsyncClient(transport=transport, timeout=TIMEOUT_SECONDS, follow_redirects=False) as http,
+                http.stream("POST", url, content=body, headers=headers) as answer,
+            ):
+                return answer.status_code
+
+    return anyio.run(go)
+
+
 def attempt(
     delivery: WebhookDelivery,
     endpoint: WebhookEndpoint,
-    client: httpx.Client,
+    transport: httpx.AsyncBaseTransport | None,
     key: bytes,
     now: datetime,
     allow_private: bool,
     resolve: Callable = socket.getaddrinfo,
 ) -> None:
-    """One try, recorded on the row. The caller commits."""
+    """One try, recorded on the row. The caller commits. `now` is read just
+    before the call: the signature's time is the time it is sent."""
     status_code: int | None = None
     error: str | None = None
     if not endpoint.active:
@@ -240,13 +275,10 @@ def attempt(
             "StudySpot-Signature": signature_header(secret_for(key, endpoint), stamp, body),
         }
         try:
-            # Streamed and closed unread: the answer's body is never loaded,
-            # however big. Redirects are not followed (they could lead inside).
-            with client.stream(
-                "POST", endpoint.url, content=body, headers=headers, timeout=TIMEOUT_SECONDS, follow_redirects=False
-            ) as answer:
-                status_code = answer.status_code
-        except httpx.HTTPError as failure:
+            status_code = _post(endpoint.url, body, headers, transport)
+        except TimeoutError:
+            error = "Timeout"
+        except Exception as failure:  # noqa: BLE001 - any failure is a failed try, counted, never a loop
             error = type(failure).__name__
     delivery.attempts += 1
     delivery.last_status_code = status_code
@@ -284,24 +316,34 @@ def claim(session: Session, now: datetime, limit: int = CLAIM_BATCH) -> list[int
 
 def deliver_due(
     session_maker: Callable[[], Session],
-    client: httpx.Client,
+    transport: httpx.AsyncBaseTransport | None,
     key: bytes,
-    now: datetime,
+    clock: Callable[[], datetime],
     allow_private: bool,
     resolve: Callable = socket.getaddrinfo,
 ) -> int:
+    """Due deliveries, one by one, within SWEEP_BUDGET: the rest of the
+    sweep (no-shows, reminders) never waits long. Claimed rows not reached
+    are taken again when their lease ends, which is longer than the budget
+    plus one call, so no row is sent by two servers."""
+    started = clock()
     with session_maker() as session:
-        ids = claim(session, now)
+        ids = claim(session, started)
         session.commit()
+    sent = 0
     for delivery_id in ids:
+        now = clock()
+        if now - started > SWEEP_BUDGET:
+            break
         with session_maker() as session:
             delivery = session.get(WebhookDelivery, delivery_id)
             endpoint = session.get(WebhookEndpoint, delivery.endpoint_id) if delivery else None
             if delivery is None or endpoint is None:
                 continue  # deleted meanwhile
-            attempt(delivery, endpoint, client, key, now, allow_private, resolve)
+            attempt(delivery, endpoint, transport, key, now, allow_private, resolve)
             session.commit()
-    return len(ids)
+            sent += 1
+    return sent
 
 
 def next_due(session: Session) -> datetime | None:
@@ -318,18 +360,21 @@ def send_now(
     session: Session,
     endpoint: WebhookEndpoint,
     payload: dict[str, Any],
-    client: httpx.Client,
+    transport: httpx.AsyncBaseTransport | None,
     key: bytes,
     now: datetime,
     allow_private: bool,
     resolve: Callable = socket.getaddrinfo,
 ) -> WebhookDelivery:
     """A test, or "send again", from the admin: tried within the request, so
-    the admin sees the answer at once. Later tries, if needed, by the sweep."""
+    the admin sees the answer at once. Later tries, if needed, by the sweep.
+
+    The row is committed before the call: no transaction (and no pooled
+    connection) is held open while a slow server answers."""
     delivery = _delivery(endpoint, payload, now)
     session.add(delivery)
-    session.flush()
-    attempt(delivery, endpoint, client, key, now, allow_private, resolve)
+    session.commit()
+    attempt(delivery, endpoint, transport, key, now, allow_private, resolve)
     return delivery
 
 
@@ -342,18 +387,12 @@ def test_payload(now: datetime) -> dict[str, Any]:
     }
 
 
-_http: httpx.Client | None = None
+def get_transport() -> httpx.AsyncBaseTransport | None:
+    """How deliveries go out: None is the real network. A dependency, so
+    tests swap in an httpx.MockTransport."""
+    return None
 
 
 def get_resolver() -> Callable:
     """How names are looked up: a dependency, so tests answer without DNS."""
     return socket.getaddrinfo
-
-
-def get_client() -> httpx.Client:
-    """One shared client (connection reuse). A dependency, so tests swap in
-    an httpx.MockTransport."""
-    global _http
-    if _http is None:
-        _http = httpx.Client()
-    return _http

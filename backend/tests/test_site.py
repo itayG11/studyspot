@@ -255,7 +255,7 @@ def test_the_widget_page_is_its_own_page_and_may_be_framed(with_widget: TestClie
 
 
 def test_every_other_page_still_may_not_be_framed(with_widget: TestClient):
-    for path in ("/", "/braude", "/braude/admin", "/api/health", "/embedx", "/me"):
+    for path in ("/", "/braude", "/braude/admin", "/api/health", "/embedx", "/me", "/embed/x/y", "/embed/Bad"):
         answer = with_widget.get(path)
         assert answer.headers["x-frame-options"] == "DENY", path
         assert "frame-ancestors 'none'" in answer.headers["content-security-policy"], path
@@ -263,3 +263,11 @@ def test_every_other_page_still_may_not_be_framed(with_widget: TestClient):
 
 def test_a_bad_widget_address_is_404(with_widget: TestClient):
     assert with_widget.get("/embed/Not_A_Slug").status_code == 404
+
+
+def test_under_embed_only_the_widget_exists(with_widget: TestClient):
+    # A deeper address must not fall through to the web app (which a framed
+    # page could then walk around in): 404, with the usual DENY.
+    answer = with_widget.get("/embed/braude/admin")
+    assert answer.status_code == 404
+    assert answer.headers["x-frame-options"] == "DENY"

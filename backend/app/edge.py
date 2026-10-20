@@ -7,6 +7,7 @@ middleware inside the app never sees that answer.
 """
 
 import logging
+import re
 import sys
 import time
 import uuid
@@ -47,15 +48,17 @@ class Edge:
         self,
         app: ASGIApp,
         headers: dict[str, str],
-        framed_prefix: str | None = None,
+        framed: re.Pattern[str] | None = None,
         framed_headers: dict[str, str] | None = None,
     ):
-        """framed_prefix: paths that other sites may show in a frame (the
-        occupancy widget, wave 14.4) get framed_headers instead."""
+        """framed: the exact paths other sites may show in a frame (the
+        occupancy widget, wave 14.4) get framed_headers instead. A full
+        match, not a prefix: /embed/x/y falls through to the web app, and
+        must not take the widget's freedom with it (wave 14 review)."""
         self.app = app
         self._headers = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
-        self._framed_prefix = framed_prefix
-        self._framed = [(k.lower().encode(), v.encode()) for k, v in (framed_headers or headers).items()]
+        self._framed = framed
+        self._framed_headers = [(k.lower().encode(), v.encode()) for k, v in (framed_headers or headers).items()]
 
     @property
     def site(self) -> Any:
@@ -71,8 +74,8 @@ class Edge:
         status: int | str = "-"  # no answer started: the visitor left, or the app crashed first
 
         path = scope.get("path", "")
-        framed = self._framed_prefix is not None and path.startswith(self._framed_prefix)
-        security = self._framed if framed else self._headers
+        framed = self._framed is not None and self._framed.fullmatch(path) is not None
+        security = self._framed_headers if framed else self._headers
 
         async def send_with_headers(message: Message) -> None:
             nonlocal status

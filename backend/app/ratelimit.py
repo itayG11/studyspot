@@ -207,6 +207,9 @@ screen_limit = per_ip("screen", limit=300, window_seconds=60, evict=True)
 # A shared "I'm studying here" link (app/shares.py): opened by friends and by
 # chat apps fetching the preview. Per address only, like the screen.
 share_limit = per_ip("share", limit=60, window_seconds=60, evict=True)
+# The /s/ page itself, apart: opening a link costs the page and the data
+# once each, and chat apps fetch previews from a few shared addresses.
+share_page_limit = per_ip("share-page", limit=120, window_seconds=60, evict=True)
 
 
 def per_person(name: str, limit: int, window_seconds: float) -> Callable:

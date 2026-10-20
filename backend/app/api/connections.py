@@ -102,7 +102,7 @@ def revoke_api_key(slug: Slug, key_id: Annotated[int, Path(gt=0)], admin: AdminD
 
 # --- webhooks (app/webhooks.py) -------------------------------------------------------
 
-ClientDep = Annotated[httpx.Client, Depends(webhooks.get_client)]
+ClientDep = Annotated[httpx.AsyncBaseTransport | None, Depends(webhooks.get_transport)]
 ResolveDep = Annotated[Callable, Depends(webhooks.get_resolver)]
 EventName = Literal["checkin.started", "checkin.ended", "booking.created", "booking.cancelled"]
 

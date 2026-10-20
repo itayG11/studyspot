@@ -48,7 +48,7 @@ from app.walking import matrix_from_settings, refresh_walks
 from app.webhook_tester import delete_old as delete_old_test_hits
 from app.webhooks import check_in_event, deliver_due, webhook_key
 from app.webhooks import delete_old as delete_old_deliveries
-from app.webhooks import get_client as webhook_client
+from app.webhooks import get_transport as webhook_transport
 from app.webhooks import next_due as next_webhook
 
 log = logging.getLogger(__name__)
@@ -87,8 +87,15 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     # Each real one is an event for the institution's webhooks (app/webhooks.py);
     # the demo's made-up students are not.
     for place_id, institution_id, simulated in ended:
-        if not simulated:
-            check_in_event(session, "checkin.ended", place_id, institution_id, now)
+        if simulated:
+            continue
+        # In a savepoint: one event that fails never stops the sweep (which
+        # would then fail on the same row every minute).
+        try:
+            with session.begin_nested():
+                check_in_event(session, "checkin.ended", place_id, institution_id, now)
+        except Exception:
+            log.exception("webhook event not written; the sweep goes on")
     # Sessions past their 7 days can never be used again (revoked ones are
     # kept until then: reuse detection needs them).
     old_sessions = session.execute(delete(AuthSession).where(AuthSession.expires_at <= now)).rowcount
@@ -174,7 +181,7 @@ def run_once() -> SweepResult:
     try:
         maker = lambda: SessionLocal(bind=get_engine())
         deliver_due(
-            maker, webhook_client(), webhook_key(settings.jwt_secret_bytes()), now, settings.webhook_allow_private
+            maker, webhook_transport(), webhook_key(settings.jwt_secret_bytes()), get_now, settings.webhook_allow_private
         )
         with maker() as session:
             due = next_webhook(session)

@@ -91,12 +91,23 @@ app = FastAPI(
 app.state.sweeping = False  # until the lifespan starts the sweep
 
 
+def _is_visit(request: Request) -> bool:
+    """A person on the site. Not the uptime monitor, and not a machine that
+    asks on its own all day: the occupancy widget on a lobby screen, or an
+    institution's script on /v1. Those would keep the free database awake
+    around the clock (wave 14 review)."""
+    path = request.url.path
+    if path in HEALTH_PATHS or path.startswith(("/v1/", "/api/v1/")):
+        return False
+    return request.headers.get("x-studyspot-widget") is None
+
+
 @app.middleware("http")
 async def count_visits(request: Request, call_next) -> Response:
     """Every request but the uptime monitor's is a visit. The visit that
     ends a quiet spell first catches up on the sweep, so a booking whose
     holder never came is already released when this visitor looks."""
-    if request.url.path not in HEALTH_PATHS and activity.visit() and app.state.sweeping:
+    if _is_visit(request) and activity.visit() and app.state.sweeping:
         try:
             await asyncio.wait_for(sweep_safely(run_once), WAKE_SWEEP_TIMEOUT)
         except TimeoutError:
@@ -117,7 +128,7 @@ app.add_middleware(
     allow_origins=get_settings().allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "X-Screen-Token"],
+    allow_headers=["Authorization", "Content-Type", "X-Screen-Token", "X-StudySpot-Widget"],
 )
 
 app.include_router(auth.router)

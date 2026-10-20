@@ -50,6 +50,7 @@ class WebhookDelivery(Base):
         # The sweep's question: what is due now.
         Index("ix_webhook_deliveries_due", "status", "next_attempt_at"),
         Index("ix_webhook_deliveries_endpoint_id", "endpoint_id", "id"),
+        Index("ix_webhook_deliveries_created_at", "created_at"),  # the sweep deletes by age
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -81,7 +82,10 @@ class WebhookTestHit(Base):
     20 per endpoint, kept an hour, so a visitor sees a real signed delivery."""
 
     __tablename__ = "webhook_test_hits"
-    __table_args__ = (Index("ix_webhook_test_hits_endpoint_id", "endpoint_id", "id"),)
+    __table_args__ = (
+        Index("ix_webhook_test_hits_endpoint_id", "endpoint_id", "id"),
+        Index("ix_webhook_test_hits_received_at", "received_at"),  # the sweep deletes by age
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     endpoint_id: Mapped[int] = mapped_column(ForeignKey("webhook_endpoints.id", ondelete="CASCADE"))

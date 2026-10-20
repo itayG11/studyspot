@@ -47,7 +47,7 @@ class Receiver:
 @pytest.fixture
 def receiver(client) -> Receiver:
     fake = Receiver()
-    app.dependency_overrides[webhooks.get_client] = lambda: httpx.Client(transport=httpx.MockTransport(fake))
+    app.dependency_overrides[webhooks.get_transport] = lambda: httpx.MockTransport(fake)
     app.dependency_overrides[webhooks.get_resolver] = lambda: resolve_to(PUBLIC)
     return fake
 
@@ -106,7 +106,12 @@ def test_the_secret_is_derived_and_a_new_version_changes_it(session, braude):
 
 
 @pytest.mark.parametrize(
-    "address", ["127.0.0.1", "10.1.2.3", "192.168.1.1", "169.254.169.254", "::1", "::ffff:127.0.0.1", "fd00::1"]
+    "address",
+    [
+        "127.0.0.1", "10.1.2.3", "192.168.1.1", "169.254.169.254", "::1", "::ffff:127.0.0.1", "fd00::1",
+        # IPv6 forms that carry an IPv4 address inside (wave 14 review):
+        "64:ff9b::a00:1", "::127.0.0.1", "2002:7f00:1::1",
+    ],
 )
 def test_an_address_inside_a_private_network_is_refused(address):
     assert webhooks.url_problem("https://looks-public.example", False, resolve_to(address)) == "webhook_url_private"
@@ -198,7 +203,7 @@ def test_the_sweep_sends_ended_for_real_check_ins_not_made_up_ones(client, sessi
 
 
 def _attempt(session, delivery, receiver, now):
-    client = httpx.Client(transport=httpx.MockTransport(receiver))
+    client = httpx.MockTransport(receiver)
     endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
     webhooks.attempt(delivery, endpoint, client, KEY, now, False, resolve_to(PUBLIC))
 
@@ -258,7 +263,7 @@ def test_an_address_that_turned_private_is_not_called(session, braude):
     receiver = Receiver()
     delivery = _one_delivery(session, braude)
     endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
-    client = httpx.Client(transport=httpx.MockTransport(receiver))
+    client = httpx.MockTransport(receiver)
     webhooks.attempt(delivery, endpoint, client, KEY, SUNDAY_10AM, False, resolve_to("10.0.0.5"))
     assert receiver.requests == [] and delivery.last_error == "webhook_url_private"
 
@@ -392,3 +397,73 @@ def test_the_demo_campus_cannot_add_addresses(client, session, receiver, monkeyp
     app.dependency_overrides[real] = lambda: settings
     answer = _add(client, demo_admin, slug="demo")
     assert (answer.status_code, answer.json()["detail"]) == (403, "demo_campus_locked")
+
+
+# --- the wave 14 review: slow servers, long batches, odd failures --------------------------
+
+
+def test_a_server_that_drips_is_cut_off_by_the_total_deadline(session, braude, monkeypatch):
+    import anyio
+
+    async def slow(request):
+        await anyio.sleep(10)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(webhooks, "TOTAL_SECONDS", 0.2)
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(slow), KEY, SUNDAY_10AM, False, resolve_to(PUBLIC))
+    assert (delivery.status, delivery.last_error, delivery.attempts) == (DeliveryStatus.PENDING, "Timeout", 1)
+
+
+def test_any_failure_is_a_counted_try_never_a_silent_loop(session, braude):
+    def broken(request):
+        raise ValueError("not an httpx error")
+
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(broken), KEY, SUNDAY_10AM, False, resolve_to(PUBLIC))
+    assert (delivery.attempts, delivery.last_error) == (1, "ValueError")
+
+
+def test_a_long_batch_signs_each_call_with_its_own_time_and_stops_at_its_budget(engine: Engine, monkeypatch):
+    """Real commits, as in the race test: deliver_due opens its own sessions."""
+    with Session(engine) as setup:
+        institution = make_institution(setup, slug="hook-budget")
+        endpoint = _endpoint(setup, institution)
+        for _ in range(5):
+            setup.add(webhooks._delivery(endpoint, webhooks.test_payload(SUNDAY_10AM), SUNDAY_10AM))
+        setup.commit()
+        institution_id = institution.id
+    seen: list[int] = []
+
+    def record(request):
+        seen.append(int(request.headers["StudySpot-Signature"].split(",")[0][2:]))
+        return httpx.Response(200)
+
+    ticks = iter(SUNDAY_10AM + timedelta(seconds=15 * n) for n in range(100))
+    try:
+        sent = webhooks.deliver_due(
+            lambda: Session(engine), httpx.MockTransport(record), KEY, lambda: next(ticks), False, resolve_to(PUBLIC)
+        )
+        # Clock: claim at 0 s, then 15, 30 and 45 s: the third is past the 40 s budget.
+        assert sent == 2
+        assert seen == [int((SUNDAY_10AM + timedelta(seconds=s)).timestamp()) for s in (15, 30)]
+        assert webhooks.LEASE > webhooks.SWEEP_BUDGET + timedelta(seconds=webhooks.TOTAL_SECONDS)
+    finally:
+        with Session(engine) as cleanup:
+            cleanup.execute(delete(Institution).where(Institution.id == institution_id))
+            cleanup.commit()
+
+
+def test_an_event_that_fails_never_stops_the_sweep(client, session, braude, monkeypatch):
+    from app import sweeper
+
+    client.post("/check-ins", json={"code": code_for(place_named(braude, "EF", "ספרייה"))})
+
+    def boom(*_args, **_kw):
+        raise RuntimeError("the event could not be written")
+
+    monkeypatch.setattr(sweeper, "check_in_event", boom)
+    result = sweep(session, SUNDAY_10AM + timedelta(hours=12))
+    assert result.expired_check_ins == 1

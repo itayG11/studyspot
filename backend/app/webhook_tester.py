@@ -21,6 +21,7 @@ from app.models import Institution, Place, WebhookEndpoint, WebhookTestHit
 MAX_HITS = 20  # per endpoint
 KEEP = timedelta(hours=1)
 MAX_BODY = 16_384
+BAD_SIGNATURE = 401
 
 
 def tester_url(public_api_url: str, endpoint_id: int) -> str:
@@ -56,12 +57,17 @@ def ensure_tester(session: Session, institution: Institution, public_api_url: st
 def receive(
     session: Session, endpoint_id: int, body: bytes, headers: dict[str, str], now: datetime, key: bytes
 ) -> int | None:
-    """What the tester answers (200 or 503), or None: not a tester."""
+    """What the tester answers (200, 503 while failing, or 401 for a bad
+    signature, which is not kept), or None: not a tester."""
     endpoint = session.get(WebhookEndpoint, endpoint_id)
     if endpoint is None or not endpoint.built_in:
         return None
     signature = headers.get("studyspot-signature", "")
     ok = webhooks.verify(webhooks.secret_for(key, endpoint), signature, body, now)
+    if not ok:
+        # Refused, and not kept: the receiver is public, and unsigned posts
+        # must not push the real deliveries out of the last 20 (wave 14 review).
+        return BAD_SIGNATURE
     answered = 503 if endpoint.tester_failing else 200
     session.add(
         WebhookTestHit(

@@ -6,19 +6,28 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel, ConfigDict
+from starlette.concurrency import run_in_threadpool
 
 from app import webhook_tester, webhooks
 from app.api.admin import AdminDep, SessionDep, SettingsDep, _demo_slug, _managed
 from app.api.connections import ClientDep, DeliveryOut, ResolveDep, WebhookOut, _delivery_out, _webhook_out
 from app.api.deps import limited_body
 from app.clock import get_now
-from app.ratelimit import per_ip, write_limit
+from app.ratelimit import LIMITERS, SlidingWindow, _too_many, per_ip, write_limit
 
 router = APIRouter(tags=["webhook tester"])
 
 NowDep = Annotated[datetime, Depends(get_now)]
 Slug = Annotated[str, Path(max_length=64)]
 tester_limit = per_ip("webhook-tester", limit=120, window_seconds=60, evict=True)
+# Each sample is an outbound call from our server: a cap for the whole
+# site too, whoever presses (every demo visitor is the same admin).
+_samples = LIMITERS.setdefault("webhook-tester-samples", SlidingWindow(30, 60))
+
+
+def sample_limit() -> None:
+    if not _samples.allow("all"):
+        raise _too_many(_samples)
 
 
 class TestHitOut(BaseModel):
@@ -57,10 +66,19 @@ async def receive(
 ):
     body = await limited_body(request, webhook_tester.MAX_BODY, too_big="webhook_test_too_big")
     headers = {name.lower(): value for name, value in request.headers.items()}
-    answered = webhook_tester.receive(db, endpoint_id, body, headers, now, _key(settings))
+
+    def store() -> int | None:
+        answered = webhook_tester.receive(db, endpoint_id, body, headers, now, _key(settings))
+        db.commit()
+        return answered
+
+    # The database off the event loop: waiting for a pooled connection must
+    # not freeze every other request (wave 14 review).
+    answered = await run_in_threadpool(store)
     if answered is None:
         raise HTTPException(404, "webhook_tester_not_found")
-    db.commit()
+    if answered == webhook_tester.BAD_SIGNATURE:
+        raise HTTPException(401, "webhook_signature_invalid")
     return Response(status_code=answered)
 
 
@@ -110,7 +128,9 @@ def set_failing(slug: Slug, body: TesterIn, admin: AdminDep, db: SessionDep, now
 
 
 @router.post(
-    "/admin/institutions/{slug}/webhook-tester/send", response_model=DeliveryOut, dependencies=[Depends(write_limit)]
+    "/admin/institutions/{slug}/webhook-tester/send",
+    response_model=DeliveryOut,
+    dependencies=[Depends(write_limit), Depends(sample_limit)],
 )
 def send_sample(
     slug: Slug,

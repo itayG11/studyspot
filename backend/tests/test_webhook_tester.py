@@ -55,7 +55,7 @@ def wire(client, session):
         answered = webhook_tester.receive(session, endpoint_id, request.content, headers, client.clock.now, KEY)
         return httpx.Response(answered or 404)
 
-    app.dependency_overrides[webhooks.get_client] = lambda: httpx.Client(transport=httpx.MockTransport(forward))
+    app.dependency_overrides[webhooks.get_transport] = lambda: httpx.MockTransport(forward)
     app.dependency_overrides[webhooks.get_resolver] = lambda: (
         lambda host, port, type=0: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", port))]
     )
@@ -99,7 +99,7 @@ def test_failing_shows_a_try_again_then_sending_again_works(client, demo, demo_a
     assert [h["answered"] for h in _open(client, demo_admin)["hits"]] == [200, 503]
 
 
-def test_the_receiver_refuses_a_bad_signature_but_records_it(client, session, demo, demo_admin, demo_on):
+def test_a_bad_signature_is_refused_and_not_kept(client, session, demo, demo_admin, demo_on):
     endpoint_id = _open(client, demo_admin)["webhook"]["id"]
     client.user = None  # a delivery, not a person
     answer = client.post(
@@ -107,10 +107,18 @@ def test_the_receiver_refuses_a_bad_signature_but_records_it(client, session, de
         content=b'{"type":"checkin.started"}',
         headers={"StudySpot-Signature": "t=1,v1=00", "StudySpot-Event": "checkin.started"},
     )
-    assert answer.status_code == 200
-    client.user = demo_admin
-    [hit] = _open(client, demo_admin)["hits"]
-    assert hit["signature_ok"] is False
+    assert (answer.status_code, answer.json()["detail"]) == (401, "webhook_signature_invalid")
+    # Unsigned posts never push the real deliveries out of the list.
+    assert _open(client, demo_admin)["hits"] == []
+
+
+def test_samples_have_a_cap_for_the_whole_site(client, demo, demo_admin, demo_on, wire, monkeypatch):
+    from app.api import webhook_tester as tester_api
+
+    _open(client, demo_admin)
+    monkeypatch.setattr(tester_api._samples, "limit", 1)
+    assert client.post("/admin/institutions/demo/webhook-tester/send").status_code == 200
+    assert client.post("/admin/institutions/demo/webhook-tester/send").status_code == 429
 
 
 def test_only_a_built_in_address_receives(client, session, demo, demo_admin, demo_on):
@@ -128,8 +136,10 @@ def test_only_a_built_in_address_receives(client, session, demo, demo_admin, dem
 
 def test_only_the_last_twenty_are_kept_and_an_hour_at_most(session, demo, demo_admin):
     endpoint = webhook_tester.ensure_tester(session, demo, "http://localhost:8000", SUNDAY_10AM)
+    secret = webhooks.secret_for(KEY, endpoint)
+    signed = {"studyspot-signature": webhooks.signature_header(secret, int(SUNDAY_10AM.timestamp()), b"{}")}
     for _ in range(webhook_tester.MAX_HITS + 5):
-        webhook_tester.receive(session, endpoint.id, b"{}", {}, SUNDAY_10AM, KEY)
+        assert webhook_tester.receive(session, endpoint.id, b"{}", signed, SUNDAY_10AM, KEY) == 200
     assert len(webhook_tester.hits(session, endpoint)) == webhook_tester.MAX_HITS
     assert webhook_tester.delete_old(session, SUNDAY_10AM + timedelta(minutes=59)) == 0
     assert webhook_tester.delete_old(session, SUNDAY_10AM + timedelta(hours=2)) == webhook_tester.MAX_HITS

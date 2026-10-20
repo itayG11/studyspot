@@ -30,7 +30,7 @@ from app.config import Settings, get_settings
 from app.edge import Edge, configure_logging
 from app.main import app as api
 from app.main import lifespan
-from app.ratelimit import share_limit
+from app.ratelimit import share_page_limit
 
 # What the page may load, and from where: only this site, plus the map's
 # tiles. No inline scripts, so injected HTML cannot run code. Styles set
@@ -53,8 +53,8 @@ CSP = "; ".join(
 # The occupancy widget (wave 14.4): an institution shows it inside its own
 # site, so any site may frame it. Nothing in it acts (no buttons, no
 # sign-in, no cookies sent), so a hidden frame over it gains nothing.
-EMBED_PREFIX = "/embed/"
 SLUG = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")  # as an institution's short name
+EMBED_PATH = re.compile(r"/embed/[a-z0-9]+(-[a-z0-9]+)*")
 EMBED_CSP = CSP.replace("frame-ancestors 'none'", "frame-ancestors *")
 
 SECURITY_HEADERS = {
@@ -106,12 +106,13 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     site.add_middleware(GZipMiddleware, minimum_size=1024)
 
     # "I'm studying here" (app/shares.py): the web app's page, with a preview
-    # for chat apps, which read the HTML and never run the scripts. Read per
-    # request: the preview changes when the stay ends.
+    # for chat apps, which read the HTML and never run the scripts. The file
+    # is read once; the stay is read on every request, so the preview changes
+    # the moment it ends.
     index_html = index.read_text(encoding="utf-8") if index.is_file() else ""
 
     @site.api_route(
-        "/s/{token}", methods=["GET", "HEAD"], include_in_schema=False, dependencies=[Depends(share_limit)]
+        "/s/{token}", methods=["GET", "HEAD"], include_in_schema=False, dependencies=[Depends(share_page_limit)]
     )
     def shared_stay(
         token: Annotated[str, TOKEN],
@@ -136,7 +137,8 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     # HEAD too: uptime monitors and `curl -I` ask that way.
     @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def web_app(path: str) -> FileResponse:
-        if path == "api" or path.startswith("api/"):
+        if path == "api" or path.startswith(("api/", "embed/")):
+            # Under embed/ only the widget's own address exists (above).
             raise HTTPException(404)  # an API address the API did not take
         file = files.get(path)
         if file is not None:
@@ -151,7 +153,7 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     # Outside everything, so that a 500 from a crash has the headers too.
     framed = {key: value for key, value in SECURITY_HEADERS.items() if key != "X-Frame-Options"}
     framed["Content-Security-Policy"] = EMBED_CSP
-    return Edge(site, SECURITY_HEADERS, framed_prefix=EMBED_PREFIX, framed_headers=framed)
+    return Edge(site, SECURITY_HEADERS, framed=EMBED_PATH, framed_headers=framed)
 
 
 configure_logging()
