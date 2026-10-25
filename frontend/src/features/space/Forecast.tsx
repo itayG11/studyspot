@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi'
 import { useLiveSimulated } from '../../institution'
 import { hourly, withToday } from '../../logic/load'
 import { LoadChart } from '../load/LoadChart'
-import { byHour, forecastLimit, freesAt, levelWord, usualAt } from '../../logic/forecast'
+import { forecastLimit, freesAt, levelWord, usualAt } from '../../logic/forecast'
 import { formatTime, todayWeekday, WEEK_ORDER, weekdayName } from '../../logic/time'
 import { Chip, ErrorState } from '../../ui'
 import styles from './space.module.css'
@@ -69,7 +69,6 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
       </>
     )
   } else {
-    const hours = byHour(data, limit)
     const usual = isToday ? usualAt(data, clock) : null
     const currentHour = Number(clock.slice(0, 2))
     // The server leaves it out in special periods (exams): then not here either.
@@ -94,27 +93,14 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
             kind={place.kind}
           />
         ) : (
-          <>
-        <div className={styles.forecastBars} aria-hidden="true">
-          {hours.map((h) => (
-            <span key={h.hour} className={styles.forecastColumn}>
-              <span
-                className={`${styles.forecastBar} ${styles[`forecast_${h.level}`]} ${isToday && h.hour === currentHour ? styles.forecastCurrent : ''}`}
-                style={{ height: `${Math.max(h.share * 100, 4)}%` }}
-              />
-              <span className={styles.forecastHour}>{h.hour % 2 === 0 ? h.hour : ''}</span>
-            </span>
-          ))}
-        </div>
-        <ul className="visually-hidden" aria-label="העומס לפי שעה">
-          {hours.map((h) => (
-            <li key={h.hour}>
-              {`${String(h.hour).padStart(2, '0')}:00: ${levelWord(h.level, place.kind)}`}
-              {room ? '' : `, בערך ${Math.round(h.people)} אנשים`}
-            </li>
-          ))}
-        </ul>
-          </>
+          <LoadChart
+            hours={hourly(data.slots.map((s) => ({ start: s.start, usual: s.people, today: null })))}
+            limit={limit}
+            currentHour={null}
+            live={null}
+            simulated={simulated}
+            kind={place.kind}
+          />
         )}
         <p className={styles.demo}>
           לפי {data.weeks} השבועות האחרונים.

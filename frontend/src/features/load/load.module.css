@@ -31,35 +31,59 @@
 }
 
 /* Today's bar is coloured by how full it is: the key shows all three. */
-.swatchToday {
-  background: linear-gradient(90deg, var(--free) 0 34%, var(--busy) 34% 67%, var(--full) 67%);
-}
-
 .live {
   margin-inline-start: auto;
+}
+
+/* What the numbers above and the hours below are. */
+.axes {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
 }
 
 .bars {
   display: flex;
   align-items: stretch;
   gap: 3px;
-  height: 140px;
+  height: 180px;
 }
 
+/* Three rows: the number, the bar, the hour. The number and hour rows have
+   a fixed height, so every bar stands on the same line. */
 .column {
-  display: flex;
+  display: grid;
+  grid-template-rows: 1.4em minmax(0, 1fr) 1.6em;
   flex: 1;
-  flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
 .plot {
   position: relative;
-  flex: 1;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+
+.value {
+  align-self: end;
+  overflow: hidden;
+  font: 600 var(--text-xs) / 1.4 var(--font-body);
+  color: var(--ink-2);
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.valueNow {
+  color: var(--ink);
+}
+
+/* An hour still to come: the usual count, quieter than today's. */
+.valueUsual {
+  color: var(--ink-3);
+  font-weight: 400;
 }
 
 /* Usually: a wide, quiet bar behind. */
@@ -68,6 +92,14 @@
   inset-inline: 0;
   bottom: 0;
   background: var(--load-usual);
+  border-radius: 4px 4px 2px 2px;
+}
+
+/* Another day: the usual bar alone, coloured by its level. */
+.usualAlone {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
   border-radius: 4px 4px 2px 2px;
 }
 
@@ -100,20 +132,32 @@
   border-radius: 4px;
 }
 
-.nowValue {
-  position: absolute;
-  top: -1.4em;
-  font: 600 var(--text-xs) var(--font-body);
-  color: var(--ink);
+.hour {
+  overflow: hidden;
+  font: var(--text-xs) / 1.6 var(--font-body);
+  color: var(--ink-3);
+  text-align: center;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.hour {
-  min-height: 1em;
-  font-size: var(--text-xs);
-  color: var(--ink-3);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+/* "16:00" where there is room; on a phone "16", with the line above saying it is the hour. */
+.hourShort {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .hourFull {
+    display: none;
+  }
+
+  .hourShort {
+    display: inline;
+  }
+
+  .value {
+    font-size: 10px;
+  }
 }
 
 /* Once, when the chart first shows: the refresh every 30 seconds keeps the
