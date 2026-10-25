@@ -81,14 +81,16 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-function renderScan(path: string) {
+function renderScan(path: string | string[]) {
   const router = createMemoryRouter(
     [
       { path: '/scan', element: <ScanPage /> },
       { path: '/me', element: <p>האזור שלי</p> },
       { path: '/login', element: <p>התחברות</p> },
+      { path: '/braude', element: <p>דף הבית של המוסד</p> },
+      { path: '/braude/places/5', element: <p>דף המקום</p> },
     ],
-    { initialEntries: [path] },
+    { initialEntries: typeof path === 'string' ? [path] : path, initialIndex: typeof path === 'string' ? 0 : path.length - 1 },
   )
   render(
     <AuthProvider>
@@ -157,6 +159,18 @@ describe('ScanPage', () => {
     await user().type(await screen.findByLabelText('הקוד מהשלט'), `p5.v1.${SIG}`)
     await user().click(screen.getByRole('button', { name: 'המשך' }))
     expect(await screen.findByRole('heading', { name: 'מתחם לימוד' })).toBeInTheDocument()
+  })
+
+  it('"back" opened straight here leads to the front page', async () => {
+    renderScan('/scan')
+    await user().click(await screen.findByRole('link', { name: 'חזרה' }))
+    expect(await screen.findByText('דף הבית של המוסד')).toBeInTheDocument()
+  })
+
+  it('"back" returns to the page before', async () => {
+    renderScan(['/braude/places/5', '/scan'])
+    await user().click(await screen.findByRole('link', { name: 'חזרה' }))
+    expect(await screen.findByText('דף המקום')).toBeInTheDocument()
   })
 
   it('a code opened while the page is already open is used too', async () => {

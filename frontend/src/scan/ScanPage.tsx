@@ -6,8 +6,8 @@
 // it waiting afterwards (pendingCode.ts).
 
 import { useEffect, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
-import { CircleCheck, KeyRound, ScanLine } from 'lucide-react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { ArrowRight, CircleCheck, KeyRound, ScanLine } from 'lucide-react'
 import { getPlace } from '../api/campus'
 import { checkIn, myCheckIn } from '../api/student'
 import { useMyBookings } from '../me/myBookings'
@@ -60,20 +60,50 @@ export function ScanPage() {
   const placeId = placeIdFromCode(code)
   if (placeId === null) {
     return (
+      <>
+      <BackLink />
       <section className={`${styles.ticket} ${styles.form}`}>
         <Notice tone="error">{errorMessage('invalid_code')}</Notice>
         <Button variant="secondary" icon={<KeyRound aria-hidden="true" />} onClick={() => setCode(null)}>
           להקליד קוד
         </Button>
       </section>
+      </>
     )
   }
   return <ScanPlace code={cleanCode(code)} placeId={placeId} />
 }
 
+// "Back": to the page before, or, opened straight here (a new tab, a QR
+// code), to the institution's front page. A link either way, so it also
+// works without the history.
+function BackLink() {
+  const { slug } = useInstitution()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const first = location.key === 'default' // the first page of this tab
+  return (
+    <div className={styles.backRow}>
+    <Link
+      to={`/${slug}`}
+      className={styles.back}
+      onClick={(event) => {
+        if (first || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        event.preventDefault()
+        navigate(-1)
+      }}
+    >
+      <ArrowRight aria-hidden="true" /> חזרה
+    </Link>
+    </div>
+  )
+}
+
 function CodeForm({ onCode }: { onCode: (code: string) => void }) {
   const [text, setText] = useState('')
   return (
+    <>
+    <BackLink />
     <form
       className={`${styles.ticket} ${styles.form}`}
       onSubmit={(event) => {
@@ -94,6 +124,7 @@ function CodeForm({ onCode }: { onCode: (code: string) => void }) {
         המשך
       </Button>
     </form>
+    </>
   )
 }
 
