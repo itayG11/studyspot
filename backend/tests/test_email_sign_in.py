@@ -298,10 +298,10 @@ def test_a_code_works_once(client, mailer):
     assert response.json()["detail"] == "email_code_invalid"
 
 
-def test_a_code_lasts_twenty_minutes(client, mailer):
-    # A college mailbox (Microsoft's scanning) held a code for minutes, and it
-    # had expired by the time it arrived.
-    assert CODE_LIFETIME == timedelta(minutes=20)
+def test_a_code_lasts_ten_minutes(client, mailer):
+    # A college mailbox (Microsoft's scanning) held a code for 3 minutes; 10
+    # covers that with room, and a guessed code works for less time.
+    assert CODE_LIFETIME == timedelta(minutes=10)
     start(client)
     client.clock.now += CODE_LIFETIME - timedelta(seconds=1)
     assert verify(client, mailer.last_code()).status_code == 200

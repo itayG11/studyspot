@@ -282,18 +282,21 @@
     display: none;
   }
 
-  /* The links on one row that scrolls sideways, not two. */
+  /* The links wrap to a second row rather than scroll sideways: a row cut
+     at the edge ("מוסד" for "מוסדות") read as a broken word, with nothing
+     to say there was more (found in the test round, 25 Oct). */
   .nav {
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    row-gap: var(--s-1);
   }
 
   .navLink {
     flex: none;
     white-space: nowrap;
+    padding: 0 var(--s-3);
   }
 
-  /* Inside the link: the scrolling row clips anything outside it. */
+  /* Inside the link, as when the row scrolled: kept, it is tidy either way. */
   .navLink:focus-visible {
     outline-offset: -3px;
   }
@@ -321,10 +324,14 @@
 .footerLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-4);
+  gap: var(--s-1) var(--s-4);
 }
 
+/* At least 24px tall to tap (WCAG 2.2, target size), and the gap between
+   rows keeps two links from being hit at once. e2e/sweep.spec.ts checks it. */
 .footerLinks a {
+  display: inline-block;
+  padding-block: 4px;
   color: var(--ink-2);
 }
 
@@ -358,6 +365,7 @@
 /* Next to "my area": opens the bookings ahead in a drawer. */
 .drawerButton {
   display: grid;
+  flex-shrink: 0; /* a crowded phone header squeezed it to 20px wide */
   place-items: center;
   width: 36px;
   height: 36px;

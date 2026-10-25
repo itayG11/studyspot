@@ -105,3 +105,19 @@ def test_without_https_or_secret_push_is_off(client: TestClient):
     app.dependency_overrides[get_push_sender] = lambda: None
     client.post("/me/push", json=body(Browser()))
     assert client.post("/me/push/test").json() == {"delivered": 0}
+
+
+def test_a_stranger_who_knows_the_address_cannot_take_the_browser(client: TestClient, session, student, braude):
+    # From the test round's security review, 25 Oct: the endpoint alone
+    # moved someone's browser to whoever sent it, with new keys, and the
+    # owner stopped getting notices. Without the browser's own secret, no.
+    from factories import make_user
+
+    client.post("/me/push", json=body(Browser()))
+    client.user = make_user(session, braude, "stranger@example.com")
+    stranger = Browser()
+    stranger.auth = b"not-the-same-key"  # 16 bytes: the browser's own secret differs
+    response = client.post("/me/push", json=body(stranger))  # same address, other keys
+    assert (response.status_code, response.json()["detail"]) == (409, "push_endpoint_taken")
+    [row] = session.query(PushSubscription).all()
+    assert row.user_id == student.id

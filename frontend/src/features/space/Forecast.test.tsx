@@ -102,7 +102,7 @@ describe('PlaceForecast', () => {
     const room = place({ id: 3, kind: 'group_room', name: 'EM107', capacity: 6, occupied: 0, available: 6, free_now: true })
     answer = () => forecast({ capacity: 6, frees_at: null, slots: [{ start: '10:00:00', people: 0.9 }] })
     show(room)
-    expect(await screen.findByText('בדרך כלל בשעה הזו: בדרך כלל תפוס.')).toBeInTheDocument()
+    expect(await screen.findByText('בשעה הזו: בדרך כלל תפוס.')).toBeInTheDocument()
   })
 
   it('"usually frees up" moves on with the clock, from the same answer', async () => {

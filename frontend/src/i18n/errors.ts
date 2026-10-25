@@ -2,6 +2,7 @@
 // A code missing here falls back to a general message.
 
 const MESSAGES: Record<string, string> = {
+  body_too_big: 'מה שנשלח גדול מדי. אם זה קובץ, נסה קובץ קטן יותר.',
   network_error: 'אין חיבור לשרת. בדוק את החיבור לאינטרנט ונסה שוב.',
   unknown_error: 'משהו השתבש. נסה שוב.',
   validation_error: 'חלק מהפרטים לא תקינים.',
@@ -88,6 +89,7 @@ const MESSAGES: Record<string, string> = {
   waitlist_too_many: 'אתה כבר ממתין לשלושה זמנים. בטל אחד מהם ב"האזור שלי", ונסה שוב.',
   waitlist_no_notices: 'כדי שנוכל להודיע לך כשהזמן מתפנה, קודם מפעילים התראות, או התראות במייל, ב"האזור שלי".',
   waitlist_not_found: 'הבקשה הזאת כבר לא ברשימה.',
+  push_endpoint_taken: 'הדפדפן הזה רשום להתראות של חשבון אחר. כבה בו את ההתראות, ונסה שוב.',
   push_too_many: 'ההתראות כבר פועלות בחמישה מכשירים. כבה אותן באחד מהם, ונסה שוב.',
   demo_account: 'את המשתמש לדוגמה אי אפשר למחוק: הוא משותף לכל המבקרים. התחבר עם החשבון שלך כדי שיהיה לך חשבון משלך.',
 

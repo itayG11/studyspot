@@ -27,7 +27,7 @@ from app.models import AuthProvider, UserIdentity
 
 MIN_LENGTH = 10
 MAX_LENGTH = 128  # hashing a huge text is slow: a way to tie up the server
-MAX_FAILURES = 10
+MAX_FAILURES = 5
 LOCK_FOR = timedelta(minutes=15)
 
 # OWASP's second argon2id setting: 19 MiB, 2 passes, 1 lane. The library's
@@ -37,7 +37,7 @@ _hasher = PasswordHasher(time_cost=2, memory_cost=19_456, parallelism=1)
 # And at most this many hashes at once; the rest wait a little, then 429.
 HASHES_AT_ONCE = 4
 _hashing = threading.BoundedSemaphore(HASHES_AT_ONCE)
-WAIT_FOR_HASH = 5.0  # seconds
+WAIT_FOR_HASH = 1.0  # seconds: a hash takes a fraction of that; a flood holds a thread for 1 s, not 5 (test round, 25 Oct)
 
 
 def _bounded(work):

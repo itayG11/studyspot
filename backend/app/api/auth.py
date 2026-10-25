@@ -262,6 +262,10 @@ def password_set(
                 user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
                 set_password(_email_identity(db, email), body.password, now)
                 revoke_all(db, user.id, now)
+                # The calendar address too, as "sign out everywhere" does:
+                # a reset after a stolen account must not leave the thief
+                # the feed (test round, 25 Oct).
+                calendar_feed.revoke(db, user)
                 issued = start_session(db, user, now)
         except IntegrityError as error:
             if not is_duplicate(error):

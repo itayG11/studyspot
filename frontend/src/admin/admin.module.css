@@ -32,6 +32,16 @@
   margin-bottom: var(--s-2);
 }
 
+/* On a phone the five tabs wrap instead of scrolling out of sight
+   ("הוספ" for "הוספה"), like the header's links. */
+@media (max-width: 640px) {
+  .tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    border-radius: var(--r-lg);
+  }
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -645,6 +655,7 @@
 }
 
 .forItSummary {
+  padding-block: var(--s-1);
   cursor: pointer;
   font: 600 var(--text-lg) / 1.3 var(--font-heading);
   color: var(--ink);

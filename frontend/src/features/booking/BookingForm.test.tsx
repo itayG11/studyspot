@@ -167,6 +167,34 @@ describe('BookingForm', () => {
     expect(bookingBody).toMatchObject({ starts_at: '2026-10-11T08:30:00.000Z', ends_at: '2026-10-11T10:00:00.000Z' })
   })
 
+  it('a quick second press sends one booking, not two', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    const book = screen.getByRole('button', { name: 'להזמין' })
+    await user.dblClick(book)
+    expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
+    const posts = fetchMock.mock.calls.filter(([url, init]) => new URL(url).pathname === '/bookings' && init?.method === 'POST')
+    expect(posts).toHaveLength(1)
+  })
+
+  it('when the line drops, says it is not known whether the booking was saved, and where to look', async () => {
+    // From the test round, 25 Oct: "no connection" alone left the student
+    // unsure whether to book again.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    bookingAnswers.push(() => {
+      throw new TypeError('Failed to fetch')
+    })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('אין חיבור לשרת')
+    expect(screen.getByText(/לא ידוע אם ההזמנה נשמרה/)).toHaveTextContent('לא תיווצר הזמנה כפולה')
+    expect(screen.getByRole('link', { name: 'האזור שלי' })).toHaveAttribute('href', '/me')
+  })
+
   it('after a clash, offers to wait for the same time to free', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     waitlistBody = null

@@ -18,7 +18,7 @@ const launchOptions = process.env.CHROMIUM_PATH ? { executablePath: process.env.
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'edge.spec.ts',
+  testMatch: ['edge.spec.ts', 'sweep.spec.ts'],
   timeout: 60_000,
   // The devices share the demo users and their bookings: one at a time.
   workers: 1,

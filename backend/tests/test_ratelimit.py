@@ -161,3 +161,14 @@ def _forget_test_limiters():
 
     for name in [n for n in LIMITERS if n.startswith("test-")]:
         del LIMITERS[name]
+
+
+def test_a_few_addresses_at_their_limit_do_not_shut_sign_in_for_everyone():
+    # From the test round's security review, 25 Oct: five addresses at
+    # 120 a minute each used up a site-wide 600, and a sixth was refused.
+    from app.ratelimit import sign_in_limit
+
+    for attacker in range(5):
+        for _ in range(120):
+            sign_in_limit(request_from("10.0.0.1", f"198.51.100.{attacker + 1}"), trusted_hops=1)
+    sign_in_limit(request_from("10.0.0.1", "203.0.113.50"), trusted_hops=1)  # a new visitor: not refused

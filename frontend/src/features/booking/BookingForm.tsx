@@ -9,7 +9,7 @@
 
 import { BellRing, CalendarClock } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import type { Booking, BookingRules, PlaceDetail, Seat } from '../../api/types'
 import { createBooking, getAvailability, joinWaitlist } from '../../api/student'
 import { useAuth } from '../../auth/AuthContext'
@@ -98,6 +98,10 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
     const result = await action.run(
       () => createBooking(request),
       (code) => {
+        // No answer: the booking may have reached the server before the
+        // line dropped. The times are read again, and the message below
+        // says where to look before trying again.
+        if (code === 'network_error') availability.reload()
         if (code !== 'slot_taken') return
         setClash({ from: slot.start, minutes, seen: availability.data })
         setSlot(null)
@@ -255,6 +259,12 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
         <p className={styles.error} role="alert">
           {action.error}
           <ErrorAction code={action.errorCode} />
+        </p>
+      )}
+      {action.errorCode === 'network_error' && !clash && (
+        <p className={styles.hint}>
+          לא ידוע אם ההזמנה נשמרה: אולי השרת קיבל אותה לפני שהחיבור נפל. לפני שתנסה שוב, בדוק ב
+          <Link to="/me">האזור שלי</Link>. גם אם תנסה שוב, לא תיווצר הזמנה כפולה: מסד הנתונים לא מרשה שתי הזמנות לאותו זמן.
         </p>
       )}
     </div>

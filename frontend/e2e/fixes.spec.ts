@@ -35,12 +35,21 @@ async function checkChart(scope: import('@playwright/test').Locator, shot: strin
     all.map((c) => {
       const [value, plot, hour] = [...c.children] as HTMLElement[]
       const box = plot.getBoundingClientRect()
-      return { bottom: Math.round(box.bottom), hour: hour.innerText.trim(), cut: value.scrollWidth > value.clientWidth + 1 }
+      const label = hour.firstElementChild as HTMLElement
+      const fits = (outer: HTMLElement, inner: DOMRect) => {
+        const room = outer.getBoundingClientRect()
+        return inner.width <= room.width + 1 && inner.height <= room.height + 1
+      }
+      return {
+        bottom: Math.round(box.bottom),
+        hour: hour.innerText.trim(),
+        cut: value.scrollWidth > value.clientWidth + 1 || !fits(hour, label.getBoundingClientRect()),
+      }
     }),
   )
   expect(new Set(rows.map((r) => r.bottom)).size).toBe(1)
   expect(rows.filter((r) => r.cut)).toEqual([]) // no number cut off in a narrow column
-  for (const r of rows) expect(r.hour).toMatch(/^\d{1,2}(:00)?$/)
+  for (const r of rows) expect(r.hour).toMatch(/^\d{2}:00$/) // the full hour, on a phone too
   await scope.screenshot({ path: `test-results/${shot}` })
 }
 
@@ -56,22 +65,25 @@ test('the campus chart: bars on one line, an hour under every column, a legend f
   await checkChart(card, 'fix-chart-campus.png')
 })
 
-test('on a phone too', async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    storageState: { cookies: [], origins: [{ origin: 'http://localhost:5174', localStorage: [{ name: 'studyspot:cookie-note-seen', value: '1' }] }] },
-  })
-  const page = await context.newPage()
-  await page.goto('http://localhost:5174/demo')
-  const card = page.getByRole('region', { name: 'העומס היום בקמפוס' })
-  await card.scrollIntoViewIfNeeded()
-  if (await card.getByText('הקמפוס סגור היום.').isVisible()) {
+// The narrowest common phone (320) and a usual one (390), held upright.
+for (const width of [320, 390]) {
+  test(`on a phone too, ${width} wide`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width, height: 844 },
+      storageState: { cookies: [], origins: [{ origin: 'http://localhost:5174', localStorage: [{ name: 'studyspot:cookie-note-seen', value: '1' }] }] },
+    })
+    const page = await context.newPage()
+    await page.goto('http://localhost:5174/demo')
+    const card = page.getByRole('region', { name: 'העומס היום בקמפוס' })
+    await card.scrollIntoViewIfNeeded()
+    if (await card.getByText('הקמפוס סגור היום.').isVisible()) {
+      await context.close()
+      test.skip(true, 'the campus is closed today')
+    }
+    await checkChart(card, `fix-chart-phone-${width}.png`)
     await context.close()
-    test.skip(true, 'the campus is closed today')
-  }
-  await checkChart(card, 'fix-chart-phone.png')
-  await context.close()
-})
+  })
+}
 
 test("a place's chart on another day uses the same chart", async ({ page, request }) => {
   const places = await (await request.get('http://localhost:8001/institutions/demo/places')).json()
