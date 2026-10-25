@@ -10,7 +10,10 @@ import os
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.activity import Activity
 from app.api import (
@@ -29,6 +32,7 @@ from app.api import (
     v1,
     webhook_tester,
 )
+from app.body_limit import BodyLimit
 from app.config import Settings, get_settings
 from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
@@ -122,6 +126,15 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# A 422 says which field is wrong and why, never what was sent: the
+# "input" could be a password, or megabytes sent back to whoever sent them
+# (test round, 25 Oct).
+@app.exception_handler(RequestValidationError)
+async def validation_failed(request: Request, error: RequestValidationError) -> JSONResponse:
+    errors = [{key: value for key, value in item.items() if key not in ("input", "ctx", "url")} for item in error.errors()]
+    return JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
+
+
 # Only the web app's own origin may call the API with credentials.
 app.add_middleware(
     CORSMiddleware,
@@ -145,3 +158,8 @@ app.include_router(v1.router)
 app.include_router(webhook_tester.router)
 app.include_router(system.router)
 app.include_router(push.router)
+
+
+# Last, so outermost of ours: a body over the cap never reaches the app
+# (app/body_limit.py).
+app.add_middleware(BodyLimit)
