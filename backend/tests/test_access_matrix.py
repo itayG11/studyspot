@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from conftest import code_for, place_named
+from factories import make_building, make_institution, make_place
 from fastapi.routing import APIRoute
 from sqlalchemy import select
 
@@ -33,7 +34,6 @@ from app.models import (
     WebhookEndpoint,
 )
 from app.models.people import AdminInvite
-from factories import make_building, make_institution, make_place
 
 # Who may call each route:
 #   public  - anyone, no sign-in
