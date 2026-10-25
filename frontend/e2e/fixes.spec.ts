@@ -109,3 +109,15 @@ test('the connections tab: the widget first, the IT parts folded', async ({ page
   await page.getByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks').click()
   await expect(page.getByRole('heading', { name: 'מפתחות API' })).toBeVisible()
 })
+
+test('the timetable import says which files it reads, without the word "Yedion"', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  await page.goto('/me')
+  const hint = page.getByText(/^אפשר להעלות: קובץ אקסל של מערכת השעות/)
+  await hint.scrollIntoViewIfNeeded()
+  await expect(hint).toContainText('קובץ אקסל אחר')
+  await expect(page.getByText(/ידיעון/)).toHaveCount(0)
+  await hint.locator('..').screenshot({ path: 'test-results/fix-import-hint.png' })
+})

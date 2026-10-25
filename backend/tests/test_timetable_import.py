@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from sqlalchemy import func, select
 
 from app.models import ClassSlot
-from app.timetable_import import MAX_BYTES, ImportRefused, read_yedion
+from app.timetable_import import MAX_BYTES, ImportRefused, read_yedion, without_titles
 
 DAYS = ["יום ראשון", "יום שני", "יום שלישי", "יום רביעי", "יום חמישי", "יום שישי"]
 # Column by day, row by hour, as the export has them.
@@ -198,3 +198,22 @@ def test_adding_many_at_once_says_which_were_refused(client, session):
 def test_adding_many_at_once_is_capped(client):
     one = {"weekday": 6, "starts": "08:30", "ends": "09:00", "building_code": "M", "title": None}
     assert client.post("/me/classes/bulk", json=[one] * 41).status_code == 422
+
+
+def test_a_lecturers_title_is_not_part_of_the_course(session, braude):
+    # From the user's check, 25 Oct: "ד"ר" had come into the course's name.
+    [row] = read_yedion(cell('61739-ד"ר מבנים אלגבריים 2 להנדסת תוכנה תרגיל\tמר א 101 M M 08:30-09:30'), braude.buildings)
+    assert row.title == "מבנים אלגבריים 2 להנדסת תוכנה, תרגיל"
+
+
+@pytest.mark.parametrize(
+    "name",
+    ['ד"ר מבנים אלגבריים', "ד״ר מבנים אלגבריים", "פרופ׳ מבנים אלגבריים", "מבנים אלגבריים גב'", "מבנים, ד”ר אלגבריים"],
+)
+def test_titles_are_taken_out_however_the_quotes_are_written(name):
+    assert without_titles(name).replace(",", "") == "מבנים אלגבריים"
+
+
+def test_a_word_that_only_contains_a_title_stays():
+    # Whole words only: "מרכזי" holds "מר", "דרך" holds "דר".
+    assert without_titles("מבוא לתכנון מרכזי דרך") == "מבוא לתכנון מרכזי דרך"
