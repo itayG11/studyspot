@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { ClosingBanner } from './ClosingBanner'
+import { VisitingBanner } from './VisitingBanner'
 import { SiteFooter } from './SiteFooter'
 import { CookieNote } from './CookieNote'
 import { scrollKey } from '../logic/scroll'
@@ -116,6 +117,7 @@ export function Layout() {
         </div>
       </header>
       {institution.closes_at && <ClosingBanner closesAt={institution.closes_at} />}
+      <VisitingBanner />
       <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>

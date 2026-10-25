@@ -412,3 +412,32 @@
   vertical-align: top;
   border-bottom: 1px solid var(--hairline);
 }
+
+/* "Your institution", on its card. */
+.institutionOwn {
+  grid-column: 2;
+  justify-self: start;
+  padding: 2px var(--s-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--free);
+  background: var(--free-tint);
+  border-radius: var(--r-pill);
+}
+
+/* Asked before opening another institution's campus. */
+.visitAsk {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.visitAsk p {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.visitActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

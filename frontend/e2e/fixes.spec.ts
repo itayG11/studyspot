@@ -67,3 +67,21 @@ test("a place's chart on another day uses the same chart", async ({ page, reques
   await expect(card.getByText(/^בדרך כלל: .*85% ומעלה/)).toBeVisible()
   await checkChart(card, 'fix-chart-place-day.png')
 })
+
+test("another institution's campus says it is only for looking, and the list marks the student's own", async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  await page.goto('/institutions')
+  const own = page.getByRole('listitem').filter({ has: page.getByRole('link', { name: /קמפוס הדגמה/ }) })
+  await expect(own.getByText('המוסד שלך')).toBeVisible()
+  await page.screenshot({ path: 'test-results/fix-institutions-own.png' })
+  // An institution that is not listed (Braude, hidden here) still has its address.
+  await page.goto('/braude')
+  const note = page.getByRole('note', { name: 'קמפוס של מוסד אחר' })
+  await expect(note).toContainText('אפשר רק לצפות')
+  await page.screenshot({ path: 'test-results/fix-visiting-banner.png' })
+  await note.getByRole('link', { name: /חזרה ל/ }).click()
+  await expect(page).toHaveURL(/\/demo$/)
+  await expect(note).toBeHidden()
+})
