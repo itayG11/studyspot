@@ -10,6 +10,7 @@ import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { ClosingBanner } from './ClosingBanner'
 import { SiteFooter } from './SiteFooter'
+import { CookieNote } from './CookieNote'
 import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
 import { BookingsDrawer } from './BookingsDrawer'
@@ -119,6 +120,7 @@ export function Layout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <CookieNote />
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration getKey={scrollKey} />
     </div>

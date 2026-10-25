@@ -24,6 +24,9 @@ export default defineConfig({
   workers: 1,
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // The cookie note (src/components/CookieNote.tsx) already read: it sits
+    // over the bottom of the page. e2e/cookies.spec.ts starts without it.
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: 'studyspot:cookie-note-seen', value: '1' }] }] },
     locale: 'he-IL',
     timezoneId: 'Asia/Jerusalem',
     trace: 'retain-on-failure',
