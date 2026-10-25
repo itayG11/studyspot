@@ -78,7 +78,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
         {usual !== null && place.is_open && (
           <p className={styles.forecastNow}>
             {room
-              ? `בדרך כלל בשעה הזו: ${levelWord(usual >= 0.85 ? 'high' : usual >= 0.5 ? 'medium' : 'low', place.kind)}.`
+              ? `בשעה הזו: ${levelWord(usual >= 0.85 ? 'high' : usual >= 0.5 ? 'medium' : 'low', place.kind)}.` // a room's word says "usually" itself
               : `עכשיו ${place.occupied} מתוך ${place.capacity}. בדרך כלל בשעה הזו: ${Math.round(usual)}.`}
           </p>
         )}

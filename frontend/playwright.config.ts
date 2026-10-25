@@ -13,7 +13,7 @@ const python = process.env.PYTHON ?? 'python'
 export default defineConfig({
   testDir: './e2e',
   // The edge cases run on three devices with their own config.
-  testIgnore: 'edge.spec.ts',
+  testIgnore: ['edge.spec.ts', 'sweep.spec.ts'],
   timeout: 30_000,
   // The tests share the demo users and their bookings: one at a time.
   workers: 1,

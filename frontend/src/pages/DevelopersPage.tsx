@@ -28,12 +28,12 @@ export function DevelopersPage() {
         מנהל המוסד יוצר מפתח בדף הניהול, בלשונית "חיבורים". המפתח מוצג פעם אחת. הוא פותח רק את המוסד שלו, ואפשר לבטל
         אותו בכל רגע. שולחים אותו בכל בקשה, בכותרת:
       </p>
-      <pre className={styles.code} dir="ltr">
+      <pre className={styles.code} dir="ltr" tabIndex={0}>
         Authorization: Bearer ss_live_...
       </pre>
 
       <h2>דוגמה</h2>
-      <pre className={styles.code} dir="ltr">{`curl -H "Authorization: Bearer $STUDYSPOT_KEY" \\
+      <pre className={styles.code} dir="ltr" tabIndex={0}>{`curl -H "Authorization: Bearer $STUDYSPOT_KEY" \\
   "${api}/v1/places?building=L"`}</pre>
 
       <h2>הנקודות</h2>

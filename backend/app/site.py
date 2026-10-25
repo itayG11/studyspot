@@ -24,7 +24,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from app import shares
 from app.api.deps import get_session
-from app.api.shares import TOKEN, share_key
+from app.api.shares import share_key
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.edge import Edge, configure_logging
@@ -115,12 +115,14 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
         "/s/{token}", methods=["GET", "HEAD"], include_in_schema=False, dependencies=[Depends(share_page_limit)]
     )
     def shared_stay(
-        token: Annotated[str, TOKEN],
+        # Any text: a link cut short in a chat app is still a page ("no
+        # longer active"), not a JSON error. read_token checks the form.
+        token: str,
         db: Annotated[Session, Depends(get_session)],
         now: Annotated[datetime, Depends(get_now)],
         settings: Annotated[Settings, Depends(get_settings)],
     ) -> HTMLResponse:
-        view = shares.view_for(db, token, now, share_key(settings))
+        view = shares.view_for(db, token[:200], now, share_key(settings))
         headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
         return HTMLResponse(shares.preview_html(index_html, view), headers=headers)
 

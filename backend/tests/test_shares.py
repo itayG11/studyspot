@@ -182,3 +182,15 @@ def test_a_name_with_html_stays_text(client, site, student, library):
     page = site.get(f"/s/{token}").text
     assert "<script>alert" not in page
     assert "&quot;&gt;&lt;script&gt;" in page
+
+
+@pytest.mark.parametrize("link", ["not-a-real-link", "c12.n1.short", "c12.n1." + "A" * 500])
+def test_a_link_cut_short_or_garbled_is_still_a_page(site, link):
+    # From the test round, 25 Oct: a link cut short in a chat app answered
+    # 422 with JSON, a page with no title and no language. Now it is the
+    # web app's page, previewed as no longer active.
+    page = site.get(f"/s/{link}")
+    assert page.status_code == 200
+    assert page.headers["content-type"].startswith("text/html")
+    assert '<html lang="he"' in page.text
+    assert "הקישור כבר לא פעיל" in page.text

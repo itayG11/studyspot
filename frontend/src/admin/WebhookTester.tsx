@@ -93,12 +93,12 @@ export function WebhookTester() {
               </div>
               <details>
                 <summary>הכותרות והתוכן</summary>
-                <pre className={styles.screenAddress}>
+                <pre className={styles.screenAddress} tabIndex={0}>
                   {Object.entries(hit.headers)
                     .map(([name, value]) => `${name}: ${value}`)
                     .join('\n')}
                 </pre>
-                <pre className={styles.screenAddress}>{hit.body}</pre>
+                <pre className={styles.screenAddress} tabIndex={0}>{hit.body}</pre>
               </details>
             </li>
           ))}
@@ -106,7 +106,7 @@ export function WebhookTester() {
       )}
       <details>
         <summary>איך שרת של מוסד בודק את החתימה, בפייתון</summary>
-        <pre className={styles.screenAddress}>{VERIFY}</pre>
+        <pre className={styles.screenAddress} tabIndex={0}>{VERIFY}</pre>
       </details>
     </section>
   )
