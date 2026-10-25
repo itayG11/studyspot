@@ -44,11 +44,13 @@ interface Props {
   // The account's own address (my area): no address field to fill.
   fixedEmail?: string
   title?: string
+  // What this way is for, above the address (only when setting a password).
+  intro?: string
   // Opened by a button that is now gone ("forgot it"): focus comes here.
   focusTitle?: boolean
 }
 
-export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title, focusTitle = false }: Props) {
+export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title, intro, focusTitle = false }: Props) {
   const { emailStart, emailVerify, passwordSet } = useAuth()
   const setting = purpose === 'set-password'
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -110,7 +112,7 @@ export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title
         {setting ? <KeyRound aria-hidden="true" /> : <Mail aria-hidden="true" />} {title ?? (setting ? 'סיסמה חדשה' : 'כניסה בקוד למייל')}
       </h2>
       {setting && step === 'email' && (
-        <p className={styles.demoText}>קודם שולחים קוד למייל, כדי לוודא שהכתובת שלך. אחר כך בוחרים סיסמה.</p>
+        <p className={styles.demoText}>{intro ?? 'קודם שולחים קוד למייל, כדי לוודא שהכתובת שלך. אחר כך בוחרים סיסמה.'}</p>
       )}
 
       {step === 'email' && fixedEmail !== undefined ? (

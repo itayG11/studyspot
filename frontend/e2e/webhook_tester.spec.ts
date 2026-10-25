@@ -14,6 +14,7 @@ test('a sample arrives signed; a failing tester shows a try again; sending again
   await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
   await page.getByRole('link', { name: 'ניהול' }).click()
   await page.getByRole('button', { name: 'חיבורים' }).click()
+  await page.getByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks').click() // folded by default
   const tester = page.getByRole('region', { name: 'בודק webhooks' })
   await tester.getByRole('button', { name: 'עונה 200' }).click() // shared demo: start working
 

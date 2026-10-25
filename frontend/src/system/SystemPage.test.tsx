@@ -190,7 +190,14 @@ describe('SystemPage', () => {
   it('says when nothing waits for approval', async () => {
     pending = []
     renderPage()
-    expect(await screen.findByText('אין כללי כניסה שממתינים לאישור.')).toBeInTheDocument()
+    expect(await screen.findByText(/^אין מה לאשר כרגע/)).toBeInTheDocument()
+  })
+
+  it('explains in plain words what a sign-in rule is, and why it waits for the system admin', async () => {
+    pending = []
+    renderPage()
+    expect(await screen.findByText(/כלל כניסה אומר מי שייך למוסד/)).toHaveTextContent('@e.braude.ac.il')
+    expect(screen.getByText(/למה צריך את האישור שלך/)).toHaveTextContent('ולקחת אליו את הסטודנטים שלה')
   })
 
   it('deletes a hidden institution only after its address is typed', async () => {

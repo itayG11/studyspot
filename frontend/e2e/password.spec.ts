@@ -8,6 +8,7 @@ import { expect, test } from '@playwright/test'
 const python = process.env.PYTHON ?? 'python'
 const backend = resolve(import.meta.dirname, '../../backend')
 const PASSWORD = 'Kfar-Tavor 7 rain'
+const NEW_PASSWORD = 'Galil-Hills 9 snow'
 
 function codeFor(email: string): string {
   return execFileSync(python, [`${import.meta.dirname}/email_code.py`, email], {
@@ -20,7 +21,8 @@ test('a code, then a password; out, and back in with the password', async ({ pag
   const email = `e2e.password.${Date.now()}@e.braude.ac.il`
   await page.goto('/login')
   await page.getByRole('button', { name: 'סיסמה', exact: true }).click()
-  await page.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }).click()
+  await page.getByRole('button', { name: 'אין לי עדיין סיסמה' }).click()
+  await expect(page.getByRole('heading', { name: 'יצירת סיסמה' })).toBeVisible()
   await page.getByLabel('כתובת המייל של המכללה').fill(email)
   await page.getByRole('button', { name: 'שליחת קוד' }).click()
   await page.getByLabel('הקוד מהמייל').fill(codeFor(email))
@@ -29,7 +31,7 @@ test('a code, then a password; out, and back in with the password', async ({ pag
   await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
 
   await page.goto('/me')
-  await expect(page.getByRole('button', { name: 'להחליף סיסמה' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'להחליף או לאפס סיסמה' })).toBeVisible()
   await page.getByRole('button', { name: 'התנתקות' }).first().click()
   await expect(page.getByRole('link', { name: 'התחברות' }).first()).toBeVisible()
 
@@ -40,6 +42,33 @@ test('a code, then a password; out, and back in with the password', async ({ pag
   await page.getByRole('button', { name: 'כניסה', exact: true }).click()
   await expect(page.getByText(/המייל או הסיסמה שגויים/)).toBeVisible()
   await page.getByLabel('סיסמה', { exact: true }).fill(PASSWORD)
+  await page.getByRole('button', { name: 'כניסה', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  // Forgot it: "reset password", a code, a new one; the old one stops working.
+  await page.getByRole('button', { name: 'התנתקות' }).first().click()
+  await expect(page.getByRole('link', { name: 'התחברות' }).first()).toBeVisible()
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'סיסמה', exact: true }).click()
+  await page.getByRole('button', { name: 'שכחתי סיסמה' }).click()
+  await expect(page.getByRole('heading', { name: 'איפוס סיסמה' })).toBeVisible()
+  await page.screenshot({ path: 'test-results/fix-password-reset.png' })
+  await page.getByLabel('כתובת המייל של המכללה').fill(email)
+  await page.getByRole('button', { name: 'שליחת קוד' }).click()
+  await page.getByLabel('הקוד מהמייל').fill(codeFor(email))
+  await page.getByLabel('סיסמה חדשה').fill(NEW_PASSWORD)
+  await page.getByRole('button', { name: 'שמירת הסיסמה' }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'התנתקות' }).first().click()
+  await expect(page.getByRole('link', { name: 'התחברות' }).first()).toBeVisible()
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'סיסמה', exact: true }).click()
+  await page.screenshot({ path: 'test-results/fix-password-buttons.png' })
+  await page.getByLabel('כתובת המייל של המכללה').fill(email)
+  await page.getByLabel('סיסמה', { exact: true }).fill(PASSWORD)
+  await page.getByRole('button', { name: 'כניסה', exact: true }).click()
+  await expect(page.getByText(/המייל או הסיסמה שגויים/)).toBeVisible()
+  await page.getByLabel('סיסמה', { exact: true }).fill(NEW_PASSWORD)
   await page.getByRole('button', { name: 'כניסה', exact: true }).click()
   await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
 })

@@ -9,7 +9,9 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { ClosingBanner } from './ClosingBanner'
+import { VisitingBanner } from './VisitingBanner'
 import { SiteFooter } from './SiteFooter'
+import { CookieNote } from './CookieNote'
 import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
 import { BookingsDrawer } from './BookingsDrawer'
@@ -115,10 +117,12 @@ export function Layout() {
         </div>
       </header>
       {institution.closes_at && <ClosingBanner closesAt={institution.closes_at} />}
+      <VisitingBanner />
       <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
       <SiteFooter />
+      <CookieNote />
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration getKey={scrollKey} />
     </div>

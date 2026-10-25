@@ -1,34 +1,13 @@
 // Reading the load forecast (GET /places/{id}/forecast) for the page:
-// hours instead of quarter hours, and the same levels as the live count.
+// the same levels as the live count, and when a full place usually frees.
 
 import type { Forecast, PlaceKind } from '../api/types'
-import { HIGH_FROM, MEDIUM_FROM } from './occupancy'
 
 export type ForecastLevel = 'low' | 'medium' | 'high'
-
-export interface HourForecast {
-  hour: number // local, 0–23
-  people: number // the average of its quarter hours
-  share: number // of full, 0–1
-  level: ForecastLevel
-}
 
 // One group fills a room; every other place is full when every seat is.
 export function forecastLimit(kind: PlaceKind, capacity: number): number {
   return kind === 'group_room' ? 1 : capacity
-}
-
-export function byHour(forecast: Forecast, limit: number): HourForecast[] {
-  const hours = new Map<number, number[]>()
-  for (const slot of forecast.slots) {
-    const hour = Number(slot.start.slice(0, 2))
-    hours.set(hour, [...(hours.get(hour) ?? []), slot.people])
-  }
-  return [...hours].map(([hour, quarters]) => {
-    const people = Math.round((quarters.reduce((a, b) => a + b, 0) / quarters.length) * 10) / 10
-    const share = limit > 0 ? Math.min(people / limit, 1) : 0
-    return { hour, people, share, level: share >= HIGH_FROM ? 'high' : share >= MEDIUM_FROM ? 'medium' : 'low' }
-  })
 }
 
 // The usual count of the quarter hour a local "HH:MM" falls in.

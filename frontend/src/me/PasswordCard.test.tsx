@@ -46,7 +46,7 @@ describe('PasswordCard', () => {
   it('offers to change one that exists', () => {
     auth.user = { ...NOA, has_password: true }
     render(<PasswordCard />)
-    expect(screen.getByRole('button', { name: 'להחליף סיסמה' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'להחליף או לאפס סיסמה' })).toBeInTheDocument()
   })
 
   it('is not there without a code sign-in, or for the shared demo student', () => {

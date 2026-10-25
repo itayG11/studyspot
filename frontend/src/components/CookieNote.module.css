@@ -1,0 +1,45 @@
+/* The cookie note: a quiet card at the bottom, above the page, not over all of it. */
+.note {
+  position: fixed;
+  inset-inline: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+  max-width: 44rem;
+  margin-inline: auto;
+  padding: var(--s-4) var(--s-5);
+  background: var(--stone-1);
+  border: 1px solid var(--stone-3);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.28);
+}
+
+.title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font: 600 var(--text-base) / 1.2 var(--font-heading);
+}
+
+.title svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-2);
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+@media (max-width: 30rem) {
+  .note {
+    grid-template-columns: 1fr;
+  }
+}

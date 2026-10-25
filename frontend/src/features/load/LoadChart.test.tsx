@@ -11,11 +11,45 @@ const HOURS = [
 ]
 
 describe('LoadChart', () => {
-  it('has a legend for both bars, and the live mark for today', () => {
+  it('names every colour in the legend, with its threshold, and the live mark', () => {
     render(<LoadChart hours={HOURS} limit={50} currentHour={10} live={44} simulated={false} />)
-    expect(screen.getByText('בדרך כלל')).toBeInTheDocument()
-    expect(screen.getByText('היום')).toBeInTheDocument()
+    expect(screen.getByText('העמודה הרחבה: בדרך כלל')).toBeInTheDocument()
+    expect(screen.getByText('היום: שקט, פחות מ-50% מהמקומות')).toBeInTheDocument()
+    expect(screen.getByText('היום: בינוני, 50% עד 85% מהמקומות')).toBeInTheDocument()
+    expect(screen.getByText(/^היום: .*, 85% ומעלה מהמקומות$/)).toBeInTheDocument()
+    expect(screen.getByText(/למטה: השעה/)).toBeInTheDocument()
     expect(screen.getByText('חי')).toBeInTheDocument()
+  })
+
+  it('gives every column its number above and its hour below, not every other one', () => {
+    const { container } = render(<LoadChart hours={HOURS} limit={50} currentHour={10} live={44} simulated={false} />)
+    const columns = [...container.querySelectorAll('[title]')]
+    expect(columns).toHaveLength(3)
+    // Today's number where there is one (now: the live count), else the usual.
+    expect(columns.map((c) => c.firstElementChild?.textContent)).toEqual(['10', '44', '30'])
+    expect(columns.map((c) => c.lastElementChild?.firstElementChild?.textContent)).toEqual(['09:00', '10:00', '11:00'])
+  })
+
+  it('another day: no "today" in the legend, the usual bars coloured by level', () => {
+    const { container } = render(
+      <LoadChart hours={HOURS.map((h) => ({ ...h, today: null }))} limit={50} currentHour={null} live={null} simulated={false} />,
+    )
+    expect(screen.queryByText('העמודה הרחבה: בדרך כלל')).not.toBeInTheDocument()
+    expect(screen.getByText('בדרך כלל: שקט, פחות מ-50% מהמקומות')).toBeInTheDocument()
+    expect([...container.querySelectorAll('[title]')].map((c) => c.firstElementChild?.textContent)).toEqual(['20', '40', '30'])
+  })
+
+  it('a group room counts how much of the hour it is booked, in percent', () => {
+    const { container } = render(
+      <LoadChart hours={[{ hour: 9, usual: 0.4, today: null }]} limit={1} currentHour={null} live={null} simulated={false} kind="group_room" />,
+    )
+    expect(container.querySelector('[title]')?.firstElementChild?.textContent).toBe('40')
+    expect(screen.getByText(/כמה אחוזים מהשעה החדר תפוס בדרך כלל/)).toBeInTheDocument()
+    expect(screen.getAllByText(/מהזמן/, { selector: 'span' })).toHaveLength(3)
+    expect(screen.getByText('בדרך כלל: פנוי, פחות מ-50% מהזמן')).toBeInTheDocument()
+    // Read aloud as a share of the hour, not as people.
+    const list = screen.getByRole('list', { name: 'העומס לפי שעה' })
+    expect(within(list).getByRole('listitem').textContent).toBe('09:00: בדרך כלל פנוי, תפוס 40% מהשעה')
   })
 
   it('reads each hour aloud: usually, today so far, and now', () => {

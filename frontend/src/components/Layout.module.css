@@ -404,3 +404,23 @@
   color: inherit;
   font-weight: 600;
 }
+
+/* Visiting another institution's campus: what one can do here. */
+.visitingBanner {
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-align: center;
+  background: var(--stone-1);
+  border-bottom: 1px solid var(--stone-3);
+}
+
+.visitingBanner a {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* Room at the bottom for the cookie note while it shows (CookieNote.tsx). */
+.app {
+  padding-bottom: var(--cookie-note-h, 0px);
+}

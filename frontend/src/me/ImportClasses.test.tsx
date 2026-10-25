@@ -139,7 +139,7 @@ describe('ImportClasses', () => {
     photo = false
     show()
     // The answer has arrived (the hint says so) and still: Excel only.
-    expect(await screen.findByText('קובץ האקסל שהידיעון מייצא.', { exact: false })).toBeInTheDocument()
+    expect(await screen.findByText(/כפי שאתר המכללה מייצא אותו. קובץ אקסל אחר לא ייקרא/)).toBeInTheDocument()
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(screen.getByLabelText('העלאת קובץ')).not.toHaveAttribute('accept', expect.stringContaining('image'))
     expect(screen.queryByText(/Anthropic/)).not.toBeInTheDocument()

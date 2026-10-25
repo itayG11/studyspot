@@ -123,9 +123,18 @@ export function LoginPage() {
   )
 }
 
-// The address-based ways in: a code each time, or a password set after a code.
+// The address-based ways in: a code each time, or a password set after a
+// code. A password is made the same way the first time and after it is
+// forgotten; only the words differ.
+type Way = 'code' | 'password' | 'new-password' | 'reset-password'
+
 function EmailOrPassword({ onSignedIn }: { onSignedIn: () => void }) {
-  const [way, setWay] = useState<'code' | 'password' | 'set-password'>('code')
+  const [way, setWay] = useState<Way>('code')
+  const back = (
+    <Button variant="ghost" size="sm" onClick={() => setWay('password')}>
+      חזרה לכניסה בסיסמה
+    </Button>
+  )
   return (
     <>
       <Segmented
@@ -136,11 +145,38 @@ function EmailOrPassword({ onSignedIn }: { onSignedIn: () => void }) {
           { value: 'password', label: 'סיסמה' },
         ]}
         value={way === 'code' ? 'code' : 'password'}
-        onChange={setWay}
+        onChange={(value: 'code' | 'password') => setWay(value)}
       />
       {way === 'code' && <EmailSignIn onSignedIn={onSignedIn} />}
-      {way === 'password' && <PasswordSignIn onSignedIn={onSignedIn} onForgot={() => setWay('set-password')} />}
-      {way === 'set-password' && <EmailSignIn purpose="set-password" onSignedIn={onSignedIn} focusTitle />}
+      {way === 'password' && (
+        <PasswordSignIn onSignedIn={onSignedIn} onNew={() => setWay('new-password')} onForgot={() => setWay('reset-password')} />
+      )}
+      {way === 'new-password' && (
+        <>
+          <EmailSignIn
+            key="new"
+            purpose="set-password"
+            title="יצירת סיסמה"
+            intro="בפעם הראשונה: שולחים קוד למייל של המכללה, כדי לוודא שהכתובת שלך, ואז בוחרים סיסמה. אם עוד אין לך חשבון, הוא נוצר עכשיו."
+            onSignedIn={onSignedIn}
+            focusTitle
+          />
+          {back}
+        </>
+      )}
+      {way === 'reset-password' && (
+        <>
+          <EmailSignIn
+            key="reset"
+            purpose="set-password"
+            title="איפוס סיסמה"
+            intro="שולחים קוד למייל של המכללה, ואז בוחרים סיסמה חדשה. הסיסמה הקודמת מפסיקה לעבוד, וכל שאר המכשירים מתנתקים."
+            onSignedIn={onSignedIn}
+            focusTitle
+          />
+          {back}
+        </>
+      )}
     </>
   )
 }

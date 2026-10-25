@@ -6,8 +6,8 @@
 // it waiting afterwards (pendingCode.ts).
 
 import { useEffect, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
-import { CircleCheck, KeyRound, ScanLine } from 'lucide-react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { ArrowRight, CircleCheck, KeyRound, ScanLine } from 'lucide-react'
 import { getPlace } from '../api/campus'
 import { checkIn, myCheckIn } from '../api/student'
 import { useMyBookings } from '../me/myBookings'
@@ -60,20 +60,62 @@ export function ScanPage() {
   const placeId = placeIdFromCode(code)
   if (placeId === null) {
     return (
+      <>
+      <BackLink />
       <section className={`${styles.ticket} ${styles.form}`}>
         <Notice tone="error">{errorMessage('invalid_code')}</Notice>
         <Button variant="secondary" icon={<KeyRound aria-hidden="true" />} onClick={() => setCode(null)}>
           להקליד קוד
         </Button>
       </section>
+      </>
     )
   }
   return <ScanPlace code={cleanCode(code)} placeId={placeId} />
 }
 
+// "Back": to the page before, or, opened straight here (a new tab, a QR
+// code), to the institution's front page. A link either way, so it also
+// works without the history.
+//
+// "Is there a page before" is the browser router's own index in the
+// history (history.state.idx, 0 for the tab's first entry). location.key is
+// not enough: this page replaces its own address (the code out of it), and
+// sign-in comes back with a replace too, and each replace makes a new key
+// although there is still nothing to go back to. A memory router (tests)
+// has no such index: there, the key.
+function hasPageBefore(key: string): boolean {
+  const index = (window.history.state as { idx?: unknown } | null)?.idx
+  return typeof index === 'number' ? index > 0 : key !== 'default'
+}
+
+function BackLink() {
+  const { slug } = useInstitution()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const first = !hasPageBefore(location.key)
+  return (
+    <div className={styles.backRow}>
+    <Link
+      to={`/${slug}`}
+      className={styles.back}
+      onClick={(event) => {
+        if (first || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        event.preventDefault()
+        navigate(-1)
+      }}
+    >
+      <ArrowRight aria-hidden="true" /> חזרה
+    </Link>
+    </div>
+  )
+}
+
 function CodeForm({ onCode }: { onCode: (code: string) => void }) {
   const [text, setText] = useState('')
   return (
+    <>
+    <BackLink />
     <form
       className={`${styles.ticket} ${styles.form}`}
       onSubmit={(event) => {
@@ -94,6 +136,7 @@ function CodeForm({ onCode }: { onCode: (code: string) => void }) {
         המשך
       </Button>
     </form>
+    </>
   )
 }
 

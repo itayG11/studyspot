@@ -300,3 +300,16 @@ def test_a_photo_too_big_says_so_for_a_photo(client, with_reader):
     with_reader(answer())
     response = post(client, PNG + b"\0" * timetable_photo.MAX_BYTES)
     assert (response.status_code, response.json()["detail"]) == (422, "import_photo_too_big")
+
+
+def test_a_lecturers_title_the_model_copied_is_taken_out():
+    # From the user's check, 25 Oct: "ד"ר" had come into the course's name.
+    [row] = timetable_photo.read_photo(PNG, CAMPUS, reader(answer(
+        ("שני", "08:30", "10:30", "M", "ד״ר מבנים אלגבריים 2 להנדסת תוכנה, תרגיל"),
+    )))
+    assert row.title == "מבנים אלגבריים 2 להנדסת תוכנה, תרגיל"
+
+
+def test_the_prompt_asks_for_no_titles_and_the_names_own_order():
+    assert 'ד"ר' in timetable_photo.PROMPT
+    assert "in the order written" in timetable_photo.PROMPT

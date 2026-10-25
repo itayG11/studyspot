@@ -16,7 +16,7 @@ export function PasswordCard() {
   const [saved, setSaved] = useState(false)
   const titleId = useId()
   if (!user || user.is_demo || !user.can_set_password) return null
-  const action = user.has_password ? 'להחליף סיסמה' : 'להגדיר סיסמה'
+  const action = user.has_password ? 'להחליף או לאפס סיסמה' : 'להגדיר סיסמה'
   return (
     <section aria-labelledby={titleId} className={styles.section}>
       <h2 id={titleId} className={styles.heading}>
@@ -24,7 +24,7 @@ export function PasswordCard() {
       </h2>
       <p>
         {user.has_password
-          ? 'יש לך סיסמה: אפשר להיכנס בה, או בקוד למייל.'
+          ? 'יש לך סיסמה: אפשר להיכנס בה, או בקוד למייל. שכחת אותה? הכפתור כאן מאפס אותה, בקוד למייל.'
           : 'אפשר להיכנס גם בסיסמה, בלי לחכות לקוד בכל פעם.'}
       </p>
       {open ? (

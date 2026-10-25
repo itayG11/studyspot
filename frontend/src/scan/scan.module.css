@@ -185,3 +185,29 @@
     animation: none;
   }
 }
+
+/* "Back", above the code form: like the place page's link back to the search. */
+.backRow {
+  max-width: 34rem;
+  margin: var(--s-6) auto calc(-1 * var(--s-3));
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.back:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}

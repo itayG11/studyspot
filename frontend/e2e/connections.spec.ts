@@ -15,6 +15,7 @@ test('an admin makes an API key, a script reads the places with it, and revoking
   await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
   await page.getByRole('link', { name: 'ניהול' }).click()
   await page.getByRole('button', { name: 'חיבורים' }).click()
+  await page.getByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks').click() // folded by default
   const name = `e2e ${Date.now()}`
   await page.getByLabel(/למה המפתח/).fill(name)
   await page.getByRole('button', { name: 'ליצור מפתח' }).click()

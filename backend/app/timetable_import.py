@@ -43,6 +43,18 @@ WEEKDAYS = {"ראשון": 6, "שני": 0, "שלישי": 1, "רביעי": 2, "ח�
 _TIMES = re.compile(r"(\d{1,2}):(\d{2}) ?[-–] ?(\d{1,2}):(\d{2})$")
 _NUMBER = re.compile(r"\d+-")  # the course number, before its name
 KINDS = ("הרצאה", "תרגיל", "תרגול", "מעבדה", "סמינר")
+# A lecturer's title, never part of a course's name: "ד"ר מבנים אלגבריים"
+# is the course "מבנים אלגבריים". Compared with the quotes made plain, as a
+# Hebrew keyboard writes them in many ways (" ״ ” and ' ׳ ’).
+TITLES = frozenset({'ד"ר', "דר'", "פרופ'", "פרופסור", "גב'", "מר"})
+_QUOTES = str.maketrans({"״": '"', "”": '"', "“": '"', "׳": "'", "’": "'", "‘": "'"})
+
+
+def without_titles(name: str) -> str:
+    """The course name without a lecturer's title in it, anywhere: the
+    title is a whole word, so a course's own words are never cut."""
+    kept = [w for w in name.split() if w.translate(_QUOTES).replace("''", '"').strip(",.:;") not in TITLES]
+    return " ".join(kept)
 
 
 class ImportRefused(Exception):
@@ -144,7 +156,7 @@ def _title(line: str) -> str | None:
     words = [_NUMBER.sub("", first[0], count=1), *first[1:]]
     for index, word in enumerate(words):
         if word in KINDS and index > 0:
-            name = " ".join(w for w in words[:index] if w)
+            name = without_titles(" ".join(w for w in words[:index] if w))
             return f"{name}, {word}"[:TITLE_LENGTH] if name else None
     return None
 

@@ -286,3 +286,15 @@ def test_a_locked_one_looks_like_any_other_failure(client, mailer):
         login(client, "Wrong-Password 1")
     locked = login(client)
     assert (locked.status_code, locked.json()["detail"]) == (401, "password_invalid")
+
+
+def test_the_sign_in_page_says_the_same_lock_as_the_server():
+    # The note under the password form (PasswordSignIn.tsx) repeats the lock.
+    import re
+    from pathlib import Path
+
+    from app import passwords
+
+    page = (Path(__file__).resolve().parents[2] / "frontend" / "src" / "pages" / "PasswordSignIn.tsx").read_text()
+    assert re.search(r"LOCK_AFTER = (\d+)", page)[1] == str(passwords.MAX_FAILURES)
+    assert re.search(r"LOCK_MINUTES = (\d+)", page)[1] == str(int(passwords.LOCK_FOR.total_seconds() // 60))
