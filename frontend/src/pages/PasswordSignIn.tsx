@@ -20,7 +20,7 @@ interface Props {
 
 // From app/passwords.py (MAX_FAILURES, LOCK_FOR), said to the student;
 // backend/tests/test_passwords.py keeps them the same.
-const LOCK_AFTER = 10
+const LOCK_AFTER = 5
 const LOCK_MINUTES = 15
 
 export function PasswordSignIn({ onSignedIn, onNew, onForgot }: Props) {
@@ -93,7 +93,7 @@ export function PasswordSignIn({ onSignedIn, onNew, onForgot }: Props) {
       </form>
       {error && <Notice tone="error">{error}</Notice>}
       <p className={styles.fieldHint}>
-        הסיסמה נשמרת אצלנו רק כגיבוב, בשיטת <span dir="ltr">argon2id</span>, ולא כטקסט. אחרי {LOCK_AFTER} ניסיונות שגויים ברצף
+        הסיסמה לא נשמרת אצלנו כטקסט, אלא בצורה שאי אפשר להפוך חזרה לסיסמה. אחרי {LOCK_AFTER} ניסיונות שגויים ברצף
         היא ננעלת ל-{LOCK_MINUTES} דקות. גם אז אפשר להיכנס בקוד למייל.
       </p>
     </div>

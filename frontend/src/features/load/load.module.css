@@ -141,18 +141,24 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* "16:00" where there is room; on a phone "16", with the line above saying it is the hour. */
-.hourShort {
-  display: none;
-}
-
+/* On a phone a column is 16-22px wide, too narrow for "16:00" across even
+   in tiny type: there the hour stands on its side, read bottom to top, in a
+   taller row. */
 @media (max-width: 640px) {
-  .hourFull {
-    display: none;
+  .column {
+    grid-template-rows: 1.4em minmax(0, 1fr) 3.6em;
   }
 
-  .hourShort {
-    display: inline;
+  .hour {
+    display: flex;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .hourFull {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 11px;
   }
 
   /* Three digits fit a phone's narrow column at this size (e2e/fixes.spec.ts). */

@@ -119,7 +119,6 @@ export function LoadChart({ hours, limit, currentHour, live, simulated, kind = '
               </span>
               <span className={styles.hour}>
                 <span className={styles.hourFull}>{clock(h.hour)}</span>
-                <span className={styles.hourShort}>{h.hour}</span>
               </span>
             </span>
           )

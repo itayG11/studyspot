@@ -63,7 +63,7 @@ export function EmailSignIn({ onSignedIn, purpose = 'sign-in', fixedEmail, title
   // Read out by screen readers; always in the page, so every change is heard.
   const [status, setStatus] = useState('')
   const [changedAddress, setChangedAddress] = useState(false)
-  const [minutes, setMinutes] = useState(20)
+  const [minutes, setMinutes] = useState(10)
   const [sentAt, setSentAt] = useState<number | null>(null)
   const wait = useCountdown(sentAt)
   const id = useId()

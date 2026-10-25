@@ -3,7 +3,7 @@
 1. start: the address must belong to an institution's email login rule
    (its exact domain); otherwise no email is sent, so the site cannot be
    used to mail strangers. A random 6-digit code is made, its HMAC stored
-   for 20 minutes, and the code emailed.
+   for 10 minutes, and the code emailed.
 2. verify: any code of the address still in time counts, not only the
    newest: a college mailbox may hold an email for minutes, and by then a
    new code was asked for. A wrong try counts on every open code, so open
@@ -30,7 +30,7 @@ from app.errors import Refusal
 from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule
 from app.oidc import ProviderIdentity
 
-CODE_LIFETIME = timedelta(minutes=20)
+CODE_LIFETIME = timedelta(minutes=10)  # still past a college mailbox's few minutes of scanning
 MAX_ATTEMPTS = 5
 CODES_PER_ADDRESS_PER_HOUR = 5
 CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address

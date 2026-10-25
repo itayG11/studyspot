@@ -128,7 +128,7 @@ describe('LoginPage email code', () => {
       if (path === '/auth/email/start') {
         const { email } = JSON.parse(String(init!.body))
         if (email.endsWith('@gmail.com')) return Promise.resolve(jsonResponse({ detail: 'email_domain_not_supported' }, 403))
-        return Promise.resolve(jsonResponse({ expires_in: 1200 }, 202))
+        return Promise.resolve(jsonResponse({ expires_in: 600 }, 202))
       }
       if (path === '/auth/email/verify') {
         const { code } = JSON.parse(String(init!.body))
@@ -187,7 +187,7 @@ describe('LoginPage email code', () => {
     renderLogin()
     await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), 'a@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
-    expect(await screen.findByText(/תקף ל-20 דקות/)).toBeInTheDocument()
+    expect(await screen.findByText(/תקף ל-10 דקות/)).toBeInTheDocument()
     expect(screen.getByText(/עד כמה דקות/)).toBeInTheDocument()
     expect(screen.getByText(/גם קוד קודם עובד/)).toBeInTheDocument()
   })
@@ -239,7 +239,7 @@ describe('LoginPage email code', () => {
     const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>
     fetchMock.mockImplementation((url: string, init?: RequestInit) =>
       String(url).endsWith('/auth/email/start')
-        ? new Promise<Response>((done) => (release = () => done(jsonResponse({ expires_in: 1200 }, 202))))
+        ? new Promise<Response>((done) => (release = () => done(jsonResponse({ expires_in: 600 }, 202))))
         : base(url, init),
     )
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד חדש' }))
@@ -269,7 +269,7 @@ describe('LoginPage password', () => {
       const token = { access_token: 't', token_type: 'bearer', expires_in: 900, user: STUDENT }
       if (path === '/auth/password/login')
         return Promise.resolve(body.password === 'Kfar-Tavor 7 rain' ? jsonResponse(token) : jsonResponse({ detail: 'password_invalid' }, 401))
-      if (path === '/auth/email/start') return Promise.resolve(jsonResponse({ expires_in: 1200 }, 202))
+      if (path === '/auth/email/start') return Promise.resolve(jsonResponse({ expires_in: 600 }, 202))
       if (path === '/auth/password/set') return Promise.resolve(jsonResponse(token))
       return base(url)
     })
@@ -308,7 +308,7 @@ describe('LoginPage password', () => {
 
   it('two separate ways: no password yet, and forgot it, each with its own words', async () => {
     await passwordTab()
-    expect(screen.getByText(/נשמרת אצלנו רק כגיבוב/)).toHaveTextContent('אחרי 10 ניסיונות שגויים ברצף היא ננעלת ל-15 דקות')
+    expect(screen.getByText(/אי אפשר להפוך חזרה לסיסמה/)).toHaveTextContent('אחרי 5 ניסיונות שגויים ברצף היא ננעלת ל-15 דקות')
     await userEvent.click(screen.getByRole('button', { name: 'אין לי עדיין סיסמה' }))
     expect(screen.getByRole('heading', { name: 'יצירת סיסמה' })).toHaveFocus()
     expect(screen.getByText(/בפעם הראשונה/)).toBeInTheDocument()

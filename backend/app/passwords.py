@@ -27,7 +27,7 @@ from app.models import AuthProvider, UserIdentity
 
 MIN_LENGTH = 10
 MAX_LENGTH = 128  # hashing a huge text is slow: a way to tie up the server
-MAX_FAILURES = 10
+MAX_FAILURES = 5
 LOCK_FOR = timedelta(minutes=15)
 
 # OWASP's second argon2id setting: 19 MiB, 2 passes, 1 lane. The library's
