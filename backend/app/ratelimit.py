@@ -165,10 +165,16 @@ def per_cookie(name: str, cookie: str, limit: int, window_seconds: float) -> Cal
 
 
 # The limits used by the routes. Sign-in is per IP and generous, because a
-# campus network can put many students behind one address. The total is a
-# backstop for the whole site (one small server): 600 sign-ins a minute is
-# far above a campus at its busiest hour.
-sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, total_limit=600)
+# campus network can put many students behind one address.
+#
+# No total over all addresses here (test round, 25 Oct): with 600 a minute
+# for the whole site, five addresses at their own 120 used it all up, and
+# every other visitor was refused sign-in. What a total guarded against is
+# guarded already, per account: a password locks after 5 wrong tries
+# (app/passwords.py), a code after 5 (app/email_codes.py), and password
+# hashing runs a few at a time. A full table of addresses drops its oldest
+# (evict), so a flood of new addresses cannot shut new visitors out either.
+sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, evict=True)
 # Each start sends an email, so it is far stricter than sign-in. Per address
 # and per day there are limits in the database too (app/email_codes.py).
 # The daily one keeps a single address from using up the site's daily email
