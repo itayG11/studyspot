@@ -233,6 +233,7 @@ def other(session):
         "delivery_id": delivery.id,
         "key_id": key.id,
         "invite_id": invite.id,
+        "code_version": place.code_version,
     }
 
 
@@ -293,9 +294,54 @@ def test_an_admin_cannot_reach_another_institution(client, session, braude, othe
     client.user = make_admin(session, braude.id)
     response = call(client, method, fill(path, other), BODIES.get((method, path)))
     assert response.status_code in (403, 404), (method, path, response.status_code, response.text[:200])
-    # And nothing of theirs changed.
-    assert session.scalar(select(WebhookEndpoint.active).where(WebhookEndpoint.id == other["endpoint_id"])) in (True, None)
-    assert session.scalar(select(ApiKey.revoked_at).where(ApiKey.id == other["key_id"])) is None
+    assert_untouched(session, other)
+
+
+def assert_untouched(session, other: dict) -> None:
+    """Nothing of the other institution changed, whatever the answer said."""
+    from app.models import Building, Institution, Place
+
+    session.expire_all()
+    building = session.get(Building, other["building_id"])
+    place = session.get(Place, other["place_id"])
+    institution = session.get(Institution, building.institution_id)
+    endpoint = session.get(WebhookEndpoint, other["endpoint_id"])
+    assert (building.latitude, building.longitude) == (None, None)
+    assert place.check_in_mode.value == "sign" and place.code_version == other["code_version"]
+    assert institution.name == "Test other-college" and institution.is_active is False
+    assert session.get(InstitutionLoginRule, other["rule_id"]) is not None
+    assert (endpoint.active, endpoint.secret_version) == (True, 1)
+    assert session.get(ApiKey, other["key_id"]).revoked_at is None
+    assert session.get(AdminInvite, other["invite_id"]).revoked_at is None
+    assert session.scalar(select(WebhookEndpoint.id).where(WebhookEndpoint.url.like("%attacker%"))) is None
+
+
+def test_an_admin_cannot_reach_another_institutions_thing_through_their_own_address(client, session, braude, other):
+    # Their own institution in the address, someone else's id after it: the
+    # id must be checked against the institution too, not only the address.
+    client.user = make_admin(session, braude.id)
+    response = client.delete(f"/admin/institutions/{braude.slug}/api-keys/{other['key_id']}")
+    assert response.status_code == 404, response.text
+    assert_untouched(session, other)
+
+
+@pytest.mark.parametrize(("method", "path"), routes_for("api_key"))
+def test_an_api_route_without_a_key_is_refused(client, braude, method, path):
+    client.user = None
+    response = call(client, method, fill(path, own_ids(braude)))
+    assert response.status_code == 401, (method, path, response.status_code, response.text[:200])
+
+
+@pytest.mark.parametrize(("method", "path"), routes_for("token"))
+def test_a_token_route_with_a_wrong_token_gives_nothing(client, braude, method, path):
+    client.user = None
+    response = client.request(
+        method,
+        fill(path, own_ids(braude)) + ("?t=wrong" if "?" not in path else ""),
+        headers={"X-Screen-Token": "wrong", "StudySpot-Signature": "t=1,v1=00"},
+        json={} if method == "POST" else None,
+    )
+    assert response.status_code in (400, 401, 403, 404, 422), (method, path, response.status_code, response.text[:200])
 
 
 def test_every_admin_route_with_a_body_has_one_here():

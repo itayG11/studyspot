@@ -2,6 +2,7 @@
 // A code missing here falls back to a general message.
 
 const MESSAGES: Record<string, string> = {
+  body_too_big: 'מה שנשלח גדול מדי. אם זה קובץ, נסה קובץ קטן יותר.',
   network_error: 'אין חיבור לשרת. בדוק את החיבור לאינטרנט ונסה שוב.',
   unknown_error: 'משהו השתבש. נסה שוב.',
   validation_error: 'חלק מהפרטים לא תקינים.',

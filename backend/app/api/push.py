@@ -94,7 +94,7 @@ def _subscribe(db: Session, user: User, body: SubscriptionIn) -> None:
     decode_key(body.keys.p256dh, 65)
     decode_key(body.keys.auth, 16)
     row = db.scalars(select(PushSubscription).where(PushSubscription.endpoint == body.endpoint)).first()
-    if row is not None and row.user_id != user.id and not hmac.compare_digest(row.auth, body.keys.auth):
+    if row is not None and row.user_id != user.id and not hmac.compare_digest(decode_key(row.auth, 16), decode_key(body.keys.auth, 16)):
         # Another account's browser. Moving it here is right when it is the
         # same browser, now signed in as someone else: then its secret is
         # the same. A stranger who only learned the address does not have

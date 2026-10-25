@@ -135,6 +135,11 @@ async def validation_failed(request: Request, error: RequestValidationError) -> 
     return JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
 
 
+# A body over the cap never reaches the app (app/body_limit.py). Added
+# before CORS, so CORS wraps it: a 413 carries the CORS headers, and the
+# browser shows it as a refusal, not as a lost connection.
+app.add_middleware(BodyLimit)
+
 # Only the web app's own origin may call the API with credentials.
 app.add_middleware(
     CORSMiddleware,
@@ -159,7 +164,3 @@ app.include_router(webhook_tester.router)
 app.include_router(system.router)
 app.include_router(push.router)
 
-
-# Last, so outermost of ours: a body over the cap never reaches the app
-# (app/body_limit.py).
-app.add_middleware(BodyLimit)

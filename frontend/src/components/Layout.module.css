@@ -296,7 +296,7 @@
     padding: 0 var(--s-3);
   }
 
-  /* Inside the link: the scrolling row clips anything outside it. */
+  /* Inside the link, as when the row scrolled: kept, it is tidy either way. */
   .navLink:focus-visible {
     outline-offset: -3px;
   }

@@ -38,3 +38,16 @@ def test_a_validation_error_does_not_send_the_input_back(client):
     assert response.status_code == 422
     assert secret not in response.text
     assert response.json()["detail"][0]["loc"] == ["body", "password"]
+
+
+def test_a_413_carries_the_cors_headers(client):
+    # The cap sits inside CORS: the web app's browser reads the 413 as a
+    # refusal, not as a lost connection (review of the test round).
+    from app.config import get_settings
+
+    origin = get_settings().frontend_url
+    response = client.post(
+        "/auth/email/verify", content=b"x" * (DEFAULT_LIMIT + 1), headers={"content-type": "application/json", "Origin": origin}
+    )
+    assert response.status_code == 413
+    assert response.headers.get("access-control-allow-origin") == origin

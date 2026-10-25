@@ -35,7 +35,7 @@ function watch(page: Page): Problems {
     if (/Failed to load resource/.test(text)) return
     problems.console.push(text.slice(0, 200))
   })
-  page.on('pageerror', (error) => problems.console.push(`uncaught: ${error.message.slice(0, 200)}`))
+  page.on('pageerror', (error) => problems.console.push(`uncaught: ${error.message.slice(0, 200)} @ ${(error.stack ?? '').slice(0, 300)}`))
   page.on('response', (response) => {
     if (response.url().startsWith(API) && response.status() >= 500) problems.server.push(`${response.status()} ${response.url()}`)
   })
@@ -46,8 +46,13 @@ async function settle(page: Page) {
   await page.waitForLoadState('networkidle').catch(() => null)
   // Wait for the entrance animations (see e2e/a11y.spec.ts): text still fading in measures as faint.
   await page
+    // A function, not a string: a string is evaluated as code, which the
+    // site's CSP ("script-src 'self'") refuses.
     .waitForFunction(
-      "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
+      () =>
+        document
+          .getAnimations()
+          .every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running'),
       undefined,
       { timeout: 5_000 },
     )
@@ -68,11 +73,13 @@ async function layout(page: Page, touch: boolean) {
       if (style.display === 'none' || style.visibility === 'hidden') continue
       const box = el.getBoundingClientRect()
       if (box.width === 0 || box.height === 0) continue
-      // Inside something that scrolls sideways on purpose (a row of chips, a code block): fine.
+      // Inside something that scrolls sideways on purpose (a row of chips,
+      // a code block): fine. A container that only clips (hidden, clip)
+      // does not count: the page itself clips, and what it hides is lost.
       let inScroller = false
       for (let p = el.parentElement; p; p = p.parentElement) {
         const o = getComputedStyle(p).overflowX
-        if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') {
+        if (o === 'auto' || o === 'scroll') {
           inScroller = true
           break
         }
@@ -83,8 +90,11 @@ async function layout(page: Page, touch: boolean) {
         // target: a field hidden behind its label (the label is tapped, as
         // with a file picker), and a link whose ::after covers a whole card.
         const inline = el.tagName === 'A' && style.display === 'inline'
-        const hidden = el.classList.contains('visually-hidden') && el.closest('label') !== null
-        const card = getComputedStyle(el, '::after').position === 'absolute'
+        const label = el.classList.contains('visually-hidden') ? el.closest('label') : null
+        const labelBox = label?.getBoundingClientRect()
+        const hidden = labelBox !== undefined && labelBox.width >= 24 && labelBox.height >= 24
+        const after = getComputedStyle(el, '::after')
+        const card = after.position === 'absolute' && after.content !== 'none' && (el.parentElement?.getBoundingClientRect().height ?? 0) >= 24
         if (!inline && !hidden && !card && (box.width < 24 || box.height < 24)) {
           small.push(`${name(el)} ${Math.round(box.width)}x${Math.round(box.height)}`)
         }
