@@ -21,7 +21,7 @@
 - **חוזקה:** מערכת בשלה ומלאה מאוד.
 - **חולשה:** יקרה, ובנויה סביב הספרייה בלבד. לא מציגה תפוסה חיה של כל הקמפוס על מפה.
 
-**Affluences, המתחרה הקרוב ביותר**
+**המתחרה הקרוב ביותר: `Affluences`**
 - חברה צרפתית. אפליקציה ואתר שמשלבים תפוסה חיה עם הזמנה, בספריות ובקמפוסים באירופה. למשל, הספרייה הלאומית של צרפת, `BnF`, ואוניברסיטאות בפדובה, טורינו, בריסל וליון.
 - **התפוסה:** מחיישנים שסופרים אנשים, מכמה סוגים, למשל אינפרא-אדום ותלת-ממד, או מנתוני ספירה שיש כבר למוסד. לפי החברה, הנתונים משולבים עם היסטוריה ולוח שנה, ומחושב חיזוי כל 5 דקות. ב-`BnF` מוצג חיזוי לכל חצי שעה.
 - **ההזמנה:** מושבים וחדרים קבוצתיים. בבריסל, הזמנה שלא אושרה בהגעה מתבטלת 20 דקות אחרי תחילתה.
@@ -120,12 +120,12 @@
 
 ## מקורות
 
-- [Affluences: הספרייה הלאומית של צרפת](https://www.bnf.fr/en/find-seat-bnf)
-- [Affluences: אוניברסיטת פדובה](https://biblio.unipd.it/en/app-affluences)
-- [Affluences: אוניברסיטת טורינו](https://www.bibliosdn.unito.it/en/tools/access-libraries)
-- [Affluences: הזמנת מקום בבריסל](https://bib.ulb.be/en/services/workspace-reservation)
-- [Affluences: חיבור נתוני ספירה קיימים](https://support.affluences.com/portal/en/kb/articles/integration-of-existing-counting-data-with-affluences-software-connector)
-- [Affluences: חיישנים](https://pro.affluences.com/en/compteurs-de-personnes)
+- [הספרייה הלאומית של צרפת, `Affluences`](https://www.bnf.fr/en/find-seat-bnf)
+- [אוניברסיטת פדובה, `Affluences`](https://biblio.unipd.it/en/app-affluences)
+- [אוניברסיטת טורינו, `Affluences`](https://www.bibliosdn.unito.it/en/tools/access-libraries)
+- [הזמנת מקום בבריסל, `Affluences`](https://bib.ulb.be/en/services/workspace-reservation)
+- [חיבור נתוני ספירה קיימים, `Affluences`](https://support.affluences.com/portal/en/kb/articles/integration-of-existing-counting-data-with-affluences-software-connector)
+- [חיישנים, `Affluences`](https://pro.affluences.com/en/compteurs-de-personnes)
 - [LibCal: Springshare](https://www.springshare.com/libcal)
 - [LibCal לספריות אקדמיות](https://www.springshare.com/academic-libraries/libcal)
 - [Waitz: איך זה עובד](https://waitz.io/how-it-works.html)
