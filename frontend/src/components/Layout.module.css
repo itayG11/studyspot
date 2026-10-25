@@ -419,3 +419,8 @@
   color: inherit;
   font-weight: 600;
 }
+
+/* Room at the bottom for the cookie note while it shows (CookieNote.tsx). */
+.app {
+  padding-bottom: var(--cookie-note-h, 0px);
+}

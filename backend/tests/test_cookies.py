@@ -1,7 +1,8 @@
 """The site's cookies are the two the privacy page lists, and no other.
 
-Both are needed for signing in, so there is no consent banner: a new
-cookie, say for statistics, has to be added to the page (and may need one).
+Both are needed for signing in, so there is only a note about them, not a
+consent banner: a new cookie, say for statistics, has to be added to the
+page (and may need one).
 """
 
 import re

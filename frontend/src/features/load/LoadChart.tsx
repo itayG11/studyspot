@@ -35,12 +35,20 @@ const clock = (hour: number) => `${String(hour).padStart(2, '0')}:00`
 const share = (people: number, limit: number) => (limit > 0 ? Math.min(people / limit, 1) : 0)
 const level = (s: number): ForecastLevel => (s >= HIGH_FROM ? 'high' : s >= MEDIUM_FROM ? 'medium' : 'low')
 const percent = (s: number) => `${Math.round(s * 100)}%`
+// A room's level words already say "usually" (logic/forecast.ts): plain ones here.
+const ROOM_LEVEL: Record<ForecastLevel, string> = { low: 'פנוי', medium: 'חלק מהזמן תפוס', high: 'תפוס' }
+const word = (l: ForecastLevel, kind: PlaceKind) => (kind === 'group_room' ? ROOM_LEVEL[l] : levelWord(l, kind))
 
+// A group room has no people count: how much of the hour it is booked.
 function spoken(h: LoadHour, current: boolean, live: number | null, limit: number, kind: PlaceKind): string {
+  const room = kind === 'group_room'
   const parts = []
-  if (h.usual !== null) parts.push(`בדרך כלל ${levelWord(level(share(h.usual, limit)), kind)}, בערך ${Math.round(h.usual)} אנשים`)
+  if (h.usual !== null) {
+    const usual = share(h.usual, limit)
+    parts.push(`בדרך כלל ${word(level(usual), kind)}, ${room ? `תפוס ${percent(usual)} מהשעה` : `בערך ${Math.round(h.usual)} אנשים`}`)
+  }
   if (current && live !== null) parts.push(`עכשיו ${live}`)
-  else if (h.today !== null) parts.push(`היום ${Math.round(h.today)}`)
+  else if (h.today !== null) parts.push(`היום ${room ? `${percent(share(h.today, limit))} מהשעה` : Math.round(h.today)}`)
   return `${clock(h.hour)}: ${parts.join(', ')}`
 }
 
@@ -48,11 +56,12 @@ export function LoadChart({ hours, limit, currentHour, live, simulated, kind = '
   const room = kind === 'group_room'
   // Today's chart has today's bars; another day's has only the usual ones.
   const ofToday = live !== null || currentHour !== null || hours.some((h) => h.today !== null)
-  const value = (n: number) => (room ? percent(share(n, limit)) : String(Math.round(n)))
+  // A room's number is a percent; the sign is in the line above, so a narrow column fits it.
+  const value = (n: number) => (room ? String(Math.round(share(n, limit) * 100)) : String(Math.round(n)))
   const levels: [ForecastLevel, string, string][] = [
-    ['low', levelWord('low', kind), `פחות מ-${percent(MEDIUM_FROM)}`],
-    ['medium', levelWord('medium', kind), `${percent(MEDIUM_FROM)} עד ${percent(HIGH_FROM)}`],
-    ['high', levelWord('high', kind), `${percent(HIGH_FROM)} ומעלה`],
+    ['low', word('low', kind), `פחות מ-${percent(MEDIUM_FROM)}`],
+    ['medium', word('medium', kind), `${percent(MEDIUM_FROM)} עד ${percent(HIGH_FROM)}`],
+    ['high', word('high', kind), `${percent(HIGH_FROM)} ומעלה`],
   ]
   return (
     <div className={styles.chart}>
@@ -60,20 +69,22 @@ export function LoadChart({ hours, limit, currentHour, live, simulated, kind = '
         {ofToday && (
           <span className={styles.key}>
             <span className={`${styles.swatch} ${styles.swatchUsual}`} aria-hidden="true" />
-            אפור: בדרך כלל
+            העמודה הרחבה: בדרך כלל
           </span>
         )}
-        {levels.map(([l, word, range]) => (
+        {levels.map(([l, name, range]) => (
           <span key={l} className={styles.key}>
             <span className={`${styles.swatch} ${styles[`today_${l}`]}`} aria-hidden="true" />
-            {ofToday ? 'היום' : 'בדרך כלל'}: {word}, {range} {room ? 'מהזמן' : 'מהמקומות'}
+            {ofToday ? 'היום' : 'בדרך כלל'}: {name}, {range} {room ? 'מהזמן' : 'מהמקומות'}
           </span>
         ))}
         {live !== null && <LiveNote simulated={simulated} className={styles.live} />}
       </div>
       <p className={styles.axes}>
         {room
-          ? 'למעלה: כמה מהשעה החדר תפוס בדרך כלל.'
+          ? ofToday
+            ? 'למעלה: כמה אחוזים מהשעה החדר היה תפוס היום. בשעות שעוד לא הגיעו, בצבע בהיר, כמה בדרך כלל.'
+            : 'למעלה: כמה אחוזים מהשעה החדר תפוס בדרך כלל.'
           : ofToday
             ? 'למעלה: כמה אנשים היו היום. בשעות שעוד לא הגיעו, בצבע בהיר, כמה יש בדרך כלל.'
             : 'למעלה: כמה אנשים בדרך כלל.'}{' '}

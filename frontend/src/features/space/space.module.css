@@ -366,7 +366,7 @@
 .bookBar {
   position: fixed;
   inset-inline: 0;
-  bottom: 0;
+  bottom: var(--cookie-note-h, 0px); /* above the cookie note while it shows */
   z-index: var(--z-sticky);
   padding: var(--s-3) var(--s-4) calc(var(--s-3) + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--stone-1) 90%, transparent);

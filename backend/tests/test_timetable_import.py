@@ -208,7 +208,7 @@ def test_a_lecturers_title_is_not_part_of_the_course(session, braude):
 
 @pytest.mark.parametrize(
     "name",
-    ['ד"ר מבנים אלגבריים', "ד״ר מבנים אלגבריים", "פרופ׳ מבנים אלגבריים", "מבנים אלגבריים גב'", "מבנים, ד”ר אלגבריים"],
+    ['ד"ר מבנים אלגבריים', "ד״ר מבנים אלגבריים", "ד''ר מבנים אלגבריים", "פרופ׳ מבנים אלגבריים", "מבנים אלגבריים גב'", "מבנים, ד”ר אלגבריים"],
 )
 def test_titles_are_taken_out_however_the_quotes_are_written(name):
     assert without_titles(name).replace(",", "") == "מבנים אלגבריים"

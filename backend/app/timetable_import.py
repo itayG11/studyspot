@@ -46,14 +46,14 @@ KINDS = ("הרצאה", "תרגיל", "תרגול", "מעבדה", "סמינר")
 # A lecturer's title, never part of a course's name: "ד"ר מבנים אלגבריים"
 # is the course "מבנים אלגבריים". Compared with the quotes made plain, as a
 # Hebrew keyboard writes them in many ways (" ״ ” and ' ׳ ’).
-TITLES = frozenset({'ד"ר', "דר'", "פרופ'", "פרופסור", "גב'", "מר", "מהנדס", "מהנדסת"})
+TITLES = frozenset({'ד"ר', "דר'", "פרופ'", "פרופסור", "גב'", "מר"})
 _QUOTES = str.maketrans({"״": '"', "”": '"', "“": '"', "׳": "'", "’": "'", "‘": "'"})
 
 
 def without_titles(name: str) -> str:
     """The course name without a lecturer's title in it, anywhere: the
     title is a whole word, so a course's own words are never cut."""
-    kept = [w for w in name.split() if w.translate(_QUOTES).strip(",.:;") not in TITLES]
+    kept = [w for w in name.split() if w.translate(_QUOTES).replace("''", '"').strip(",.:;") not in TITLES]
     return " ".join(kept)
 
 

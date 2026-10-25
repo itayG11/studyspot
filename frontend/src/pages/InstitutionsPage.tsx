@@ -8,7 +8,7 @@
 import { Building2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { getInstitutions } from '../api/campus'
+import { getInstitution, getInstitutions } from '../api/campus'
 import type { InstitutionCard } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { useApi } from '../hooks/useApi'
@@ -22,10 +22,13 @@ export function InstitutionsPage() {
   const list = useApi(getInstitutions, 'institutions')
   const { user } = useAuth()
   const [asking, setAsking] = useState<InstitutionCard | null>(null)
+  const own = user?.institution_slug ?? null
+  // Their own institution may be hidden (not listed yet): its name from its own page.
+  const listed = list.data?.find((i) => i.slug === own)
+  const home = useApi(() => getInstitution(own ?? ''), own && list.data && !listed ? `institution-${own}` : null)
   if (!list.data && list.error) return <ErrorState error={list.error} onRetry={list.reload} />
   if (!list.data) return <PageLoading />
-  const own = user?.institution_slug ?? null
-  const ownName = list.data.find((i) => i.slug === own)?.name ?? 'מוסד אחר'
+  const ownName = listed?.name ?? home.data?.name ?? 'מוסד אחר'
   return (
     <div className={admin.page}>
       <h1 className={admin.title}>מוסדות</h1>

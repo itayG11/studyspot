@@ -155,8 +155,10 @@
     display: inline;
   }
 
+  /* Three digits fit a phone's narrow column at this size (e2e/fixes.spec.ts). */
   .value {
-    font-size: 10px;
+    font-size: 9px;
+    letter-spacing: -0.02em;
   }
 }
 

@@ -13,7 +13,7 @@ const HOURS = [
 describe('LoadChart', () => {
   it('names every colour in the legend, with its threshold, and the live mark', () => {
     render(<LoadChart hours={HOURS} limit={50} currentHour={10} live={44} simulated={false} />)
-    expect(screen.getByText('אפור: בדרך כלל')).toBeInTheDocument()
+    expect(screen.getByText('העמודה הרחבה: בדרך כלל')).toBeInTheDocument()
     expect(screen.getByText('היום: שקט, פחות מ-50% מהמקומות')).toBeInTheDocument()
     expect(screen.getByText('היום: בינוני, 50% עד 85% מהמקומות')).toBeInTheDocument()
     expect(screen.getByText(/^היום: .*, 85% ומעלה מהמקומות$/)).toBeInTheDocument()
@@ -34,7 +34,7 @@ describe('LoadChart', () => {
     const { container } = render(
       <LoadChart hours={HOURS.map((h) => ({ ...h, today: null }))} limit={50} currentHour={null} live={null} simulated={false} />,
     )
-    expect(screen.queryByText('אפור: בדרך כלל')).not.toBeInTheDocument()
+    expect(screen.queryByText('העמודה הרחבה: בדרך כלל')).not.toBeInTheDocument()
     expect(screen.getByText('בדרך כלל: שקט, פחות מ-50% מהמקומות')).toBeInTheDocument()
     expect([...container.querySelectorAll('[title]')].map((c) => c.firstElementChild?.textContent)).toEqual(['20', '40', '30'])
   })
@@ -43,8 +43,13 @@ describe('LoadChart', () => {
     const { container } = render(
       <LoadChart hours={[{ hour: 9, usual: 0.4, today: null }]} limit={1} currentHour={null} live={null} simulated={false} kind="group_room" />,
     )
-    expect(container.querySelector('[title]')?.firstElementChild?.textContent).toBe('40%')
+    expect(container.querySelector('[title]')?.firstElementChild?.textContent).toBe('40')
+    expect(screen.getByText(/כמה אחוזים מהשעה החדר תפוס בדרך כלל/)).toBeInTheDocument()
     expect(screen.getAllByText(/מהזמן/, { selector: 'span' })).toHaveLength(3)
+    expect(screen.getByText('בדרך כלל: פנוי, פחות מ-50% מהזמן')).toBeInTheDocument()
+    // Read aloud as a share of the hour, not as people.
+    const list = screen.getByRole('list', { name: 'העומס לפי שעה' })
+    expect(within(list).getByRole('listitem').textContent).toBe('09:00: בדרך כלל פנוי, תפוס 40% מהשעה')
   })
 
   it('reads each hour aloud: usually, today so far, and now', () => {

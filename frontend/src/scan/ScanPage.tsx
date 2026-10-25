@@ -77,11 +77,23 @@ export function ScanPage() {
 // "Back": to the page before, or, opened straight here (a new tab, a QR
 // code), to the institution's front page. A link either way, so it also
 // works without the history.
+//
+// "Is there a page before" is the browser router's own index in the
+// history (history.state.idx, 0 for the tab's first entry). location.key is
+// not enough: this page replaces its own address (the code out of it), and
+// sign-in comes back with a replace too, and each replace makes a new key
+// although there is still nothing to go back to. A memory router (tests)
+// has no such index: there, the key.
+function hasPageBefore(key: string): boolean {
+  const index = (window.history.state as { idx?: unknown } | null)?.idx
+  return typeof index === 'number' ? index > 0 : key !== 'default'
+}
+
 function BackLink() {
   const { slug } = useInstitution()
   const location = useLocation()
   const navigate = useNavigate()
-  const first = location.key === 'default' // the first page of this tab
+  const first = !hasPageBefore(location.key)
   return (
     <div className={styles.backRow}>
     <Link

@@ -2,18 +2,27 @@
 // each, with a screenshot in test-results/ as the proof.
 import { expect, test } from '@playwright/test'
 
-test('the code form has a way back to the page before', async ({ page }) => {
+test('the code form has a way back: to the page before, or home when opened straight', async ({ page }) => {
   await page.goto('/login')
   await page.getByRole('button', { name: 'כניסה כסטודנט לדוגמה' }).click()
   await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
-  await page.goto('/demo')
-  // Signed in again from the cookie before the next load, so the two do not race.
-  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
-  await page.goto('/scan')
+
+  // Inside the site: my area, "scan a code", back to my area.
+  await page.goto('/me')
+  await page.getByRole('link', { name: 'לסרוק קוד' }).click()
   await expect(page.getByRole('heading', { name: 'כניסה למקום' })).toBeVisible()
   await page.screenshot({ path: 'test-results/fix-scan-back.png' })
   await page.getByRole('link', { name: 'חזרה' }).click()
-  await expect(page).toHaveURL(/\/demo$/)
+  await expect(page).toHaveURL(/\/me$/)
+
+  // A new tab from a sign's code: the page replaces its own address, and
+  // there is still nothing before it, so "back" leads to the front page.
+  const tab = await page.context().newPage()
+  await tab.goto('/scan#c=not-a-real-code')
+  await expect(tab).toHaveURL(/\/scan$/)
+  await tab.getByRole('link', { name: 'חזרה' }).click()
+  await expect(tab).toHaveURL(/\/demo$/)
+  await tab.close()
 })
 
 // Every bar stands on the same line, and every column says its hour.
@@ -24,22 +33,26 @@ async function checkChart(scope: import('@playwright/test').Locator, shot: strin
   expect(count).toBeGreaterThan(5)
   const rows = await columns.evaluateAll((all) =>
     all.map((c) => {
-      const [, plot, hour] = [...c.children] as HTMLElement[]
+      const [value, plot, hour] = [...c.children] as HTMLElement[]
       const box = plot.getBoundingClientRect()
-      return { bottom: Math.round(box.bottom), hour: hour.innerText.trim() }
+      return { bottom: Math.round(box.bottom), hour: hour.innerText.trim(), cut: value.scrollWidth > value.clientWidth + 1 }
     }),
   )
   expect(new Set(rows.map((r) => r.bottom)).size).toBe(1)
+  expect(rows.filter((r) => r.cut)).toEqual([]) // no number cut off in a narrow column
   for (const r of rows) expect(r.hour).toMatch(/^\d{1,2}(:00)?$/)
   await scope.screenshot({ path: `test-results/${shot}` })
 }
 
+// The campus runs on the real clock: closed on Saturday (no chart), and
+// before it opens there is no "today" yet. The legend's threshold line is
+// there either way.
 test('the campus chart: bars on one line, an hour under every column, a legend for every colour', async ({ page }) => {
   await page.goto('/demo')
   const card = page.getByRole('region', { name: 'העומס היום בקמפוס' })
   await card.scrollIntoViewIfNeeded()
-  await expect(card.getByText('אפור: בדרך כלל')).toBeVisible()
-  await expect(card.getByText(/^היום: .*85% ומעלה/)).toBeVisible()
+  test.skip(await card.getByText('הקמפוס סגור היום.').isVisible(), 'the campus is closed today')
+  await expect(card.getByText(/85% ומעלה מהמקומות$/)).toBeVisible()
   await checkChart(card, 'fix-chart-campus.png')
 })
 
@@ -52,6 +65,10 @@ test('on a phone too', async ({ browser }) => {
   await page.goto('http://localhost:5174/demo')
   const card = page.getByRole('region', { name: 'העומס היום בקמפוס' })
   await card.scrollIntoViewIfNeeded()
+  if (await card.getByText('הקמפוס סגור היום.').isVisible()) {
+    await context.close()
+    test.skip(true, 'the campus is closed today')
+  }
   await checkChart(card, 'fix-chart-phone.png')
   await context.close()
 })
@@ -62,8 +79,12 @@ test("a place's chart on another day uses the same chart", async ({ page, reques
   await page.goto(`/places/${open.id}`)
   const card = page.locator('section', { has: page.getByRole('heading', { name: 'עומס צפוי' }) })
   await card.scrollIntoViewIfNeeded()
-  const days = card.getByRole('group', { name: 'יום בשבוע' }).getByRole('button')
-  await days.nth(2).click()
+  // Another day than today, and not Saturday, when the campus is closed.
+  const other = card
+    .getByRole('group', { name: 'יום בשבוע' })
+    .getByRole('button', { pressed: false })
+    .filter({ hasNotText: 'ש׳' })
+  await other.first().click()
   await expect(card.getByText(/^בדרך כלל: .*85% ומעלה/)).toBeVisible()
   await checkChart(card, 'fix-chart-place-day.png')
 })
