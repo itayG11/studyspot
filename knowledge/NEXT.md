@@ -2,23 +2,18 @@
 
 **קרא רק את זה, ואת `TODO.md`.** כל השאר רק כשצריך.
 
-- **המצב:**
-  - **גלים 1 עד 12:** גמורים ומוזגו ל-`main`, כולל הבדיקות באתר החי.
-  - **גל 12:** יומן מנוי, itayG11/studyspot#9. הקוד ב-`backend/app/calendar_feed.py`, `app/ics.py` ו-`frontend/src/me/CalendarFeed.tsx`.
-- **ענף העבודה:** `claude/serene-turing-xdaak1`. `Render` מעלה ממנו לאתר החי.
-- **קודם:**
-  1. **הענף כבר מעודכן ל-`main`.** בסוף כל גל, אחרי מיזוג: `git merge --ff-only origin/main`, ודוחפים.
-  2. **`Search Console`, מ-20.10:** ב"מפות אתר", המצב של `sitemap.xml` אמור להיות "הצלחה", עם 7 דפים. ב-19.10 היה "לא ניתן היה לאחזר", לפני שגוגל קרא אותו. אם עדיין כך: "בדיקת כתובת אתר" על `https://getstudyspot.me/sitemap.xml`.
-- **גלים 1 עד 14 גמורים.** גל 14, "אני לומד כאן" ו-`API` למוסדות: itayG11/studyspot#12, מוזג ב-20.10.
-  - **הקוד:** `app/shares.py`, `app/api/v1.py`, `app/webhooks.py`, `app/webhook_tester.py`, `src/embed/`.
-  - **התיעוד:** `docs/API.md`.
-- **המכסה:** השבועית הייתה ב-96 אחוז בסוף גל 14. ממשיכים אחרי שהיא מתחדשת, 25.10 ב-3 לפנות בוקר.
+- **המצב, 25.10 בערב:**
+  - **גלים 1 עד 14 גמורים, וגם סבב בדיקות מלא.** הכול מוזג ל-`main`: itayG11/studyspot#14, #15 ו-#16.
+  - **סבב הבדיקות:** `docs/testing/TEST_PLAN.md` ו-`docs/testing/FINDINGS.md`. 16 ממצאים תוקנו, האתר החי נבדק, והמשתמש עבר על הבדיקות הידניות: `Safari`, גוגל, מיקרוסופט, קוד למייל, וניהול המערכת.
+  - **החלטות מהסבב:** קמפוס ההדגמה נשאר פתוח לכולם, עם פס הודעה ופרק בדף הפרטיות. אישור כללי כניסה נשאר. ה-`API` וה-`webhooks` נשארים. הנימוקים בדוח הראיון, "שלוש שאלות שעלו בבדיקה של המשתמש".
+  - **שמות בכותרת:** "ניהול המוסד", "ניהול המערכת", "כל המוסדות".
+- **ענף העבודה:** `claude/serene-turing-xdaak1`. `Render` מעלה ממנו לאתר החי. אחרי כל מיזוג: `git fetch origin main && git checkout -B claude/serene-turing-xdaak1 origin/main`.
+- **הגישה לאתר החי:** `getstudyspot.me` פתוח ברשת של הסביבה. `Playwright` צריך `proxy: { server: process.env.HTTPS_PROXY }` ו-`NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. הסביבה יוצאת דרך כמה כתובות, ולכן בדיקת מגבלת קצב לפי כתובת לא תעבוד מכאן.
+- **הכלים לשימוש חוזר:** `backend/tests/test_access_matrix.py`, `backend/tests/test_demo_admin_privacy.py` ו-`frontend/e2e/sweep.spec.ts`, שרץ עם `-c playwright.edge.config.ts`.
+- **הבא: גל 15, לפי `docs/ROADMAP.md`, 15.1 עד 15.6.** מתחילים בתוכנית, במצב תכנון.
+  - **15.5:** חבילת ההכנה ב-`docs/interview/`, 13 מסמכים. המבנה בתוכנית של סבב הבדיקות.
+  - **15.6:** תרגול מעשי עם המשתמש באתר החי: מייל נוסף שלו, מוסד חדש, הקמה, ווידג'ט, `API` ו-`webhooks`.
 - **ממתין למשתמש:** הרשימה ב-`TODO.md`.
-- **סבב בדיקות מלא, 25.10:** הסיכום ב-`docs/testing/TEST_PLAN.md` וב-`docs/testing/FINDINGS.md`.
-  - **האתר החי נבדק ב-25.10:** הגישה ל-`getstudyspot.me` פתוחה בסביבה. הכול עבר, כולל R-3: מגבלות הקצב סופרות לפי מבקר, ונבדק מהמחשב של המשתמש.
-  - **בבדיקה החיה:** כל הדפים, הכותרות, כניסות ההדגמה, הזמנה וביטול, הווידג'ט, וה-`X-Forwarded-For` מול `Render`, סיכון R-3. רק בקמפוס ההדגמה, ובלי הרבה בקשות.
-  - **הכלים לשימוש חוזר:** `backend/tests/test_access_matrix.py` ו-`frontend/e2e/sweep.spec.ts`, שרץ עם `-c playwright.edge.config.ts`.
-- **הבא, אחרי הבדיקה החיה:** גל 15 המורחב, חבילת ההכנה לראיון ב-`docs/interview/`, יחד עם 15.1 עד 15.4 ב-`docs/ROADMAP.md`. המבנה בתוכנית של סבב הבדיקות: 13 מסמכים, וסימון ראיה לכל פרט. מתחילים בתוכנית, במצב תכנון.
 
 - **"גל גמור":** הרשימה ב-`CLAUDE.md`, תחת `When a wave is done`.
 - **דף ההתקדמות:** מעדכנים בסוף כל גל, לפי `knowledge/how-to.md`.
