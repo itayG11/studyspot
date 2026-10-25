@@ -153,6 +153,18 @@ def test_every_answer_has_a_request_id_and_one_log_line_without_the_query(site: 
     assert "secret" not in lines[0]  # sign-in codes travel in the query
 
 
+@pytest.mark.parametrize("path", ["/s/abc123secretlink", "/api/shares/abc123secretlink"])
+def test_a_share_link_is_not_written_to_the_log(site: TestClient, caplog, path):
+    # Whoever reads the server's log should not be able to open the share (test round, 25 Oct).
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="studyspot.requests"):
+        site.get(path)
+    lines = [r.getMessage() for r in caplog.records if r.name == "studyspot.requests"]
+    assert len(lines) == 1
+    assert "abc123secretlink" not in lines[0] and "…" in lines[0]
+
+
 def test_the_health_check_is_not_logged_while_it_is_well(site: TestClient, caplog):
     # Asked every half minute by the monitor and the container.
     import logging

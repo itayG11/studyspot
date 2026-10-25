@@ -26,6 +26,8 @@ SLOW_SECONDS = 1.0
 # The uptime monitor and the container's health check ask every half minute:
 # logged only when slow or failing, not thousands of lines a day.
 QUIET_PATHS = {"/api/health", "/health"}
+# A share link opens the share for whoever has it: not for whoever reads the log.
+SECRET_IN_PATH = re.compile(r"^(/s/|/api/shares/)[^/]+")
 
 
 def configure_logging() -> None:
@@ -89,8 +91,8 @@ class Edge:
         finally:
             took = time.perf_counter() - started
             # The path only: the query can carry a sign-in code, or what an
-            # admin searched for on the map.
-            args = (request_id, scope.get("method", ""), scope.get("path", ""), status, took * 1000)
+            # admin searched for on the map. A share link's token is cut too.
+            args = (request_id, scope.get("method", ""), SECRET_IN_PATH.sub(r"\1…", path), status, took * 1000)
             line = "%s %s %s %s %.0fms"
             failed = isinstance(status, int) and status >= 500
             if took >= SLOW_SECONDS or failed:

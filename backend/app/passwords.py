@@ -55,6 +55,17 @@ def _common() -> frozenset[str]:
     return frozenset(line for line in text.splitlines() if line and not line.startswith("#"))
 
 
+# Digits and symbols that stand for letters: "P@ssw0rd" is "password".
+_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
+
+
+def _unleet(password: str) -> str:
+    """The word under the disguise. What is stuck on at either end ("2026!")
+    comes off first, or its digits would read as letters too."""
+    core = re.sub(r"^[\W\d_]+|[\W\d_]+$", "", password.lower())
+    return re.sub(r"[^a-z]", "", core.translate(_LEET))
+
+
 def check_strength(password: str, email: str) -> None:
     """The rules the user asked for: long, all four kinds of character, and
     not a well-known password with a capital and a digit stuck on."""
@@ -72,7 +83,7 @@ def check_strength(password: str, email: str) -> None:
     if not any(not c.isalnum() for c in password):
         raise Refusal(422, "password_needs_symbol")
     letters = re.sub(r"[^a-z]", "", password.lower())
-    if letters in _common():  # "Password123!" is "password"
+    if letters in _common() or _unleet(password) in _common():  # "Password123!", "P@ssw0rd!26"
         raise Refusal(422, "password_too_common")
     local = re.sub(r"[^a-z]", "", email.split("@")[0])
     if len(local) >= 4 and local in letters:
