@@ -53,7 +53,7 @@ flowchart TB
 ## עלייה לאוויר
 1. **דחיפה לענף:** `Render` בונה את ה-`Dockerfile`: קודם האתר ב-`Node`, אחר כך השרת ב-`Python`. **[מתועד]** `Dockerfile`
 2. **בהפעלה:** `deploy/start.sh` מריץ את המיגרציות, טוען את נתוני הקמפוס, ומפעיל את `uvicorn`. **[מתועד]**
-3. **בריאות:** `Render` בודק את `/api/health` כל 30 שניות. **[מתועד]** `HEALTHCHECK` ב-`Dockerfile`
+3. **בריאות:** `Render` בודק את `/api/health`. **[מתועד]** `healthCheckPath` ב-`render.yaml`. בנוסף, ב-`Dockerfile` יש `HEALTHCHECK` כל 30 שניות, להרצה מקומית ב-`Docker`
 4. **הדומיין:** `getstudyspot.me`, מ-`Namecheap`, מכוון ל-`Render`. **[מתועד]** `docs/DEPLOY.md`
 
 ## השירותים החיצוניים

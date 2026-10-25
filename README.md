@@ -16,7 +16,7 @@ Find a place to study on campus: what is free right now, what is usually free la
 | Server tests (`pytest`, on a real PostgreSQL) | 1345 |
 | Web app unit tests (`vitest`) | 572 |
 | Browser tests (`Playwright`, with an `axe` accessibility check) | 42, plus 45 on desktop, iPad and phone |
-| API routes, each one in an access table tested for every role | 107 |
+| API routes, each with a row in an access table; refusals tested per role | 107 |
 | Database tables | 29 |
 
 *Counted on 25 October 2026.*
@@ -81,7 +81,7 @@ One container serves the web app and the API from the same address, so the sign-
 - A 15-minute access token in memory and a refresh cookie (`HttpOnly`, `Secure`, `SameSite`), rotated on use.
 - Every API route has a row in an access table that says who may call it. Tests then check the refusals: a guest, a student, an institution admin, another student's things, and another institution's things.
 - A strict Content Security Policy, rate limits, a request body cap, and an SSRF guard for webhooks.
-- `CodeQL`, `pip-audit`, `npm audit`, `gitleaks` and Dependabot on every push.
+- `CodeQL`, `pip-audit`, `npm audit` and `gitleaks` on every push, and Dependabot every week.
 - Details: [docs/testing/FINDINGS.md](docs/testing/FINDINGS.md) and the OWASP Top 10 table in the [interview report](docs/INTERVIEW_REPORT.md) (Hebrew).
 
 ## Known limitations
