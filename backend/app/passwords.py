@@ -62,8 +62,15 @@ _LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t
 def _unleet(password: str) -> str:
     """The word under the disguise. What is stuck on at either end ("2026!")
     comes off first, or its digits would read as letters too."""
-    core = re.sub(r"^[\W\d_]+|[\W\d_]+$", "", password.lower())
-    return re.sub(r"[^a-z]", "", core.translate(_LEET))
+    core = password.lower()
+    # A loop, not a regex: "[^a-z]+$" can take quadratic time on a long
+    # run of symbols (CodeQL, polynomial ReDoS).
+    start, end = 0, len(core)
+    while start < end and not core[start].isalpha():
+        start += 1
+    while end > start and not core[end - 1].isalpha():
+        end -= 1
+    return "".join(c for c in core[start:end].translate(_LEET) if "a" <= c <= "z")
 
 
 def check_strength(password: str, email: str) -> None:
