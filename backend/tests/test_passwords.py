@@ -84,6 +84,8 @@ def identity(session, email=STUDENT) -> UserIdentity | None:
         ("NoSymbolsHere7", "password_needs_symbol"),
         ("Password123!", "password_too_common"),
         ("Qwerty!2024", "password_too_common"),
+        ("P@ssw0rd!2026", "password_too_common"),  # digits and symbols for letters
+        ("L3tm3in!2026", "password_too_common"),
         ("Itay.Gabay#2026", "password_has_email"),
     ],
 )

@@ -4,7 +4,7 @@
 // test would notice. Measured gzipped, as the server sends it.
 // Run after `vite build`: node scripts/check-bundle-size.mjs
 
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 
 const CAP_KB = 120 // 105 kB after wave 7.3; room for normal growth
@@ -21,3 +21,13 @@ if (kb > CAP_KB) {
   console.error('The main file is over its cap: load the new page or library lazily, or raise the cap on purpose.')
   process.exit(1)
 }
+
+// No source maps on the site: they hand anyone the original code, comments
+// and all (vite's default is off; this keeps it so). Test round, 25 Oct.
+const files = readdirSync(dist, { recursive: true }).map(String)
+const maps = files.filter((f) => f.endsWith('.map') || (f.endsWith('.js') && readFileSync(new URL(f, dist), 'utf8').includes('sourceMappingURL=')))
+if (maps.length) {
+  console.error(`Source maps in dist/: ${maps.slice(0, 3).join(', ')}. Turn build.sourcemap off.`)
+  process.exit(1)
+}
+console.log('no source maps in dist/')

@@ -43,6 +43,14 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/השרת שלנו רושם.*בלי כתובת ה-IP/)).toBeInTheDocument()
   })
 
+  it('says who joins the demo campus, that anyone can manage it, and that it resets daily', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    const section = screen.getByRole('heading', { name: 'קמפוס ההדגמה' }).nextElementSibling as HTMLElement
+    expect(section).toHaveTextContent('חשבון גוגל שלא שייך לאף מוסד')
+    expect(section).toHaveTextContent('לא רואה שמות, כתובות מייל או הזמנות')
+    expect(section).toHaveTextContent('מתאפס כל יום')
+  })
+
   it('says how to reach us: an issue on the project page, not an e-mail address', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'איך פונים' })).toBeInTheDocument()
