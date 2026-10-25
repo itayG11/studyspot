@@ -88,13 +88,13 @@ export function Layout() {
               className={styles.navLink}
               viewTransition
             >
-              ניהול
+              ניהול המוסד
             </NavLink>
           )}
           {user?.role === 'system_admin' && (
             <NavLink to="/system" className={styles.navLink} viewTransition>ניהול המערכת</NavLink>
           )}
-          <NavLink to="/institutions" className={styles.navLink} viewTransition>מוסדות</NavLink>
+          <NavLink to="/institutions" className={styles.navLink} viewTransition>כל המוסדות</NavLink>
         </nav>
         <Pulse home={home} />
         <div className={styles.account}>

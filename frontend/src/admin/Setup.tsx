@@ -10,6 +10,7 @@ import { DomainProof } from './DomainProof'
 import type { LoginRule, Setup as SetupData } from '../api/types'
 import { useAction, type Action } from '../hooks/useAction'
 import { useApi, type ApiState } from '../hooks/useApi'
+import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import { Link } from 'react-router'
 import { ActionError, Button, ErrorState, Notice, PageLoading } from '../ui'
@@ -25,8 +26,10 @@ export function useSetup(): ApiState<SetupData> {
 }
 
 export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go }) {
+  const { user } = useAuth()
   if (!setup.data && setup.error) return <ErrorState error={setup.error} onRetry={setup.reload} />
   if (!setup.data) return <PageLoading />
+  const isSystemAdmin = user?.role === 'system_admin'
   const data = setup.data
   const steps = [
     { title: 'פרטי המוסד', done: data.name.trim() !== '' },
@@ -37,7 +40,14 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
   return (
     <div className={styles.setup}>
       {data.locked && (
-        <Notice>בקמפוס ההדגמה אי אפשר לשנות את פרטי המוסד ואת כללי הכניסה. כאן רואים את הצעדים, כמו שמוסד חדש רואה אותם.</Notice>
+        <Notice>
+          בקמפוס ההדגמה אי אפשר לשנות את פרטי המוסד ואת כללי הכניסה. כאן רואים את הצעדים, כמו שמוסד חדש רואה אותם.
+          {isSystemAdmin && (
+            <>
+              {' '}מוסד חדש יוצרים ב<Link to="/system">ניהול המערכת</Link>.
+            </>
+          )}
+        </Notice>
       )}
       <ol className={styles.steps} aria-label="צעדי ההקמה">
         {steps.map((step, index) => (

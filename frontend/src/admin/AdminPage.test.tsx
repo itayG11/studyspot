@@ -300,6 +300,16 @@ describe('AdminPage', () => {
     expect(await screen.findByText(/בקמפוס ההדגמה אי אפשר לשנות/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'להפעיל את המוסד' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'הוספת סיומת' })).toBeDisabled()
+    expect(screen.queryByRole('link', { name: 'ניהול המערכת' })).not.toBeInTheDocument() // an institution admin cannot go there
+  })
+
+  it('on the demo campus, the system admin is shown where a new institution is made', async () => {
+    setup = { ...SETUP, locked: true }
+    role = 'system_admin'
+    renderAdmin()
+    const notice = (await screen.findByText(/בקמפוס ההדגמה אי אפשר לשנות/)).closest('div') as HTMLElement
+    expect(notice).toHaveTextContent('מוסד חדש יוצרים בניהול המערכת.')
+    expect(screen.getAllByRole('link', { name: 'ניהול המערכת' }).some((a) => a.getAttribute('href') === '/system')).toBe(true)
   })
 
   it('removing a rule takes it off the screen', async () => {

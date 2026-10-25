@@ -20,14 +20,11 @@ export function SystemPage() {
   return (
     <div className={admin.page}>
       <p className={admin.eyebrow}>ניהול המערכת</p>
-      <h1 className={admin.title}>מוסדות</h1>
-      <p className={admin.lead}>
-        מוסד חדש נוצר מוסתר, בכתובת שבוחרים לו, למשל <bdi dir="ltr">/technion</bdi>. אחר כך יוצרים קישור הזמנה, ושולחים אותו
-        בעצמך, במייל או בוואטסאפ, למי שינהל את המוסד. הוא מתחבר דרך הקישור, מקים את הבניינים והמקומות, ומסמן את המוסד "פעיל".
-        רק אז המוסד מופיע ברשימת המוסדות.
-      </p>
+      <h1 className={admin.title}>ניהול המערכת</h1>
+      <p className={admin.lead}>כאן יוצרים מוסד, שולחים קישור הזמנה למי שינהל אותו, ומאשרים כללי כניסה.</p>
       <PendingRules />
       <NewInstitutionForm onCreated={institutions.reload} />
+      <h2 className={admin.formTitle}>כל המוסדות</h2>
       {!institutions.data && institutions.error ? (
         <ErrorState error={institutions.error} onRetry={institutions.reload} />
       ) : !institutions.data ? (
@@ -62,15 +59,7 @@ function PendingRules() {
       <h2 id={`${id}-title`} className={admin.formTitle}>
         כללי כניסה לאישור
       </h2>
-      <p className={admin.lead}>
-        כלל כניסה אומר מי שייך למוסד. למשל: "כל מי שנכנס עם מייל שנגמר ב-<bdi dir="ltr">@e.braude.ac.il</bdi> הוא סטודנט
-        בבראודה". מנהל המוסד מוסיף את הכלל, ואתה מאשר אותו.
-      </p>
-      <p className={admin.lead}>
-        למה צריך את האישור שלך: בלי בדיקה, מנהל של מוסד אחד יכול לכתוב סיומת של מכללה אחרת, ולקחת אליו את הסטודנטים שלה.
-        לכן לפני אישור, בודקים שהסיומת באמת של המוסד, למשל באתר הרשמי שלו. דרך נוספת: המוסד מוכיח את הסיומת ברשומת DNS.
-        אז הכלל מאושר לבד ויוצא מהרשימה כאן, בלי אישור שלך.
-      </p>
+      <p className={admin.lead}>מנהל מוסד הוסיף סיומת מייל או ארגון מיקרוסופט. לפני אישור, בודקים שהם באמת של המוסד.</p>
       {!rules.data && rules.error ? (
         <ErrorState error={rules.error} onRetry={rules.reload} />
       ) : !rules.data ? (

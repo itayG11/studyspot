@@ -27,8 +27,8 @@ export function Connections() {
   return (
     <div className={styles.connections}>
       <p className={styles.lead}>
-        איך להראות את המקומות של המוסד גם מחוץ ל-StudySpot. הווידג'ט מתאים לכל מנהל: מעתיקים קוד ומדביקים באתר של המוסד.
-        השאר מיועד לאנשי המחשוב של המוסד, שמחברים אליו מערכות משלהם.
+        איך להראות את המקומות של המוסד גם מחוץ ל-StudySpot. הווידג'ט, למטה, מתאים לכל מנהל. מה שמתחתיו מיועד לאנשי
+        המחשוב של המוסד.
       </p>
       <EmbedCode />
       {/* Closed by default: most admins need only the widget. */}
