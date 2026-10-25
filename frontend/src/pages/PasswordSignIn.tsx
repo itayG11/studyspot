@@ -1,6 +1,8 @@
 // Sign-in with an address and a password. A password is set only after an
-// emailed code (EmailSignIn, purpose "set-password"), so "forgot it" and
-// "don't have one yet" are the same way in.
+// emailed code (EmailSignIn, purpose "set-password"). "No password yet" and
+// "forgot it" are two buttons with their own words, and the same step on
+// the server: it never says whether an address already has a password, so
+// no one learns who has an account.
 
 import { KeyRound } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
@@ -12,10 +14,15 @@ import styles from './pages.module.css'
 
 interface Props {
   onSignedIn: () => void
+  onNew: () => void // no password yet
   onForgot: () => void
 }
 
-export function PasswordSignIn({ onSignedIn, onForgot }: Props) {
+// From app/passwords.py (MAX_FAILURES, LOCK_FOR), said to the student.
+const LOCK_AFTER = 10
+const LOCK_MINUTES = 15
+
+export function PasswordSignIn({ onSignedIn, onNew, onForgot }: Props) {
   const { passwordLogin } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -75,12 +82,19 @@ export function PasswordSignIn({ onSignedIn, onForgot }: Props) {
           כניסה
         </Button>
         <div className={styles.emailActions}>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={onForgot}>
-            שכחתי סיסמה, או שעוד אין לי
+          <Button variant="secondary" size="sm" disabled={busy} onClick={onNew}>
+            אין לי עדיין סיסמה
+          </Button>
+          <Button variant="secondary" size="sm" disabled={busy} onClick={onForgot}>
+            שכחתי סיסמה
           </Button>
         </div>
       </form>
       {error && <Notice tone="error">{error}</Notice>}
+      <p className={styles.fieldHint}>
+        הסיסמה נשמרת אצלנו רק כגיבוב, בשיטת <span dir="ltr">argon2id</span>, ולא כטקסט. אחרי {LOCK_AFTER} ניסיונות שגויים ברצף
+        היא ננעלת ל-{LOCK_MINUTES} דקות. גם אז, ותמיד, אפשר להיכנס בקוד למייל.
+      </p>
     </div>
   )
 }

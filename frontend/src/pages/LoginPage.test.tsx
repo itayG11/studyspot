@@ -306,10 +306,22 @@ describe('LoginPage password', () => {
     expect(await screen.findByText(/המייל או הסיסמה שגויים/)).toHaveTextContent('אפשר תמיד להיכנס בקוד למייל')
   })
 
+  it('two separate ways: no password yet, and forgot it, each with its own words', async () => {
+    await passwordTab()
+    expect(screen.getByText(/נשמרת אצלנו רק כגיבוב/)).toHaveTextContent('אחרי 10 ניסיונות שגויים ברצף היא ננעלת ל-15 דקות')
+    await userEvent.click(screen.getByRole('button', { name: 'אין לי עדיין סיסמה' }))
+    expect(screen.getByRole('heading', { name: 'יצירת סיסמה' })).toHaveFocus()
+    expect(screen.getByText(/בפעם הראשונה/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'חזרה לכניסה בסיסמה' }))
+    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה' }))
+    expect(screen.getByRole('heading', { name: 'איפוס סיסמה' })).toHaveFocus()
+    expect(screen.getByText(/הסיסמה הקודמת מפסיקה לעבוד/)).toBeInTheDocument()
+  })
+
   it('forgot it: a code first, then a new password that meets the rules', async () => {
     await passwordTab()
-    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }))
-    expect(screen.getByRole('heading', { name: 'סיסמה חדשה' })).toHaveFocus() // the button pressed is gone
+    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה' }))
+    expect(screen.getByRole('heading', { name: 'איפוס סיסמה' })).toHaveFocus() // the button pressed is gone
     await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     await userEvent.type(await screen.findByLabelText('הקוד מהמייל'), '123456')
@@ -329,7 +341,7 @@ describe('LoginPage password', () => {
 
   it('can show what was typed', async () => {
     await passwordTab()
-    await userEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה, או שעוד אין לי' }))
+    await userEvent.click(screen.getByRole('button', { name: 'אין לי עדיין סיסמה' }))
     await userEvent.type(screen.getByLabelText('כתובת המייל של המכללה'), 'noa@e.braude.ac.il')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
     const field = await screen.findByLabelText('סיסמה חדשה')
