@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { ClosingBanner } from './ClosingBanner'
+import { DemoCampusBanner } from './DemoCampusBanner'
 import { VisitingBanner } from './VisitingBanner'
 import { SiteFooter } from './SiteFooter'
 import { CookieNote } from './CookieNote'
@@ -118,6 +119,7 @@ export function Layout() {
       </header>
       {institution.closes_at && <ClosingBanner closesAt={institution.closes_at} />}
       <VisitingBanner />
+      <DemoCampusBanner />
       <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>
