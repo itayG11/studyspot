@@ -8,7 +8,7 @@ import { Connections } from './Connections'
 const api = vi.hoisted(() => ({ getApiKeys: vi.fn(), makeApiKey: vi.fn(), revokeApiKey: vi.fn() }))
 vi.mock('../api/admin', () => api)
 vi.mock('./Webhooks', () => ({ Webhooks: () => null }))
-vi.mock('./EmbedCode', () => ({ EmbedCode: () => null }))
+vi.mock('./EmbedCode', () => ({ EmbedCode: () => <h2>וידג'ט לאתר של המוסד</h2> }))
 vi.mock('./WebhookTester', () => ({ WebhookTester: () => null }))
 vi.mock('../institution', () => ({ useInstitution: () => ({ slug: 'braude', timezone: 'Asia/Jerusalem' }), useLiveSimulated: () => false }))
 
@@ -36,6 +36,15 @@ beforeEach(() => {
 })
 
 describe('Connections', () => {
+  it('shows the widget first, and folds the keys and webhooks under "for IT"', async () => {
+    api.getApiKeys.mockResolvedValue([])
+    show()
+    const folded = (await screen.findByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks')).closest('details')!
+    expect(folded).not.toHaveAttribute('open')
+    expect(within(folded).getByRole('heading', { name: 'מפתחות API' })).toBeInTheDocument()
+    expect(folded.compareDocumentPosition(screen.getByRole('heading', { name: /וידג'ט/ })) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+  })
+
   it('makes a key and shows it once, with a curl example', async () => {
     api.getApiKeys.mockResolvedValueOnce([]).mockResolvedValue([key])
     api.makeApiKey.mockResolvedValue({ key: RAW, api_key: key })

@@ -97,3 +97,15 @@ test('the bulk table templates are download buttons that download', async ({ pag
   const [download] = await Promise.all([page.waitForEvent('download'), section.getByRole('link', { name: 'תבנית CSV' }).click()])
   expect(download.suggestedFilename()).toBe('buildings.csv')
 })
+
+test('the connections tab: the widget first, the IT parts folded', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  await page.goto('/demo/admin?tab=connections')
+  await expect(page.getByRole('heading', { name: "וידג'ט לאתר של המוסד" })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'מפתחות API' })).toBeHidden()
+  await page.screenshot({ path: 'test-results/fix-connections.png', fullPage: true })
+  await page.getByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks').click()
+  await expect(page.getByRole('heading', { name: 'מפתחות API' })).toBeVisible()
+})

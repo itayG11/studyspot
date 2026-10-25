@@ -1,6 +1,8 @@
-// The "Connections" tab (wave 14): the institution's API keys, for its own
-// systems to read places and live occupancy (backend app/api/v1.py). A new
-// key is shown once, like the screen's link: the server keeps only an HMAC.
+// The "Connections" tab (wave 14): the widget for the institution's own
+// site, open to every admin; then, folded under "for the institution's IT",
+// the API keys (its own systems read places and live occupancy, backend
+// app/api/v1.py) and the webhooks. A new key is shown once, like the
+// screen's link: the server keeps only an HMAC.
 
 import { Copy, KeyRound } from 'lucide-react'
 import { useState } from 'react'
@@ -23,13 +25,25 @@ export function Connections() {
   const keys = useApi(() => getApiKeys(slug), `api-keys-${slug}`)
   const demo = useLiveSimulated() // the demo campus: its tester, and no addresses of its own
   return (
-    <div className={styles.adder}>
-      <ApiKeys slug={slug} keys={keys.data} onChange={keys.reload} />
-      {keys.error && !keys.data && <ErrorState error={keys.error} onRetry={keys.reload} compact />}
-      {!keys.data && !keys.error && <PageLoading />}
+    <div className={styles.connections}>
+      <p className={styles.lead}>
+        איך להראות את המקומות של המוסד גם מחוץ ל-StudySpot. הווידג'ט מתאים לכל מנהל: מעתיקים קוד ומדביקים באתר של המוסד.
+        השאר מיועד לאנשי המחשוב של המוסד, שמחברים אליו מערכות משלהם.
+      </p>
       <EmbedCode />
-      {demo && <WebhookTester />}
-      <Webhooks demo={demo} />
+      {/* Closed by default: most admins need only the widget. */}
+      <details className={styles.forIt}>
+        <summary className={styles.forItSummary}>לאנשי המחשוב של המוסד: מפתחות API ו-webhooks</summary>
+        <p className={styles.screenNote}>
+          מפתח API נותן למערכת של המוסד לקרוא את התפוסה. Webhook שולח למערכת של המוסד הודעה בכל כניסה והזמנה, למשל כדי
+          שמסך בלובי יתעדכן מיד. אין צורך באף אחד מהם כדי להשתמש ב-StudySpot.
+        </p>
+        <ApiKeys slug={slug} keys={keys.data} onChange={keys.reload} />
+        {keys.error && !keys.data && <ErrorState error={keys.error} onRetry={keys.reload} compact />}
+        {!keys.data && !keys.error && <PageLoading />}
+        {demo && <WebhookTester />}
+        <Webhooks demo={demo} />
+      </details>
     </div>
   )
 }
@@ -70,7 +84,7 @@ function ApiKeys({ slug, keys, onChange }: { slug: string; keys: ApiKey[] | null
       </p>
       <p className={styles.screenNote}>
         מפתח אחד לכל מערכת של המוסד, לא לכל מסך: השרת של המוסד מחזיק את המפתח, ומחלק את המספרים לכל המסכים שלו. כך גם
-        30 מסכים הם מפתח אחד, ואם הוא דולף מבטלים רק אותו. למסכים בלי שרת משלהם, הווידג'ט שלמטה עובד בלי מפתח בכלל.
+        30 מסכים הם מפתח אחד, ואם הוא דולף מבטלים רק אותו. למסכים בלי שרת משלהם, הווידג'ט שלמעלה עובד בלי מפתח בכלל.
       </p>
       <form
         className={styles.subform}
