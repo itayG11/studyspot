@@ -298,3 +298,19 @@ def test_the_sign_in_page_says_the_same_lock_as_the_server():
     page = (Path(__file__).resolve().parents[2] / "frontend" / "src" / "pages" / "PasswordSignIn.tsx").read_text()
     assert re.search(r"LOCK_AFTER = (\d+)", page)[1] == str(passwords.MAX_FAILURES)
     assert re.search(r"LOCK_MINUTES = (\d+)", page)[1] == str(int(passwords.LOCK_FOR.total_seconds() // 60))
+
+
+def test_a_reset_also_ends_the_calendar_address(client, mailer, session):
+    # From the test round's security review, 25 Oct: "sign out everywhere"
+    # ended the feed, a password reset did not. After a stolen account, the
+    # thief kept the address of the bookings and the timetable.
+    from app import calendar_feed
+    from app.models import CalendarFeed
+
+    assert set_password(client, mailer).status_code == 200
+    user = session.get(User, identity(session).user_id)
+    calendar_feed.new_feed(session, user, SUNDAY_10AM, b"k" * 32)
+    assert session.scalar(select(CalendarFeed).where(CalendarFeed.user_id == user.id)) is not None
+    client.clock.now += timedelta(minutes=2)  # a new code may be sent after a minute
+    assert set_password(client, mailer, password="Another-Good 9 pass").status_code == 200
+    assert session.scalar(select(CalendarFeed).where(CalendarFeed.user_id == user.id)) is None

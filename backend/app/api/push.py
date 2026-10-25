@@ -2,6 +2,7 @@
 unsubscribing and asking for a test notification; and notices by email,
 turned on and off, also from the signed link in every such email."""
 
+import hmac
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -93,6 +94,12 @@ def _subscribe(db: Session, user: User, body: SubscriptionIn) -> None:
     decode_key(body.keys.p256dh, 65)
     decode_key(body.keys.auth, 16)
     row = db.scalars(select(PushSubscription).where(PushSubscription.endpoint == body.endpoint)).first()
+    if row is not None and row.user_id != user.id and not hmac.compare_digest(row.auth, body.keys.auth):
+        # Another account's browser. Moving it here is right when it is the
+        # same browser, now signed in as someone else: then its secret is
+        # the same. A stranger who only learned the address does not have
+        # that secret (test round, 25 Oct).
+        raise Refusal(409, "push_endpoint_taken")
     if row is None:
         count = db.scalar(select(func.count()).select_from(PushSubscription).where(PushSubscription.user_id == user.id))
         if count >= MAX_SUBSCRIPTIONS:
