@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import styles from './Layout.module.css'
 import { ClosingBanner } from './ClosingBanner'
+import { DemoCampusBanner } from './DemoCampusBanner'
 import { VisitingBanner } from './VisitingBanner'
 import { SiteFooter } from './SiteFooter'
 import { CookieNote } from './CookieNote'
@@ -87,13 +88,13 @@ export function Layout() {
               className={styles.navLink}
               viewTransition
             >
-              ניהול
+              ניהול המוסד
             </NavLink>
           )}
           {user?.role === 'system_admin' && (
             <NavLink to="/system" className={styles.navLink} viewTransition>ניהול המערכת</NavLink>
           )}
-          <NavLink to="/institutions" className={styles.navLink} viewTransition>מוסדות</NavLink>
+          <NavLink to="/institutions" className={styles.navLink} viewTransition>כל המוסדות</NavLink>
         </nav>
         <Pulse home={home} />
         <div className={styles.account}>
@@ -118,6 +119,7 @@ export function Layout() {
       </header>
       {institution.closes_at && <ClosingBanner closesAt={institution.closes_at} />}
       <VisitingBanner />
+      <DemoCampusBanner />
       <main id="main" tabIndex={-1} className={pathname.replace(/\/$/, '') === home ? styles.mainBleed : styles.main}>
         <Outlet />
       </main>

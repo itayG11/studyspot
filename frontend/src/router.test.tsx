@@ -173,7 +173,7 @@ describe('an address per institution', () => {
     renderAt('/demo/admin')
     const top = await header()
     expect(await top.findByRole('link', { name: 'ניהול המערכת' })).toHaveAttribute('href', '/system')
-    expect(top.getByRole('link', { name: 'ניהול' })).toHaveAttribute('href', '/demo/admin')
+    expect(top.getByRole('link', { name: 'ניהול המוסד' })).toHaveAttribute('href', '/demo/admin')
     expect(screen.queryByText('אין גישה')).not.toBeInTheDocument()
   })
 
@@ -186,7 +186,7 @@ describe('an address per institution', () => {
   it('anyone sees the list of active institutions, each linking to its address', async () => {
     renderAt('/institutions')
     expect(await screen.findByRole('link', { name: 'קמפוס הדגמה' })).toHaveAttribute('href', '/demo')
-    expect((await header()).getByRole('link', { name: 'מוסדות' })).toHaveAttribute('href', '/institutions')
+    expect((await header()).getByRole('link', { name: 'כל המוסדות' })).toHaveAttribute('href', '/institutions')
   })
 
   it('accepting an invite to another institution opens its admin page (the page is rebuilt on the way)', async () => {
