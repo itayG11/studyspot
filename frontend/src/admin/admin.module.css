@@ -622,3 +622,10 @@
   border: 1px solid var(--hairline);
   border-radius: var(--r-sm);
 }
+
+/* The two template downloads, as buttons. */
+.templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

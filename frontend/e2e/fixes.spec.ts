@@ -85,3 +85,15 @@ test("another institution's campus says it is only for looking, and the list mar
   await expect(page).toHaveURL(/\/demo$/)
   await expect(note).toBeHidden()
 })
+
+test('the bulk table templates are download buttons that download', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'כניסה כמנהל מוסד לדוגמה' }).click()
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  await page.goto('/demo/admin?tab=adding')
+  const section = page.getByRole('region', { name: 'הרבה בניינים בבת אחת' })
+  await section.scrollIntoViewIfNeeded()
+  await section.screenshot({ path: 'test-results/fix-templates.png' })
+  const [download] = await Promise.all([page.waitForEvent('download'), section.getByRole('link', { name: 'תבנית CSV' }).click()])
+  expect(download.suggestedFilename()).toBe('buildings.csv')
+})

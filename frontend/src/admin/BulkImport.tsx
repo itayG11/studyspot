@@ -3,7 +3,7 @@
 // about each building that is already there; then one save, all or none
 // (backend/app/campus_import.py).
 
-import { Upload } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import { useId, useState, type ChangeEvent } from 'react'
 import { previewCampusImport, saveCampusImport } from '../api/admin'
 import { ApiError } from '../api/client'
@@ -11,7 +11,7 @@ import type { CampusImportBuilding, CampusPreview, CampusSaved, ImportedBuilding
 import { errorMessage } from '../i18n/errors'
 import { floorLabel, KIND_LABELS, STATUS_LABELS } from '../i18n/labels'
 import { useInstitution } from '../institution'
-import { Button, ConfirmButton, Notice } from '../ui'
+import { AppButtonLink, Button, ConfirmButton, Notice } from '../ui'
 import picker from '../me/import.module.css'
 import styles from './admin.module.css'
 
@@ -147,16 +147,16 @@ export function BulkImport({ onSaved }: { onSaved: () => void }) {
         הרבה בניינים בבת אחת
       </h2>
       <p className={styles.lead}>
-        טבלה עם שורה לכל מקום: פרטי הבניין, ואחריהם פרטי המקום. שורה בלי מקום מוסיפה בניין בלבד. מתחילים מהתבנית:{' '}
-        <a href="/templates/buildings.xlsx" download>
-          תבנית אקסל
-        </a>{' '}
-        או{' '}
-        <a href="/templates/buildings.csv" download>
-          תבנית CSV
-        </a>
-        .
+        טבלה עם שורה לכל מקום: פרטי הבניין, ואחריהם פרטי המקום. שורה בלי מקום מוסיפה בניין בלבד. מתחילים מאחת התבניות:
       </p>
+      <div className={styles.templates}>
+        <AppButtonLink href="/templates/buildings.xlsx" download variant="secondary" size="sm" icon={<Download aria-hidden="true" />}>
+          תבנית אקסל
+        </AppButtonLink>
+        <AppButtonLink href="/templates/buildings.csv" download variant="secondary" size="sm" icon={<Download aria-hidden="true" />}>
+          תבנית CSV
+        </AppButtonLink>
+      </div>
       <label className={picker.pick}>
         <Upload aria-hidden="true" />
         <span>העלאת טבלה</span>
