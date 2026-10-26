@@ -2,6 +2,7 @@
 one address, so the sign-in cookie is never a third-party cookie. Every
 answer carries the security headers."""
 
+import json
 import re
 from pathlib import Path
 
@@ -294,3 +295,17 @@ def test_under_embed_only_the_widget_exists(with_widget: TestClient):
     answer = with_widget.get("/embed/braude/admin")
     assert answer.status_code == 404
     assert answer.headers["x-frame-options"] == "DENY"
+
+
+def test_search_engines_find_an_icon_a_title_and_the_site_name():
+    # The live practice run, 26 Oct: Google showed a grey globe and page text.
+    # Google wants an icon of 48 px or more, linked from the page, and reads
+    # the site's name from WebSite data (developers.google.com, favicon and site names).
+    page = INDEX.read_text()
+    assert re.search(r'<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"', page)
+    assert '<link rel="icon" href="/favicon.ico" sizes="48x48"' in page
+    assert (PUBLIC / "favicon.ico").is_file()
+    title = re.search(r"<title>(.+)</title>", page)[1]
+    assert title.startswith("StudySpot") and len(title) > len("StudySpot")
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', page, re.S)[1])
+    assert (data["@type"], data["name"], data["url"]) == ("WebSite", "StudySpot", "https://getstudyspot.me/")

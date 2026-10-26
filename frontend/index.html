@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Search results show an icon of 48 px or more (Google): a PNG, and
+         favicon.ico for those that look for it at the root. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <!-- Installing to the home screen: the app's name, icons and colours -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -12,7 +16,10 @@
     <meta name="description" content="מקום פנוי ללמוד בקמפוס: חיפוש, הזמנה מראש וכניסה בסריקה." />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>StudySpot</title>
+    <title>StudySpot: מקום פנוי ללמוד בקמפוס</title>
+    <!-- The site's name in search results (Google reads WebSite data). Data,
+         not a script: the Content-Security-Policy runs no inline code. -->
+    <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "StudySpot", "url": "https://getstudyspot.me/"}</script>
     <!-- How a shared link looks (WhatsApp, LinkedIn). An address change
          changes these, robots.txt and sitemap.xml together (docs/DEPLOY.md). -->
     <meta property="og:type" content="website" />
