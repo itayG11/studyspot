@@ -299,7 +299,12 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
         )}
       </div>
       {ends !== null && ends.length === 0 && (
-        <Notice className={styles.rowError}>אין זמן פנוי להארכה: המקום מוזמן אחריך, או שהוא נסגר.</Notice>
+        <Notice className={styles.rowError}>
+          אין זמן פנוי להארכה: המקום מוזמן אחריך, או שהוא נסגר.{' '}
+          <Button size="sm" variant="ghost" onClick={() => setEnds(null)}>
+            הבנתי
+          </Button>
+        </Notice>
       )}
       {ends !== null && ends.length > 0 && (
         <div className={styles.actions} role="group" aria-label="עד מתי להאריך">
@@ -311,16 +316,26 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
               busy={action.busy}
               onClick={() =>
                 void action.run(async () => {
-                  const longer = await extendBooking(booking.id, end)
-                  toast(`הוארך עד ${formatTime(longer.ends_at, timezone)}.`, 'success')
-                  setEnds(null)
-                  onChange()
+                  try {
+                    const longer = await extendBooking(booking.id, end)
+                    toast(`הוארך עד ${formatTime(longer.ends_at, timezone)}.`, 'success')
+                    setEnds(null)
+                    onChange()
+                  } catch (error) {
+                    // Someone took the time meanwhile: offer what is free now.
+                    const { latest } = await extendOptions(booking.id).catch(() => ({ latest: null }))
+                    setEnds(latest ? extendEnds(booking.ends_at, latest) : [])
+                    throw error
+                  }
                 })
               }
             >
               עד {formatTime(end, timezone)}
             </Button>
           ))}
+          <Button size="sm" variant="ghost" onClick={() => setEnds(null)}>
+            לא עכשיו
+          </Button>
         </div>
       )}
       {action.error && (

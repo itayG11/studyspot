@@ -35,6 +35,7 @@ let checkIn: CheckIn | null
 let calls: string[]
 let latest: string | null
 let extendBody: unknown
+let extendRefuses: boolean
 
 beforeEach(() => {
   resetSessionForTests()
@@ -44,6 +45,7 @@ beforeEach(() => {
   calls = []
   latest = null
   extendBody = null
+  extendRefuses = false
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (init.method === 'POST') calls.push(path)
@@ -66,6 +68,10 @@ beforeEach(() => {
     if (path === '/bookings/8/extend-options') return Promise.resolve(jsonResponse({ latest }))
     if (path === '/bookings/8/extend') {
       extendBody = JSON.parse(String(init.body))
+      if (extendRefuses) {
+        latest = '2026-10-11T08:30:00Z' // someone took 11:30 on
+        return Promise.resolve(jsonResponse({ detail: 'no_time_to_extend' }, 409))
+      }
       return Promise.resolve(jsonResponse({ ...LAB, ends_at: (extendBody as { ends_at: string }).ends_at }))
     }
     if (path === '/check-ins/3/still-here')
@@ -138,10 +144,26 @@ describe('MyPage', () => {
     const lab = await screen.findByRole('listitem', { name: /M206/ })
     await userEvent.click(within(lab).getByRole('button', { name: 'להאריך' }))
     const choices = await within(lab).findByRole('group', { name: 'עד מתי להאריך' })
-    expect(within(choices).getAllByRole('button').map((b) => b.textContent)).toEqual(['עד 11:30', 'עד 12:00', 'עד 12:30'])
+    expect(within(choices).getAllByRole('button').map((b) => b.textContent)).toEqual(['עד 11:30', 'עד 12:00', 'עד 12:30', 'לא עכשיו'])
     await userEvent.click(within(choices).getByRole('button', { name: 'עד 12:00' }))
     await waitFor(() => expect(extendBody).toEqual({ ends_at: '2026-10-11T09:00:00.000Z' }))
     expect(await screen.findByText('הוארך עד 12:00.')).toBeInTheDocument()
+  })
+
+  it('the choice can be closed, and a refused one offers what is free now', async () => {
+    latest = '2026-10-11T09:30:00Z'
+    renderMe()
+    const lab = await screen.findByRole('listitem', { name: /M206/ })
+    await userEvent.click(within(lab).getByRole('button', { name: 'להאריך' }))
+    await userEvent.click(await within(lab).findByRole('button', { name: 'לא עכשיו' }))
+    expect(within(lab).queryByRole('group', { name: 'עד מתי להאריך' })).not.toBeInTheDocument()
+    extendRefuses = true
+    await userEvent.click(within(lab).getByRole('button', { name: 'להאריך' }))
+    const choices = await within(lab).findByRole('group', { name: 'עד מתי להאריך' })
+    await userEvent.click(within(choices).getByRole('button', { name: 'עד 12:00' }))
+    await waitFor(() =>
+      expect(within(lab).getAllByRole('button', { name: /^עד / }).map((b) => b.textContent)).toEqual(['עד 11:30']),
+    )
   })
 
   it('checks out', async () => {

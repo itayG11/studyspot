@@ -247,8 +247,6 @@ def renew(session: Session, booking: Booking, now: datetime, until: datetime | N
 def extend_booking(
     session: Session, user: User, booking_id: int, now: datetime, until: datetime | None = None
 ) -> Booking:
-    if until is not None and floor_to_slot(until) != until:
-        raise Refusal(400, "not_on_slot")
     booking = session.scalars(
         select(Booking).where(Booking.id == booking_id, Booking.user_id == user.id).with_for_update()
     ).first()
@@ -259,6 +257,9 @@ def extend_booking(
         raise Refusal(409, "not_checked_in")
     if until is not None and until <= booking.ends_at:
         raise Refusal(400, "invalid_range")
+    # Off the grid only for the latest end itself: a closing time like 21:50.
+    if until is not None and floor_to_slot(until) != until and until != latest_renewal(session, booking, now):
+        raise Refusal(400, "not_on_slot")
     if not renew(session, booking, now, until):
         raise Refusal(409, "no_time_to_extend")
     return booking
@@ -269,6 +270,7 @@ def extend_options(session: Session, user: User, booking_id: int, now: datetime)
     booking = session.scalars(select(Booking).where(Booking.id == booking_id, Booking.user_id == user.id)).first()
     if booking is None:
         raise Refusal(404, "booking_not_found")
+    refuse_if_closing(session, booking.institution_id)
     if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
         raise Refusal(409, "not_checked_in")
     return latest_renewal(session, booking, now)
