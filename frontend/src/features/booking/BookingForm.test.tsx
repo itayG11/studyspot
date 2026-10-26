@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -158,6 +158,20 @@ describe('BookingForm', () => {
     await user.click(screen.getByRole('button', { name: 'כן, תזכורת במייל' }))
     expect(await screen.findByText(/מעכשיו תקבל תזכורת במייל/)).toBeInTheDocument()
     expect(notices.enabled).toBe(true)
+  })
+
+  it('a new booking is asked for again at once, so the drawer and the count show it', async () => {
+    // The live practice run, 26 Oct: the drawer showed it only at the next 30-second refresh.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    const before = fetchMock.mock.calls.filter(([u]) => new URL(u as string).pathname === '/me/bookings').length
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => new URL(u as string).pathname === '/me/bookings').length).toBeGreaterThan(before),
+    )
   })
 
   it('does not offer the email reminder when it is on already', async () => {

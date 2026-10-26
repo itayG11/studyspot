@@ -15,6 +15,7 @@ import { createBooking, getAvailability, joinWaitlist } from '../../api/student'
 import { useAuth } from '../../auth/AuthContext'
 import { useAction } from '../../hooks/useAction'
 import { useApi } from '../../hooks/useApi'
+import { useMyBookings } from '../../me/myBookings'
 import { durationLabel } from '../../i18n/labels'
 import { bookableDays, daySlots, durationsFrom, type Slot } from '../../logic/slots'
 import { formatTime, weekdayName } from '../../logic/time'
@@ -57,6 +58,7 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
   // taken time still looks free), so nothing is offered until fresh ones come.
   const [clash, setClash] = useState<{ from: string; minutes: number; seen: unknown } | null>(null)
   const action = useAction()
+  const mine = useMyBookings()
   const waiting = useAction()
   const [waitingFor, setWaitingFor] = useState<string | null>(null) // the clash start we wait for
 
@@ -113,6 +115,7 @@ export function BookingForm({ place, seat, rules, timeZone, booked, onBooked }: 
       setSlot(null)
       setMinutes(null)
       availability.reload()
+      mine.reload() // the header's drawer and count show it now, not at the next refresh
     }
   }
 

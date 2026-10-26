@@ -483,6 +483,18 @@ class TokenOut(BaseModel):
     user: MeOut
 
 
+class BookingExtend(BaseModel):
+    """Extend until this end; none: as far as there is time."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ends_at: AwareDatetime | None = None
+
+
+class ExtendOptions(BaseModel):
+    latest: datetime | None  # the latest end to choose; none: no time to add
+
+
 class BookingCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -216,6 +216,21 @@ describe('AdminPage', () => {
     expect(screen.getByRole('button', { name: 'לחיצה על המפה' })).toHaveAttribute('data-fly', '32.91,35.29')
   })
 
+  it('each setup step leads to its place: buildings and places to the adding tab', async () => {
+    // The live practice run, 26 Oct: the steps with their green ticks looked like links, and were not.
+    renderAdmin()
+    const steps = await screen.findByRole('list', { name: 'צעדי ההקמה' })
+    await userEvent.click(within(steps).getByRole('button', { name: /בניינים ומקומות/ }))
+    expect(await screen.findByRole('button', { name: 'הוספה' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('a setup step on the same tab takes the focus to its section', async () => {
+    renderAdmin()
+    const steps = await screen.findByRole('list', { name: 'צעדי ההקמה' })
+    await userEvent.click(within(steps).getByRole('button', { name: /מי נכנס/ }))
+    expect(screen.getByRole('heading', { name: '2. מי נכנס' })).toHaveFocus()
+  })
+
   it('warns when the browser can only guess the location (a desktop, by its address)', async () => {
     // The live practice run, 26 Oct: a desktop computer landed in Ashdod, not Karmiel.
     vi.stubGlobal('navigator', {

@@ -13,7 +13,7 @@ import { useApi, type ApiState } from '../hooks/useApi'
 import { useAuth } from '../auth/AuthContext'
 import { useInstitution } from '../institution'
 import { Link } from 'react-router'
-import { ActionError, Button, ErrorState, Notice, PageLoading } from '../ui'
+import { ActionError, Button, ErrorState, jumpTo, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 
 type Go = (tab: 'adding' | 'placing' | 'signs') => void
@@ -31,11 +31,14 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
   if (!setup.data) return <PageLoading />
   const isSystemAdmin = user?.role === 'system_admin'
   const data = setup.data
+  // Each step leads to where it is done (the live practice run, 26 Oct: the
+  // ticked steps looked like links, and were not). Buildings and places are
+  // added on their own tab; the rest are sections of this one.
   const steps = [
-    { title: 'פרטי המוסד', done: data.name.trim() !== '' },
-    { title: 'מי נכנס', done: data.rules.some((r) => r.approved) }, // a waiting rule lets no one in yet
-    { title: 'בניינים ומקומות', done: data.located_buildings > 0 && data.places > 0 },
-    { title: 'שלטים ופתיחה', done: data.is_active },
+    { title: 'פרטי המוסד', done: data.name.trim() !== '', go: () => jumpTo('setup-details') },
+    { title: 'מי נכנס', done: data.rules.some((r) => r.approved), go: () => jumpTo('setup-rules') }, // a waiting rule lets no one in yet
+    { title: 'בניינים ומקומות', done: data.located_buildings > 0 && data.places > 0, go: () => onGo('adding') },
+    { title: 'שלטים ופתיחה', done: data.is_active, go: () => jumpTo('setup-open') },
   ]
   return (
     <div className={styles.setup}>
@@ -52,11 +55,13 @@ export function Setup({ setup, onGo }: { setup: ApiState<SetupData>; onGo: Go })
       <ol className={styles.steps} aria-label="צעדי ההקמה">
         {steps.map((step, index) => (
           <li key={step.title} className={styles.step}>
-            {step.done ? <CheckCircle2 aria-hidden="true" className={styles.stepDone} /> : <Circle aria-hidden="true" />}
-            <span>
-              {index + 1}. {step.title}
-            </span>
-            {step.done && <span className={styles.doneTag}>גמור</span>}
+            <button type="button" className={styles.stepLink} onClick={step.go}>
+              {step.done ? <CheckCircle2 aria-hidden="true" className={styles.stepDone} /> : <Circle aria-hidden="true" />}
+              <span>
+                {index + 1}. {step.title}
+              </span>
+              {step.done && <span className={styles.doneTag}>גמור</span>}
+            </button>
           </li>
         ))}
       </ol>
@@ -101,8 +106,8 @@ function DetailsStep({ data, onSaved }: { data: SetupData; onSaved: () => void }
   }
 
   return (
-    <form className={styles.form} onSubmit={submit} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className={styles.formTitle}>
+    <form className={styles.form} onSubmit={submit} aria-labelledby="setup-details">
+      <h2 id="setup-details" className={styles.formTitle} tabIndex={-1}>
         1. פרטי המוסד
       </h2>
       <label className={styles.label} htmlFor={`${id}-name`}>
@@ -159,8 +164,8 @@ function RulesStep({ data, onSaved }: { data: SetupData; onSaved: () => void }) 
   const rules = data.rules.filter((r) => !gone.includes(r.id))
   const tenants = rules.filter((r) => r.provider === 'microsoft')
   return (
-    <section className={styles.form} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className={styles.formTitle}>
+    <section className={styles.form} aria-labelledby="setup-rules">
+      <h2 id="setup-rules" className={styles.formTitle} tabIndex={-1}>
         2. מי נכנס
       </h2>
       <p className={styles.lead}>
@@ -258,7 +263,7 @@ function OpenStep({ data, onSaved, onGo }: { data: SetupData; onSaved: () => voi
   }
   return (
     <section className={styles.form} aria-labelledby="setup-open">
-      <h2 id="setup-open" className={styles.formTitle}>
+      <h2 id="setup-open" className={styles.formTitle} tabIndex={-1}>
         4. שלטים ופתיחה
       </h2>
       <p className={styles.lead}>

@@ -159,6 +159,37 @@ def test_renew_when_the_next_slot_is_free(client, room, room_booking):
     assert datetime.fromisoformat(client.get("/me/check-in").json()["expires_at"]) == new_end
 
 
+def test_extend_to_a_chosen_end_within_what_is_free(client, room, room_booking, other_student, student):
+    # The live practice run, 26 Oct: "extend" went straight to the longest
+    # end without asking. Now the student is told how far, and picks.
+    at(client, ROOM_START)
+    scan(client, room)
+    client.user = other_student
+    book(client, room, ROOM_START + 3 * HOUR, ROOM_START + 4 * HOUR)  # 17:00, someone else
+    client.user = student
+    at(client, ROOM_START + 90 * MIN)  # 15:30
+    options = client.get(f"/bookings/{room_booking['id']}/extend-options").json()
+    assert datetime.fromisoformat(options["latest"]) == ROOM_START + 3 * HOUR  # up to the next booking
+    chosen = ROOM_START + 2 * HOUR + 30 * MIN  # 16:30
+    response = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": chosen.isoformat()})
+    assert response.status_code == 200
+    assert datetime.fromisoformat(response.json()["ends_at"]) == chosen
+    too_far = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": (ROOM_START + 3 * HOUR + 15 * MIN).isoformat()})
+    assert (too_far.status_code, detail(too_far)) == (409, "no_time_to_extend")
+    off_grid = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": (ROOM_START + 2 * HOUR + 40 * MIN).isoformat()})
+    assert (off_grid.status_code, detail(off_grid)) == (400, "not_on_slot")
+
+
+def test_extend_options_say_when_there_is_no_time(client, room, room_booking, other_student, student):
+    at(client, ROOM_START)
+    scan(client, room)
+    client.user = other_student
+    book(client, room, ROOM_START + 2 * HOUR, ROOM_START + 3 * HOUR)  # right after
+    client.user = student
+    at(client, ROOM_START + 90 * MIN)
+    assert client.get(f"/bookings/{room_booking['id']}/extend-options").json() == {"latest": None}
+
+
 def test_renewal_is_blocked_by_the_next_booking(client, room, room_booking, other_student, student):
     at(client, ROOM_START)
     scan(client, room)

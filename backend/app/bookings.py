@@ -194,18 +194,19 @@ def cancel_booking(session: Session, user: User, booking_id: int, now: datetime 
     return booking
 
 
-def renew(session: Session, booking: Booking, now: datetime) -> bool:
-    """Give up to MAX_DURATION more from now, until closing time and the next
-    booking of the same room or seat. Returns False if there is no time to add."""
+def latest_renewal(session: Session, booking: Booking, now: datetime) -> datetime | None:
+    """How far the booking could be extended: up to MAX_DURATION from now,
+    until closing time and the next booking of the same room or seat. None
+    if there is no time to add."""
     place = session.scalars(
         select(Place).where(Place.id == booking.place_id).options(selectinload(Place.opening_hours))
     ).one()
     status = place_status(session, place, now)
     if not status.is_open:
-        return False
-    new_end = floor_to_slot(now + MAX_DURATION)
+        return None
+    latest = floor_to_slot(now + MAX_DURATION)
     if status.closes_at is not None:
-        new_end = min(new_end, status.closes_at)
+        latest = min(latest, status.closes_at)
     following = session.scalar(
         select(func.min(Booking.starts_at)).where(
             same_resource(place, booking.seat_id),
@@ -215,9 +216,17 @@ def renew(session: Session, booking: Booking, now: datetime) -> bool:
         )
     )
     if following is not None:
-        new_end = min(new_end, following)
-    if new_end <= booking.ends_at:
+        latest = min(latest, following)
+    return latest if latest > booking.ends_at else None
+
+
+def renew(session: Session, booking: Booking, now: datetime, until: datetime | None = None) -> bool:
+    """Extend to `until`, or as far as there is time. Returns False if the
+    time asked for (or any time at all) is not free."""
+    latest = latest_renewal(session, booking, now)
+    if latest is None or (until is not None and until > latest):
         return False
+    new_end = until or latest
     try:
         with session.begin_nested():
             booking.ends_at = new_end
@@ -235,7 +244,11 @@ def renew(session: Session, booking: Booking, now: datetime) -> bool:
     return True
 
 
-def extend_booking(session: Session, user: User, booking_id: int, now: datetime) -> Booking:
+def extend_booking(
+    session: Session, user: User, booking_id: int, now: datetime, until: datetime | None = None
+) -> Booking:
+    if until is not None and floor_to_slot(until) != until:
+        raise Refusal(400, "not_on_slot")
     booking = session.scalars(
         select(Booking).where(Booking.id == booking_id, Booking.user_id == user.id).with_for_update()
     ).first()
@@ -244,9 +257,21 @@ def extend_booking(session: Session, user: User, booking_id: int, now: datetime)
     refuse_if_closing(session, booking.institution_id)
     if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
         raise Refusal(409, "not_checked_in")
-    if not renew(session, booking, now):
+    if until is not None and until <= booking.ends_at:
+        raise Refusal(400, "invalid_range")
+    if not renew(session, booking, now, until):
         raise Refusal(409, "no_time_to_extend")
     return booking
+
+
+def extend_options(session: Session, user: User, booking_id: int, now: datetime) -> datetime | None:
+    """The latest end the student may choose when extending (None: no time)."""
+    booking = session.scalars(select(Booking).where(Booking.id == booking_id, Booking.user_id == user.id)).first()
+    if booking is None:
+        raise Refusal(404, "booking_not_found")
+    if booking.status != BookingStatus.CHECKED_IN or not booking.starts_at <= now < booking.ends_at:
+        raise Refusal(409, "not_checked_in")
+    return latest_renewal(session, booking, now)
 
 
 def upcoming_bookings(session: Session, user: User, now: datetime) -> list[Booking]:

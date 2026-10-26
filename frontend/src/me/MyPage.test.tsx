@@ -33,6 +33,8 @@ const CHECK_IN: CheckIn = {
 let bookings: Booking[]
 let checkIn: CheckIn | null
 let calls: string[]
+let latest: string | null
+let extendBody: unknown
 
 beforeEach(() => {
   resetSessionForTests()
@@ -40,6 +42,8 @@ beforeEach(() => {
   bookings = [LAB, ROOM]
   checkIn = CHECK_IN
   calls = []
+  latest = null
+  extendBody = null
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (init.method === 'POST') calls.push(path)
@@ -59,7 +63,11 @@ beforeEach(() => {
       bookings = [LAB]
       return Promise.resolve(jsonResponse({ ...ROOM, status: 'cancelled' }))
     }
-    if (path === '/bookings/8/extend') return Promise.resolve(jsonResponse({ detail: 'no_time_to_extend' }, 409))
+    if (path === '/bookings/8/extend-options') return Promise.resolve(jsonResponse({ latest }))
+    if (path === '/bookings/8/extend') {
+      extendBody = JSON.parse(String(init.body))
+      return Promise.resolve(jsonResponse({ ...LAB, ends_at: (extendBody as { ends_at: string }).ends_at }))
+    }
     if (path === '/check-ins/3/still-here')
       return Promise.resolve(jsonResponse({ ...CHECK_IN, can_extend: false, expires_at: '2026-10-11T10:00:00Z' }))
     if (path === '/check-ins/3/checkout') {
@@ -113,13 +121,27 @@ describe('MyPage', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem', { name: /הזמנה/ })).toHaveLength(1))
   })
 
-  it('only a confirmed booking can be extended, and a refusal is explained', async () => {
+  it('only a confirmed booking can be extended, and no free time is said so', async () => {
     renderMe()
     const room = await screen.findByRole('listitem', { name: /EM107/ })
     expect(within(room).queryByRole('button', { name: 'להאריך' })).not.toBeInTheDocument()
     const lab = screen.getByRole('listitem', { name: /M206/ })
     await userEvent.click(within(lab).getByRole('button', { name: 'להאריך' }))
-    expect(await within(lab).findByRole('alert')).toHaveTextContent('אין זמן להאריך')
+    expect(await within(lab).findByText(/אין זמן פנוי להארכה/)).toBeInTheDocument()
+    expect(calls).not.toContain('/bookings/8/extend')
+  })
+
+  it('extending offers only the free ends, and sends the one chosen', async () => {
+    // The live practice run, 26 Oct: "extend" went to the longest end without asking.
+    latest = '2026-10-11T09:30:00Z' // 12:30 in Israel; the booking ends at 11:00
+    renderMe()
+    const lab = await screen.findByRole('listitem', { name: /M206/ })
+    await userEvent.click(within(lab).getByRole('button', { name: 'להאריך' }))
+    const choices = await within(lab).findByRole('group', { name: 'עד מתי להאריך' })
+    expect(within(choices).getAllByRole('button').map((b) => b.textContent)).toEqual(['עד 11:30', 'עד 12:00', 'עד 12:30'])
+    await userEvent.click(within(choices).getByRole('button', { name: 'עד 12:00' }))
+    await waitFor(() => expect(extendBody).toEqual({ ends_at: '2026-10-11T09:00:00.000Z' }))
+    expect(await screen.findByText('הוארך עד 12:00.')).toBeInTheDocument()
   })
 
   it('checks out', async () => {

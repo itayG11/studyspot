@@ -11,13 +11,23 @@ from app import waitlist
 from app.api.actions import run_action
 from app.api.deps import get_session
 from app.auth import get_current_user
-from app.bookings import busy_ranges, cancel_booking, create_booking, extend_booking, upcoming_bookings
+from app.bookings import busy_ranges, cancel_booking, create_booking, extend_booking, extend_options, upcoming_bookings
 from app.clock import get_now
+from app.errors import Refusal
 from app.models import Booking, Place, User
 from app.models.waitlist import WaitlistEntry
 from app.ratelimit import write_limit
 from app.reminders import ALARM, START_AHEAD
-from app.schemas import Availability, BookingCreate, BookingOut, BusyRange, WaitlistIn, WaitlistOut
+from app.schemas import (
+    Availability,
+    BookingCreate,
+    BookingExtend,
+    BookingOut,
+    BusyRange,
+    ExtendOptions,
+    WaitlistIn,
+    WaitlistOut,
+)
 
 router = APIRouter(tags=["bookings"])
 
@@ -75,8 +85,18 @@ def cancel(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDe
 @router.post(
     "/bookings/{booking_id}/extend", response_model=BookingOut, dependencies=[Depends(write_limit)]
 )
-def extend(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDep):
-    return _out(run_action(session, lambda: extend_booking(session, user, booking_id, now)))
+def extend(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDep, body: BookingExtend | None = None):
+    until = body.ends_at if body else None
+    return _out(run_action(session, lambda: extend_booking(session, user, booking_id, now, until)))
+
+
+@router.get("/bookings/{booking_id}/extend-options", response_model=ExtendOptions)
+def options(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowDep):
+    """How far the student may extend, so the site offers only free times."""
+    try:
+        return ExtendOptions(latest=extend_options(session, user, booking_id, now))
+    except Refusal as refusal:
+        raise HTTPException(refusal.status, refusal.code) from None
 
 
 @router.get("/places/{place_id}/availability", response_model=Availability)
