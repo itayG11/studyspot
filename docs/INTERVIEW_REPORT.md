@@ -28,8 +28,8 @@
 ### המספרים, מהרצה ב-25.10.2026
 | מה | כמה |
 |---|---|
-| טסטים בשרת, `pytest` | 1355 |
-| טסטי יחידה באתר, `vitest` | ב-89 קבצים: 580 |
+| טסטים בשרת, `pytest` | 1359 |
+| טסטי יחידה באתר, `vitest` | ב-89 קבצים: 581 |
 | טסטים בדפדפן אמיתי, `Playwright` | ב-18 קבצים: 42 |
 | טסטים בשלושה מכשירים: מחשב, `iPad` וטלפון | 45 |
 | נתיבים בשרת, שכולם בטבלת ההרשאות | 109 |
@@ -113,7 +113,7 @@
 3. **הכול במקום אחד:** תפוסה חיה, הזמנה ושחרור של מי שלא הגיע, בארבעה סוגי מקומות. בחוות מחשבים יש גם מפת תאים.
 4. **בלי חומרה:** שלטי `QR` שמדפיסים מדף הניהול.
 5. **אתר אחד לכל המוסדות:** מוסד מקים לבד את הקמפוס שלו, בלי קוד.
-6. **עומק הנדסי:** מסד הנתונים מונע הזמנה כפולה, וטסט מקביליות מוכיח את זה. 1355 טסטים בשרת, ובדיקות אוטומטיות על כל `push`.
+6. **עומק הנדסי:** מסד הנתונים מונע הזמנה כפולה, וטסט מקביליות מוכיח את זה. 1359 טסטים בשרת, ובדיקות אוטומטיות על כל `push`.
 
 ### איך לענות כשאומרים "זה כבר קיים"
 - **התשובה:** "חלקים ממנו קיימים, אבל בנפרד. מה שחסר לסטודנט הוא החיבור: איפה אני יכול לשבת בהפסקה הזו, קרוב לשיעור הבא. זה הייחוד, וכל השאר הוא התשתית שצריך כדי שהוא יעבוד."
@@ -2294,11 +2294,11 @@ StudySpot - live occupancy and booking of campus study spaces, multi-institution
 ```
 
 ### בינונית, שתי שורות
-- **בעברית:** StudySpot: אתר לתפוסה חיה ולהזמנה של מקומות לימוד, עם הצעה למקום בכל הפסקה לפי מערכת השעות. מניעת הזמנה כפולה במסד הנתונים, עם טסט מקביליות, ו-1355 טסטים בשרת.
+- **בעברית:** StudySpot: אתר לתפוסה חיה ולהזמנה של מקומות לימוד, עם הצעה למקום בכל הפסקה לפי מערכת השעות. מניעת הזמנה כפולה במסד הנתונים, עם טסט מקביליות, ו-1359 טסטים בשרת.
 - **באנגלית:**
 ```
 StudySpot - campus study-space finder: live occupancy, booking, and a suggested place for every break in the student's timetable.
-Double booking prevented by a PostgreSQL exclusion constraint, proven by a concurrency test; 1,355 server tests, 580 unit tests, 42 browser tests.
+Double booking prevented by a PostgreSQL exclusion constraint, proven by a concurrency test; 1,359 server tests, 581 unit tests, 42 browser tests.
 ```
 
 ### מלאה, לפרויקט מרכזי
@@ -2307,14 +2307,14 @@ Double booking prevented by a PostgreSQL exclusion constraint, proven by a concu
   - שרת `FastAPI` ומסד `PostgreSQL`, אתר `React` ו-`TypeScript`, בענן ב-`Render` וב-`Neon`.
   - כניסה עם גוגל ומיקרוסופט, קוד למייל וסיסמה. לכל אחד מ-109 הנתיבים יש שורה בטבלת הרשאות שנבדקת בטסטים.
   - חיבורים למוסדות: `API`, `webhooks` חתומים, ווידג'ט לאתר המוסד.
-  - 1355 טסטים בשרת, 572 טסטי יחידה, 42 טסטים בדפדפן, ועוד 45 בשלושה מכשירים. בדיקות אבטחה אוטומטיות על כל דחיפה.
+  - 1359 טסטים בשרת, 572 טסטי יחידה, 42 טסטים בדפדפן, ועוד 45 בשלושה מכשירים. בדיקות אבטחה אוטומטיות על כל דחיפה.
 - **באנגלית:**
 ```
 StudySpot - live occupancy and booking of campus study spaces (getstudyspot.me)
 - Multi-institution web app with self-service setup; FastAPI, PostgreSQL, React/TypeScript; deployed on Render and Neon.
 - Google/Microsoft OIDC with PKCE, email codes and argon2id passwords; all 109 API routes covered by a role-based access test table.
 - Institution API keys, HMAC-signed webhooks with retries, and an embeddable widget.
-- 1,355 server tests, 580 unit tests, 42 Playwright tests plus 45 across three devices; CodeQL, pip-audit and gitleaks in CI.
+- 1,359 server tests, 581 unit tests, 42 Playwright tests plus 45 across three devices; CodeQL, pip-audit and gitleaks in CI.
 ```
 
 - **בראיון, אם שואלים על `AI`:** הפרויקט נבנה בעבודה עם `Claude Code`. התשובות המוצעות בפרק "עבודה עם `AI`", בשאלות הראיון.
