@@ -204,6 +204,17 @@ def test_robots_and_the_sitemap_are_served_as_text_and_xml(built):
     assert sitemap.status_code == 200 and "xml" in sitemap.headers["content-type"]
 
 
+def test_the_sitemap_lists_no_address_that_redirects():
+    # Search Console reports a listed page that redirects ("Page with
+    # redirect", 26 Oct). The web app sends these on (frontend/src/router.tsx):
+    # / to the home institution, /admin to its admin page, and the old
+    # /places and /spaces/<id> links to the institution's address.
+    paths = re.findall(r"<loc>https://[^/<]+(/[^<]*)</loc>", (PUBLIC / "sitemap.xml").read_text())
+    assert paths, "the sitemap lists pages"
+    redirects = re.compile(r"^/(admin|places|places/\d+|spaces/\d+)?$")
+    assert [p for p in paths if redirects.match(p)] == []
+
+
 def test_robots_keeps_personal_pages_out_of_search_and_only_them():
     # Each rule ends with "$": "/me" alone, never an institution called
     # "medicine" (robots rules match by prefix otherwise).
