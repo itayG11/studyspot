@@ -39,6 +39,7 @@ class BookingRules(BaseModel):
     horizon_minutes: int  # exact limit: a booking may start at most this far from now
     max_upcoming: int  # active advance bookings per student
     arrive_early_minutes: int  # arrival can be confirmed this early
+    arrive_early_if_free_minutes: int  # earlier still, if the place is free until the start
     no_show_after_minutes: int  # no confirmation by then: released
 
 

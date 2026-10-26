@@ -15,6 +15,7 @@ export interface BookingRules {
   horizon_minutes: number // the exact limit the server checks
   max_upcoming: number
   arrive_early_minutes: number
+  arrive_early_if_free_minutes: number
   no_show_after_minutes: number
 }
 

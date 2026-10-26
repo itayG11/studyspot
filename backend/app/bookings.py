@@ -36,6 +36,7 @@ MAX_DURATION = timedelta(hours=2)  # one booking, and one renewal step
 HORIZON = timedelta(days=4)  # how far ahead a booking may start
 MAX_UPCOMING = 2  # active advance bookings per student
 ARRIVE_EARLY = timedelta(minutes=10)  # arrival can be confirmed this early
+ARRIVE_EARLY_IF_FREE = timedelta(minutes=30)  # earlier still, if nobody holds the place until the start
 NO_SHOW_AFTER = timedelta(minutes=15)  # no confirmation by then: released
 SLOT = timedelta(minutes=15)  # bookings start and end on this grid
 MIN_WALK_IN = timedelta(minutes=15)  # shortest walk-in worth giving

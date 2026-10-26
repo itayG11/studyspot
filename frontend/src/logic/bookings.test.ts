@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Booking, BookingRules } from '../api/types'
 import { bookingToConfirm, inArrivalWindow, activeBookings } from './bookings'
 
-const RULES = { arrive_early_minutes: 10, no_show_after_minutes: 15 } as BookingRules
+const RULES = { arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 } as BookingRules
 const BOOKING: Booking = {
   id: 1, place_id: 3, place_name: 'EM107', building_code: 'EM', seat_id: null, seat_label: null,
   starts_at: '2026-10-11T07:00:00Z', ends_at: '2026-10-11T08:00:00Z', status: 'booked', source: 'advance',
@@ -10,8 +10,9 @@ const BOOKING: Booking = {
 const at = (iso: string) => new Date(iso)
 
 describe('inArrivalWindow', () => {
-  it('opens ten minutes before the start and closes fifteen after', () => {
-    expect(inArrivalWindow(BOOKING, at('2026-10-11T06:49:00Z'), RULES)).toBe(false)
+  it('opens thirty minutes before the start (the server checks the place is free) and closes fifteen after', () => {
+    expect(inArrivalWindow(BOOKING, at('2026-10-11T06:29:00Z'), RULES)).toBe(false)
+    expect(inArrivalWindow(BOOKING, at('2026-10-11T06:30:00Z'), RULES)).toBe(true)
     expect(inArrivalWindow(BOOKING, at('2026-10-11T06:50:00Z'), RULES)).toBe(true)
     expect(inArrivalWindow(BOOKING, at('2026-10-11T07:14:00Z'), RULES)).toBe(true)
     expect(inArrivalWindow(BOOKING, at('2026-10-11T07:15:00Z'), RULES)).toBe(false)

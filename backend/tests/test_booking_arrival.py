@@ -76,13 +76,52 @@ def test_room_without_booking_cannot_be_entered(client, room):
 
 
 def test_arrival_window_opens_ten_minutes_early(client, room, room_booking):
-    at(client, ROOM_START - 11 * MIN)
+    at(client, ROOM_START - 31 * MIN)
     assert detail(scan(client, room)) == "no_booking_now"
     at(client, ROOM_START - 10 * MIN)
     response = scan(client, room)
     assert response.status_code == 201
     assert datetime.fromisoformat(response.json()["expires_at"]) == ROOM_START + 2 * HOUR
     assert client.get("/me/bookings").json()[0]["status"] == "checked_in"
+
+
+# Arriving early to a room that nobody holds until the start: the booking
+# starts now instead (the live practice run, 26 Oct: a student booked 15:00
+# at 14:48 and stood outside a free room). The database decides "free".
+
+
+def test_early_arrival_to_a_free_room_moves_the_start_to_now(client, room, room_booking):
+    at(client, ROOM_START - 25 * MIN)  # 13:35
+    response = scan(client, room)
+    assert response.status_code == 201
+    assert datetime.fromisoformat(response.json()["expires_at"]) == ROOM_START + 2 * HOUR  # the end stays
+    mine = client.get("/me/bookings").json()[0]
+    assert mine["status"] == "checked_in"
+    assert datetime.fromisoformat(mine["starts_at"]) == ROOM_START - 30 * MIN  # 13:30, on the grid
+
+
+def test_early_arrival_waits_while_someone_else_holds_the_room(client, room, room_booking, other_student, student):
+    client.user = other_student
+    at(client, ROOM_START - 2 * HOUR)
+    book(client, room, ROOM_START - HOUR, ROOM_START)  # 13:00 to 14:00, someone else's
+    client.user = student
+    at(client, ROOM_START - 25 * MIN)
+    response = scan(client, room)
+    assert (response.status_code, detail(response)) == (409, "not_free_yet")
+    mine = [b for b in client.get("/me/bookings").json() if b["id"] == room_booking["id"]][0]
+    assert (mine["status"], datetime.fromisoformat(mine["starts_at"])) == ("booked", ROOM_START)
+    at(client, ROOM_START - 10 * MIN)  # the usual window: in, as before
+    assert scan(client, room).status_code == 201
+
+
+def test_early_arrival_to_a_free_lab_seat(client, lab):
+    seat = lab.seats[0]
+    at(client, ROOM_START - 2 * HOUR)
+    book(client, lab, ROOM_START, ROOM_START + HOUR, seat.id)
+    at(client, ROOM_START - 20 * MIN)
+    response = scan(client, lab)
+    assert response.status_code == 201
+    assert response.json()["seat_label"] == seat.label
 
 
 def test_arrival_window_closes_fifteen_minutes_after_the_start(client, room, room_booking):

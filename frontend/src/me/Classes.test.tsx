@@ -15,7 +15,7 @@ import { MyPage } from './MyPage'
 let ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 const DATA: ClassSlot = { id: 1, weekday: 6, starts: '08:30:00', ends: '10:00:00', building_code: 'M', place_text: null, title: 'מבני נתונים' }
 const MATH: ClassSlot = { id: 2, weekday: 6, starts: '11:30:00', ends: '13:00:00', building_code: 'EF', place_text: null, title: null }

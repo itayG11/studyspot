@@ -15,7 +15,7 @@ import { BulkImport } from './BulkImport'
 const ME = { id: 1, email: 'a@braude.ac.il', display_name: 'דלית', role: 'institution_admin', institution_slug: 'braude', is_demo: false }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem', live_simulated: false,
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 const place = (line: number, name: string, extra: Partial<ImportedPlace> = {}): ImportedPlace => ({
   line, kind: 'library', name, floor: 0, capacity: 20, lab_rows: null, lab_cols: null, location_note: null,
