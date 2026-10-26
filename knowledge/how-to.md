@@ -22,3 +22,5 @@
 3. מעלים כל קובץ עם `Artifact`, `asset: true`, וה-`url` של הדף.
 4. ב-`ArtifactData`, `update` ל-`datasets/waves` ול-`datasets/summary`: ה-`url` החדש בתוך `source`, ו-`updated`.
 - **בתוך הסשן יש גם תוסף:** `studyspot-progress`, עם שורת מצב והפקודה `/progress`. הוא חי רק בסשן שבו נבנה.
+
+**2026-10-26 - `Playwright` מקומית, עדכני:** `export PATH=/home/user/studyspot/backend/.venv/bin:$PATH CHROMIUM_PATH=/opt/pw-browsers/chromium`, מתוך `frontend`. `/opt/pw-browsers/chromium` הוא קישור, ולכן `find` בלי `-L` לא מוצא אותו. אם השרת נופל ב-`Connection refused`: `service postgresql start`.
