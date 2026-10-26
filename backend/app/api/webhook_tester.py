@@ -10,24 +10,24 @@ from starlette.concurrency import run_in_threadpool
 
 from app import webhook_tester, webhooks
 from app.api.admin import AdminDep, SessionDep, SettingsDep, _demo_slug, _managed
-from app.api.connections import ClientDep, DeliveryOut, ResolveDep, WebhookOut, _delivery_out, _webhook_out
+from app.api.connections import (
+    ClientDep,
+    DeliveryOut,
+    ResolveDep,
+    WebhookOut,
+    _delivery_out,
+    _webhook_out,
+    sample_limit,
+)
 from app.api.deps import limited_body
 from app.clock import get_now
-from app.ratelimit import LIMITERS, SlidingWindow, _too_many, per_ip, write_limit
+from app.ratelimit import per_ip, write_limit
 
 router = APIRouter(tags=["webhook tester"])
 
 NowDep = Annotated[datetime, Depends(get_now)]
 Slug = Annotated[str, Path(max_length=64)]
 tester_limit = per_ip("webhook-tester", limit=120, window_seconds=60, evict=True)
-# Each sample is an outbound call from our server: a cap for the whole
-# site too, whoever presses (every demo visitor is the same admin).
-_samples = LIMITERS.setdefault("webhook-tester-samples", SlidingWindow(30, 60))
-
-
-def sample_limit() -> None:
-    if not _samples.allow("all"):
-        raise _too_many(_samples)
 
 
 class TestHitOut(BaseModel):

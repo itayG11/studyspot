@@ -17,7 +17,7 @@ from app.clock import get_now
 from app.errors import Refusal
 from app.models import ApiKey, DeliveryStatus, Institution, WebhookDelivery, WebhookEndpoint
 from app.permissions import can_manage
-from app.ratelimit import write_limit
+from app.ratelimit import LIMITERS, SlidingWindow, _too_many, write_limit
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -184,6 +184,23 @@ def _managed_endpoint(db, admin, endpoint_id: int, lock: bool = False) -> Webhoo
     return row
 
 
+# Each sample is an outbound call from our server: a cap for the whole
+# site too, whoever presses (every demo visitor is the same admin). It
+# covers every way to reach the built-in tester: its own send, a test
+# ping and a redelivery.
+_samples = LIMITERS.setdefault("webhook-tester-samples", SlidingWindow(30, 60))
+
+
+def sample_limit() -> None:
+    if not _samples.allow("all"):
+        raise _too_many(_samples)
+
+
+def _sample_if_built_in(row: WebhookEndpoint) -> None:
+    if row.built_in:
+        sample_limit()
+
+
 def _not_built_in(row: WebhookEndpoint) -> None:
     # The demo's tester (wave 14.5) is the server's, not a visitor's.
     if row.built_in:
@@ -273,6 +290,7 @@ def test_webhook(
 ):
     """A test.ping, sent within the request: the admin sees the answer at once."""
     row = _managed_endpoint(db, admin, endpoint_id)
+    _sample_if_built_in(row)
     delivery = webhooks.send_now(
         db, row, webhooks.test_payload(now), client, _hook_key(settings), now, settings.webhook_allow_private, resolve
     )
@@ -312,6 +330,7 @@ def redeliver(
         row = _managed_endpoint(db, admin, old.endpoint_id)
     except HTTPException:
         raise HTTPException(404, "delivery_not_found") from None
+    _sample_if_built_in(row)
     delivery = webhooks.send_now(
         db, row, old.payload, client, _hook_key(settings), now, settings.webhook_allow_private, resolve
     )

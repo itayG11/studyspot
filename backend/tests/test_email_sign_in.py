@@ -324,6 +324,35 @@ def test_an_earlier_code_still_in_time_works(client, mailer):
     assert verify(client, late).status_code == 200
 
 
+def _wrong(code: str) -> str:
+    return "000000" if code != "000000" else "111111"
+
+
+def test_wrong_guesses_from_another_browser_do_not_lock_the_real_student(client, make_client, mailer):
+    start(client)
+    code = mailer.last_code()
+    stranger = make_client()  # knows the address, never asked for a code from this browser
+    for _ in range(MAX_ATTEMPTS + 2):
+        assert verify(stranger, _wrong(code)).json()["detail"] == "email_code_invalid"
+    assert verify(client, code).status_code == 200
+
+
+def test_a_stranger_who_asks_for_a_code_cannot_try_the_students_code(client, make_client, mailer):
+    start(client)
+    students_code = mailer.last_code()
+    stranger = make_client()
+    start(stranger)  # their own code, mailed to the student's inbox, which they cannot read
+    assert verify(stranger, students_code).json()["detail"] == "email_code_invalid"
+    for _ in range(MAX_ATTEMPTS):
+        verify(stranger, _wrong(students_code))
+    assert verify(client, students_code).status_code == 200  # theirs are used up, not the student's
+
+
+def test_the_right_code_needs_the_browser_that_asked_for_it(client, make_client, mailer):
+    start(client)
+    assert verify(make_client(), mailer.last_code()).json()["detail"] == "email_code_invalid"
+
+
 def test_signing_in_uses_up_every_open_code_of_the_address(client, mailer):
     start(client)
     first = mailer.last_code()
@@ -598,9 +627,9 @@ def test_ten_code_requests_at_once_stay_within_the_hourly_limit(engine, race_ema
 
 def test_one_code_typed_in_two_tabs_at_once_signs_in_once(engine, race_email):
     with Session(engine) as db:
-        _, code = issue_code(db, race_email, SUNDAY_10AM, RACE_KEY)
+        code_id, code = issue_code(db, race_email, SUNDAY_10AM, RACE_KEY)
         db.commit()
-    outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY))
+    outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY, [code_id]))
     assert sorted(outcomes) == ["email_code_invalid", "ok"]
 
 
@@ -615,3 +644,11 @@ def test_a_long_run_of_dashes_is_refused_at_once():
             normalize_email(raw)
         assert time.perf_counter() - start < 0.05
     assert normalize_email("a@x-y.e.braude.ac.il") == "a@x-y.e.braude.ac.il"
+
+
+def test_the_mail_states_the_real_lifetime_of_the_code():
+    from app import mailer
+    from app.email_codes import CODE_LIFETIME
+
+    minutes = int(CODE_LIFETIME.total_seconds() // 60)
+    assert f"{minutes} דקות" in mailer._text("123456")

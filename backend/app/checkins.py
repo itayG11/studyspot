@@ -179,7 +179,7 @@ def _room_check_in(session, user, place, current, now) -> CheckInResult:
 
 
 def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
-    booking = _arriving_booking(session, user, place, now, seat_id)
+    booking = _arriving_booking(session, user, place, now, seat_id, current)
     if booking is not None:
         if seat_id is not None and seat_id != booking.seat_id:
             raise Refusal(409, "booked_other_seat")
@@ -250,14 +250,21 @@ def _confirm(session, user, place, booking: Booking, current, now) -> CheckInRes
 
 
 def _arriving_booking(
-    session: Session, user: User, place: Place, now: datetime, seat_id: int | None = None
+    session: Session,
+    user: User,
+    place: Place,
+    now: datetime,
+    seat_id: int | None = None,
+    current: CheckIn | None = None,
 ) -> Booking | None:
     """The student's booking here whose arrival window is open: from 10
     minutes before the start until 15 minutes after it. Or from 30 minutes
     before, if nobody holds the place until the start: the booking then
     starts now (the live practice run, 26 Oct: a student stood outside a
     free room they had booked for 15:00). Early, on another seat of a lab,
-    the scan stays a walk-in, as it was before the early start existed."""
+    the scan stays a walk-in, as it was before the early start existed.
+    Also a walk-in, a renewal, when the student already sits on that seat:
+    moving the next booking early would overlap their own stay."""
     booking = session.scalars(
         select(Booking)
         .where(
@@ -272,6 +279,8 @@ def _arriving_booking(
     ).first()
     if booking is not None and booking.starts_at - ARRIVE_EARLY > now:
         if seat_id is not None and seat_id != booking.seat_id:
+            return None
+        if current is not None and current.place_id == place.id and current.seat_id == booking.seat_id:
             return None
         _start_now(session, place, booking, now)
     return booking

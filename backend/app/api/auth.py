@@ -35,12 +35,15 @@ from app.config import Settings, get_settings
 from app.demo import demo_still_allowed, demo_user
 from app.email_codes import (
     CODE_LIFETIME,
+    bind_cookie,
+    bind_key,
     check_code,
     code_key,
     domain_is_supported,
     identity_for,
     issue_code,
     normalize_email,
+    read_bind_cookie,
 )
 from app.errors import Refusal, is_duplicate
 from app.mailer import Mailer, mailer_from_settings
@@ -73,6 +76,7 @@ router = APIRouter(tags=["auth"])
 
 LOGIN_COOKIE = "studyspot_login"
 REFRESH_COOKIE = "studyspot_refresh"
+EMAIL_CODE_COOKIE = "studyspot_email_code"
 LOGIN_LIFETIME = timedelta(minutes=10)
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -166,6 +170,7 @@ def get_mailer(
 def email_start(
     body: EmailStartIn,
     request: Request,
+    response: Response,
     db: SessionDep,
     settings: SettingsDep,
     now: NowDep,
@@ -181,6 +186,8 @@ def email_start(
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
         code_id, code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
+        bind = bind_key(settings.jwt_secret_bytes())
+        earlier = _bound_ids(request, settings, email)
     except Refusal as refusal:
         db.rollback()
         raise HTTPException(refusal.status, refusal.code) from None
@@ -194,6 +201,15 @@ def email_start(
         db.execute(delete(EmailSignInCode).where(EmailSignInCode.id == code_id))
         db.commit()
         raise HTTPException(refusal.status, refusal.code) from None
+    response.set_cookie(
+        EMAIL_CODE_COOKIE,
+        bind_cookie(bind, email, [*earlier, code_id]),
+        max_age=int(CODE_LIFETIME.total_seconds()),
+        path=settings.auth_cookie_path(),
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
     return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
 
 
@@ -211,7 +227,7 @@ def email_verify(
         raise HTTPException(404, "email_login_disabled")
     try:
         email = normalize_email(body.email)
-        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()), _bound_ids(request, settings, email))
         try:
             with db.begin_nested():  # a refusal below undoes only this sign-in's writes
                 # The open campus only for a student it moves (the domain has a rule).
@@ -230,6 +246,11 @@ def email_verify(
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
     return _token_out(db, user, issued.session, now, settings)
+
+
+def _bound_ids(request: Request, settings: Settings, email: str) -> list[int]:
+    """The codes of this address that this browser asked for."""
+    return read_bind_cookie(bind_key(settings.jwt_secret_bytes()), email, request.cookies.get(EMAIL_CODE_COOKIE))
 
 
 def _email_identity(db: Session, email: str) -> UserIdentity:
@@ -256,7 +277,7 @@ def password_set(
     try:
         email = normalize_email(body.email)
         check_strength(body.password, email)  # before the code: a weak one does not use it up
-        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()), _bound_ids(request, settings, email))
         try:
             with db.begin_nested():
                 user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)

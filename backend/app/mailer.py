@@ -11,6 +11,7 @@ from typing import Protocol
 
 import httpx
 
+from app.email_codes import CODE_LIFETIME
 from app.errors import Refusal
 
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
@@ -34,7 +35,7 @@ def _subject(code: str) -> str:
 def _text(code: str) -> str:
     return (
         f"קוד הכניסה שלך הוא {code}.\n"
-        "הקוד תקף ל-20 דקות, ולשימוש אחד.\n"
+        f"הקוד תקף ל-{int(CODE_LIFETIME.total_seconds() // 60)} דקות, ולשימוש אחד.\n"
         "אם לא ביקשת להתחבר, אפשר להתעלם מההודעה הזאת."
     )
 

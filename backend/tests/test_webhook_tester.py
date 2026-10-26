@@ -113,12 +113,22 @@ def test_a_bad_signature_is_refused_and_not_kept(client, session, demo, demo_adm
 
 
 def test_samples_have_a_cap_for_the_whole_site(client, demo, demo_admin, demo_on, wire, monkeypatch):
-    from app.api import webhook_tester as tester_api
+    from app.api import connections as tester_api
 
     _open(client, demo_admin)
     monkeypatch.setattr(tester_api._samples, "limit", 1)
     assert client.post("/admin/institutions/demo/webhook-tester/send").status_code == 200
     assert client.post("/admin/institutions/demo/webhook-tester/send").status_code == 429
+
+
+def test_the_site_cap_covers_the_other_ways_to_reach_the_tester(client, demo, demo_admin, demo_on, wire, monkeypatch):
+    from app.api import connections as tester_api
+
+    endpoint_id = _open(client, demo_admin)["webhook"]["id"]
+    sent = client.post("/admin/institutions/demo/webhook-tester/send").json()
+    monkeypatch.setattr(tester_api._samples, "limit", 1)  # that one send used it up
+    assert client.post(f"/admin/webhooks/{endpoint_id}/test").status_code == 429
+    assert client.post(f"/admin/webhook-deliveries/{sent['id']}/redeliver").status_code == 429
 
 
 def test_only_a_built_in_address_receives(client, session, demo, demo_admin, demo_on):

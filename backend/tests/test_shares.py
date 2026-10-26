@@ -129,6 +129,19 @@ def test_a_booking_link_says_when_and_ends_with_a_cancel(client, braude):
     assert client.get(f"/shares/{token}").status_code == 404
 
 
+def test_a_booking_nobody_checked_into_does_not_read_as_studying_now(client, braude):
+    room = place_named(braude, "EM", "EM107")
+    start = SUNDAY_10AM + timedelta(hours=1)
+    booked = client.post(
+        "/bookings",
+        json={"place_id": room.id, "starts_at": start.isoformat(), "ends_at": (start + timedelta(hours=1)).isoformat()},
+    )
+    assert booked.status_code == 201, booked.text
+    token = _token(_share(client, "booking", booked.json()["id"]))
+    client.clock.now = start + timedelta(minutes=5)  # inside the no-show window, not checked in
+    assert client.get(f"/shares/{token}").json()["here_now"] is False
+
+
 def test_a_forged_link_is_refused_like_an_ended_one(client):
     forged = shares.make_token(b"not the server key" * 3, "c", 1, named=True)
     assert client.get(f"/shares/{forged}").status_code == 404
