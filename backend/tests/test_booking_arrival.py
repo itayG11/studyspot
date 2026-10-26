@@ -108,7 +108,7 @@ def test_early_arrival_waits_while_someone_else_holds_the_room(client, room, roo
     at(client, ROOM_START - 25 * MIN)
     response = scan(client, room)
     assert (response.status_code, detail(response)) == (409, "not_free_yet")
-    mine = [b for b in client.get("/me/bookings").json() if b["id"] == room_booking["id"]][0]
+    mine = next(b for b in client.get("/me/bookings").json() if b["id"] == room_booking["id"])
     assert (mine["status"], datetime.fromisoformat(mine["starts_at"])) == ("booked", ROOM_START)
     at(client, ROOM_START - 10 * MIN)  # the usual window: in, as before
     assert scan(client, room).status_code == 201

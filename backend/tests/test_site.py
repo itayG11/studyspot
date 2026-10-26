@@ -307,5 +307,5 @@ def test_search_engines_find_an_icon_a_title_and_the_site_name():
     assert (PUBLIC / "favicon.ico").is_file()
     title = re.search(r"<title>(.+)</title>", page)[1]
     assert title.startswith("StudySpot") and len(title) > len("StudySpot")
-    data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', page, re.S)[1])
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', page, re.DOTALL)[1])
     assert (data["@type"], data["name"], data["url"]) == ("WebSite", "StudySpot", "https://getstudyspot.me/")
