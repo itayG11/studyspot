@@ -17,3 +17,4 @@
   - `DNS rebinding`: הפתרון המלא הוא חיבור לכתובת שנבדקה, או `proxy` יוצא;
   - `tester_failing` משותף לכל מבקרי ההדגמה.
 - **2026-10-20 -** בקשת `Dependabot` itayG11/studyspot#11, 13 עדכונים לאתר: לעבור עליה עם הבדיקות.
+- **2026-10-26 -** המשתמש, אחרי מיזוג itayG11/studyspot#18: ב-`Search Console`, לשלוח שוב את `sitemap.xml` תחת `Sitemaps`, ובדוח "הדף מפנה לכתובת אחרת" ללחוץ `Validate fix`. הכתובת `/` הוצאה מה-`sitemap`, כי היא מפנה ל-`/demo`.
