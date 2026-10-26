@@ -16,7 +16,7 @@ dependencies = [
     # with defusedxml installed, openpyxl parses the file's XML safely.
     "openpyxl>=3.1",
     "defusedxml>=0.7",
-    "anthropic>=1.13,<2",  # reading a timetable photo (app/timetable_photo.py)
+    "anthropic>=1.13,<3",  # reading a timetable photo (app/timetable_photo.py)
     "starlette>=1.7",  # its gzip leaves already-compressed types alone (app/site.py)
     # Push notifications (app/notify.py): the standard encryption of the
     # message (RFC 8291) and the signed VAPID header (RFC 8292). Both need
@@ -31,7 +31,7 @@ dependencies = [
 dev = [
     "pytest>=8",
     "httpx2>=2",
-    "ruff~=0.16.10",  # pinned: a new release can add rules and turn CI red
+    "ruff>=0.16.10,<0.18.0",  # pinned: a new release can add rules and turn CI red
 ]
 
 [tool.pytest.ini_options]
