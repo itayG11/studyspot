@@ -13,13 +13,13 @@ Find a place to study on campus: what is free right now, what is usually free la
 
 | | |
 |---|---|
-| Server tests (`pytest`, on a real PostgreSQL) | 1345 |
-| Web app unit tests (`vitest`) | 572 |
+| Server tests (`pytest`, on a real PostgreSQL) | 1355 |
+| Web app unit tests (`vitest`) | 580 |
 | Browser tests (`Playwright`, with an `axe` accessibility check) | 42, plus 45 on desktop, iPad and phone |
-| API routes, each with a row in an access table; refusals tested per role | 107 |
+| API routes, each with a row in an access table; refusals tested per role | 109 |
 | Database tables | 29 |
 
-*Counted on 25 October 2026.*
+*Counted on 26 October 2026.*
 
 ## The problem
 
