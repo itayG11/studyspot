@@ -55,6 +55,9 @@ describe('Connections', () => {
     await user.click(screen.getByRole('button', { name: 'ליצור מפתח' }))
     expect(api.makeApiKey).toHaveBeenCalledWith('braude', 'המסך בספרייה')
     expect(await screen.findByText(RAW)).toBeInTheDocument()
+    // A copy that said "copied" and pasted nothing (the live practice run,
+    // 26 Oct): the key is also easy to take by hand.
+    expect(screen.getByText(/לחיצה על המפתח מסמנת את כולו/)).toBeInTheDocument()
     expect(screen.getByText(/curl -H "Authorization: Bearer ss_live_/)).toBeInTheDocument()
     expect(await screen.findByRole('listitem', { name: 'מפתח: המסך בספרייה' })).toHaveTextContent('עוד לא היה בשימוש')
   })

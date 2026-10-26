@@ -84,11 +84,20 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         with contextlib.suppress(asyncio.CancelledError):
             await task
 
+class Utf8JSONResponse(JSONResponse):
+    """JSON that says it is UTF-8. JSON is UTF-8 anyway, but Windows
+    PowerShell 5.1 reads a body without a charset as Latin-1, and Hebrew
+    names came out garbled (the live practice run, 26 Oct)."""
+
+    media_type = "application/json; charset=utf-8"
+
+
 app = FastAPI(
     title="StudySpot API",
     description="Real-time occupancy and booking for campus study spaces.",
     version="0.1.0",
     lifespan=lifespan,
+    default_response_class=Utf8JSONResponse,
 )
 
 
@@ -132,7 +141,7 @@ def health() -> dict[str, str]:
 @app.exception_handler(RequestValidationError)
 async def validation_failed(request: Request, error: RequestValidationError) -> JSONResponse:
     errors = [{key: value for key, value in item.items() if key not in ("input", "ctx", "url")} for item in error.errors()]
-    return JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
+    return Utf8JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
 
 
 # A body over the cap never reaches the app (app/body_limit.py). Added

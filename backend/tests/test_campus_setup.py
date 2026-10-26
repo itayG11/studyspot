@@ -321,9 +321,11 @@ def test_a_pending_rule_whose_value_was_approved_elsewhere_cannot_be_approved(cl
 
 
 def test_the_same_institution_cannot_add_the_same_rule_twice(manager):
+    # Its own rule, waiting or working: "already added", not "another
+    # institution's" (the live practice run, 26 Oct, showed the wrong one).
     assert manager.post("/admin/institutions/tel-hai/login-rules", json=rule("email", "telhai.ac.il")).status_code == 201
     again = manager.post("/admin/institutions/tel-hai/login-rules", json=rule("email", "telhai.ac.il"))
-    assert (again.status_code, again.json()["detail"]) == (409, "login_rule_taken")
+    assert (again.status_code, again.json()["detail"]) == (409, "login_rule_already_added")
 
 
 def test_a_pending_rule_does_not_close_the_open_campus(session):

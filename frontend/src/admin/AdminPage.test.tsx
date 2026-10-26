@@ -216,6 +216,28 @@ describe('AdminPage', () => {
     expect(screen.getByRole('button', { name: 'לחיצה על המפה' })).toHaveAttribute('data-fly', '32.91,35.29')
   })
 
+  it('warns when the browser can only guess the location (a desktop, by its address)', async () => {
+    // The live practice run, 26 Oct: a desktop computer landed in Ashdod, not Karmiel.
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: { getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: 31.8, longitude: 34.65, accuracy: 25_000 } } as GeolocationPosition) },
+    })
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.click(screen.getByRole('button', { name: 'המיקום שלי' }))
+    expect(screen.getByText(/המיקום לא מדויק/)).toBeInTheDocument()
+  })
+
+  it('a picked point can be cleared, to add the building without one', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    expect(screen.queryByRole('button', { name: 'לבטל את הבחירה' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'לחיצה על המפה' }))
+    expect(screen.getByText('נבחר מיקום על המפה.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'לבטל את הבחירה' }))
+    expect(screen.getByText('עוד לא נבחר מיקום.')).toBeInTheDocument()
+  })
+
   it('says so in Hebrew when the short name is taken', async () => {
     renderAdmin()
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
@@ -230,7 +252,7 @@ describe('AdminPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
     await userEvent.selectOptions(await screen.findByLabelText('בניין'), '6')
     await userEvent.selectOptions(screen.getByLabelText('סוג המקום'), 'group_room')
-    await userEvent.type(screen.getByLabelText('שם המקום'), 'NX101')
+    await userEvent.type(screen.getByLabelText('שם המקום או מספר החדר'), 'NX101')
     expect(within(screen.getByLabelText('קומה')).getAllByRole('option')).toHaveLength(3)
     await userEvent.type(screen.getByLabelText('כמה אנשים'), '8')
     await userEvent.click(screen.getByRole('button', { name: 'הוספת מקום' }))

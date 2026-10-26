@@ -44,15 +44,18 @@ def add_login_rule(
         raise Refusal(409, "login_rule_public_domain")
     # Taken: working at any institution, or already asked for by this one.
     # A rule only waiting elsewhere takes nothing (the table's keys hold
-    # against a race too).
+    # against a race too). Its own is told apart: "already added" is not
+    # "another institution's".
     taken = db.scalars(
-        select(InstitutionLoginRule.id).where(
+        select(InstitutionLoginRule.institution_id).where(
             InstitutionLoginRule.provider == provider,
             InstitutionLoginRule.value == value,
             InstitutionLoginRule.approved | (InstitutionLoginRule.institution_id == institution.id),
         )
-    ).first()
-    if taken is not None:
+    ).all()
+    if institution.id in taken:
+        raise Refusal(409, "login_rule_already_added")
+    if taken:
         raise Refusal(409, "login_rule_taken")
     created = InstitutionLoginRule(institution_id=institution.id, provider=provider, value=value, approved=False)
     if provider == AuthProvider.EMAIL and not approved:

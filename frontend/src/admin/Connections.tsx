@@ -112,10 +112,11 @@ function ApiKeys({ slug, keys, onChange }: { slug: string; keys: ApiKey[] | null
       {made && (
         <div className={styles.screenLink} role="status">
           <p>המפתח מוכן. הוא מוצג רק עכשיו: מעתיקים ושומרים במקום בטוח.</p>
-          <code className={styles.screenAddress}>{made}</code>
+          <code className={`${styles.screenAddress} ${styles.selectAll}`}>{made}</code>
           <Button size="sm" variant="secondary" icon={<Copy aria-hidden="true" />} onClick={() => void copy(made)}>
             {copied ? 'הועתק' : 'להעתיק'}
           </Button>
+          <p className={styles.screenNote}>אם ההדבקה יוצאת ריקה: לחיצה על המפתח מסמנת את כולו, ואז Ctrl+C.</p>
           <code className={styles.screenAddress}>{`curl -H "Authorization: Bearer ${made}" ${apiAddress()}/v1/places`}</code>
         </div>
       )}

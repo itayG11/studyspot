@@ -282,6 +282,11 @@
   margin: 0;
 }
 
+/* One click takes the whole secret, for copying by hand. */
+.selectAll {
+  user-select: all;
+}
+
 .screenAddress {
   max-width: 100%;
   padding: var(--s-2);

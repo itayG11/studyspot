@@ -196,3 +196,11 @@ def test_the_openapi_of_v1_is_public_and_lists_only_v1(client):
     assert all(path.startswith("/v1/") for path in schema["paths"])
     assert "/v1/places" in schema["paths"] and "/v1/openapi.json" not in schema["paths"]
     assert "HTTPBearer" in schema["components"]["securitySchemes"]
+
+
+def test_answers_say_they_are_utf8(client, admin):
+    # Windows PowerShell 5.1 reads JSON without a charset as Latin-1, and
+    # Hebrew place names come out garbled (the live practice run, 26 Oct).
+    made = _make_key(client, admin)
+    answer = client.get("/v1/places", headers=_as_key(client, made["key"]))
+    assert answer.headers["content-type"] == "application/json; charset=utf-8"

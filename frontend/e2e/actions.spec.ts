@@ -136,7 +136,7 @@ test('the admin adds a building and a room, and students find the room', async (
 
     await page.getByLabel('בניין', { exact: true }).selectOption({ label: 'בניין QA' })
     await page.getByLabel('סוג המקום').selectOption('group_room')
-    await page.getByLabel('שם המקום').fill('QA101')
+    await page.getByLabel('שם המקום או מספר החדר').fill('QA101')
     await page.getByLabel('קומה').selectOption({ label: 'קומה 1' })
     await page.getByLabel('כמה אנשים').fill('6')
     await page.getByRole('button', { name: 'הוספת מקום' }).click()
