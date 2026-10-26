@@ -150,6 +150,11 @@ function BuildingForm({
       <p className={styles.lead} role="status">
         {picked ? 'נבחר מיקום על המפה.' : 'עוד לא נבחר מיקום.'}
       </p>
+      {picked && (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setPicked(null)}>
+          לבטל את הבחירה
+        </Button>
+      )}
       <form className={styles.subform} onSubmit={submit} aria-label="פרטי הבניין">
       <label className={styles.label} htmlFor={`${id}-name`}>
         שם הבניין
@@ -212,6 +217,9 @@ function BuildingForm({
 // Finding the campus on the map: the admin's own location, or a search.
 // The search runs only on a press of the button: OpenStreetMap's place search
 // does not allow searching as one types (app/geocode.py on the server).
+// Farther off than this, the browser's position is a guess, not the user's place.
+const ROUGH_METRES = 1000
+
 function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
   const id = useId()
   const [query, setQuery] = useState('')
@@ -233,7 +241,12 @@ function MapTools({ onFly }: { onFly: (at: [number, number]) => void }) {
     }
     setLocating(null)
     navigator.geolocation.getCurrentPosition(
-      (where) => onFly([where.coords.latitude, where.coords.longitude]),
+      (where) => {
+        onFly([where.coords.latitude, where.coords.longitude])
+        // A desktop has no GPS: the browser guesses by the internet address,
+        // often a city away (the live practice run, 26 Oct: Ashdod, not Karmiel).
+        if (where.coords.accuracy > ROUGH_METRES) setLocating('המיקום לא מדויק: הדפדפן ניחש אותו לפי החיבור לאינטרנט. אפשר לחפש את הכתובת במקום.')
+      },
       () => setLocating('לא קיבלנו את המיקום. אפשר לאשר אותו בדפדפן, או לחפש מקום.'),
       { enableHighAccuracy: true, timeout: 10_000 },
     )
@@ -351,11 +364,12 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
         ))}
       </select>
       <label className={styles.label} htmlFor={`${id}-name`}>
-        שם המקום
+        שם המקום או מספר החדר
       </label>
       <input
         id={`${id}-name`}
         className={styles.field}
+        placeholder="למשל M-201, או ספריית הבניין"
         required
         maxLength={100}
         value={name}

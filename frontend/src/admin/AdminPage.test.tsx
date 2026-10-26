@@ -21,7 +21,7 @@ vi.mock('./PickMap', () => ({
 const SIG = 'A'.repeat(43)
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 
 const SETUP = {
@@ -216,6 +216,43 @@ describe('AdminPage', () => {
     expect(screen.getByRole('button', { name: 'לחיצה על המפה' })).toHaveAttribute('data-fly', '32.91,35.29')
   })
 
+  it('each setup step leads to its place: buildings and places to the adding tab', async () => {
+    // The live practice run, 26 Oct: the steps with their green ticks looked like links, and were not.
+    renderAdmin()
+    const steps = await screen.findByRole('list', { name: 'צעדי ההקמה' })
+    await userEvent.click(within(steps).getByRole('button', { name: /בניינים ומקומות/ }))
+    expect(await screen.findByRole('button', { name: 'הוספה' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('a setup step on the same tab takes the focus to its section', async () => {
+    renderAdmin()
+    const steps = await screen.findByRole('list', { name: 'צעדי ההקמה' })
+    await userEvent.click(within(steps).getByRole('button', { name: /מי נכנס/ }))
+    expect(screen.getByRole('heading', { name: '2. מי נכנס' })).toHaveFocus()
+  })
+
+  it('warns when the browser can only guess the location (a desktop, by its address)', async () => {
+    // The live practice run, 26 Oct: a desktop computer landed in Ashdod, not Karmiel.
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: { getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: 31.8, longitude: 34.65, accuracy: 25_000 } } as GeolocationPosition) },
+    })
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    await userEvent.click(screen.getByRole('button', { name: 'המיקום שלי' }))
+    expect(screen.getByText(/המיקום לא מדויק/)).toBeInTheDocument()
+  })
+
+  it('a picked point can be cleared, to add the building without one', async () => {
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
+    expect(screen.queryByRole('button', { name: 'לבטל את הבחירה' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'לחיצה על המפה' }))
+    expect(screen.getByText('נבחר מיקום על המפה.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'לבטל את הבחירה' }))
+    expect(screen.getByText('עוד לא נבחר מיקום.')).toBeInTheDocument()
+  })
+
   it('says so in Hebrew when the short name is taken', async () => {
     renderAdmin()
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
@@ -230,7 +267,7 @@ describe('AdminPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
     await userEvent.selectOptions(await screen.findByLabelText('בניין'), '6')
     await userEvent.selectOptions(screen.getByLabelText('סוג המקום'), 'group_room')
-    await userEvent.type(screen.getByLabelText('שם המקום'), 'NX101')
+    await userEvent.type(screen.getByLabelText('שם המקום או מספר החדר'), 'NX101')
     expect(within(screen.getByLabelText('קומה')).getAllByRole('option')).toHaveLength(3)
     await userEvent.type(screen.getByLabelText('כמה אנשים'), '8')
     await userEvent.click(screen.getByRole('button', { name: 'הוספת מקום' }))

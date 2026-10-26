@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -11,7 +11,7 @@ import { BookingForm } from './BookingForm'
 
 const RULES: BookingRules = {
   slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2,
-  arrive_early_minutes: 10, no_show_after_minutes: 15,
+  arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15,
 }
 const ME = { id: 1, email: 'a@b', display_name: 'סטודנט', role: 'student', institution_slug: 'braude' }
 // Sunday 11 October 2026, 08:00 in Israel.
@@ -34,6 +34,7 @@ let waitlistBody: unknown = null
 let bookingAnswers: (() => Response)[] = []
 // When set, the availability answer waits until it is released.
 let holdAvailability: Promise<void> | null = null
+let notices = { enabled: false, available: true, reason: null as string | null, address: 'student@braude.example' }
 let busy = [{ seat_id: null, starts_at: '2026-10-11T06:00:00Z', ends_at: '2026-10-11T07:00:00Z' }]
 
 const BOOKED = {
@@ -46,6 +47,7 @@ beforeEach(() => {
   resetSessionForTests()
   bookingBody = null
   bookingAnswers = []
+  notices = { enabled: false, available: true, reason: null, address: 'student@braude.example' }
   busy = [{ seat_id: null, starts_at: '2026-10-11T06:00:00Z', ends_at: '2026-10-11T07:00:00Z' }]
   holdAvailability = null
   fetchMock = vi.fn((url: string, init: RequestInit) => {
@@ -60,6 +62,10 @@ beforeEach(() => {
       bookingBody = JSON.parse(String(init.body))
       const answer = bookingAnswers.shift()
       return Promise.resolve(answer ? answer() : jsonResponse(BOOKED, 201))
+    }
+    if (path === '/me/email-notices') {
+      if (init?.method === 'POST') notices = { ...notices, enabled: JSON.parse(String(init.body)).enabled }
+      return Promise.resolve(jsonResponse(notices))
     }
     if (path === '/places/3/waitlist') {
       waitlistBody = JSON.parse(String(init.body))
@@ -138,6 +144,45 @@ describe('BookingForm', () => {
       starts_at: '2026-10-11T07:00:00.000Z', // 10:00 in Israel
       ends_at: '2026-10-11T08:30:00.000Z',
     })
+  })
+
+  it('after booking, offers an email reminder that turns on in one tap', async () => {
+    // The live practice run, 26 Oct: no reminder came, because email notices
+    // are off until asked for, and nothing said where to turn them on.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    expect(await screen.findByText('רוצה תזכורת במייל לפני שההזמנה מתחילה?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'כן, תזכורת במייל' }))
+    expect(await screen.findByText(/מעכשיו תקבל תזכורת במייל/)).toBeInTheDocument()
+    expect(notices.enabled).toBe(true)
+  })
+
+  it('a new booking is asked for again at once, so the drawer and the count show it', async () => {
+    // The live practice run, 26 Oct: the drawer showed it only at the next 30-second refresh.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    const before = fetchMock.mock.calls.filter(([u]) => new URL(u as string).pathname === '/me/bookings').length
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => new URL(u as string).pathname === '/me/bookings').length).toBeGreaterThan(before),
+    )
+  })
+
+  it('does not offer the email reminder when it is on already', async () => {
+    notices = { ...notices, enabled: true }
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderPanel()
+    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(screen.getByRole('button', { name: 'שעה וחצי' }))
+    await user.click(screen.getByRole('button', { name: 'להזמין' }))
+    expect(await screen.findByText('ההזמנה נקלטה')).toBeInTheDocument()
+    expect(screen.queryByText('רוצה תזכורת במייל לפני שההזמנה מתחילה?')).not.toBeInTheDocument()
   })
 
   it('after a clash, says so and offers the nearest free time of the same length', async () => {

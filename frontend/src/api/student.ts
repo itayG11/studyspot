@@ -17,7 +17,11 @@ export const createBooking = (booking: NewBooking) =>
   api<Booking>('/bookings', { method: 'POST', body: booking, auth: true })
 export const myBookings = () => api<Booking[]>('/me/bookings', { auth: true })
 export const cancelBooking = (id: number) => api<Booking>(`/bookings/${id}/cancel`, { method: 'POST', auth: true })
-export const extendBooking = (id: number) => api<Booking>(`/bookings/${id}/extend`, { method: 'POST', auth: true })
+// Extend until a chosen end, or as far as there is time when none is given.
+export const extendBooking = (id: number, endsAt?: string) =>
+  api<Booking>(`/bookings/${id}/extend`, { method: 'POST', body: endsAt ? { ends_at: endsAt } : undefined, auth: true })
+// The latest end the student may choose (null: no free time to add).
+export const extendOptions = (id: number) => api<{ latest: string | null }>(`/bookings/${id}/extend-options`, { auth: true })
 
 export function checkIn(code: string, seatId: number | null) {
   const body = seatId === null ? { code } : { code, seat_id: seatId }

@@ -282,6 +282,11 @@
   margin: 0;
 }
 
+/* One click takes the whole secret, for copying by hand. */
+.selectAll {
+  user-select: all;
+}
+
 .screenAddress {
   max-width: 100%;
   padding: var(--s-2);
@@ -672,4 +677,23 @@
   display: grid;
   gap: var(--s-6);
   max-width: 46rem;
+}
+
+/* A setup step is a link to where it is done: the whole row, plain. */
+.stepLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 24px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.stepLink:hover span:not(.doneTag) {
+  text-decoration: underline;
 }

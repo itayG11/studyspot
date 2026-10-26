@@ -15,7 +15,7 @@ import { ImportClasses } from './ImportClasses'
 const ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem', live_simulated: false,
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 const ROWS: ImportRow[] = [
   { weekday: 6, starts: '08:30', ends: '10:30', building_code: 'M', building_text: 'M', title: 'מבני נתונים, תרגיל' },

@@ -11,7 +11,7 @@ import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, myCheckIn, myClasses, stillHere } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, myCheckIn, myClasses, stillHere } from '../api/student'
 import { useMyBookings } from './myBookings'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -227,6 +227,17 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
   )
 }
 
+// Ends to offer when extending: every half hour after the current end, up
+// to the latest free one, which is always offered. At most four buttons.
+function extendEnds(currentEnd: string, latest: string): string[] {
+  const step = 30 * 60_000
+  const last = Date.parse(latest)
+  const ends: string[] = []
+  for (let at = Date.parse(currentEnd) + step; at < last && ends.length < 3; at += step) ends.push(new Date(at).toISOString())
+  ends.push(new Date(last).toISOString())
+  return ends
+}
+
 function BookingRow({ booking, place, onChange }: { booking: Booking; place: Place | undefined; onChange: () => void }) {
   const { timezone } = useInstitution()
   const toast = useToast()
@@ -237,6 +248,9 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
   // A walk-in (sitting down without booking) is shown, but it ends by checking out.
   const canCancel = booking.status === 'booked' && booking.source === 'advance'
   const canExtend = booking.status === 'checked_in'
+  // "Extend" first asks how far is free, and offers ends to choose from (the
+  // live practice run, 26 Oct: it went to the longest end without asking).
+  const [ends, setEnds] = useState<string[] | null>(null)
 
   return (
     <li className={styles.booking} aria-label={`הזמנה: ${where}, ${day} ${time}`}>
@@ -254,15 +268,14 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
       </div>
       <div className={styles.actions}>
         <ShareStay kind="booking" id={booking.id} placeName={booking.place_name} />
-        {canExtend && (
+        {canExtend && ends === null && (
           <Button
             size="sm"
             busy={action.busy}
             onClick={() =>
               void action.run(async () => {
-                const longer = await extendBooking(booking.id)
-                toast(`הוארך עד ${formatTime(longer.ends_at, timezone)}.`, 'success')
-                onChange()
+                const { latest } = await extendOptions(booking.id)
+                setEnds(latest ? extendEnds(booking.ends_at, latest) : [])
               })
             }
           >
@@ -285,6 +298,46 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
           />
         )}
       </div>
+      {ends !== null && ends.length === 0 && (
+        <Notice className={styles.rowError}>
+          אין זמן פנוי להארכה: המקום מוזמן אחריך, או שהוא נסגר.{' '}
+          <Button size="sm" variant="ghost" onClick={() => setEnds(null)}>
+            הבנתי
+          </Button>
+        </Notice>
+      )}
+      {ends !== null && ends.length > 0 && (
+        <div className={styles.actions} role="group" aria-label="עד מתי להאריך">
+          {ends.map((end) => (
+            <Button
+              key={end}
+              size="sm"
+              variant="secondary"
+              busy={action.busy}
+              onClick={() =>
+                void action.run(async () => {
+                  try {
+                    const longer = await extendBooking(booking.id, end)
+                    toast(`הוארך עד ${formatTime(longer.ends_at, timezone)}.`, 'success')
+                    setEnds(null)
+                    onChange()
+                  } catch (error) {
+                    // Someone took the time meanwhile: offer what is free now.
+                    const { latest } = await extendOptions(booking.id).catch(() => ({ latest: null }))
+                    setEnds(latest ? extendEnds(booking.ends_at, latest) : [])
+                    throw error
+                  }
+                })
+              }
+            >
+              עד {formatTime(end, timezone)}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={() => setEnds(null)}>
+            לא עכשיו
+          </Button>
+        </div>
+      )}
       {action.error && (
         <Notice tone="error" className={styles.rowError}>
           {action.error}

@@ -5,7 +5,7 @@ import { bookableDays, daySlots, durationsFrom } from './slots'
 const TZ = 'Asia/Jerusalem'
 const RULES: BookingRules = {
   slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2,
-  arrive_early_minutes: 10, no_show_after_minutes: 15,
+  arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15,
 }
 // Sunday to Thursday 07:00-20:00, Friday 07:00-14:00 (Python weekdays).
 const HOURS: OpeningHours[] = [

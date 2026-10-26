@@ -81,6 +81,7 @@ ACCESS = {
     ("POST", "/bookings"): "user",
     ("POST", "/bookings/{booking_id}/cancel"): "user",
     ("POST", "/bookings/{booking_id}/extend"): "user",
+    ("GET", "/bookings/{booking_id}/extend-options"): "user",
     ("POST", "/check-ins"): "user",
     ("POST", "/check-ins/{check_in_id}/checkout"): "user",
     ("POST", "/check-ins/{check_in_id}/still-here"): "user",
@@ -400,6 +401,7 @@ def theirs(client, session, braude, student):
     [
         ("POST", "/bookings/{booking_id}/cancel"),
         ("POST", "/bookings/{booking_id}/extend"),
+        ("GET", "/bookings/{booking_id}/extend-options"),
         ("POST", "/check-ins/{check_in_id}/checkout"),
         ("POST", "/check-ins/{check_in_id}/still-here"),
         ("DELETE", "/me/classes/{class_id}"),

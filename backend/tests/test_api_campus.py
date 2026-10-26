@@ -40,6 +40,7 @@ def test_institution_details(client):
         "horizon_minutes": 4 * 24 * 60,
         "max_upcoming": 2,
         "arrive_early_minutes": 10,
+        "arrive_early_if_free_minutes": 30,
         "no_show_after_minutes": 15,
     }
 

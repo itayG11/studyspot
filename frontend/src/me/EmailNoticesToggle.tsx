@@ -32,16 +32,17 @@ export function EmailNoticesToggle() {
   }
   return (
     <div className={styles.emailNotices}>
+      <h3 className={styles.channelTitle}>במייל</h3>
       <p>
         {data.enabled ? 'גם במייל, כשההתראה לא הגיעה לאף מכשיר: ' : 'אפשר לקבל את אותן התראות גם במייל, כשהן לא מגיעות לאף מכשיר: '}
         <bdi dir="ltr">{data.address}</bdi>
       </p>
       {data.enabled ? (
-        <Button variant="ghost" icon={<MailX aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(() => set(false))}>
+        <Button variant="secondary" icon={<MailX aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(() => set(false))}>
           לכבות התראות במייל
         </Button>
       ) : (
-        <Button variant="secondary" icon={<Mail aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(() => set(true))}>
+        <Button icon={<Mail aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(() => set(true))}>
           להפעיל התראות במייל
         </Button>
       )}

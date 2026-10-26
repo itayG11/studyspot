@@ -76,13 +76,54 @@ def test_room_without_booking_cannot_be_entered(client, room):
 
 
 def test_arrival_window_opens_ten_minutes_early(client, room, room_booking):
-    at(client, ROOM_START - 11 * MIN)
+    at(client, ROOM_START - 31 * MIN)
     assert detail(scan(client, room)) == "no_booking_now"
     at(client, ROOM_START - 10 * MIN)
     response = scan(client, room)
     assert response.status_code == 201
     assert datetime.fromisoformat(response.json()["expires_at"]) == ROOM_START + 2 * HOUR
     assert client.get("/me/bookings").json()[0]["status"] == "checked_in"
+
+
+# Arriving early to a room that nobody holds until the start: the booking
+# starts now instead (the live practice run, 26 Oct: a student booked 15:00
+# at 14:48 and stood outside a free room). The database decides "free".
+
+
+def test_early_arrival_to_a_free_room_moves_the_start_to_now(client, room, room_booking):
+    at(client, ROOM_START - 25 * MIN)  # 13:35
+    response = scan(client, room)
+    assert response.status_code == 201
+    assert datetime.fromisoformat(response.json()["expires_at"]) == ROOM_START + 2 * HOUR  # the end stays
+    mine = client.get("/me/bookings").json()[0]
+    assert mine["status"] == "checked_in"
+    assert datetime.fromisoformat(mine["starts_at"]) == ROOM_START - 30 * MIN  # 13:30, on the grid
+
+
+def test_early_arrival_waits_while_someone_else_holds_the_room(client, room, room_booking, other_student, student):
+    client.user = other_student
+    at(client, ROOM_START - 2 * HOUR)
+    book(client, room, ROOM_START - HOUR, ROOM_START)  # 13:00 to 14:00, someone else's
+    at(client, ROOM_START - HOUR)
+    assert scan(client, room).status_code == 201  # and they are there
+    client.user = student
+    at(client, ROOM_START - 25 * MIN)
+    response = scan(client, room)
+    assert (response.status_code, detail(response)) == (409, "not_free_yet")
+    mine = next(b for b in client.get("/me/bookings").json() if b["id"] == room_booking["id"])
+    assert (mine["status"], datetime.fromisoformat(mine["starts_at"])) == ("booked", ROOM_START)
+    at(client, ROOM_START - 10 * MIN)  # the usual window: in, as before
+    assert scan(client, room).status_code == 201
+
+
+def test_early_arrival_to_a_free_lab_seat(client, lab):
+    seat = lab.seats[0]
+    at(client, ROOM_START - 2 * HOUR)
+    book(client, lab, ROOM_START, ROOM_START + HOUR, seat.id)
+    at(client, ROOM_START - 20 * MIN)
+    response = scan(client, lab)
+    assert response.status_code == 201
+    assert response.json()["seat_label"] == seat.label
 
 
 def test_arrival_window_closes_fifteen_minutes_after_the_start(client, room, room_booking):
@@ -118,6 +159,37 @@ def test_renew_when_the_next_slot_is_free(client, room, room_booking):
     new_end = datetime.fromisoformat(response.json()["ends_at"])
     assert new_end == ROOM_START + 90 * MIN + 2 * HOUR
     assert datetime.fromisoformat(client.get("/me/check-in").json()["expires_at"]) == new_end
+
+
+def test_extend_to_a_chosen_end_within_what_is_free(client, room, room_booking, other_student, student):
+    # The live practice run, 26 Oct: "extend" went straight to the longest
+    # end without asking. Now the student is told how far, and picks.
+    at(client, ROOM_START)
+    scan(client, room)
+    client.user = other_student
+    book(client, room, ROOM_START + 3 * HOUR, ROOM_START + 4 * HOUR)  # 17:00, someone else
+    client.user = student
+    at(client, ROOM_START + 90 * MIN)  # 15:30
+    options = client.get(f"/bookings/{room_booking['id']}/extend-options").json()
+    assert datetime.fromisoformat(options["latest"]) == ROOM_START + 3 * HOUR  # up to the next booking
+    chosen = ROOM_START + 2 * HOUR + 30 * MIN  # 16:30
+    response = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": chosen.isoformat()})
+    assert response.status_code == 200
+    assert datetime.fromisoformat(response.json()["ends_at"]) == chosen
+    too_far = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": (ROOM_START + 3 * HOUR + 15 * MIN).isoformat()})
+    assert (too_far.status_code, detail(too_far)) == (409, "no_time_to_extend")
+    off_grid = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": (ROOM_START + 2 * HOUR + 40 * MIN).isoformat()})
+    assert (off_grid.status_code, detail(off_grid)) == (400, "not_on_slot")
+
+
+def test_extend_options_say_when_there_is_no_time(client, room, room_booking, other_student, student):
+    at(client, ROOM_START)
+    scan(client, room)
+    client.user = other_student
+    book(client, room, ROOM_START + 2 * HOUR, ROOM_START + 3 * HOUR)  # right after
+    client.user = student
+    at(client, ROOM_START + 90 * MIN)
+    assert client.get(f"/bookings/{room_booking['id']}/extend-options").json() == {"latest": None}
 
 
 def test_renewal_is_blocked_by_the_next_booking(client, room, room_booking, other_student, student):
@@ -285,3 +357,55 @@ def test_booking_the_running_slot_needs_its_arrival_window_open(client, room):
     })) == "in_the_past"
     at(client, local(2026, 10, 11, 14, 14))
     assert book(client, room, late, late + HOUR)["status"] == "booked"
+
+
+# --- Review of the practice fixes ---------------------------------------------------
+
+
+def sunday_hours(session, place, opens, closes):
+    from datetime import time
+
+    row = next(h for h in place.opening_hours if h.weekday == 6)
+    row.opens, row.closes = time(*opens), time(*closes)
+    session.flush()
+
+
+def test_extend_to_a_closing_time_off_the_grid(client, session, room, room_booking):
+    # Closing at 16:50 is allowed; the latest end is then 16:50, not on the grid.
+    sunday_hours(session, room, (8, 0), (16, 50))
+    at(client, ROOM_START)
+    scan(client, room)
+    at(client, ROOM_START + 90 * MIN)
+    latest = client.get(f"/bookings/{room_booking['id']}/extend-options").json()["latest"]
+    assert datetime.fromisoformat(latest) == ROOM_START + 2 * HOUR + 50 * MIN
+    response = client.post(f"/bookings/{room_booking['id']}/extend", json={"ends_at": latest})
+    assert response.status_code == 200
+
+
+def test_early_arrival_is_not_blocked_by_a_no_show_before(client, room, room_booking, other_student, student):
+    client.user = other_student
+    at(client, ROOM_START - 2 * HOUR)
+    book(client, room, ROOM_START - HOUR, ROOM_START)  # 13:00 to 14:00, and nobody comes
+    client.user = student
+    at(client, ROOM_START - 25 * MIN)  # 13:35: the sweeper has not released it yet
+    assert scan(client, room).status_code == 201
+
+
+def test_early_arrival_starts_at_opening_time_off_the_grid(client, session, room, room_booking):
+    sunday_hours(session, room, (13, 40), (20, 0))
+    at(client, ROOM_START - 18 * MIN)  # 13:42; 13:30 is before opening
+    assert scan(client, room).status_code == 201
+    mine = client.get("/me/bookings").json()[0]
+    assert datetime.fromisoformat(mine["starts_at"]) == ROOM_START - 18 * MIN
+
+
+def test_early_on_another_lab_seat_is_a_walk_in(client, lab):
+    booked, other = lab.seats[0], lab.seats[1]
+    at(client, ROOM_START - 2 * HOUR)
+    mine = book(client, lab, ROOM_START, ROOM_START + HOUR, booked.id)
+    at(client, ROOM_START - 25 * MIN)
+    response = scan(client, lab, other.id)
+    assert response.status_code == 201
+    assert response.json()["seat_label"] == other.label
+    still = next(b for b in client.get("/me/bookings").json() if b["id"] == mine["id"])
+    assert (still["status"], datetime.fromisoformat(still["starts_at"])) == ("booked", ROOM_START)

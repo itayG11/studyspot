@@ -13,7 +13,7 @@ const SIG = 'A'.repeat(43)
 const ME = { id: 1, email: 'a@b', display_name: 'סטודנט', role: 'student', institution_slug: 'braude' }
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
-  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, no_show_after_minutes: 15 },
+  booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 const NOW = new Date('2026-10-11T07:00:00Z') // Sunday 10:00 in Israel
 

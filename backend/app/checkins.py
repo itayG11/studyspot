@@ -16,10 +16,12 @@ from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.bookings import (
     ARRIVE_EARLY,
+    ARRIVE_EARLY_IF_FREE,
     MAX_DURATION,
     MIN_WALK_IN,
     NO_SHOW_AFTER,
@@ -32,7 +34,7 @@ from app.bookings import (
 )
 from app.closing import refuse_if_closing
 from app.codes import InvalidCode, is_fresh, read_code
-from app.errors import Refusal
+from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
 from app.hours import place_status
 from app.models import (
     Booking,
@@ -177,7 +179,7 @@ def _room_check_in(session, user, place, current, now) -> CheckInResult:
 
 
 def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
-    booking = _arriving_booking(session, user, place, now)
+    booking = _arriving_booking(session, user, place, now, seat_id)
     if booking is not None:
         if seat_id is not None and seat_id != booking.seat_id:
             raise Refusal(409, "booked_other_seat")
@@ -247,20 +249,55 @@ def _confirm(session, user, place, booking: Booking, current, now) -> CheckInRes
     return CheckInResult(row, created=True)
 
 
-def _arriving_booking(session: Session, user: User, place: Place, now: datetime) -> Booking | None:
+def _arriving_booking(
+    session: Session, user: User, place: Place, now: datetime, seat_id: int | None = None
+) -> Booking | None:
     """The student's booking here whose arrival window is open: from 10
-    minutes before the start until 15 minutes after it."""
-    return session.scalars(
+    minutes before the start until 15 minutes after it. Or from 30 minutes
+    before, if nobody holds the place until the start: the booking then
+    starts now (the live practice run, 26 Oct: a student stood outside a
+    free room they had booked for 15:00). Early, on another seat of a lab,
+    the scan stays a walk-in, as it was before the early start existed."""
+    booking = session.scalars(
         select(Booking)
         .where(
             Booking.user_id == user.id,
             Booking.place_id == place.id,
             Booking.status == BookingStatus.BOOKED,
-            Booking.starts_at - ARRIVE_EARLY <= now,
+            Booking.starts_at - ARRIVE_EARLY_IF_FREE <= now,
             Booking.starts_at + NO_SHOW_AFTER > now,
         )
+        .order_by(Booking.starts_at)
         .with_for_update()
     ).first()
+    if booking is not None and booking.starts_at - ARRIVE_EARLY > now:
+        if seat_id is not None and seat_id != booking.seat_id:
+            return None
+        _start_now(session, place, booking, now)
+    return booking
+
+
+def _start_now(session: Session, place: Place, booking: Booking, now: datetime) -> None:
+    """Move an early arrival's booking to start now, on the 15-minute grid.
+    No check in code that the time is free: the EXCLUDE constraint refuses
+    the move if anyone holds the room or seat meanwhile, as for any booking.
+    The booking may then be up to 30 minutes longer than MAX_DURATION: the
+    extra time was free, and the end does not move."""
+    if not place_status(session, place, now).is_open:
+        raise Refusal(409, "place_closed")
+    start = floor_to_slot(now)
+    if not place_status(session, place, start).is_open:
+        start = now  # opening time is off the 15-minute grid
+    # A no-show before us must not block the move while the sweeper sleeps.
+    release_no_shows(session, now, place, booking.seat_id)
+    try:
+        with session.begin_nested():
+            booking.starts_at = start
+            session.flush()
+    except IntegrityError as error:
+        if sqlstate(error) == EXCLUSION_VIOLATION:
+            raise Refusal(409, "not_free_yet") from None
+        raise
 
 
 def _new_check_in(session, user, place, seat, booking, now, expires_at) -> CheckIn:

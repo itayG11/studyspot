@@ -59,6 +59,8 @@ sequenceDiagram
 |---|---|---|
 | 10 דקות לפני | תזכורת בטלפון, או במייל | `backend/app/reminders.py` |
 | בהגעה | סריקה ב-`/scan`, וההזמנה הופכת ל-`checked_in` | `backend/app/checkins.py` |
+| עד חצי שעה לפני, אם המקום פנוי | הסריקה מקדימה את תחילת ההזמנה לעכשיו. אם מישהו מחזיק את המקום, האילוץ מסרב, והתשובה 409 `not_free_yet` | `_start_now`, ב-`backend/app/checkins.py` |
+| בזמן ההזמנה | הארכה: האתר שואל עד מתי, ומציע רק זמנים פנויים | `extend_options`, ב-`backend/app/bookings.py` |
 | 15 דקות בלי סריקה | מצב `no_show`, והמקום משתחרר | הקבוע `NO_SHOW_AFTER`, ב-`backend/app/bookings.py` |
 | בסוף | הכניסה נסגרת | `backend/app/sweeper.py` |
 

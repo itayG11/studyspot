@@ -39,6 +39,7 @@ class BookingRules(BaseModel):
     horizon_minutes: int  # exact limit: a booking may start at most this far from now
     max_upcoming: int  # active advance bookings per student
     arrive_early_minutes: int  # arrival can be confirmed this early
+    arrive_early_if_free_minutes: int  # earlier still, if the place is free until the start
     no_show_after_minutes: int  # no confirmation by then: released
 
 
@@ -480,6 +481,18 @@ class TokenOut(BaseModel):
     token_type: Literal["bearer"]
     expires_in: int  # seconds
     user: MeOut
+
+
+class BookingExtend(BaseModel):
+    """Extend until this end; none: as far as there is time."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ends_at: AwareDatetime | None = None
+
+
+class ExtendOptions(BaseModel):
+    latest: datetime | None  # the latest end to choose; none: no time to add
 
 
 class BookingCreate(BaseModel):

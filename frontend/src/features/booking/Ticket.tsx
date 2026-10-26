@@ -12,6 +12,7 @@ import { Link } from 'react-router'
 import { Button, ButtonLink, ExternalButtonLink } from '../../ui'
 import { googleCalendarLink, outlookCalendarLink, type CalendarEvent } from '../../logic/calendarLinks'
 import { floorLabel } from '../../i18n/labels'
+import { ReminderOffer } from './ReminderOffer'
 import styles from './booking.module.css'
 
 interface TicketProps {
@@ -52,7 +53,7 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
         </p>
         <div className={styles.perforation} aria-hidden="true" />
         <p className={styles.ticketNote}>
-          כשתגיע, <Link to="/scan">סרוק את הקוד</Link> שבמקום. אפשר לאשר הגעה עד {arriveEarlyMinutes} דקות לפני.
+          כשתגיע, <Link to="/scan">סרוק את הקוד</Link> שבמקום. אפשר לאשר הגעה עד {arriveEarlyMinutes} דקות לפני, ואם המקום פנוי עד אז, כבר חצי שעה לפני.
         </p>
         <p className={styles.ticketNumber}>הזמנה מספר {booking.id}</p>
         <m.span
@@ -65,6 +66,7 @@ export function Ticket({ booking, floor, timeZone, arriveEarlyMinutes, onAnother
           שמור
         </m.span>
       </m.article>
+      <ReminderOffer />
       <div className={styles.ticketActions}>
         <ExternalButtonLink variant="secondary" icon={<CalendarPlus aria-hidden="true" />} href={googleCalendarLink(event)}>
           הוספה ליומן Google
