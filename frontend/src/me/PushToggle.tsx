@@ -80,6 +80,7 @@ export function PushToggle({ isDemo }: { isDemo: boolean }) {
       <p className={styles.privacyNote}>
         תזכורת 10 דקות לפני הזמנה, והתראה אם עוד לא נכנסת, 10 דקות לפני שהמקום משתחרר.
       </p>
+      {!isDemo && <h3 className={styles.channelTitle}>בטלפון ובמחשב</h3>}
       {isDemo ? (
         <p>בחשבון לדוגמה אין התראות: כל המבקרים חולקים אותו. התחבר עם חשבון משלך כדי לקבל תזכורות.</p>
       ) : state === 'needs-install' ? (
@@ -95,15 +96,17 @@ export function PushToggle({ isDemo }: { isDemo: boolean }) {
             <Button variant="secondary" busy={action.busy} onClick={() => void action.run(test)}>
               לשלוח התראת ניסיון
             </Button>
-            <Button variant="ghost" icon={<BellOff aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(disable)}>
-              לכבות התראות
+            <Button variant="secondary" icon={<BellOff aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(disable)}>
+              לכבות התראות בטלפון
             </Button>
           </div>
         </>
       ) : state === 'off' ? (
-        <Button icon={<Bell aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(enable)}>
-          להפעיל התראות
-        </Button>
+        <div className={styles.account}>
+          <Button icon={<Bell aria-hidden="true" />} busy={action.busy} onClick={() => void action.run(enable)}>
+            להפעיל התראות בטלפון
+          </Button>
+        </div>
       ) : null}
       {!isDemo && <EmailNoticesToggle />}
       {note && <p role="status">{note}</p>}

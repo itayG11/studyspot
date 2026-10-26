@@ -46,7 +46,7 @@ describe('notifications on this device', () => {
     const sub = subscription()
     device.subscribeDevice.mockResolvedValue(sub)
     render(<PushToggle isDemo={false} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות בטלפון' }))
     await screen.findByText('ההתראות פועלות במכשיר הזה.')
     expect(Array.from(device.subscribeDevice.mock.calls[0][0] as Uint8Array)).toEqual([4, 1, 2])
     expect(api.subscribePush).toHaveBeenCalledWith(sub.toJSON())
@@ -55,7 +55,7 @@ describe('notifications on this device', () => {
   it('a refused permission says how to change it, and subscribes nothing', async () => {
     device.askPermission.mockResolvedValue('denied')
     render(<PushToggle isDemo={false} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות בטלפון' }))
     expect(await screen.findByText(/חסומות בהגדרות הדפדפן/)).toBeInTheDocument()
     expect(device.subscribeDevice).not.toHaveBeenCalled()
   })
@@ -67,8 +67,8 @@ describe('notifications on this device', () => {
     render(<PushToggle isDemo={false} />)
     await userEvent.click(await screen.findByRole('button', { name: 'לשלוח התראת ניסיון' }))
     expect(await screen.findByText(/נשלחה התראת ניסיון/)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'לכבות התראות' }))
-    await screen.findByRole('button', { name: 'להפעיל התראות' })
+    await userEvent.click(screen.getByRole('button', { name: 'לכבות התראות בטלפון' }))
+    await screen.findByRole('button', { name: 'להפעיל התראות בטלפון' })
     expect(api.unsubscribePush).toHaveBeenCalledWith(sub.endpoint)
     expect(sub.unsubscribe).toHaveBeenCalled()
   })
@@ -77,7 +77,7 @@ describe('notifications on this device', () => {
     support.value = 'needs-install'
     render(<PushToggle isDemo={false} />)
     expect(await screen.findByText(/רק אחרי הוספה למסך הבית/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'להפעיל התראות' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'להפעיל התראות בטלפון' })).not.toBeInTheDocument()
   })
 
   it('a browser without push says so', async () => {
@@ -99,7 +99,7 @@ describe('notifications on this device', () => {
     const { ApiError } = await import('../api/client')
     api.subscribePush.mockRejectedValueOnce(new ApiError(409, 'push_too_many'))
     render(<PushToggle isDemo={false} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'להפעיל התראות בטלפון' }))
     expect(await screen.findByText(/בחמישה מכשירים/)).toBeInTheDocument()
     await waitFor(() => expect(sub.unsubscribe).toHaveBeenCalled())
   })
