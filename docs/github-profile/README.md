@@ -2,13 +2,9 @@
   <img src="banner.png" alt="Hi there, I'm Itay Gabay. Software engineering student at Braude College." width="100%">
 </p>
 
-### 👋 Hi there, I'm Itay Gabay!
-
----
-
 ![](https://komarev.com/ghpvc/?username=itayG11&color=2563eb)
 
-I am a second year software engineering student at Braude College in Karmiel, Israel. I like turning a real problem into a working system, from the idea and the requirements to something people can open and use.
+I'm a second year software engineering student at Braude College. I know Python and C from my studies, and lately I've been learning how a whole web project fits together, from the first idea to a live site.
 
 <h3>When I code, I rely on</h3>
 <p>
@@ -23,10 +19,10 @@ I am a second year software engineering student at Braude College in Karmiel, Is
 
 <h3>What I am working on</h3>
 <p>
-  <b><a href="https://github.com/itayG11/studyspot">StudySpot</a></b> shows which study spaces on campus are free right now, so a student with 50 minutes between classes does not have to walk around and look. It suggests a place for each break in the student's timetable, and lets a student book a spot and check in with a code.
+  <b><a href="https://github.com/itayG11/studyspot">StudySpot</a></b> started from something every student knows: 50 minutes between classes, and no idea where there is a free place to study. It shows which spaces on campus are free right now, suggests a place for each break in your timetable, and lets you book a spot and check in with a code.
 </p>
 <p>
-  It is my first complete web project. I built it with Claude Code as a helper. The decisions, the testing and the security work are mine, and all of it is written down.
+  It's my first full web project, and I built it together with Claude Code. I worked out what it should do and how, we built it step by step, and I tested and fixed along the way. The hardest part was choosing the right way to build each piece, and that's where I learned the most.
 </p>
 <ul>
   <li>Try it: <a href="https://getstudyspot.me">getstudyspot.me</a></li>
