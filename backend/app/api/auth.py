@@ -12,6 +12,7 @@
 - POST /auth/email/verify         the code -> signed in
 """
 
+import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta
@@ -394,7 +395,7 @@ def login(
             "verifier": verifier,
             "exp": int((now + LOGIN_LIFETIME).timestamp()),
         },
-        settings.jwt_secret_bytes(),
+        login_key(settings.jwt_secret_bytes()),
         algorithm="HS256",
     )
     response = RedirectResponse(
@@ -460,13 +461,19 @@ def callback(
     return response
 
 
+def login_key(jwt_secret: bytes) -> bytes:
+    """A key of its own for the pending-login cookie, derived from the server
+    secret like the other keys, so it can never be the access tokens' key."""
+    return hmac.new(jwt_secret, b"studyspot pending oidc login", hashlib.sha256).digest()
+
+
 def _read_pending(pending: str | None, provider_name: str, now: datetime, settings: Settings):
     if pending is None:
         raise Refusal(400, "invalid_state")
     try:
         claims = jwt.decode(
             pending,
-            settings.jwt_secret_bytes(),
+            login_key(settings.jwt_secret_bytes()),
             algorithms=["HS256"],
             options={"require": ["exp"], "verify_exp": False},
         )

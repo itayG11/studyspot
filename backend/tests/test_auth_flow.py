@@ -563,3 +563,21 @@ def test_new_open_campus_users_are_capped_per_day(auth_client, fake, session, op
     # Someone who already has an account still gets in.
     again = finish_login(auth_client, fake, personal_google(sub="g-1", email="one@gmail.com"), provider="google")
     assert redirect_error(again) is None
+
+
+def test_the_pending_login_cookie_has_a_key_of_its_own():
+    """The cookie and the access token must not be signed with the same key:
+    an access token must never pass as a pending login, or the other way."""
+    import jwt as pyjwt
+
+    from app.api import auth as auth_api
+    from app.config import get_settings
+    from app.errors import Refusal
+
+    settings = get_settings()
+    claims = {"provider": "google", "state": "s", "nonce": "n", "verifier": "v", "exp": int((SUNDAY_10AM + timedelta(minutes=5)).timestamp())}
+    with_access_key = pyjwt.encode(claims, settings.jwt_secret_bytes(), algorithm="HS256")
+    with pytest.raises(Refusal):
+        auth_api._read_pending(with_access_key, "google", SUNDAY_10AM, settings)
+    own = pyjwt.encode(claims, auth_api.login_key(settings.jwt_secret_bytes()), algorithm="HS256")
+    assert auth_api._read_pending(own, "google", SUNDAY_10AM, settings)["state"] == "s"
