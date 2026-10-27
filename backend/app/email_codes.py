@@ -31,11 +31,13 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule
+from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule, UserIdentity
 from app.oidc import ProviderIdentity
 
 CODE_LIFETIME = timedelta(minutes=10)  # still past a college mailbox's few minutes of scanning
 MAX_ATTEMPTS = 5
+CODES_PER_DOMAIN_PER_HOUR = 40  # one domain (made-up mailboxes) cannot use up the day's quota in a few minutes
+RESERVED_FOR_KNOWN = 50  # of the day's codes, kept for addresses that signed in before
 CODES_PER_ADDRESS_PER_HOUR = 5
 CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address
 CODES_PER_DAY = 250  # Brevo's free plan sends 300 a day
@@ -127,7 +129,21 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int,
     today = db.scalar(
         select(func.count()).select_from(EmailSignInCode).where(EmailSignInCode.created_at > now - timedelta(days=1))
     )
-    if today >= CODES_PER_DAY:
+    this_hour_in_domain = db.scalar(
+        select(func.count())
+        .select_from(EmailSignInCode)
+        .where(
+            func.split_part(EmailSignInCode.email, "@", 2) == _domain(email),
+            EmailSignInCode.created_at > now - timedelta(hours=1),
+        )
+    )
+    if this_hour_in_domain >= CODES_PER_DOMAIN_PER_HOUR:
+        raise Refusal(429, "too_many_codes")
+    # A new address cannot use the part kept for people who already have an account.
+    known = db.scalar(
+        select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
+    )
+    if today >= (CODES_PER_DAY if known is not None else CODES_PER_DAY - RESERVED_FOR_KNOWN):
         raise Refusal(429, "email_daily_limit")
     code = f"{secrets.randbelow(1_000_000):06d}"
     row = EmailSignInCode(

@@ -221,11 +221,38 @@ def test_codes_for_the_whole_site_are_capped_per_day(client, mailer, monkeypatch
     from app import email_codes
 
     monkeypatch.setattr(email_codes, "CODES_PER_DAY", 2)
+    monkeypatch.setattr(email_codes, "RESERVED_FOR_KNOWN", 0)
     assert start(client, "a@e.braude.ac.il").status_code == 202
     assert start(client, "b@e.braude.ac.il").status_code == 202
     response = start(client, "c@e.braude.ac.il")
     assert response.status_code == 429
     assert response.json()["detail"] == "email_daily_limit"
+
+
+def test_one_domain_cannot_use_up_the_hour(client, mailer, monkeypatch):
+    from app import email_codes
+
+    monkeypatch.setattr(email_codes, "CODES_PER_DOMAIN_PER_HOUR", 2)
+    assert start(client, "a@e.braude.ac.il").status_code == 202
+    assert start(client, "b@e.braude.ac.il").status_code == 202
+    refused = start(client, "c@e.braude.ac.il")
+    assert (refused.status_code, refused.json()["detail"]) == (429, "too_many_codes")
+    assert start(client, "d@braude.ac.il").status_code == 202  # another domain
+    client.clock.now += timedelta(hours=1, seconds=1)
+    assert start(client, "c@e.braude.ac.il").status_code == 202
+
+
+def test_a_part_of_the_day_is_kept_for_addresses_that_signed_in_before(client, mailer, monkeypatch):
+    from app import email_codes
+
+    monkeypatch.setattr(email_codes, "CODES_PER_DAY", 4)
+    monkeypatch.setattr(email_codes, "RESERVED_FOR_KNOWN", 2)
+    assert start(client, "known@e.braude.ac.il").status_code == 202
+    assert verify(client, mailer.last_code(), "known@e.braude.ac.il").status_code == 200  # now known
+    assert start(client, "new1@e.braude.ac.il").status_code == 202  # 2 of the 2 open to new addresses
+    refused = start(client, "new2@e.braude.ac.il")
+    assert (refused.status_code, refused.json()["detail"]) == (429, "email_daily_limit")
+    assert start(client, "known@e.braude.ac.il").status_code == 202  # the reserve is theirs
 
 
 def test_a_failed_email_leaves_no_code_behind(client, mailer, session):
