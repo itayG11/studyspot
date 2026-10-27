@@ -2,7 +2,7 @@
 // The server checks the role on every call.
 
 import { api } from './client'
-import type { Invite, InviteCreated, InstitutionListItem, LoginRule, NewInstitution, PendingRule, ProxyCheck, SystemInstitution } from './types'
+import type { Invite, InviteCreated, InstitutionListItem, LoginRule, NewInstitution, PendingRule, SystemInstitution } from './types'
 
 const institution = (slug: string) => `/system/institutions/${encodeURIComponent(slug)}`
 
@@ -34,6 +34,3 @@ export const closeInstitution = (slug: string) =>
   api<SystemInstitution>(`${institution(slug)}/close`, { method: 'POST', auth: true })
 export const reopenInstitution = (slug: string) =>
   api<SystemInstitution>(`${institution(slug)}/reopen`, { method: 'POST', auth: true })
-
-// Which address the rate limits count for this request (the proxy setup, wave 16.3).
-export const getProxyCheck = () => api<ProxyCheck>('/system/proxy-check', { auth: true })

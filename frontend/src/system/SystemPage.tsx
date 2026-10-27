@@ -4,8 +4,8 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { removeLoginRule } from '../api/admin'
-import { approveRule, closeInstitution, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getInvites, getPendingRules, getProxyCheck, reopenInstitution, revokeInvite } from '../api/system'
-import type { Invite, InviteCreated, PendingRule, ProxyCheck, SystemInstitution } from '../api/types'
+import { approveRule, closeInstitution, createInstitution, createInvite, deleteInstitution, getAllInstitutions, getInvites, getPendingRules, reopenInstitution, revokeInvite } from '../api/system'
+import type { Invite, InviteCreated, PendingRule, SystemInstitution } from '../api/types'
 import { SITE_URL } from '../config'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
@@ -23,7 +23,6 @@ export function SystemPage() {
       <h1 className={admin.title}>ניהול המערכת</h1>
       <p className={admin.lead}>כאן יוצרים מוסד, שולחים קישור הזמנה למי שינהל אותו, ומאשרים כללי כניסה.</p>
       <PendingRules />
-      <ProxyCheckBox />
       <NewInstitutionForm onCreated={institutions.reload} />
       <h2 className={admin.formTitle}>כל המוסדות</h2>
       {!institutions.data && institutions.error ? (
@@ -38,48 +37,6 @@ export function SystemPage() {
         </ul>
       )}
     </div>
-  )
-}
-
-// Which address the site counts for the person pressing: the check that the
-// number of proxies in front of the server (TRUSTED_PROXY_HOPS) is right. If
-// the counted address is not the person's own, every visitor may be counted
-// as one, or the count can be fooled (docs/DEPLOY.md).
-function ProxyCheckBox() {
-  const id = useId()
-  const action = useAction()
-  const [result, setResult] = useState<ProxyCheck | null>(null)
-  return (
-    <section className={admin.form} aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`} className={admin.formTitle}>
-        בדיקת כתובת הלקוח
-      </h2>
-      <p className={admin.lead}>
-        כדי לוודא שמגבלות הקצב סופרות את הכתובת האמיתית שלך. לוחצים, ובודקים שהכתובת שנספרת היא הכתובת הציבורית שלך (למשל לפי whatismyip), ולא של שרת שבדרך.
-      </p>
-      <div className={styles.actions}>
-        <Button variant="ghost" size="sm" onClick={() => void action.run(async () => setResult(await getProxyCheck()))}>
-          לבדוק את הכתובת
-        </Button>
-      </div>
-      <ActionError action={action} />
-      {result && (
-        <section aria-label="תוצאת הבדיקה" className={styles.note}>
-          <p>
-            <strong>הכתובת שנספרת:</strong> <bdi dir="ltr">{result.counted_address}</bdi>
-          </p>
-          <p>
-            <strong>שרשרת הכתובות מה-proxy:</strong> <bdi dir="ltr">{result.forwarded_for || 'ריקה'}</bdi>
-          </p>
-          <p>
-            <strong>הכתובת שחיברה לשרת:</strong> <bdi dir="ltr">{result.connected_address}</bdi>
-          </p>
-          <p>
-            <strong>מספר ה-proxy שהוגדר:</strong> {result.trusted_hops}
-          </p>
-        </section>
-      )}
-    </section>
   )
 }
 
