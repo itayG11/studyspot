@@ -23,7 +23,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.activity import Activity
-from app.bookings import NO_SHOW_AFTER
+from app.bookings import mark_no_shows
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
 from app.clock import get_now
 from app.closing import delete_due as delete_closed
@@ -67,11 +67,7 @@ class SweepResult:
 
 
 def sweep(session: Session, now: datetime) -> SweepResult:
-    no_shows = session.execute(
-        update(Booking)
-        .where(Booking.status == BookingStatus.BOOKED, Booking.starts_at <= now - NO_SHOW_AFTER)
-        .values(status=BookingStatus.NO_SHOW)
-    ).rowcount
+    no_shows = mark_no_shows(session, now)
     completed = session.execute(
         update(Booking)
         .where(Booking.status == BookingStatus.CHECKED_IN, Booking.ends_at <= now)

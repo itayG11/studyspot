@@ -7,9 +7,10 @@ overlap", is left to the database's EXCLUDE constraints: this module
 does not lock anything, it just turns the database's refusal into a 409.
 """
 
+import logging
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -37,6 +38,8 @@ HORIZON = timedelta(days=4)  # how far ahead a booking may start
 MAX_UPCOMING = 2  # active advance bookings per student
 ARRIVE_EARLY = timedelta(minutes=10)  # arrival can be confirmed this early
 ARRIVE_EARLY_IF_FREE = timedelta(minutes=30)  # earlier still, if nobody holds the place until the start
+log = logging.getLogger(__name__)
+
 NO_SHOW_AFTER = timedelta(minutes=15)  # no confirmation by then: released
 SLOT = timedelta(minutes=15)  # bookings start and end on this grid
 MIN_WALK_IN = timedelta(minutes=15)  # shortest walk-in worth giving
@@ -60,19 +63,35 @@ def holding(now: datetime):
     )
 
 
+def mark_no_shows(session: Session, now: datetime, *conditions) -> int:
+    """Every booking not confirmed within NO_SHOW_AFTER of its start becomes a
+    no-show, and is a "booking.cancelled" event for the institution's webhooks
+    (reason "no_show"), except a made-up student's. One event that fails
+    never undoes the release."""
+    rows = session.execute(
+        select(Booking, User.simulated)
+        .join(User, User.id == Booking.user_id)
+        .where(Booking.status == BookingStatus.BOOKED, Booking.starts_at <= now - NO_SHOW_AFTER, *conditions)
+        .with_for_update(of=Booking)
+    ).all()
+    for booking, simulated in rows:
+        booking.status = BookingStatus.NO_SHOW
+    session.flush()
+    for booking, simulated in rows:
+        if simulated:
+            continue
+        try:
+            with session.begin_nested():
+                booking_event(session, "booking.cancelled", booking, now, reason="no_show")
+        except Exception:
+            log.exception("webhook event not written; the release goes on")
+    return len(rows)
+
+
 def release_no_shows(session: Session, now: datetime, place: Place, seat_id: int | None) -> None:
     """Lazy release for one room or seat, so a no-show never blocks a new
     booking while the background sweep has not run yet."""
-    session.execute(
-        update(Booking)
-        .where(
-            same_resource(place, seat_id),
-            Booking.status == BookingStatus.BOOKED,
-            Booking.starts_at <= now - NO_SHOW_AFTER,
-        )
-        .values(status=BookingStatus.NO_SHOW)
-        .execution_options(synchronize_session="fetch")
-    )
+    mark_no_shows(session, now, same_resource(place, seat_id))
 
 
 def next_booking_start(

@@ -12,9 +12,21 @@ from sqlalchemy import Engine, delete, func, select
 from sqlalchemy.orm import Session
 
 from app import webhooks
+from app.bookings import release_no_shows
 from app.config import get_settings
 from app.main import app
-from app.models import CheckIn, DeliveryStatus, Institution, User, UserRole, WebhookDelivery, WebhookEndpoint
+from app.models import (
+    Booking,
+    BookingSource,
+    BookingStatus,
+    CheckIn,
+    DeliveryStatus,
+    Institution,
+    User,
+    UserRole,
+    WebhookDelivery,
+    WebhookEndpoint,
+)
 from app.sweeper import sweep
 
 KEY = webhooks.webhook_key(get_settings().jwt_secret_bytes())
@@ -117,6 +129,20 @@ def test_an_address_inside_a_private_network_is_refused(address):
     assert webhooks.url_problem("https://looks-public.example", False, resolve_to(address)) == "webhook_url_private"
 
 
+def test_a_name_that_never_resolves_is_cut_off_at_a_deadline(monkeypatch):
+    import time
+
+    monkeypatch.setattr(webhooks, "RESOLVE_SECONDS", 0.1)
+
+    def slow(host, port, type=0):
+        time.sleep(1.0)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+
+    started = time.monotonic()
+    assert webhooks.url_problem("https://slow.example.edu/hook", False, slow) == "webhook_url_unresolved"
+    assert time.monotonic() - started < 0.6  # it did not wait for the slow answer
+
+
 def test_only_https_a_real_name_and_no_password_in_it():
     public = resolve_to(PUBLIC)
     assert webhooks.url_problem("https://hooks.example.edu/x", False, public) is None
@@ -197,6 +223,56 @@ def test_the_sweep_sends_ended_for_real_check_ins_not_made_up_ones(client, sessi
     session.flush()
     sweep(session, SUNDAY_10AM + timedelta(hours=12))
     assert [d.event_type for d in _deliveries(session, endpoint)] == ["checkin.ended"]
+
+
+def _book(client, room, start):
+    return client.post(
+        "/bookings",
+        json={"place_id": room.id, "starts_at": start.isoformat(), "ends_at": (start + timedelta(hours=1)).isoformat()},
+    ).json()
+
+
+def test_a_no_show_is_a_cancelled_event_with_its_reason(client, session, braude, student):
+    endpoint = _endpoint(session, braude, events=["booking.cancelled"])
+    room = place_named(braude, "EM", "EM107")
+    start = SUNDAY_10AM + timedelta(hours=2)
+    booked = _book(client, room, start)
+    made_up = User(institution_id=braude.id, email="sim2@studyspot.invalid", display_name="Sim", simulated=True)
+    session.add(made_up)
+    session.flush()
+    other = place_named(braude, "M", "M206")
+    session.add(
+        Booking(
+            institution_id=braude.id, user_id=made_up.id, place_id=other.id, seat_id=other.seats[0].id, starts_at=start,
+            ends_at=start + timedelta(hours=1), status=BookingStatus.BOOKED, source=BookingSource.ADVANCE,
+        )
+    )
+    session.flush()
+    sweep(session, start + timedelta(minutes=16))
+    [event] = _deliveries(session, endpoint)  # the real student's only
+    assert event.event_type == "booking.cancelled"
+    assert (event.payload["data"]["reason"], event.payload["data"]["booking"]["id"]) == ("no_show", booked["id"])
+
+
+def test_a_no_show_found_by_a_new_booking_is_an_event_too(client, session, braude, student):
+    endpoint = _endpoint(session, braude, events=["booking.cancelled"])
+    room = place_named(braude, "EM", "EM107")
+    start = SUNDAY_10AM + timedelta(hours=2)
+    _book(client, room, start)
+    client.clock.now = start + timedelta(minutes=16)
+    release_no_shows(session, client.clock.now, room, None)
+    assert [d.payload["data"]["reason"] for d in _deliveries(session, endpoint)] == ["no_show"]
+    release_no_shows(session, client.clock.now, room, None)  # nothing left to release: no second event
+    assert len(_deliveries(session, endpoint)) == 1
+
+
+def test_closing_an_institution_cancels_with_a_reason(client, session, braude, student):
+    from app.closing import close
+
+    endpoint = _endpoint(session, braude, events=["booking.cancelled"])
+    _book(client, place_named(braude, "EM", "EM107"), SUNDAY_10AM + timedelta(hours=2))
+    close(session, braude, SUNDAY_10AM, kept_slugs=set(), system_admins=frozenset())
+    assert [d.payload["data"]["reason"] for d in _deliveries(session, endpoint)] == ["institution_closing"]
 
 
 # --- sending and trying again --------------------------------------------------------------

@@ -32,6 +32,8 @@ import json
 import secrets
 import socket
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
@@ -100,6 +102,20 @@ def verify(secret: str, header: str, body: bytes, now: datetime, tolerance: int 
 # --- the address: no calls into a private network (SSRF) ------------------------------
 
 
+RESOLVE_SECONDS = 3.0  # a name that does not answer by then is "unresolved", so a sweep never waits on it
+_resolver_threads = ThreadPoolExecutor(max_workers=8, thread_name_prefix="webhook-dns")
+
+
+def _resolve_by_deadline(resolve: Callable, host: str, port: int):
+    """The lookup runs in a thread we stop waiting for after RESOLVE_SECONDS
+    (the thread itself ends when the system's own resolver gives up)."""
+    future = _resolver_threads.submit(resolve, host, port, type=socket.SOCK_STREAM)
+    try:
+        return future.result(timeout=RESOLVE_SECONDS)
+    except FutureTimeout:
+        raise OSError("name lookup timed out") from None
+
+
 def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo) -> str | None:
     """None if the address may be called, else why not.
 
@@ -116,7 +132,7 @@ def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getadd
         return "webhook_url_invalid"
     try:
         port = parts.port or (443 if parts.scheme == "https" else 80)
-        found = resolve(parts.hostname, port, type=socket.SOCK_STREAM)
+        found = _resolve_by_deadline(resolve, parts.hostname, port)
     except (OSError, ValueError, UnicodeError):
         return "webhook_url_unresolved"
     if not found:
@@ -206,10 +222,13 @@ def check_in_event(session: Session, event_type: str, place_id: int, institution
     emit(session, institution_id, event_type, now, lambda: _place_data(session, place_id, now))
 
 
-def booking_event(session: Session, event_type: str, booking, now: datetime) -> None:
+def booking_event(session: Session, event_type: str, booking, now: datetime, reason: str | None = None) -> None:
+    """`reason` is only for a cancel the student did not ask for: "no_show"
+    or "institution_closing". A student's own cancel has none."""
+
     def data() -> dict[str, Any]:
         place = _place_data(session, booking.place_id, now)
-        return {
+        body: dict[str, Any] = {
             "place": place["place"],
             "booking": {
                 "id": booking.id,
@@ -218,6 +237,9 @@ def booking_event(session: Session, event_type: str, booking, now: datetime) -> 
                 "seat_id": booking.seat_id,
             },
         }
+        if reason is not None:
+            body["reason"] = reason
+        return body
 
     emit(session, booking.institution_id, event_type, now, data)
 

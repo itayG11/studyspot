@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.models.waitlist import WaitlistEntry
 from app.notify import EmailSender, Notice, PushSender, notify, reachable
+from app.webhooks import booking_event
 
 log = logging.getLogger(__name__)
 
@@ -69,11 +70,23 @@ def close(db: Session, institution: Institution, now: datetime, kept_slugs: set[
     institution.closes_at = now + CLOSING_PERIOD
     # Every booking not checked in yet, the one starting now too: a scan is
     # refused from now on, and its reminder would say "scan the sign".
-    db.execute(
-        update(Booking)
+    cancelled = db.execute(
+        select(Booking, User.simulated)
+        .join(User, User.id == Booking.user_id)
         .where(Booking.institution_id == institution.id, Booking.status == BookingStatus.BOOKED)
-        .values(status=BookingStatus.CANCELLED)
-    )
+        .with_for_update(of=Booking)
+    ).all()
+    for booking, _ in cancelled:
+        booking.status = BookingStatus.CANCELLED
+    db.flush()
+    for booking, simulated in cancelled:  # each is an event for the institution's webhooks
+        if simulated:
+            continue
+        try:
+            with db.begin_nested():
+                booking_event(db, "booking.cancelled", booking, now, reason="institution_closing")
+        except Exception:
+            log.exception("webhook event not written; the closing goes on")
     # And whoever waits for a room there: the cancelled bookings would read
     # as "the room is free", and booking it is refused.
     db.execute(
