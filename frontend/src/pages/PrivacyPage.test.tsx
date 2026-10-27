@@ -44,6 +44,16 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/השרת שלנו רושם.*בלי כתובת ה-IP/)).toBeInTheDocument()
   })
 
+  it('says crashes are reported to Sentry, what is sent, and what is not', () => {
+    // Error reports are not tracking, but they leave the server: the page says so.
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    const item = screen.getByText(/דיווח על תקלות:/).closest('li') as HTMLElement
+    expect(item).toHaveTextContent('Sentry')
+    expect(item).toHaveTextContent('סוג התקלה והמקום בקוד')
+    expect(item).toHaveTextContent('לא נשלחים כתובת מייל, שם, עוגיות')
+    expect(item).toHaveTextContent('לא נשלחת כתובת ה-IP')
+  })
+
   it('says who joins the demo campus, that anyone can manage it, and that it resets daily', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     const section = screen.getByRole('heading', { name: 'קמפוס ההדגמה' }).nextElementSibling as HTMLElement

@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
     # Secure cookies need HTTPS; browsers also accept them on localhost.
     cookie_secure: bool = True
+    # Where crashes are reported (app/monitoring.py). Unset: nothing is sent.
+    # A secret, since anyone holding it can post fake events to our project.
+    sentry_dsn: SecretStr | None = None
+    # The deployed version, which Render sets by itself; labels each report.
+    git_commit: str | None = Field(default=None, validation_alias=AliasChoices("RENDER_GIT_COMMIT", "git_commit"))
 
     @field_validator("database_url")
     @classmethod

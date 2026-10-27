@@ -25,6 +25,8 @@ dependencies = [
     "py-vapid>=1.9",
     # Password hashing with argon2id (app/passwords.py), the first choice of OWASP.
     "argon2-cffi>=25.1",
+    # Crash reports (app/monitoring.py); off unless SENTRY_DSN is set.
+    "sentry-sdk[fastapi]>=2.73",
 ]
 
 [project.optional-dependencies]

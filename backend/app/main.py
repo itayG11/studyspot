@@ -24,6 +24,7 @@ from app.api import (
     campus,
     checkins,
     classes,
+    client_errors,
     connections,
     push,
     screens,
@@ -34,6 +35,7 @@ from app.api import (
 )
 from app.body_limit import BodyLimit
 from app.config import Settings, get_settings
+from app.monitoring import init_monitoring
 from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
 
@@ -41,6 +43,10 @@ from app.sweeper import run_forever, run_once, sweep_safely
 SWEEP_INTERVAL = float(os.environ.get("SWEEP_INTERVAL_SECONDS", "60"))
 
 logger = logging.getLogger("studyspot")
+
+# Crash reports (app/monitoring.py): before the app is built, so the SDK can
+# hook into it. Without SENTRY_DSN this does nothing.
+init_monitoring(get_settings())
 
 # Real visits, so the sweep can rest while the site is quiet (app/activity.py).
 activity = Activity()
@@ -172,4 +178,5 @@ app.include_router(v1.router)
 app.include_router(webhook_tester.router)
 app.include_router(system.router)
 app.include_router(push.router)
+app.include_router(client_errors.router)
 

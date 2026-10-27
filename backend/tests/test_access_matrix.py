@@ -56,6 +56,7 @@ ACCESS = {
     ("GET", "/places/{place_id}/availability"): "public",
     ("GET", "/places/{place_id}/forecast"): "public",
     ("GET", "/push/key"): "public",
+    ("POST", "/client-errors"): "public",
     ("GET", "/v1/openapi.json"): "public",
     ("GET", "/screen"): "token",
     ("GET", "/shares/{token}"): "token",
