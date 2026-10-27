@@ -99,3 +99,21 @@ def test_an_open_invite_can_be_revoked(staff):
 
 def test_an_invite_to_an_unknown_institution_is_404(staff):
     assert staff.post("/system/institutions/nowhere/invites").status_code == 404
+
+
+def test_the_proxy_check_shows_which_address_is_counted(client, owner):
+    from app.config import get_settings
+    from app.main import app
+
+    one_proxy = get_settings().model_copy(update={"trusted_proxy_hops": 1})
+    app.dependency_overrides[get_settings] = lambda: one_proxy
+    client.user = owner
+    shown = client.get("/system/proxy-check", headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"})
+    assert shown.status_code == 200
+    body = shown.json()
+    assert (body["trusted_hops"], body["forwarded_for"], body["counted_address"]) == (1, "1.2.3.4, 5.6.7.8", "5.6.7.8")
+    assert body["connected_address"] == "testclient"
+
+
+def test_only_the_system_admin_sees_the_proxy_check(client, session, braude):
+    assert client.get("/system/proxy-check").status_code == 403

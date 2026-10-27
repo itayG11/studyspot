@@ -153,6 +153,7 @@ ACCESS = {
     ("POST", "/system/institutions/{slug}/reopen"): "system",
     ("POST", "/system/invites/{invite_id}/revoke"): "system",
     ("GET", "/system/login-rules"): "system",
+    ("GET", "/system/proxy-check"): "system",
     ("POST", "/system/login-rules/{rule_id}/approve"): "system",
 }
 
