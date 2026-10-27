@@ -154,10 +154,12 @@ def fresh_alarm() -> Iterator[None]:
 @pytest.fixture(autouse=True)
 def fresh_rate_limits() -> Iterator[None]:
     """Each test starts with empty rate-limit counters."""
+    from app.passwords import wrong_tries
     from app.ratelimit import LIMITERS
 
     for limiter in LIMITERS.values():
         limiter.reset()
+    wrong_tries.reset()
     yield
 
 

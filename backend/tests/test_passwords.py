@@ -189,6 +189,34 @@ def test_wrong_tries_lock_it_for_a_while(client, mailer, session):
     assert identity(session).failed_logins == 0
 
 
+def _from(client, address, password=GOOD):
+    return client.post(
+        "/auth/password/login",
+        json={"email": STUDENT, "password": password},
+        headers={"X-Forwarded-For": address},
+    )
+
+
+def test_wrong_tries_from_one_address_do_not_lock_the_owner(make_client, mailer):
+    client = make_client(trusted_proxy_hops=1)
+    set_password(client, mailer)
+    for _ in range(MAX_FAILURES + 3):
+        assert _from(client, "6.6.6.6", "Wrong-Password 1").status_code == 401
+    assert _from(client, "6.6.6.6").status_code == 401  # that address is refused, even with the right one
+    assert _from(client, "2.2.2.2").status_code == 200  # the owner, from their own address, is not
+
+
+def test_many_addresses_together_still_lock_the_account(make_client, mailer, monkeypatch):
+    from app import passwords
+
+    client = make_client(trusted_proxy_hops=1)
+    set_password(client, mailer)
+    monkeypatch.setattr(passwords, "ACCOUNT_MAX_FAILURES", 3)
+    for n in range(3):
+        _from(client, f"7.7.7.{n}", "Wrong-Password 1")
+    assert _from(client, "2.2.2.2").status_code == 401  # the account lock: a code still works
+
+
 def test_a_right_password_clears_the_wrong_tries(client, mailer, session):
     set_password(client, mailer)
     for _ in range(MAX_FAILURES - 1):

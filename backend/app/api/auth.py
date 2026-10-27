@@ -50,7 +50,15 @@ from app.mailer import Mailer, mailer_from_settings
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.passwords import check_password, check_strength, set_password
-from app.ratelimit import email_start_limit, refresh_address_limit, refresh_limit, sign_in_limit, write_limit
+from app.ratelimit import (
+    address_key,
+    client_address,
+    email_start_limit,
+    refresh_address_limit,
+    refresh_limit,
+    sign_in_limit,
+    write_limit,
+)
 from app.schemas import (
     DemoLoginIn,
     EmailStartIn,
@@ -320,7 +328,7 @@ def password_login(
         # different answers, and that tells a guesser which one was right.
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
-        check_password(db, email, body.password, now)
+        check_password(db, email, body.password, now, address_key(client_address(request, settings.trusted_proxy_hops)))
         with db.begin_nested():
             user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
             issued = start_session(db, user, now)
