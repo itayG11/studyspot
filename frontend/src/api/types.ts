@@ -271,6 +271,13 @@ export interface BuildingLocation {
 
 // --- The system admin --------------------------------------------------------
 
+export interface ProxyCheck {
+  connected_address: string
+  forwarded_for: string
+  trusted_hops: number
+  counted_address: string
+}
+
 export interface SystemInstitution {
   slug: string
   name: string

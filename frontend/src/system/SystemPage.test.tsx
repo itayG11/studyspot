@@ -58,6 +58,10 @@ beforeEach(() => {
       institutions = institutions.map((i) => ({ ...i, closes_at: null }))
       return Promise.resolve(jsonResponse(institutions[0]))
     }
+    if (path === '/system/proxy-check')
+      return Promise.resolve(
+        jsonResponse({ connected_address: '10.1.2.3', forwarded_for: '84.1.2.3, 172.70.1.1', trusted_hops: 1, counted_address: '172.70.1.1' }),
+      )
     if (path === '/system/login-rules') return Promise.resolve(jsonResponse(pending))
     if (path === '/system/login-rules/9/approve') {
       pending = pending.filter((r) => r.id !== 9)
@@ -232,6 +236,16 @@ describe('SystemPage', () => {
     await user.type(within(row).getByLabelText(/כדי למחוק/), 'kept')
     await user.click(within(row).getByRole('button', { name: 'למחוק לצמיתות' }))
     expect(await within(row).findByRole('alert')).toHaveTextContent('כלל כניסה מאושר')
+  })
+
+  it('shows which address the rate limits count, on a press', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'לבדוק את הכתובת' }))
+    const result = await screen.findByRole('region', { name: 'תוצאת הבדיקה' })
+    expect(result).toHaveTextContent('172.70.1.1')
+    expect(result).toHaveTextContent('84.1.2.3, 172.70.1.1')
+    expect(result).toHaveTextContent('נספרת')
   })
 
   it('offers no close button for an institution the server will not close', async () => {
