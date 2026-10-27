@@ -135,7 +135,7 @@ export function Layout() {
 
 function Pulse({ home }: { home: string }) {
   const today = useCampusToday()
-  return <CampusPulse today={today.data} home={home} />
+  return <CampusPulse today={today.data} home={home} loading={today.loading} />
 }
 
 // "My area", with how many bookings are still ahead: the count is also in

@@ -8,7 +8,23 @@ import { Link } from 'react-router'
 import type { CampusToday } from '../api/types'
 import styles from './CampusPulse.module.css'
 
-export function CampusPulse({ today, home }: { today: CampusToday | null; home: string }) {
+export function CampusPulse({ today, home, loading = false }: { today: CampusToday | null; home: string; loading?: boolean }) {
+  // While the numbers load, the chip's place is kept with an invisible copy:
+  // on a phone the header wraps with the chip and not without it, and the
+  // first paint would then be one row shorter than the page after it (a
+  // layout shift of the whole full-screen story, measured 26-27 Oct).
+  if (today === null && loading) {
+    return (
+      <span className={styles.pulse} aria-hidden="true" style={{ visibility: 'hidden' }}>
+        <span className={styles.dot} />
+        <span>
+          <strong className={styles.number}>00</strong>
+          <span> פנויים</span>
+          <span className={styles.words}> עכשיו</span>
+        </span>
+      </span>
+    )
+  }
   if (today === null || today.capacity === 0) return null
   // From the places open now only: at night, 0, not the campus's size.
   const free = Math.max(0, today.free_now)

@@ -9,8 +9,8 @@ import { CampusPulse } from './CampusPulse'
 const today = (over: Partial<CampusToday> = {}): CampusToday => ({
   weekday: 0, capacity: 315, occupied: 195, free_now: 120, weeks: 8, simulated: false, slots: [], places: [], ...over,
 })
-const show = (data: CampusToday | null) =>
-  render(<MemoryRouter><CampusPulse today={data} home="/demo" /></MemoryRouter>)
+const show = (data: CampusToday | null, loading = false) =>
+  render(<MemoryRouter><CampusPulse today={data} home="/demo" loading={loading} /></MemoryRouter>)
 
 describe('CampusPulse', () => {
   it('says how many places are free now, from the live count, and leads to the search', () => {
@@ -34,6 +34,20 @@ describe('CampusPulse', () => {
     expect(container).toBeEmptyDOMElement()
     show(today({ capacity: 0, occupied: 0 }))
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('while the numbers load, keeps its place with an invisible, silent copy, so the header does not grow later', () => {
+    const { container } = show(null, true)
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    const holder = container.firstElementChild as HTMLElement
+    expect(holder).toHaveAttribute('aria-hidden', 'true')
+    expect(holder).toHaveTextContent('פנויים')
+    expect(getComputedStyle(holder).visibility).toBe('hidden')
+  })
+
+  it('after a failed load it keeps no place', () => {
+    const { container } = show(null, false)
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('never says less than none', () => {
