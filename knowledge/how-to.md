@@ -44,3 +44,11 @@
 **2026-10-27 - ביצועי `GitHub` מהסשן:** `api.github.com` נגיש לקריאה עם ההרשאה של הסשן, אבל יצירת `Release` אסורה. את ה-`Release` יוצר המשתמש בדף `Releases`, עם התיאור שאני מכין.
 
 **2026-10-27 - מכשירים בענן ללא `ss`:** כדי לבדוק פורט תפוס משתמשים ב-`ps aux | grep` ולא ב-`ss`.
+
+**2026-10-27 - `BrowserStack` מהענן:** משתנים `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` כמשתני סביבה רגילים (לא `Add secret`: `BrowserStack` צריך את הפרטים בכתובת החיבור, ולא בכותרת). מארחים: `www`, `hub`, `cdp`, `api`, `automate`, `hub-cloud` של `browserstack.com`. חיבור ישיר מ-`Playwright`: `chromium.connect('wss://cdp.browserstack.com/playwright?caps=' + encodeURIComponent(JSON))`, דפדפנים `chrome`, `edge`, `playwright-firefox`, `playwright-webkit`. **ה-`WebSocket` של `Playwright` לא עובר דרך ה-`proxy`:** שורה ב-`/etc/hosts` ושרת העברה קטן (`CONNECT` דרך `HTTPS_PROXY`) על פורט 443, ואחר כך להסיר. מכשירים אמיתיים רק דרך `browserstack-node-sdk` (`Android` עבד, `iPhone` נכשל עם `Internal error`, גם בדוגמה הרשמית). התיעוד: `WebFetch` לא עובר ב-`proxy`, אז `curl` ואז המרה לטקסט. הסקריפטים: `docs/browserstack/`.
+
+**2026-10-27 - מאגר פרטי חדש:** המשתמש יוצר אותו בגיטהאב (ל-`create_repository` אין הרשאה, `403`). אחרי זה `add_repo` עם `access: push`, שכפול אחד, בדיקה ש-`private` נכון לפני כל העתקה, ו-`register_repo_root`.
+
+**2026-10-27 - צילום פרופיל גיטהאב חי:** `Playwright` עם `proxy` של הסביבה. גיטהאב בלי העיצוב שלה (`githubassets` חסום), ולכן תצוגה נאמנה: להפיק את ה-`README` עם `marked`, ולהחליף את כתובות התמונות בכתובות ה-`camo` שנמצאות ב-`DOM` החי. אתרי סמלים חיצוניים (`skillicons`, `simpleicons`) חסומים מהסביבה.
+
+**2026-10-27 - באנר ותמונת שיתוף מקומיים:** `HTML` עם גופנים מ-`node_modules/@fontsource`, וצילום ב-`Playwright` לגודל מדויק (1280x320 ו-1280x640). לתמונת שיתוף משתמשים בצילום עדכני של האתר, ולא בקובץ ישן.

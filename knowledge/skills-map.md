@@ -27,3 +27,7 @@
 **2026-10-27 - `bind_cookie` ו-`read_bind_cookie` ב-`backend/app/email_codes.py`:** העוגייה החתומה שקושרת קודי כניסה לדפדפן.
 
 **2026-10-27 - `/system/proxy-check` ב-`backend/app/api/system.py`:** מראה איזו כתובת נספרת למגבלות קצב. למנהל מערכת בלבד. אין לו כפתור באתר, ושחזור הכפתור: `git show 1422100 -- frontend/src/system`.
+
+**2026-10-27 -** `docs/browserstack/run.mjs`: בדיקות קריאה בלבד בדפדפני מחשב אמיתיים ב-`BrowserStack`. `docs/browserstack/mobile/`: מכשיר `Android` אמיתי דרך ה-`SDK`. `docs/browserstack/RESULTS.md` ו-`CHECKS.md`. מתי: לפני שחרור, או אחרי שינוי גדול בעיצוב.
+**2026-10-27 -** `backend/app/monitoring.py` ו-`backend/app/api/client_errors.py`: דיווח תקלות ל-`Sentry`, כבוי בלי `SENTRY_DSN`. `frontend/src/logic/errorReport.ts`: דיווח מהדפדפן.
+**2026-10-27 -** `docs/github-profile/`: ה-`README` של הפרופיל, הבאנר ותמונת השיתוף (נוצרו עם `Playwright`).
