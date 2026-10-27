@@ -35,7 +35,7 @@ def a_crash() -> dict:
         },
         "breadcrumbs": {"values": [{"message": "login for dana@braude.example"}]},
         "extra": {"email": "dana@braude.example"},
-        "logentry": {"message": "bad code %s for dana@braude.example", "params": ["123456"]},
+        "logentry": {"message": "bad code %s for dana@braude.example", "params": ["123456"], "formatted": "bad code 123456 for dana@braude.example"},
         "exception": {
             "values": [
                 {
@@ -79,6 +79,7 @@ def test_local_variables_breadcrumbs_and_extras_are_dropped():
     assert "breadcrumbs" not in event
     assert "extra" not in event
     assert "params" not in event["logentry"]
+    assert "formatted" not in event["logentry"]  # the message with the values already filled in (logging integration)
 
 
 def test_an_event_with_nothing_to_scrub_passes_through():

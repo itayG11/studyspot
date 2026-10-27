@@ -58,7 +58,10 @@ def scrub_event(event: dict[str, Any], hint: Any) -> dict[str, Any]:
         event["message"] = hide_emails(event["message"])
     entry = event.get("logentry")
     if isinstance(entry, dict):
-        entry.pop("params", None)  # the values that fill the %s of the message
+        # The values that fill the %s of the message, and the message with
+        # them already filled in (the logging integration adds both).
+        entry.pop("params", None)
+        entry.pop("formatted", None)
         if isinstance(entry.get("message"), str):
             entry["message"] = hide_emails(entry["message"])
     for error in (event.get("exception") or {}).get("values") or []:
