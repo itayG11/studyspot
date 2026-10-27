@@ -1,0 +1,16 @@
+# Real Android phone, through BrowserStack's SDK (wave 16.7).
+# Credentials are not here: they come from BROWSERSTACK_USERNAME and
+# BROWSERSTACK_ACCESS_KEY in the environment.
+# iPhone and iPad with Playwright failed on the trial account ("Failed to execute
+# initialize", also with BrowserStack's own example, iPhone 13 on iOS 15): they
+# are checked by hand in BrowserStack Live instead. See ../RESULTS.md.
+projectName: StudySpot
+buildName: studyspot-16.7-mobile
+framework: playwright
+platforms:
+  - deviceName: Google Pixel 7 Pro
+    osVersion: 13.0
+    browserName: chrome
+parallelsPerPlatform: 1
+browserstackLocal: false
+consoleLogs: errors

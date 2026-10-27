@@ -52,6 +52,7 @@
 | `Render` | מריץ את השרת ואת האתר, בונה מהקוד בכל דחיפה, ונותן `HTTPS` לדומיין | [dashboard.render.com](https://dashboard.render.com) | חינם. השרת נרדם אחרי 15 דקות בלי ביקורים | כל הסודות כאן, ב-`Environment`. מדריך: `docs/DEPLOY.md` |
 | `Neon` | מסד הנתונים, `PostgreSQL` | [console.neon.tech](https://console.neon.tech) | חינם. שחזור עד 6 שעות אחורה | גיבוי לילי מתוכנן בגל 8 |
 | `UptimeRobot` | פונה ל-`/api/health` כל 5 דקות, כדי שהשרת לא יירדם, ושולח מייל אם האתר נופל | [uptimerobot.com](https://uptimerobot.com) | חינם | הכתובת: `https://getstudyspot.me/api/health` |
+| `BrowserStack` | בדיקת האתר בדפדפנים ובמכשירים אמיתיים, `Live` ידני ו-`Automate` אוטומטי | [browserstack.com](https://www.browserstack.com) | ניסיון מורחב (`Extended Trial`), **תאריך סיום ומגבלות לא ידועים**, בלי כרטיס אשראי. לא לקנות תוכנית | `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` כמשתני סביבה בסשן, לא ב-`Render`. תוצאות: `docs/browserstack/RESULTS.md`. **להחליף את ה-`Access Key` אחרי השימוש** |
 | `Sentry` | דיווח על קריסות של השרת ושל הדפים, בלי נתונים אישיים | [sentry.io](https://sentry.io) | חינם לשנה, בחבילת הסטודנט. **לא נבדק** מה אחרי השנה | `SENTRY_DSN` הוא סוד ב-`Render`. בלעדיו לא נשלח כלום. פרטים: `docs/DEPLOY.md`, "דיווח תקלות" |
 
 ### דומיין ומיילים
