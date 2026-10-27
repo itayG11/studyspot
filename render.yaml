@@ -50,9 +50,13 @@ services:
       # Google addresses, comma-separated. Entered in the dashboard only.
       - key: SYSTEM_ADMIN_EMAILS
         sync: false
-      # Render's proxy adds the visitor's address at the end of
-      # X-Forwarded-For. If there are in fact more hops, the limits count
-      # by a proxy's address instead: stricter, never fooled by the visitor.
+      # Three entries are added at the end of X-Forwarded-For before the
+      # server sees it: the visitor (by Cloudflare), Cloudflare's edge (by
+      # Render), and Render's own internal proxy. The visitor is the third from
+      # the right. Measured on the live site on 27 Oct 2026 (/system, "בדיקת
+      # כתובת הלקוח"): with "1" every visitor was counted as Render's internal
+      # address. A smaller number counts a proxy (stricter, never fooled); a
+      # larger one counts what the visitor wrote. docs/DEPLOY.md.
       - key: TRUSTED_PROXY_HOPS
-        value: "1"
+        value: "3"
       # The site's address comes from Render itself (RENDER_EXTERNAL_URL).

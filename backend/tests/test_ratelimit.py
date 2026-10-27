@@ -29,6 +29,18 @@ def test_behind_two_proxies_the_second_from_the_right_is_the_visitor():
     assert client_address(request, trusted_hops=2) == "198.51.100.7"
 
 
+def test_the_live_chain_measured_on_27_oct_needs_three_hops():
+    """Measured on the live site (/system, "בדיקת כתובת הלקוח"): the chain was
+    visitor, Cloudflare's edge, Render's internal proxy. With one hop the
+    last entry (Render's, 10.x) was counted: every visitor as one."""
+    chain = "83.130.6.63, 172.70.250.161, 10.24.198.78"
+    assert client_address(request_from("10.24.198.78", chain), trusted_hops=1) == "10.24.198.78"  # the bug
+    assert client_address(request_from("10.24.198.78", chain), trusted_hops=3) == "83.130.6.63"
+    # What a visitor writes comes first and does not move the count from the right.
+    forged = "6.6.6.6, " + chain
+    assert client_address(request_from("10.24.198.78", forged), trusted_hops=3) == "83.130.6.63"
+
+
 def test_a_missing_or_short_header_falls_back_to_the_connection():
     assert client_address(request_from("10.0.0.1"), trusted_hops=1) == "10.0.0.1"
     assert client_address(request_from("10.0.0.1", "198.51.100.7"), trusted_hops=2) == "10.0.0.1"
