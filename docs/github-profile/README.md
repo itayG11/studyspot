@@ -1,38 +1,46 @@
-<!--
-  Profile README for github.com/itayG11 (draft).
-  How to use: create a PUBLIC repository named exactly like the username, itayG11,
-  and put this file in it as README.md, with the two things it uses:
-  the picture banner.png and the folder badges/ (all of this folder's files).
--->
-
 <p align="center">
-  <img src="banner.png" alt="Hi there, I'm Itay Gabay. Software engineering student at Braude College. StudySpot, my first full web project." width="100%">
+  <img src="banner.png" alt="Hi there, I'm Itay Gabay. Software engineering student at Braude College." width="100%">
 </p>
 
-Hello! I am a second year software engineering student at Braude College in Karmiel, Israel. I like turning a real problem into a working system, from the idea and the requirements to something people can open and use.
+### 👋 Hi there, I'm Itay Gabay!
 
-## What I am working on
+---
 
-**[StudySpot](https://github.com/itayG11/studyspot)** is a web app that shows which study spaces on campus are free right now, so a student with 50 minutes between classes does not have to walk around and look. It also suggests a place for each break in the student's timetable, and lets a student book a spot and check in with a code.
+![](https://komarev.com/ghpvc/?username=itayG11&color=2563eb)
 
-It is my first complete web project. I built it with Claude Code as a helper. The decisions, the testing and the security work are mine, and all of it is written down.
+I am a second year software engineering student at Braude College in Karmiel, Israel. I like turning a real problem into a working system, from the idea and the requirements to something people can open and use.
 
-- Try it: [getstudyspot.me](https://getstudyspot.me)
-- Short video tour: [demo video](https://github.com/itayG11/studyspot/releases/tag/demo-video-v1)
-
-## Skills and tools
-
+<h3>When I code, I rely on</h3>
 <p>
-  <img src="badges/c.svg" alt="C" height="36">
-  <img src="badges/python.svg" alt="Python" height="36">
-  <img src="badges/git.svg" alt="Git" height="36">
-  <img src="badges/github.svg" alt="GitHub" height="36">
-  <img src="badges/docker.svg" alt="Docker" height="36">
-  <img src="badges/api.svg" alt="API design" height="36">
-  <img src="badges/uml.svg" alt="UML" height="36">
+  <img alt="C" src="https://img.shields.io/badge/-C-00599C?style=flat-square&logo=c&logoColor=white" />
+  <img alt="Python" src="https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img alt="Git" src="https://img.shields.io/badge/-Git-F05032?style=flat-square&logo=git&logoColor=white" />
+  <img alt="GitHub" src="https://img.shields.io/badge/-GitHub-181717?style=flat-square&logo=github&logoColor=white" />
+  <img alt="Docker" src="https://img.shields.io/badge/-Docker-46a2f1?style=flat-square&logo=docker&logoColor=white" />
+  <img alt="API design" src="https://img.shields.io/badge/-API_design-14203a?style=flat-square" />
+  <img alt="UML" src="https://img.shields.io/badge/-UML-2563eb?style=flat-square" />
 </p>
 
-## Find me
+<h3>What I am working on</h3>
+<p>
+  <b><a href="https://github.com/itayG11/studyspot">StudySpot</a></b> shows which study spaces on campus are free right now, so a student with 50 minutes between classes does not have to walk around and look. It suggests a place for each break in the student's timetable, and lets a student book a spot and check in with a code.
+</p>
+<p>
+  It is my first complete web project. I built it with Claude Code as a helper. The decisions, the testing and the security work are mine, and all of it is written down.
+</p>
+<ul>
+  <li>Try it: <a href="https://getstudyspot.me">getstudyspot.me</a></li>
+  <li>Short video tour: <a href="https://github.com/itayG11/studyspot/releases/tag/demo-video-v1">demo video</a></li>
+</ul>
 
-- LinkedIn: [itay-gabay-swe](https://www.linkedin.com/in/itay-gabay-swe)
-- GitHub: [itayG11](https://github.com/itayG11)
+<h3>My GitHub contributions summary</h3>
+
+[![GitHub Streak](https://streak-stats.demolab.com?user=itayG11&theme=dark&ring=2563eb&fire=2563eb&currStreakNum=2563eb&currStreakLabel=2563eb&hide_border=true)](https://git.io/streak-stats)
+
+![Itay's GitHub stats](https://github-readme-stats.vercel.app/api?username=itayG11&hide_border=true&show_icons=true&bg_color=151515&title_color=2563eb&icon_color=2563eb&text_bold=false&text_color=9e9e9e)
+
+<h3>Find me</h3>
+<ul>
+  <li>LinkedIn: <a href="https://www.linkedin.com/in/itay-gabay-swe">itay-gabay-swe</a></li>
+  <li>GitHub: <a href="https://github.com/itayG11">itayG11</a></li>
+</ul>
