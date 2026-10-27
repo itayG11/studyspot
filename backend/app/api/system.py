@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -63,11 +63,12 @@ class ProxyCheckOut(BaseModel):
 
 
 @router.get("/system/proxy-check", response_model=ProxyCheckOut)
-def proxy_check(owner: OwnerDep, request: Request, settings: SettingsDep):
+def proxy_check(owner: OwnerDep, request: Request, response: Response, settings: SettingsDep):
     """Which address the rate limits count for this request. Open it once on
     the live site: if `counted_address` is not your own address, the number
     of trusted proxies (TRUSTED_PROXY_HOPS) is wrong, and everyone is counted
     as one visitor (or the limits can be fooled)."""
+    response.headers["Cache-Control"] = "no-store"
     return ProxyCheckOut(
         connected_address=request.client.host if request.client else "unknown",
         forwarded_for=request.headers.get("x-forwarded-for", ""),

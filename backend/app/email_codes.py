@@ -36,7 +36,6 @@ from app.oidc import ProviderIdentity
 
 CODE_LIFETIME = timedelta(minutes=10)  # still past a college mailbox's few minutes of scanning
 MAX_ATTEMPTS = 5
-CODES_PER_DOMAIN_PER_HOUR = 40  # one domain (made-up mailboxes) cannot use up the day's quota in a few minutes
 RESERVED_FOR_KNOWN = 50  # of the day's codes, kept for addresses that signed in before
 CODES_PER_ADDRESS_PER_HOUR = 5
 CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address
@@ -108,10 +107,11 @@ def domain_is_supported(db: Session, email: str) -> bool:
     ).first() is not None
 
 
-def refuse_new_address_if_closing(db: Session, email: str) -> None:
-    """An address with no account at an institution that is closing cannot
-    join it (app/accounts.py refuses at sign-in), so it gets no code either:
-    no email goes out for something that will be refused."""
+def closing_without_account(db: Session, email: str) -> bool:
+    """True for an address with no account at an institution that is closing.
+    It cannot join (app/accounts.py refuses at sign-in), so no code is made and
+    no email goes out. The caller still answers as for any address, so the
+    answer never says who has an account."""
     institution_id = db.scalar(
         select(InstitutionLoginRule.institution_id).where(
             InstitutionLoginRule.provider == AuthProvider.EMAIL,
@@ -120,14 +120,13 @@ def refuse_new_address_if_closing(db: Session, email: str) -> None:
         )
     )
     if institution_id is None:
-        return
+        return False
     known = db.scalar(
         select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
     )
-    # The same refusal as app/closing.py refuse_if_closing (not imported: it
-    # would be a circle, closing -> notify -> mailer -> this module).
-    if known is None and db.scalar(select(Institution.closes_at).where(Institution.id == institution_id)) is not None:
-        raise Refusal(409, "institution_closing")
+    # The test of app/closing.py refuse_if_closing (not imported: it would be a
+    # circle, closing -> notify -> mailer -> this module).
+    return known is None and db.scalar(select(Institution.closes_at).where(Institution.id == institution_id)) is not None
 
 
 def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int, str]:
@@ -151,16 +150,6 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int,
     today = db.scalar(
         select(func.count()).select_from(EmailSignInCode).where(EmailSignInCode.created_at > now - timedelta(days=1))
     )
-    this_hour_in_domain = db.scalar(
-        select(func.count())
-        .select_from(EmailSignInCode)
-        .where(
-            func.split_part(EmailSignInCode.email, "@", 2) == _domain(email),
-            EmailSignInCode.created_at > now - timedelta(hours=1),
-        )
-    )
-    if this_hour_in_domain >= CODES_PER_DOMAIN_PER_HOUR:
-        raise Refusal(429, "too_many_codes")
     # A new address cannot use the part kept for people who already have an account.
     known = db.scalar(
         select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
@@ -180,6 +169,11 @@ def check_code(db: Session, email: str, code: str, now: datetime, key: bytes, id
     """Use up this browser's open codes (ids, from its cookie) with this
     one, or refuse. A wrong try is counted on those rows only, so the
     caller commits even when this refuses."""
+    if not ids:
+        # No cookie, or one made elsewhere: not this browser's code. Said
+        # plainly, since a person who changed browser would otherwise be told
+        # the (right) code is wrong.
+        raise Refusal(400, "email_code_browser")
     rows = db.scalars(
         select(EmailSignInCode)
         .where(

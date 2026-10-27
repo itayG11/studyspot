@@ -152,7 +152,9 @@ class WrongTries:
 
     def add(self, key: str, now: datetime) -> None:
         with self._lock:
-            self._tries.setdefault(key, []).append(now)
+            tries = self._tries.pop(key, [])  # re-inserted last: the oldest key is the least recently used
+            tries.append(now)
+            self._tries[key] = tries
             while len(self._tries) > MAX_KEPT:
                 self._tries.pop(next(iter(self._tries)))
 

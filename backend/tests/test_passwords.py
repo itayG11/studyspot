@@ -344,3 +344,16 @@ def test_a_reset_also_ends_the_calendar_address(client, mailer, session):
     client.clock.now += timedelta(minutes=2)  # a new code may be sent after a minute
     assert set_password(client, mailer, password="Another-Good 9 pass").status_code == 200
     assert session.scalar(select(CalendarFeed).where(CalendarFeed.user_id == user.id)) is None
+
+
+def test_a_full_table_of_wrong_tries_drops_the_least_recently_used(monkeypatch):
+    from app import passwords
+
+    monkeypatch.setattr(passwords, "MAX_KEPT", 2)
+    tries = passwords.WrongTries()
+    now = SUNDAY_10AM
+    tries.add("a", now)
+    tries.add("b", now)
+    tries.add("a", now)  # "a" was used last, so "b" is the one to go
+    tries.add("c", now)
+    assert set(tries._tries) == {"a", "c"}

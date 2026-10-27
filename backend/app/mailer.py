@@ -35,7 +35,7 @@ def _subject(code: str) -> str:
 def _text(code: str) -> str:
     return (
         f"קוד הכניסה שלך הוא {code}.\n"
-        f"הקוד תקף ל-{int(CODE_LIFETIME.total_seconds() // 60)} דקות, ולשימוש אחד.\n"
+        f"הקוד תקף ל-{int(CODE_LIFETIME.total_seconds() // 60)} דקות, ולשימוש אחד, ועובד רק בדפדפן שבו ביקשת אותו.\n"
         "אם לא ביקשת להתחבר, אפשר להתעלם מההודעה הזאת."
     )
 

@@ -143,6 +143,25 @@ def test_a_name_that_never_resolves_is_cut_off_at_a_deadline(monkeypatch):
     assert time.monotonic() - started < 0.6  # it did not wait for the slow answer
 
 
+def test_too_many_lookups_stuck_at_once_are_refused_at_once(monkeypatch):
+    import threading
+    import time
+
+    monkeypatch.setattr(webhooks, "_lookup_slots", threading.BoundedSemaphore(1))
+    release = threading.Event()
+
+    def stuck(host, port, type=0):
+        release.wait(5)
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
+
+    monkeypatch.setattr(webhooks, "RESOLVE_SECONDS", 0.1)
+    assert webhooks.url_problem("https://one.example.edu/h", False, stuck) == "webhook_url_unresolved"  # takes the slot
+    started = time.monotonic()
+    assert webhooks.url_problem("https://two.example.edu/h", False, stuck) == "webhook_url_unresolved"
+    assert time.monotonic() - started < 0.05  # no free slot: refused without waiting
+    release.set()
+
+
 def test_only_https_a_real_name_and_no_password_in_it():
     public = resolve_to(PUBLIC)
     assert webhooks.url_problem("https://hooks.example.edu/x", False, public) is None
@@ -264,6 +283,16 @@ def test_a_no_show_found_by_a_new_booking_is_an_event_too(client, session, braud
     assert [d.payload["data"]["reason"] for d in _deliveries(session, endpoint)] == ["no_show"]
     release_no_shows(session, client.clock.now, room, None)  # nothing left to release: no second event
     assert len(_deliveries(session, endpoint)) == 1
+
+
+def test_a_booking_overdue_at_closing_is_a_no_show_not_a_closing(client, session, braude, student):
+    from app.closing import close
+
+    endpoint = _endpoint(session, braude, events=["booking.cancelled"])
+    start = SUNDAY_10AM + timedelta(hours=2)
+    _book(client, place_named(braude, "EM", "EM107"), start)
+    close(session, braude, start + timedelta(minutes=20), kept_slugs=set(), system_admins=frozenset())
+    assert [d.payload["data"]["reason"] for d in _deliveries(session, endpoint)] == ["no_show"]
 
 
 def test_closing_an_institution_cancels_with_a_reason(client, session, braude, student):

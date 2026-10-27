@@ -31,6 +31,7 @@ import ipaddress
 import json
 import secrets
 import socket
+import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
@@ -104,12 +105,23 @@ def verify(secret: str, header: str, body: bytes, now: datetime, tolerance: int 
 
 RESOLVE_SECONDS = 3.0  # a name that does not answer by then is "unresolved", so a sweep never waits on it
 _resolver_threads = ThreadPoolExecutor(max_workers=8, thread_name_prefix="webhook-dns")
+# One slot per thread, held until the lookup really ends (even after we stopped
+# waiting): names that never answer cannot queue up behind each other and make
+# every other lookup wait; with no slot free a lookup is refused at once.
+_lookup_slots = threading.BoundedSemaphore(8)
 
 
 def _resolve_by_deadline(resolve: Callable, host: str, port: int):
     """The lookup runs in a thread we stop waiting for after RESOLVE_SECONDS
     (the thread itself ends when the system's own resolver gives up)."""
-    future = _resolver_threads.submit(resolve, host, port, type=socket.SOCK_STREAM)
+    if not _lookup_slots.acquire(blocking=False):
+        raise OSError("too many name lookups stuck")
+    try:
+        future = _resolver_threads.submit(resolve, host, port, type=socket.SOCK_STREAM)
+    except BaseException:
+        _lookup_slots.release()
+        raise
+    future.add_done_callback(lambda _: _lookup_slots.release())
     try:
         return future.result(timeout=RESOLVE_SECONDS)
     except FutureTimeout:

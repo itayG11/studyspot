@@ -63,6 +63,9 @@ def holding(now: datetime):
     )
 
 
+SWEEP_BATCH = 500  # per call: after an outage the rest follows in the next minutes
+
+
 def mark_no_shows(session: Session, now: datetime, *conditions) -> int:
     """Every booking not confirmed within NO_SHOW_AFTER of its start becomes a
     no-show, and is a "booking.cancelled" event for the institution's webhooks
@@ -72,6 +75,8 @@ def mark_no_shows(session: Session, now: datetime, *conditions) -> int:
         select(Booking, User.simulated)
         .join(User, User.id == Booking.user_id)
         .where(Booking.status == BookingStatus.BOOKED, Booking.starts_at <= now - NO_SHOW_AFTER, *conditions)
+        .order_by(Booking.id)  # the same lock order everywhere, so two releases cannot deadlock
+        .limit(SWEEP_BATCH)
         .with_for_update(of=Booking)
     ).all()
     for booking, simulated in rows:

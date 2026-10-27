@@ -229,19 +229,6 @@ def test_codes_for_the_whole_site_are_capped_per_day(client, mailer, monkeypatch
     assert response.json()["detail"] == "email_daily_limit"
 
 
-def test_one_domain_cannot_use_up_the_hour(client, mailer, monkeypatch):
-    from app import email_codes
-
-    monkeypatch.setattr(email_codes, "CODES_PER_DOMAIN_PER_HOUR", 2)
-    assert start(client, "a@e.braude.ac.il").status_code == 202
-    assert start(client, "b@e.braude.ac.il").status_code == 202
-    refused = start(client, "c@e.braude.ac.il")
-    assert (refused.status_code, refused.json()["detail"]) == (429, "too_many_codes")
-    assert start(client, "d@braude.ac.il").status_code == 202  # another domain
-    client.clock.now += timedelta(hours=1, seconds=1)
-    assert start(client, "c@e.braude.ac.il").status_code == 202
-
-
 def test_a_part_of_the_day_is_kept_for_addresses_that_signed_in_before(client, mailer, monkeypatch):
     from app import email_codes
 
@@ -255,16 +242,18 @@ def test_a_part_of_the_day_is_kept_for_addresses_that_signed_in_before(client, m
     assert start(client, "known@e.braude.ac.il").status_code == 202  # the reserve is theirs
 
 
-def test_a_closing_institution_sends_no_code_to_a_new_address(client, mailer, session, braude):
+def test_a_closing_institution_sends_no_code_to_a_new_address_and_says_nothing_about_it(client, mailer, session, braude):
     assert start(client, "old@e.braude.ac.il").status_code == 202
     assert verify(client, mailer.last_code(), "old@e.braude.ac.il").status_code == 200  # has an account
     braude.closes_at = client.clock.now + timedelta(days=14)
     session.flush()
     sent = len(mailer.sent)
-    refused = start(client, "new@e.braude.ac.il")
-    assert (refused.status_code, refused.json()["detail"]) == (409, "institution_closing")
-    assert len(mailer.sent) == sent  # no email to an address that cannot join
-    assert start(client, "old@e.braude.ac.il").status_code == 202  # the old ones still sign in
+    unknown = start(client, "new@e.braude.ac.il")
+    assert unknown.status_code == 202  # the same answer as for an address with an account
+    assert len(mailer.sent) == sent  # but no email goes to an address that cannot join
+    known = start(client, "old@e.braude.ac.il")
+    assert (known.status_code, known.json()) == (202, unknown.json())
+    assert len(mailer.sent) == sent + 1  # the old ones still sign in
 
 
 def test_a_failed_email_leaves_no_code_behind(client, mailer, session):
@@ -372,7 +361,7 @@ def test_wrong_guesses_from_another_browser_do_not_lock_the_real_student(client,
     code = mailer.last_code()
     stranger = make_client()  # knows the address, never asked for a code from this browser
     for _ in range(MAX_ATTEMPTS + 2):
-        assert verify(stranger, _wrong(code)).json()["detail"] == "email_code_invalid"
+        assert verify(stranger, _wrong(code)).json()["detail"] == "email_code_browser"
     assert verify(client, code).status_code == 200
 
 
@@ -389,7 +378,7 @@ def test_a_stranger_who_asks_for_a_code_cannot_try_the_students_code(client, mak
 
 def test_the_right_code_needs_the_browser_that_asked_for_it(client, make_client, mailer):
     start(client)
-    assert verify(make_client(), mailer.last_code()).json()["detail"] == "email_code_invalid"
+    assert verify(make_client(), mailer.last_code()).json()["detail"] == "email_code_browser"
 
 
 def test_signing_in_uses_up_every_open_code_of_the_address(client, mailer):
@@ -450,13 +439,13 @@ def test_a_code_belongs_to_its_address(client, mailer):
     start(client, "a@e.braude.ac.il")
     response = verify(client, mailer.last_code(), "b@e.braude.ac.il")
     assert response.status_code == 400
-    assert response.json()["detail"] == "email_code_invalid"
+    assert response.json()["detail"] == "email_code_browser"  # this browser asked for no code of b's
 
 
 def test_no_code_was_asked_for(client):
     response = verify(client, "123456")
     assert response.status_code == 400
-    assert response.json()["detail"] == "email_code_invalid"
+    assert response.json()["detail"] == "email_code_browser"
 
 
 @pytest.mark.parametrize("code", ["12345", "1234567", "abcdef", "12 456", ""])

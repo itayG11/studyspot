@@ -39,13 +39,13 @@ from app.email_codes import (
     bind_cookie,
     bind_key,
     check_code,
+    closing_without_account,
     code_key,
     domain_is_supported,
     identity_for,
     issue_code,
     normalize_email,
     read_bind_cookie,
-    refuse_new_address_if_closing,
 )
 from app.errors import Refusal, is_duplicate
 from app.mailer import Mailer, mailer_from_settings
@@ -195,7 +195,9 @@ def email_start(
         email = normalize_email(body.email)
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
-        refuse_new_address_if_closing(db, email)
+        if closing_without_account(db, email):
+            # The same answer as for any address: it never says who has an account.
+            return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
         code_id, code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
         bind = bind_key(settings.jwt_secret_bytes())
         earlier = _bound_ids(request, settings, email)

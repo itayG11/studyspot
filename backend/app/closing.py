@@ -70,10 +70,15 @@ def close(db: Session, institution: Institution, now: datetime, kept_slugs: set[
     institution.closes_at = now + CLOSING_PERIOD
     # Every booking not checked in yet, the one starting now too: a scan is
     # refused from now on, and its reminder would say "scan the sign".
+    # Those already past their arrival window are no-shows, as the sweep would say.
+    from app.bookings import mark_no_shows  # here: bookings imports this module
+
+    mark_no_shows(db, now, Booking.institution_id == institution.id)
     cancelled = db.execute(
         select(Booking, User.simulated)
         .join(User, User.id == Booking.user_id)
         .where(Booking.institution_id == institution.id, Booking.status == BookingStatus.BOOKED)
+        .order_by(Booking.id)
         .with_for_update(of=Booking)
     ).all()
     for booking, _ in cancelled:
