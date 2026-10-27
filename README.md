@@ -9,6 +9,10 @@ Find a place to study on campus: what is free right now, what is usually free la
 
 ![Searching for a computer lab and opening its page](docs/screenshots/flow.gif)
 
+## Demo video
+
+A quick tour of the live demo campus, about 45 seconds. There are three versions on the [release page](https://github.com/itayG11/studyspot/releases/tag/demo-video-v1): English captions with an English voice, Hebrew captions with an English voice, and Hebrew captions with a Hebrew voice. The voice is computer generated.
+
 ## In numbers
 
 | | |
