@@ -423,3 +423,17 @@ def test_rescanning_my_own_seat_with_the_next_booking_on_it_is_not_refused(clien
     again = scan(client, lab, seat.id)
     assert again.status_code == 200, again.json()
     assert again.json()["id"] == first.json()["id"]
+
+
+def test_a_refusal_after_the_early_move_leaves_the_start_where_it_was(client, room, room_booking, monkeypatch):
+    from app import checkins
+    from app.errors import Refusal
+
+    def refuse(*args, **kwargs):
+        raise Refusal(409, "seat_still_in_use")
+
+    monkeypatch.setattr(checkins, "_confirm", refuse)
+    at(client, ROOM_START - 25 * MIN)  # early: the start is moved to now, then confirming refuses
+    assert detail(scan(client, room)) == "seat_still_in_use"
+    mine = next(b for b in client.get("/me/bookings").json() if b["id"] == room_booking["id"])
+    assert (mine["status"], datetime.fromisoformat(mine["starts_at"])) == ("booked", ROOM_START)
