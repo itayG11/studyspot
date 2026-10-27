@@ -31,7 +31,7 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule, UserIdentity
+from app.models import AuthProvider, EmailSignInCode, Institution, InstitutionLoginRule, UserIdentity
 from app.oidc import ProviderIdentity
 
 CODE_LIFETIME = timedelta(minutes=10)  # still past a college mailbox's few minutes of scanning
@@ -106,6 +106,28 @@ def domain_is_supported(db: Session, email: str) -> bool:
             InstitutionLoginRule.approved,
         )
     ).first() is not None
+
+
+def refuse_new_address_if_closing(db: Session, email: str) -> None:
+    """An address with no account at an institution that is closing cannot
+    join it (app/accounts.py refuses at sign-in), so it gets no code either:
+    no email goes out for something that will be refused."""
+    institution_id = db.scalar(
+        select(InstitutionLoginRule.institution_id).where(
+            InstitutionLoginRule.provider == AuthProvider.EMAIL,
+            InstitutionLoginRule.value == _domain(email),
+            InstitutionLoginRule.approved,
+        )
+    )
+    if institution_id is None:
+        return
+    known = db.scalar(
+        select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
+    )
+    # The same refusal as app/closing.py refuse_if_closing (not imported: it
+    # would be a circle, closing -> notify -> mailer -> this module).
+    if known is None and db.scalar(select(Institution.closes_at).where(Institution.id == institution_id)) is not None:
+        raise Refusal(409, "institution_closing")
 
 
 def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int, str]:

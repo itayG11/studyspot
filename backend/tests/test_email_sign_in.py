@@ -255,6 +255,18 @@ def test_a_part_of_the_day_is_kept_for_addresses_that_signed_in_before(client, m
     assert start(client, "known@e.braude.ac.il").status_code == 202  # the reserve is theirs
 
 
+def test_a_closing_institution_sends_no_code_to_a_new_address(client, mailer, session, braude):
+    assert start(client, "old@e.braude.ac.il").status_code == 202
+    assert verify(client, mailer.last_code(), "old@e.braude.ac.il").status_code == 200  # has an account
+    braude.closes_at = client.clock.now + timedelta(days=14)
+    session.flush()
+    sent = len(mailer.sent)
+    refused = start(client, "new@e.braude.ac.il")
+    assert (refused.status_code, refused.json()["detail"]) == (409, "institution_closing")
+    assert len(mailer.sent) == sent  # no email to an address that cannot join
+    assert start(client, "old@e.braude.ac.il").status_code == 202  # the old ones still sign in
+
+
 def test_a_failed_email_leaves_no_code_behind(client, mailer, session):
     mailer.fail = True
     response = start(client)
