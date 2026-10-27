@@ -38,8 +38,20 @@ DATA_COLLECTION = {
 }
 
 
+# Addresses that hold a secret in the path: a stay's share link (/s/<token>
+# on the site, /shares/<token> on the API).
+SECRET_PATH = re.compile(r"(/(?:shares|s)/)[^/\s?#)\"']+")
+# What a database error appends to its text: the statement and its values.
+SQL_DETAILS = re.compile(r"\n?\[(?:SQL|parameters):")
+
+
 def hide_emails(text: str) -> str:
     return EMAIL.sub("[email]", text)
+
+
+def hide_secrets(text: str) -> str:
+    """An email, and the secret in a share link, hidden in any text."""
+    return hide_emails(SECRET_PATH.sub(r"\1:token", text))
 
 
 def scrub_event(event: dict[str, Any], hint: Any) -> dict[str, Any]:
@@ -51,11 +63,13 @@ def scrub_event(event: dict[str, Any], hint: Any) -> dict[str, Any]:
         for key in DROPPED_FROM_REQUEST:
             request.pop(key, None)
         if isinstance(request.get("url"), str):
-            request["url"] = request["url"].split("?", 1)[0]
+            request["url"] = hide_secrets(request["url"].split("?", 1)[0])
         if isinstance(request.get("headers"), dict):
             request["headers"] = {k: v for k, v in request["headers"].items() if k.lower() in SAFE_HEADERS}
     if isinstance(event.get("message"), str):
-        event["message"] = hide_emails(event["message"])
+        event["message"] = hide_secrets(event["message"])
+    if isinstance(event.get("transaction"), str):
+        event["transaction"] = hide_secrets(event["transaction"])
     entry = event.get("logentry")
     if isinstance(entry, dict):
         # The values that fill the %s of the message, and the message with
@@ -63,10 +77,11 @@ def scrub_event(event: dict[str, Any], hint: Any) -> dict[str, Any]:
         entry.pop("params", None)
         entry.pop("formatted", None)
         if isinstance(entry.get("message"), str):
-            entry["message"] = hide_emails(entry["message"])
+            entry["message"] = hide_secrets(entry["message"])
     for error in (event.get("exception") or {}).get("values") or []:
         if isinstance(error.get("value"), str):
-            error["value"] = hide_emails(error["value"])
+            # A database error's text ends with the statement and its values.
+            error["value"] = hide_secrets(SQL_DETAILS.split(error["value"])[0])
         for frame in (error.get("stacktrace") or {}).get("frames") or []:
             frame.pop("vars", None)
     return event
@@ -80,7 +95,7 @@ def init_monitoring(settings: Settings) -> bool:
     sentry_sdk.init(
         dsn=dsn,
         release=settings.git_commit,
-        environment="production",
+        environment=settings.sentry_environment,
         data_collection=DATA_COLLECTION,
         max_breadcrumbs=0,
         # Errors only: no performance traces, so the free quota is never at risk.
@@ -98,12 +113,12 @@ def browser_error_event(message: str, stack: str | None, path: str) -> dict[str,
     def clean(text: str) -> str:
         # Cut a query or fragment from any address in the text: from the
         # first ? or # to the next space or closing bracket.
-        return hide_emails(re.sub(r"[?#][^\s)]*", "", text))
+        return hide_secrets(re.sub(r"[?#][^\s)]*", "", text))
 
     event: dict[str, Any] = {
         "level": "error",
         "logentry": {"message": clean(message)},
-        "tags": {"source": "browser", "page": re.sub(r"[?#].*", "", path)},
+        "tags": {"source": "browser", "page": hide_secrets(re.sub(r"[?#].*", "", path))},
     }
     if stack:
         event["contexts"] = {"browser_error": {"stack": clean(stack)}}

@@ -41,6 +41,24 @@ def test_the_query_and_any_address_in_the_text_are_cut(client, sent):
     assert sent[0]["tags"]["page"] == "/login"
 
 
+def test_a_share_link_is_not_sent_as_the_page_or_in_the_text(client, sent):
+    body = {"message": "failed at /s/abc.def-ghi", "stack": "at /s/abc.def-ghi:1:2", "path": "/s/abc.def-ghi"}
+    assert client.post("/client-errors", json=body).status_code == 204
+    assert "abc.def-ghi" not in repr(sent)
+    assert sent[0]["tags"]["page"] == "/s/:token"
+
+
+def test_one_address_has_a_daily_ceiling_too(client, sent):
+    from app.ratelimit import LIMITERS
+
+    codes = []
+    for _ in range(client_errors.PER_DAY + 1):
+        LIMITERS["client-errors"].reset()  # the per-minute limit is not what is tested here
+        LIMITERS["client-errors:total"].reset()
+        codes.append(client.post("/client-errors", json=GOOD).status_code)
+    assert codes[-2:] == [204, 429]
+
+
 def test_the_pure_function_cuts_the_same_things():
     event = browser_error_event("a@b.example", "s?x=1 a@b.example", "/p?q=1")
     assert "a@b.example" not in repr(event) and "x=1" not in repr(event) and event["tags"]["page"] == "/p"

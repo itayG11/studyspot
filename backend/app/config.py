@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     # Where crashes are reported (app/monitoring.py). Unset: nothing is sent.
     # A secret, since anyone holding it can post fake events to our project.
     sentry_dsn: SecretStr | None = None
+    # Labels the reports, so a run elsewhere is not taken for production.
+    sentry_environment: str = "production"
     # The deployed version, which Render sets by itself; labels each report.
     git_commit: str | None = Field(default=None, validation_alias=AliasChoices("RENDER_GIT_COMMIT", "git_commit"))
 

@@ -82,6 +82,27 @@ def test_local_variables_breadcrumbs_and_extras_are_dropped():
     assert "formatted" not in event["logentry"]  # the message with the values already filled in (logging integration)
 
 
+def test_the_secret_in_a_share_link_is_hidden_wherever_it_shows():
+    event = scrub_event(
+        {
+            "message": "failed at /shares/abc.def-ghi",
+            "transaction": "/api/shares/abc.def-ghi",
+            "request": {"url": "https://getstudyspot.me/api/shares/abc.def-ghi?x=1"},
+        },
+        {},
+    )
+    assert event["request"]["url"] == "https://getstudyspot.me/api/shares/:token"
+    assert event["transaction"] == "/api/shares/:token"
+    assert event["message"] == "failed at /shares/:token"
+    assert "abc.def-ghi" not in repr(event)
+
+
+def test_a_database_error_loses_its_statement_and_values():
+    text = "(psycopg.errors.DataError) bad value\n[SQL: INSERT INTO bookings (note) VALUES (%(note)s)]\n[parameters: {'note': 'dana@braude.example'}]"
+    event = scrub_event({"exception": {"values": [{"value": text}]}}, {})
+    assert event["exception"]["values"][0]["value"] == "(psycopg.errors.DataError) bad value"
+
+
 def test_an_event_with_nothing_to_scrub_passes_through():
     assert scrub_event({"level": "error"}, {}) == {"level": "error"}
 
@@ -102,6 +123,7 @@ def test_with_an_address_it_starts_with_the_privacy_options(monkeypatch):
     (options,) = started
     assert options["dsn"] == dsn
     assert options["release"] == "482d0a9"
+    assert options["environment"] == "production"
     collected = options["data_collection"]
     assert collected["user_info"] is False and collected["http_bodies"] == []
     assert collected["cookies"] == {"mode": "off"} and collected["url_query_params"] == {"mode": "off"}
