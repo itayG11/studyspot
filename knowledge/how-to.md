@@ -24,3 +24,23 @@
 - **בתוך הסשן יש גם תוסף:** `studyspot-progress`, עם שורת מצב והפקודה `/progress`. הוא חי רק בסשן שבו נבנה.
 
 **2026-10-26 - `Playwright` מקומית, עדכני:** `export PATH=/home/user/studyspot/backend/.venv/bin:$PATH CHROMIUM_PATH=/opt/pw-browsers/chromium`, מתוך `frontend`. `/opt/pw-browsers/chromium` הוא קישור, ולכן `find` בלי `-L` לא מוצא אותו. אם השרת נופל ב-`Connection refused`: `service postgresql start`.
+
+**2026-10-27 - סביבת בדיקות בענן, מאפס:** `uv venv /tmp/claude-0/venv && uv pip install -r backend/requirements-dev.lock && uv pip install --no-deps -e backend`. משתנים כמו ב-`.github/workflows/ci.yml` (`JWT_SECRET`, `CHECKIN_CODE_SECRET`, `DATABASE_URL`, `TEST_DATABASE_URL`). המסד: `service postgresql start` (נופל אחרי הפעלה מחדש של הסביבה), ובפעם הראשונה יוצרים משתמש `studyspot` עם סיסמה `studyspot` ושני מסדים, `studyspot` ו-`studyspot_test`, ואז `alembic upgrade head` ו-`python -m app.seed`. `Playwright`: `PYTHON=<venv>/bin/python CHROMIUM_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
+
+**2026-10-27 - מצב `CI` בלי להציף את ההקשר:** `curl "https://api.github.com/repos/itayG11/studyspot/actions/runs?head_sha=<SHA מלא>"` ומסננים עם `python`. עם `SHA` קצר מתקבל ריק. הכלי `actions_list` של ה-`MCP` מתעלם מ-`per_page` ומחזיר עשרות ריצות. לוג של שלב שנכשל: `get_job_logs` עם `tail_lines`.
+
+**2026-10-27 - נעילת פעולת `GitHub` לפי `SHA`:** `git ls-remote https://github.com/<repo>.git refs/tags/vN 'refs/tags/vN^{}'`, ולוקחים את הקומיט המקולף (`^{}`) כשהתגית מוערת. ה-`API` של מאגרים אחרים חסום בסשן. הפורמט: `uses: owner/repo@<sha> # vN`.
+
+**2026-10-27 - עדכון נעילת תלויות עם `hash`:** `pip-compile --allow-unsafe --generate-hashes --output-file=requirements.lock --strip-extras --upgrade-package "anthropic==2.2.0" pyproject.toml`, ובנוסף עם `--extra=dev --output-file=requirements-dev.lock`. `--upgrade-package` מונע שדרוג של כל השאר.
+
+**2026-10-27 - סרטון הדגמה:** הסקריפטים ב-`docs/demo-video/` (`record.mjs` מקליט עם `Playwright`, `assemble.py` חותך ומחבר). קול מ-`Higgsfield`: `elevenlabs_v4_turbo` לאנגלית, `elevenlabs_v4` לעברית, הקול `Holden` (`3c9d6053-6334-592c-8997-4e325286af3f`). עלות: 1.65 לאנגלית ו-2.3 לעברית לקליפ רציף של כ-38 שניות. **בודקים `get_cost` לפני**, וקליפ אחד לשפה במקום קליפ לכל סצנה (עלות מינימום 0.3 לקליפ). בקשות רבות ביחד מחזירות 429, ולא מחייבות: שולחים בקבוצות קטנות. גבולות משפטים: `ffmpeg -af silencedetect=noise=-32dB:d=0.28`. הורדת הקליפים דורשת להוסיף `d8j0ntlcm91z4.cloudfront.net` ל-`Allowed domains` בהגדרות הסביבה (תפריט הסביבה, `Edit`, `Network access`).
+
+**2026-10-27 - `Lighthouse` מהענן:** בתיקיית סקרץ': `npm i lighthouse@12`, `CHROME_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`, `--chrome-flags="--headless=new --no-sandbox --proxy-server=$HTTPS_PROXY"`, `NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. הציון קופץ בין ריצות על אותו דף, ולכן מריצים חמש פעמים.
+
+**2026-10-27 - מדידת גובה כותרת לאורך הטעינה (לאיתור `CLS`):** `Playwright` עם חלון של 412 על 823, סקריפט שמתחיל ב-`addInitScript` ורושם את `offsetHeight` של `header` בכל פריים כשהוא משתנה.
+
+**2026-10-27 - מדידת `TRUSTED_PROXY_HOPS`:** ראו `docs/DEPLOY.md`. הכפתור הוסר, ואפשר לשחזר אותו מהקומיט `1422100`.
+
+**2026-10-27 - ביצועי `GitHub` מהסשן:** `api.github.com` נגיש לקריאה עם ההרשאה של הסשן, אבל יצירת `Release` אסורה. את ה-`Release` יוצר המשתמש בדף `Releases`, עם התיאור שאני מכין.
+
+**2026-10-27 - מכשירים בענן ללא `ss`:** כדי לבדוק פורט תפוס משתמשים ב-`ps aux | grep` ולא ב-`ss`.
