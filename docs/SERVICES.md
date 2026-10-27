@@ -16,6 +16,7 @@
 | ב-10 באוגוסט 2028 | הסוד של מיקרוסופט, `MICROSOFT_CLIENT_SECRET` | יוצרים סוד חדש ומחליפים ב-`Render`. אחרת הכניסה עם מיקרוסופט מפסיקה. נבדק בעמודה `Expires` | `Entra`, `StudySpot`, `Certificates & secrets` |
 | ב-11 באוקטובר 2028 | ההטבות של חבילת הסטודנט של גיטהאב | אחרי זה אין הטבות חדשות. מה שכבר נרשם ממשיך לפי התנאים של כל שירות | `GitHub`, `Education benefits` |
 | ב-27 באוקטובר 2027 | הזכאות החינמית של `Sentry` מחבילת הסטודנט (נרשמנו ב-27.10.2026) | **התוכנית עוברת לבד ל-`Developer` החינמית, עם 5,000 שגיאות בחודש במקום 50,000.** אין כרטיס אשראי ואין חיוב (`No payment method on file`, תקרה של 0 דולר), ולכן אין מה לבטל. אם 5,000 לא מספיקות: להוריד את `SENTRY_DSN` מ-`Render` והאתר ממשיך כרגיל | `Sentry`, `Settings`, `Subscription` |
+| ב-27 באוקטובר 2027 | הזכאות של `BrowserStack` מחבילת הסטודנט (אושר במייל מהתמיכה, 27.10.2026) | אחרי זה אין גישה ל-`Live` ול-`Automate` אלא בתשלום. אין חיוב אוטומטי: אין כרטיס אשראי בחשבון. לא לקנות תוכנית | `BrowserStack`, `Pricing` |
 | כל חודש | 750 שעות של `Render` בחינם | שרת אחד ער כל החודש צורך כ-744. לא להוסיף שירות חינמי שני באותו חשבון | `Render`, `Billing` |
 | כל חודש | שעות החישוב של `Neon` בחינם | השרת לא מעיר את המסד בלי ביקורים אמיתיים, ראו `backend/app/activity.py` | `Neon`, `Usage` |
 | כל 60 יום | הגיבוי הלילי בגיטהאב נכבה במאגר ציבורי אחרי 60 יום בלי פעילות | `Actions`, `Backup`, `Enable workflow`. פרטים: `docs/DEPLOY.md` | `GitHub`, `Actions` |
@@ -52,7 +53,7 @@
 | `Render` | מריץ את השרת ואת האתר, בונה מהקוד בכל דחיפה, ונותן `HTTPS` לדומיין | [dashboard.render.com](https://dashboard.render.com) | חינם. השרת נרדם אחרי 15 דקות בלי ביקורים | כל הסודות כאן, ב-`Environment`. מדריך: `docs/DEPLOY.md` |
 | `Neon` | מסד הנתונים, `PostgreSQL` | [console.neon.tech](https://console.neon.tech) | חינם. שחזור עד 6 שעות אחורה | גיבוי לילי מתוכנן בגל 8 |
 | `UptimeRobot` | פונה ל-`/api/health` כל 5 דקות, כדי שהשרת לא יירדם, ושולח מייל אם האתר נופל | [uptimerobot.com](https://uptimerobot.com) | חינם | הכתובת: `https://getstudyspot.me/api/health` |
-| `BrowserStack` | בדיקת האתר בדפדפנים ובמכשירים אמיתיים, `Live` ידני ו-`Automate` אוטומטי | [browserstack.com](https://www.browserstack.com) | ניסיון מורחב (`Extended Trial`), **תאריך סיום ומגבלות לא ידועים**, בלי כרטיס אשראי. לא לקנות תוכנית | `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` כמשתני סביבה בסשן, לא ב-`Render`. תוצאות: `docs/browserstack/RESULTS.md`. **להחליף את ה-`Access Key` אחרי השימוש** |
+| `BrowserStack` | בדיקת האתר בדפדפנים ובמכשירים אמיתיים, `Live` ידני ו-`Automate` אוטומטי | [browserstack.com](https://www.browserstack.com) | **חבילת הסטודנט פעילה עד 27.10.2027, דקות ללא הגבלה ל-`Live` ול-`Automate`** (אישור מתמיכת החיובים, 27.10.2026) | `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` כמשתני סביבה בסשן, לא ב-`Render`. תוצאות: `docs/browserstack/RESULTS.md`. **להחליף את ה-`Access Key` אחרי השימוש** |
 | `Sentry` | דיווח על קריסות של השרת ושל הדפים, בלי נתונים אישיים | [sentry.io](https://sentry.io) | חינם לשנה, בחבילת הסטודנט. **לא נבדק** מה אחרי השנה | `SENTRY_DSN` הוא סוד ב-`Render`. בלעדיו לא נשלח כלום. פרטים: `docs/DEPLOY.md`, "דיווח תקלות" |
 
 ### דומיין ומיילים
