@@ -14,7 +14,7 @@ from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.models import User
-from app.ratelimit import calendar_limit, write_limit
+from app.ratelimit import calendar_limit, calendar_token_limit, write_limit
 from app.schemas import CalendarFeedOut
 
 router = APIRouter(tags=["calendar"])
@@ -58,7 +58,7 @@ def remove_feed(user: UserDep, db: SessionDep) -> None:
     db.commit()
 
 
-@router.get("/calendar.ics", dependencies=[Depends(calendar_limit)], include_in_schema=False)
+@router.get("/calendar.ics", dependencies=[Depends(calendar_limit), Depends(calendar_token_limit)], include_in_schema=False)
 def read_feed(
     t: Annotated[str, Query(min_length=20, max_length=100)], db: SessionDep, now: NowDep, settings: SettingsDep
 ) -> Response:

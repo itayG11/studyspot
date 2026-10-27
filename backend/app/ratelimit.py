@@ -208,9 +208,28 @@ public_read_limit = per_ip("public-read", limit=PUBLIC_READ_PER_MINUTE, window_s
 # so a repeat costs one query. Its own limit, and generous, so that a
 # campus network behind one address does not use up the forecasts' limit.
 load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limit=6000)
-# A calendar app reads a feed every few hours; this is far above that, and
-# keeps someone guessing tokens slow (they are 256 bits anyway).
-calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=1200)
+# A calendar app reads a feed every few hours. A calendar service (Google's)
+# reads many people's feeds from a few shared addresses, so the limit per
+# address is high, and each feed has its own, low one. No total: guessing
+# tokens (256 bits) is hopeless, and a total could shut every feed.
+CALENDAR_PER_TOKEN = 20
+calendar_limit = per_ip("calendar", limit=600, window_seconds=60, evict=True)
+def per_query(name: str, param: str, limit: int, window_seconds: float) -> Callable:
+    """Per value of a query parameter (a feed's token), hashed, so the token
+    is never kept. A full table drops its oldest."""
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds, evict=True))
+
+    def dependency(request: Request) -> None:
+        value = request.query_params.get(param)
+        if not value:
+            return
+        if not window.allow(hashlib.sha256(value.encode()).hexdigest()):
+            raise _too_many(window)
+
+    return dependency
+
+
+calendar_token_limit = per_query("calendar-token", "t", limit=CALENDAR_PER_TOKEN, window_seconds=60)
 # A screen asks about every 20 seconds, and a campus's screens may share one
 # address: 300 a minute is about 100 screens behind one network.
 # No total over all addresses, and a full table drops its oldest: otherwise

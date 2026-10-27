@@ -239,10 +239,21 @@ def test_the_shared_demo_student_cannot(client, session, student):
     assert (refused.status_code, refused.json()["detail"]) == (403, "calendar_demo_account")
 
 
-def test_reading_is_limited(client):
+def test_one_feed_is_limited_per_token(client):
+    from app.ratelimit import CALENDAR_PER_TOKEN
+
     client.user = None
-    codes = [client.get("/calendar.ics", params={"t": "y" * 43}).status_code for _ in range(61)]
-    assert codes[-1] == 429
+    codes = [client.get("/calendar.ics", params={"t": "y" * 43}).status_code for _ in range(CALENDAR_PER_TOKEN + 1)]
+    assert codes[-1] == 429 and 429 not in codes[:-1]
+    # Another token from the same address is not held back by it: a calendar
+    # service reads many people's feeds from a few addresses.
+    assert client.get("/calendar.ics", params={"t": "z" * 43}).status_code == 404
+
+
+def test_many_feeds_from_one_address_are_not_refused_early(client):
+    client.user = None
+    codes = [client.get("/calendar.ics", params={"t": f"{n:043d}"}).status_code for n in range(150)]
+    assert set(codes) == {404}
 
 
 
