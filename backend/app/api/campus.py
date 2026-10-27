@@ -28,7 +28,7 @@ from app.models import (
     is_counted,
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
-from app.ratelimit import forecast_limit, load_today_limit
+from app.ratelimit import forecast_limit, load_today_limit, public_read_limit
 from app.schemas import (
     BookingRules,
     BuildingOut,
@@ -246,7 +246,7 @@ def _places_query():
     )
 
 
-@router.get("/institutions/{slug}/buildings", response_model=list[BuildingOut])
+@router.get("/institutions/{slug}/buildings", response_model=list[BuildingOut], dependencies=[Depends(public_read_limit)])
 def list_buildings(slug: Slug, session: SessionDep, now: NowDep):
     institution = _institution(session, slug)
     places = session.scalars(
@@ -283,7 +283,7 @@ def list_buildings(slug: Slug, session: SessionDep, now: NowDep):
     return result
 
 
-@router.get("/institutions/{slug}/places", response_model=list[PlaceOut])
+@router.get("/institutions/{slug}/places", response_model=list[PlaceOut], dependencies=[Depends(public_read_limit)])
 def list_places(
     slug: Slug,
     session: SessionDep,
@@ -341,7 +341,7 @@ def get_campus_today(slug: Slug, session: SessionDep, now: NowDep):
     )
 
 
-@router.get("/places/{place_id}", response_model=PlaceDetail)
+@router.get("/places/{place_id}", response_model=PlaceDetail, dependencies=[Depends(public_read_limit)])
 def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: NowDep):
     place = session.scalars(
         _places_query().where(Place.id == place_id).options(selectinload(Place.seats))

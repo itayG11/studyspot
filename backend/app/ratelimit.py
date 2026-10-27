@@ -196,6 +196,13 @@ refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seco
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
 forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+# The open read routes (buildings, places, one place, its free times) run
+# queries on every request, and the widget and every open tab ask often. One
+# bucket per address, generous (900 a minute is 15 a second) because a campus
+# network can put many students behind one address; a full table drops its
+# oldest, so made-up addresses cannot shut real ones out.
+PUBLIC_READ_PER_MINUTE = 900
+public_read_limit = per_ip("public-read", limit=PUBLIC_READ_PER_MINUTE, window_seconds=60, evict=True)
 # The campus's today view: every page asks for it (the pulse in the header,
 # in every open tab), and the server keeps it a minute (app/load_today.py),
 # so a repeat costs one query. Its own limit, and generous, so that a
