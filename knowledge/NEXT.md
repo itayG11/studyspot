@@ -9,7 +9,12 @@
 - **ענף העבודה:** `claude/serene-turing-xdaak1`. `Render` מעלה ממנו לאתר החי.
 - **הגישה לאתר החי:** `getstudyspot.me` פתוח ברשת הסביבה. `Playwright` צריך `proxy: { server: process.env.HTTPS_PROXY }` ו-`NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`. סביבת בדיקות מקומית: `knowledge/how-to.md`, "סביבת בדיקות בענן, מאפס". אחרי הפעלה מחדש, `service postgresql start`.
 - **הסדר שאושר, ללא שינוי:**
-  1. **16.7 `BrowserStack`: ממתין למשתמש, יחזור אליו מהמחשב.** צריך: הרשמה, לוודא `Automate`, משתנים `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` בהגדרות הסביבה, הרשאות רשת (`www`, `hub`, `cdp`, `api`, `automate` של `browserstack.com`), וסשן חדש. הרשימה ב-`docs/browserstack/CHECKS.md`. הסקריפט נכתב רק כשהתיעוד נגיש.
+  1. **16.7 `BrowserStack`: המשתמש הגדיר משתנים והרשאות רשת (27.10), מחכה לסשן חדש. התחל כאן.**
+     - **מצב החשבון:** נרשם, ובדף `Pricing` כתוב `Live` ו-`Automate` כ-`Extended Trial`, בדיקה אחת במקביל. **תאריך סיום ומגבלות לא ידועים**, ולא ברור אם זו הטבת הסטודנט. המשתמש ניסה לממש דרך `education.github.com/pack` ולא ראה שינוי. אסור לקנות תוכנית.
+     - **משתנים:** `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY`, כמשתני סביבה רגילים (לא `Add secret`, כי `BrowserStack` צריך את הפרטים בכתובת החיבור ולא בכותרת, **לא אומת**). לא להדפיס ולא לכתוב לקובץ. **בסוף: להזכיר למשתמש להחליף את `Access Key` ב-`My Profile`.**
+     - **רשת:** המשתמש הוסיף את `www`, `hub`, `cdp`, `api`, `automate` ו-`hub-cloud` של `browserstack.com`. אם מארח נחסם, להגיד לו את שמו.
+     - **צעדים:** (1) לוודא שהמשתנים קיימים (רק אם יש ערך, בלי להציג) ושהמארחים נגישים. (2) לקרוא את התיעוד העדכני של `BrowserStack`, ולבחור דרך חיבור ל-`Playwright`. (3) סקריפט קריאה בלבד מול `https://getstudyspot.me/demo`, לפי `docs/browserstack/CHECKS.md`. (4) ממצאים, תיקונים עם בדיקה, `SERVICES.md`, דוח הראיון. לא ב-`CI`.
+     - **אם אין גישה:** המשתמש יבדוק ידנית ב-`Live` (`iPhone 15 Pro` עם `Safari`) לפי הרשימה.
   2. **המשך עכשיו:** 16.8 (למטה), ואחר כך 16.5.
   3. **16.8: כתוב (27.10).** פוסט ב-`docs/linkedin/POST.md` ופרק "איך הגעתי לפרויקט" בדוח. המשתמש מפרסם. אין מה לעשות אלא לשמוע אם ביקש שינויים.
   4. **16.5 דף הגיטהאב.** החלטה על קובצי העבודה אחרי הסבר (שכתוב היסטוריה, מאגר חדש נקי, או להשאיר), `README` סופי, הגדרות מאגר אצל המשתמש, ורישיון (החלטה נפרדת).
