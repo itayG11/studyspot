@@ -40,3 +40,8 @@ backend/uv.lock
 
 # A local `pip install .` leaves its build output here.
 backend/build/
+
+# Test runs
+backend/test-results/
+frontend/test-results/
+frontend/playwright-report/

@@ -10,7 +10,7 @@ FROM node:22-alpine AS web
 WORKDIR /web
 # The dependency list first: this layer is reused until it changes.
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY frontend/ ./
 # The API is on the same address, under /api. The campus a visitor who is
 # not signed in sees first (each campus also has its own address, /demo)
