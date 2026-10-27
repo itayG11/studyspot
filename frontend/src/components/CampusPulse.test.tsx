@@ -15,18 +15,18 @@ const show = (data: CampusToday | null, loading = false) =>
 describe('CampusPulse', () => {
   it('says how many places are free now, from the live count, and leads to the search', () => {
     show(today())
-    const link = screen.getByRole('link', { name: '120 מקומות פנויים עכשיו בקמפוס' })
+    const link = screen.getByRole('link', { name: '120 פנויים עכשיו, מקומות בקמפוס' })
     expect(link).toHaveAttribute('href', '/demo#finder')
   })
 
   it('with every place closed, it says none is free, not the campus\'s size', () => {
     show(today({ occupied: 0, free_now: 0 }))
-    expect(screen.getByRole('link')).toHaveAccessibleName('0 מקומות פנויים עכשיו בקמפוס')
+    expect(screen.getByRole('link')).toHaveAccessibleName('0 פנויים עכשיו, מקומות בקמפוס')
   })
 
   it('on the demo campus it says the people are made up', () => {
     show(today({ simulated: true }))
-    expect(screen.getByRole('link')).toHaveAccessibleName('120 מקומות פנויים עכשיו בקמפוס, נתוני דמו')
+    expect(screen.getByRole('link')).toHaveAccessibleName('120 פנויים עכשיו · דמו, מקומות בקמפוס')
   })
 
   it('shows nothing before the numbers, or where nothing is counted', () => {
@@ -52,6 +52,6 @@ describe('CampusPulse', () => {
 
   it('never says less than none', () => {
     show(today({ capacity: 10, occupied: 12, free_now: -2 }))
-    expect(screen.getByRole('link')).toHaveAccessibleName('0 מקומות פנויים עכשיו בקמפוס')
+    expect(screen.getByRole('link')).toHaveAccessibleName('0 פנויים עכשיו, מקומות בקמפוס')
   })
 })

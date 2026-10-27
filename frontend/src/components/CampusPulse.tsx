@@ -28,16 +28,24 @@ export function CampusPulse({ today, home, loading = false }: { today: CampusTod
   if (today === null || today.capacity === 0) return null
   // From the places open now only: at night, 0, not the campus's size.
   const free = Math.max(0, today.free_now)
-  const words = `${free} מקומות פנויים עכשיו בקמפוס${today.simulated ? ', נתוני דמו' : ''}`
+  // The name is the visible text plus a quiet ending (WCAG "label in name":
+  // a voice user says what they see, "פנויים עכשיו"), not a longer label of
+  // its own that does not contain what is shown (axe, 27 Oct).
   return (
-    <Link to={`${home}#finder`} className={styles.pulse} aria-label={words}>
+    <Link to={`${home}#finder`} className={styles.pulse}>
       <span className={styles.dot} aria-hidden="true" />
-      <span aria-hidden="true">
-        <strong className={styles.number}>{free}</strong>
+      <span>
+        <strong className={styles.number}>{free}</strong>{' '}
         {/* On a phone "now" goes; "free" stays, so the number is not a riddle. */}
-        <span> פנויים</span>
-        <span className={styles.words}> עכשיו</span>
-        {today.simulated && <span className={styles.demo}> · דמו</span>}
+        <span>פנויים</span>{' '}
+        <span className={styles.words}>עכשיו</span>
+        {today.simulated && (
+          <>
+            {' '}
+            <span className={styles.demo}>· דמו</span>
+          </>
+        )}
+        <span className={styles.quiet}>, מקומות בקמפוס</span>
       </span>
     </Link>
   )
