@@ -234,6 +234,13 @@ describe('SystemPage', () => {
     expect(await within(row).findByRole('alert')).toHaveTextContent('כלל כניסה מאושר')
   })
 
+  it('offers no close button for an institution the server will not close', async () => {
+    institutions = [{ ...BRAUDE, is_active: true, can_close: false }]
+    renderPage()
+    const row = (await screen.findByText('מכללת בראודה')).closest('li')!
+    expect(within(row).queryByRole('button', { name: 'לסגור את המוסד' })).not.toBeInTheDocument()
+  })
+
   it('closes an institution only after its address is typed, and says when it goes', async () => {
     const user = userEvent.setup()
     institutions = [{ ...BRAUDE, is_active: true }]

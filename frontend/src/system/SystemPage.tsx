@@ -208,7 +208,7 @@ function InstitutionRow({ institution, onDeleted }: { institution: SystemInstitu
       {institution.closes_at ? (
         <Reopen slug={institution.slug} onDone={onDeleted} />
       ) : (
-        <CloseInstitution slug={institution.slug} onDone={onDeleted} />
+        institution.can_close !== false && <CloseInstitution slug={institution.slug} onDone={onDeleted} />
       )}
       {!institution.is_active && !institution.closes_at && <DeleteInstitution slug={institution.slug} onDeleted={onDeleted} />}
     </li>

@@ -630,6 +630,7 @@ class SystemInstitutionOut(BaseModel):
     buildings: int
     admins: int
     closes_at: datetime | None = None
+    can_close: bool = True  # False for the demo and the open campus: the server refuses to close them
 
 
 class InviteCreatedOut(BaseModel):

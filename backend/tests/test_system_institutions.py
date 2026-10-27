@@ -76,6 +76,14 @@ def test_the_system_admin_sees_hidden_institutions_too(staff):
     assert listed["braude"]["buildings"] == 7
 
 
+def test_the_demo_campus_is_listed_as_one_that_cannot_be_closed(staff, session):
+    from app.seed import seed_demo
+
+    seed_demo(session)
+    listed = {i["slug"]: i for i in staff.get("/system/institutions").json()}
+    assert (listed["demo"]["can_close"], listed["braude"]["can_close"]) == (False, True)
+
+
 def test_an_invite_link_is_shown_once_and_kept_only_as_an_hmac(staff, session):
     staff.post("/system/institutions", json=NEW)
     response = staff.post("/system/institutions/tel-hai/invites")

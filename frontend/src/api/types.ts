@@ -279,6 +279,7 @@ export interface SystemInstitution {
   buildings: number
   admins: number
   closes_at?: string | null
+  can_close?: boolean // false for the demo and the open campus
 }
 
 export interface NewInstitution {

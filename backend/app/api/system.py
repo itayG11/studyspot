@@ -77,7 +77,7 @@ def proxy_check(owner: OwnerDep, request: Request, settings: SettingsDep):
 
 
 @router.get("/system/institutions", response_model=list[SystemInstitutionOut])
-def list_all(owner: OwnerDep, db: SessionDep):
+def list_all(owner: OwnerDep, db: SessionDep, settings: SettingsDep):
     buildings = (
         select(func.count()).select_from(Building).where(Building.institution_id == Institution.id).scalar_subquery()
     )
@@ -91,7 +91,7 @@ def list_all(owner: OwnerDep, db: SessionDep):
     return [
         SystemInstitutionOut(
             slug=i.slug, name=i.name, timezone=i.timezone, is_active=i.is_active, buildings=b, admins=a,
-            closes_at=i.closes_at,
+            closes_at=i.closes_at, can_close=i.slug not in _kept(settings),
         )
         for i, b, a in rows
     ]
