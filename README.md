@@ -18,7 +18,7 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 
 ## What it does
 
-- **Between classes.** The student enters their week once, or imports it from the college's Excel export or from a photo read by Claude. For every break the site suggests up to three places: open for the whole break, near the next class, and not full, with the reason shown.
+- **Between classes.** The student enters their week once, or imports it from the college's Excel export or from an image uploaded and analyzed by AI. For every break the site suggests up to three places: open for the whole break, near the next class, and not full, with the reason shown.
 - **Load, live and usual.** One chart per place: how many people are there now, next to the average for that weekday and hour over the last eight weeks. A plain average per quarter hour, not machine learning, so it is easy to explain and to test.
 - **Live, booking and release in one place,** for four kinds of space: group rooms, open areas, the library, and computer labs with a seat map. A booking nobody checks in to is released after 15 minutes.
 - **No hardware.** A printed QR sign at the door, or a screen whose code changes every minute, so a photo of it stops working.
@@ -27,7 +27,7 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 
 ## How it was built
 
-I built StudySpot in October 2026, as my first complete web project, next to my second year of software engineering at Braude College. I worked with Claude Code as a helper. I decided what to build and in what order, I made the design decisions, and I checked the results by hand. Claude wrote much of the code.
+I built StudySpot in October 2026, as my first complete web project, next to my second year of software engineering at Braude College. I built it in partnership with Claude Code, an AI coding assistant: I decided what to build and in what order and made the design decisions, we wrote the code together, and I reviewed and tested the results.
 
 What keeps that honest is the checking, and it is all written down:
 

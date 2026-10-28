@@ -56,7 +56,15 @@ const shot = (page, name, opts = {}) => page.screenshot({ path: `${TMP}/${name}.
   const week = page.locator('#my-timetable')
   await week.scrollIntoViewIfNeeded()
   await page.waitForTimeout(800)
-  await week.screenshot({ path: `${TMP}/timetable.png` })
+  // A little air around the block, so the heading is not cut at the top edge
+  const box = await week.boundingBox()
+  const top = await page.evaluate(() => window.scrollY)
+  const pad = 28
+  await page.screenshot({
+    path: `${TMP}/timetable.png`,
+    fullPage: true,
+    clip: { x: Math.max(0, box.x - pad), y: Math.max(0, box.y + top - pad), width: box.width + 2 * pad, height: box.height + 2 * pad },
+  })
   await ctx.close()
 }
 
@@ -117,7 +125,7 @@ def save(name, size=None):
     if size: im=im.resize(size, Image.LANCZOS)
     im.save(f'{O}/{name}.webp','WEBP',quality=82,method=6)
 save('finder',(1600,1000)); save('space',(1600,1250)); save('phone-home',(780,1688)); save('phone-space',(780,1688))
-im=Image.open(f'{T}/timetable.png').convert('RGB'); w=1440; im=im.resize((w,int(im.height*w/im.width)),Image.LANCZOS).crop((0,0,w,1290)); im.save(f'{O}/timetable.webp','WEBP',quality=82,method=6)
+im=Image.open(f'{T}/timetable.png').convert('RGB'); w=1440; im=im.resize((w,int(im.height*w/im.width)),Image.LANCZOS).crop((0,0,w,1330)); im.save(f'{O}/timetable.webp','WEBP',quality=82,method=6)
 `])
 execFileSync('python3', ['-I', '-c', `
 from PIL import Image

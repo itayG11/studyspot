@@ -52,6 +52,7 @@ describe('PrivacyPage', () => {
     expect(item).toHaveTextContent('סוג התקלה והמקום בקוד')
     expect(item).toHaveTextContent('לא נשלחים כתובת מייל, שם, עוגיות')
     expect(item).toHaveTextContent('לא נשלחת כתובת ה-IP')
+    expect(item).toHaveTextContent('באיחוד האירופי')
   })
 
   it('says who joins the demo campus, that anyone can manage it, and that it resets daily', () => {

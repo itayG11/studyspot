@@ -54,7 +54,7 @@
 | `Neon` | מסד הנתונים, `PostgreSQL` | [console.neon.tech](https://console.neon.tech) | חינם. שחזור עד 6 שעות אחורה | גיבוי לילי מתוכנן בגל 8 |
 | `UptimeRobot` | פונה ל-`/api/health` כל 5 דקות, כדי שהשרת לא יירדם, ושולח מייל אם האתר נופל | [uptimerobot.com](https://uptimerobot.com) | חינם | הכתובת: `https://getstudyspot.me/api/health` |
 | `BrowserStack` | בדיקת האתר בדפדפנים ובמכשירים אמיתיים, `Live` ידני ו-`Automate` אוטומטי | [browserstack.com](https://www.browserstack.com) | **חבילת הסטודנט פעילה עד 27.10.2027, דקות ללא הגבלה ל-`Live` ול-`Automate`** (אישור מתמיכת החיובים, 27.10.2026) | `BROWSERSTACK_USERNAME` ו-`BROWSERSTACK_ACCESS_KEY` כמשתני סביבה בסשן, לא ב-`Render`. תוצאות: `docs/browserstack/RESULTS.md`. **להחליף את ה-`Access Key` אחרי השימוש** |
-| `Sentry` | דיווח על קריסות של השרת ושל הדפים, בלי נתונים אישיים | [sentry.io](https://sentry.io) | חינם לשנה, בחבילת הסטודנט. **לא נבדק** מה אחרי השנה | `SENTRY_DSN` הוא סוד ב-`Render`. בלעדיו לא נשלח כלום. פרטים: `docs/DEPLOY.md`, "דיווח תקלות" |
+| `Sentry` | דיווח על קריסות של השרת ושל הדפים, בלי נתונים אישיים | [sentry.io](https://sentry.io) | חינם לשנה, בחבילת הסטודנט. **לא נבדק** מה אחרי השנה. אזור הנתונים: האיחוד האירופי (נבדק בהגדרות הארגון, 28.10.2026). שמירת שגיאות: כנראה 30 יום, **לא אומת בחשבון** | `SENTRY_DSN` הוא סוד ב-`Render`. בלעדיו לא נשלח כלום. פרטים: `docs/DEPLOY.md`, "דיווח תקלות" |
 
 ### דומיין ומיילים
 
