@@ -161,10 +161,14 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
                 type="button"
                 className={`${styles.block} ${styles[`tone${courseTone(slot)}`]} ${short ? styles.short : ''}`}
                 aria-pressed={selected}
-                aria-label={`${slot.title ?? 'שיעור'}, ${name} ${clock(slot.starts)} עד ${clock(slot.ends)}, ${placeLabel(slot)}`}
+                // The name begins with what the button shows, word for word (WCAG 2.5.3:
+                // a voice user says what they see), then adds the day.
+                aria-label={`${slot.title ?? 'שיעור'} ${clock(slot.starts)}–${clock(slot.ends)} ${classPlace(slot)}, ${name}`}
                 onClick={() => onPick(selected ? null : { kind: 'class', slot })}
               >
                 <span className={styles.blockTitle}>{slot.title ?? 'שיעור'}</span>
+                {/* A space between the two, as text: without it a screen's text reads "title08:30" as one word. */}
+                {' '}
                 <span className={styles.blockMeta}>
                   <span dir="ltr">
                     {clock(slot.starts)}–{clock(slot.ends)}
@@ -184,13 +188,14 @@ function Day({ day, classes, range, isToday, nowMinutes, picked, onPick, onPickT
                 type="button"
                 className={`${styles.gap} ${underWay ? styles.gapNow : ''} ${gap.minutes < SHORT_BREAK ? styles.gapShort : ''}`}
                 aria-pressed={selected}
-                aria-label={`הפסקה של ${gap.minutes} דקות, ${name} ${gap.starts} עד ${gap.ends}`}
+                aria-label={`הפסקה ${gap.minutes} דק׳, ${name} ${gap.starts} עד ${gap.ends}`}
                 onClick={() => onPick(selected ? null : { kind: 'gap', day, gap })}
               >
                 <span className={styles.gapLabel}>
                   <Coffee aria-hidden="true" />
                   <span className={styles.gapWord}>הפסקה</span>
                 </span>
+                {' '}
                 <span className={styles.gapMinutes}>{gap.minutes} דק׳</span>
               </button>
             </li>

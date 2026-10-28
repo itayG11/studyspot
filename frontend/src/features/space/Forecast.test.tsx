@@ -40,7 +40,7 @@ describe('PlaceForecast', () => {
     show()
     expect(await screen.findByText('עכשיו 50 מתוך 50. בדרך כלל בשעה הזו: 30.')).toBeInTheDocument()
     expect(asked).toEqual([6])
-    expect(screen.getByRole('button', { name: 'יום ראשון' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'א׳, יום ראשון' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('a full place says when it usually frees up', async () => {
@@ -71,7 +71,7 @@ describe('PlaceForecast', () => {
     show()
     await screen.findByText(/בדרך כלל בשעה הזו/)
     answer = (weekday) => forecast(weekday === 0 ? { weekday: 0, weeks: 5 } : {})
-    await user.click(screen.getByRole('button', { name: 'יום שני' }))
+    await user.click(screen.getByRole('button', { name: 'ב׳, יום שני' }))
     expect(asked).toContain(0)
     // Monday's own answer is on screen, not the loading state in between.
     expect(await screen.findByText(/לפי 5 השבועות/)).toBeInTheDocument()
