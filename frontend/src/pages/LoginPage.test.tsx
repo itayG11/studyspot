@@ -19,6 +19,8 @@ beforeEach(() => {
     const path = new URL(url).pathname
     if (path === '/auth/refresh') return Promise.resolve(jsonResponse({ detail: 'invalid_session' }, 401))
     if (path === '/auth/providers') return Promise.resolve(jsonResponse(providers))
+    // No work asked before a code (src/auth/pow.ts has its own tests)
+    if (path === '/auth/email/challenge') return Promise.resolve(jsonResponse({ salt: '', expires: 0, bits: 0, signature: '' }))
     if (path === '/auth/demo/login')
       return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
     return Promise.resolve(jsonResponse({ detail: 'unknown' }, 404))
