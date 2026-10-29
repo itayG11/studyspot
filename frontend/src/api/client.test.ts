@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, demoLogin, getAccessToken, logout, onSessionChange, refreshSession, resetSessionForTests } from './client'
+import { ApiError, api, demoLogin, emailStart, getAccessToken, logout, onSessionChange, refreshSession, resetSessionForTests } from './client'
 
 const ME = { id: 1, email: 'demo@x', display_name: 'סטודנט', role: 'student', institution_slug: 'braude' }
 
@@ -157,5 +157,51 @@ describe('session', () => {
     expect(JSON.parse(init.body)).toEqual({ persona: 'admin' })
     expect(init.credentials).toBe('include')
     expect(getAccessToken()).toBe('demo')
+  })
+})
+
+describe('email sign-in code', () => {
+  const SALT = '0123456789abcdef0123456789abcdef'
+  const challenge = (bits: number) => json(200, { salt: SALT, expires: 1_900_000_000, bits, signature: 'f'.repeat(64) })
+
+  it('asks for no work when the server wants none', async () => {
+    fetchMock.mockResolvedValueOnce(challenge(0)).mockResolvedValueOnce(json(202, { expires_in: 600 }))
+    await expect(emailStart('a@b.c')).resolves.toEqual({ expires_in: 600 })
+    expect(calledPaths()).toEqual(['/auth/email/challenge', '/auth/email/start'])
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ email: 'a@b.c' })
+  })
+
+  it('does the work the server asked for, and sends the answer with the request', async () => {
+    fetchMock.mockResolvedValueOnce(challenge(6)).mockResolvedValueOnce(json(202, { expires_in: 600 }))
+    await emailStart('a@b.c')
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(body.email).toBe('a@b.c')
+    expect(body.pow).toMatchObject({ salt: SALT, bits: 6, expires: 1_900_000_000, signature: 'f'.repeat(64) })
+    expect(Number.isInteger(body.pow.nonce)).toBe(true)
+  })
+
+  it('asks again with a fresh puzzle when the first one expired or was already used', async () => {
+    fetchMock
+      .mockResolvedValueOnce(challenge(4))
+      .mockResolvedValueOnce(json(400, { detail: 'pow_expired' }))
+      .mockResolvedValueOnce(challenge(4))
+      .mockResolvedValueOnce(json(202, { expires_in: 600 }))
+    await expect(emailStart('a@b.c')).resolves.toEqual({ expires_in: 600 })
+    expect(calledPaths()).toEqual(['/auth/email/challenge', '/auth/email/start', '/auth/email/challenge', '/auth/email/start'])
+  })
+
+  it('gives up after one retry', async () => {
+    fetchMock
+      .mockResolvedValueOnce(challenge(4))
+      .mockResolvedValueOnce(json(400, { detail: 'pow_used' }))
+      .mockResolvedValueOnce(challenge(4))
+      .mockResolvedValueOnce(json(400, { detail: 'pow_used' }))
+    await expect(emailStart('a@b.c')).rejects.toMatchObject({ code: 'pow_used' })
+  })
+
+  it('passes on any other refusal without asking again', async () => {
+    fetchMock.mockResolvedValueOnce(challenge(0)).mockResolvedValueOnce(json(403, { detail: 'email_domain_not_supported' }))
+    await expect(emailStart('a@b.c')).rejects.toMatchObject({ code: 'email_domain_not_supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

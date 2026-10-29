@@ -9,7 +9,7 @@
 // - After a page reload the variable is empty, and one refresh restores it.
 
 import { API_URL } from '../config'
-import type { DemoPersona, EmailStart, Me, TokenResponse } from './types'
+import type { DemoPersona, EmailStart, Me, PowChallenge, TokenResponse } from './types'
 
 // A refusal from the server, with its stable English code
 // (for example "place_not_found"). src/i18n/errors.ts turns it into Hebrew.
@@ -157,8 +157,21 @@ export async function demoLogin(persona: DemoPersona): Promise<Me> {
 
 // Sign-in with a one-time code: the server emails it to a college address,
 // and the code typed back starts a session like any other sign-in.
-export function emailStart(email: string): Promise<EmailStart> {
-  return send<EmailStart>('/auth/email/start', { method: 'POST', body: { email } })
+//
+// First a puzzle: each request for a code sends an email, so the server asks
+// for a second of work from the browser before it sends one (src/auth/pow.ts).
+// A puzzle that expired or was used meanwhile gets one fresh try.
+export async function emailStart(email: string): Promise<EmailStart> {
+  for (let attempt = 0; ; attempt++) {
+    const puzzle = await send<PowChallenge>('/auth/email/challenge', {})
+    const pow = puzzle.bits === 0 ? undefined : { ...puzzle, nonce: await (await import('../auth/pow')).solve(puzzle.salt, puzzle.bits) }
+    try {
+      return await send<EmailStart>('/auth/email/start', { method: 'POST', body: pow ? { email, pow } : { email } })
+    } catch (error) {
+      const stale = error instanceof ApiError && (error.code === 'pow_expired' || error.code === 'pow_used')
+      if (!stale || attempt > 0) throw error
+    }
+  }
 }
 
 export async function emailVerify(email: string, code: string): Promise<Me> {

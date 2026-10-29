@@ -59,4 +59,10 @@ services:
       # larger one counts what the visitor wrote. docs/DEPLOY.md.
       - key: TRUSTED_PROXY_HOPS
         value: "3"
+      # Work asked of the browser before an emailed sign-in code is sent
+      # (backend/app/pow.py): about 2^18 tries, under a second on a computer
+      # and a couple on a phone. A script asking for thousands of codes, to
+      # use up the day's email quota, pays that for each one. docs/DEPLOY.md.
+      - key: EMAIL_POW_BITS
+        value: "18"
       # The site's address comes from Render itself (RENDER_EXTERNAL_URL).

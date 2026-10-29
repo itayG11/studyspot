@@ -564,10 +564,30 @@ class DemoLoginIn(BaseModel):
     persona: Persona
 
 
+class PowIn(BaseModel):
+    """The puzzle the server handed out, and the visitor's answer (app/pow.py)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    salt: str = Field(pattern=r"^[0-9a-f]{32}$")
+    expires: int = Field(ge=0)
+    bits: int = Field(ge=0, le=64)
+    signature: str = Field(pattern=r"^[0-9a-f]{64}$")
+    nonce: int = Field(ge=0, le=2**53)
+
+
+class PowChallengeOut(BaseModel):
+    salt: str
+    expires: int
+    bits: int  # 0: no work is asked
+    signature: str
+
+
 class EmailStartIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: str = Field(max_length=320)
+    pow: PowIn | None = None
 
 
 class EmailStartOut(BaseModel):

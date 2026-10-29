@@ -161,6 +161,14 @@ export interface Providers {
   email?: boolean // a one-time code by email (absent on older servers)
 }
 
+// The puzzle the server hands out before a sign-in code (backend/app/pow.py)
+export interface PowChallenge {
+  salt: string
+  expires: number
+  bits: number // 0: no work is asked
+  signature: string
+}
+
 export interface EmailStart {
   expires_in: number // seconds the code is valid
 }

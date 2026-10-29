@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     # The address in their API documentation (ORS core 9.10, October 2026).
     ors_matrix_url: str = "https://api.heigit.org/openrouteservice/v2/matrix/foot-walking"
     email_login_dev_log: bool = False
+    # Proof of work before an emailed code is sent (app/pow.py): the leading
+    # zero bits asked of the visitor's browser, about 2^bits tries (16: around
+    # a second on a phone). 0 turns it off, as in the tests and the demo
+    # setups that do not send mail.
+    email_pow_bits: int = Field(default=0, ge=0, le=26)
 
     # Where the API and the web app live; used for redirect URLs and CORS.
     public_api_url: str = "http://localhost:8000"

@@ -52,9 +52,12 @@ from app.mailer import Mailer, mailer_from_settings
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.passwords import check_password, check_strength, set_password
+from app.pow import USED, Challenge, make_challenge
+from app.pow import verify as verify_pow
 from app.ratelimit import (
     address_key,
     client_address,
+    email_challenge_limit,
     email_start_limit,
     refresh_address_limit,
     refresh_limit,
@@ -69,6 +72,7 @@ from app.schemas import (
     MeOut,
     PasswordLoginIn,
     PasswordSetIn,
+    PowChallengeOut,
     ProvidersOut,
     TokenOut,
 )
@@ -171,6 +175,22 @@ def get_mailer(
     return mailer_from_settings(settings, http)
 
 
+@router.get(
+    "/auth/email/challenge",
+    response_model=PowChallengeOut,
+    dependencies=[Depends(email_challenge_limit)],
+)
+def email_challenge(settings: SettingsDep, now: NowDep):
+    """The puzzle to solve before asking for a code (app/pow.py). With the
+    work switched off it says so (bits 0), and the request needs none."""
+    if not settings.email_login_enabled():
+        raise HTTPException(404, "email_login_disabled")
+    if settings.email_pow_bits == 0:
+        return PowChallengeOut(salt="", expires=0, bits=0, signature="")
+    challenge = make_challenge(settings.jwt_secret_bytes(), settings.email_pow_bits, now)
+    return PowChallengeOut(**challenge.__dict__)
+
+
 @router.post(
     "/auth/email/start",
     status_code=status.HTTP_202_ACCEPTED,
@@ -191,6 +211,21 @@ def email_start(
     _require_allowed_origin(request, settings)  # a page elsewhere cannot send mail through us
     if not settings.email_login_enabled() or mailer is None:
         raise HTTPException(404, "email_login_disabled")
+    # The work first, before the database or the mail service are touched.
+    if settings.email_pow_bits:
+        if body.pow is None:
+            raise HTTPException(400, "pow_required")
+        try:
+            verify_pow(
+                settings.jwt_secret_bytes(),
+                Challenge(body.pow.salt, body.pow.expires, body.pow.bits, body.pow.signature),
+                body.pow.nonce,
+                now,
+                USED,
+                settings.email_pow_bits,
+            )
+        except Refusal as refusal:
+            raise HTTPException(refusal.status, refusal.code) from None
     try:
         email = normalize_email(body.email)
         if not domain_is_supported(db, email):

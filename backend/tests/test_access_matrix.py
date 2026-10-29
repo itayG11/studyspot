@@ -69,6 +69,7 @@ ACCESS = {
     ("GET", "/v1/places/{place_id}"): "api_key",
     ("GET", "/v1/places/{place_id}/forecast"): "api_key",
     ("POST", "/auth/demo/login"): "auth",
+    ("GET", "/auth/email/challenge"): "auth",
     ("POST", "/auth/email/start"): "auth",
     ("POST", "/auth/email/verify"): "auth",
     ("POST", "/auth/logout"): "auth",

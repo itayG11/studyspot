@@ -20,6 +20,8 @@ test('make a feed, read it signed out, remove it', async ({ page, playwright }) 
   await page.goto('/login')
   await page.getByLabel('כתובת המייל של המכללה').fill(email)
   await page.getByRole('button', { name: 'שליחת קוד' }).click()
+  // The code is sent after a small proof of work in the browser: wait for the code box
+  await expect(page.getByLabel('הקוד מהמייל')).toBeVisible()
   await page.getByLabel('הקוד מהמייל').fill(codeFor(email))
   await page.getByRole('button', { name: 'כניסה', exact: true }).click()
   await expect(page.getByRole('button', { name: 'התנתקות' }).first()).toBeVisible()
