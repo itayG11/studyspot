@@ -98,6 +98,11 @@ function Sign({
         </>
       )}
       <span className={styles.signBrand}>StudySpot · בניין {code.building_code}</span>
+      {code.suspected_shared && !fresh && !onScreen && (
+        <span role="status" className={`${styles.screenOnly} ${styles.suspectNote}`}>
+          חשד: ייתכן שהקוד משותף. כדאי להחליף אותו.
+        </span>
+      )}
       {fresh && (
         <span role="status" className={`${styles.screenOnly} ${styles.freshNote}`}>
           {onScreen ? 'קוד חדש. המסך עובר אליו לבד, ואין מה להדפיס.' : 'קוד חדש. השלט הישן כבר לא עובד, צריך להדפיס את זה.'}

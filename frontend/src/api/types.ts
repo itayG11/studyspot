@@ -229,6 +229,8 @@ export interface PlaceCode {
   check_in_mode: CheckInMode
   screen_active: boolean
   screen_last_seen_at: string | null
+  // Many more check-ins in the last hour than the place seats: a photo of the sign may be going round
+  suspected_shared: boolean
 }
 
 export interface ScreenLink {

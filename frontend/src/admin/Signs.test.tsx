@@ -19,12 +19,29 @@ vi.mock('./useQrImage', () => ({ useQrImage: () => 'data:image/png;base64,AAAA' 
 const code = (suffix: string): string => `p18.v1.${suffix.repeat(43)}`
 const sign: PlaceCode = {
   place_id: 18, building_code: 'EF', place_name: 'ספרייה', code: code('A'),
-  check_in_mode: 'sign', screen_active: false, screen_last_seen_at: null,
+  check_in_mode: 'sign', screen_active: false, screen_last_seen_at: null, suspected_shared: false,
 }
 
 beforeEach(() => vi.clearAllMocks())
 
 describe('Signs', () => {
+  it('marks a printed sign whose photo may be going round, and not a quiet one, and drops the mark once the code is replaced', async () => {
+    const user = userEvent.setup()
+    api.getCodes.mockResolvedValue([{ ...sign, suspected_shared: true }, { ...sign, place_id: 19, place_name: 'מעבדה', suspected_shared: false }])
+    api.revokeCode.mockResolvedValue({ ...sign, code: code('B'), suspected_shared: false })
+
+    render(<MemoryRouter><Signs /></MemoryRouter>)
+    const flagged = await screen.findByRole('listitem', { name: /ספרייה/ })
+    expect(flagged).toHaveTextContent('חשד: ייתכן שהקוד משותף. כדאי להחליף אותו.')
+    expect(screen.getByRole('listitem', { name: /מעבדה/ })).not.toHaveTextContent('חשד')
+
+    const [revoke] = screen.getAllByRole('button', { name: 'לבטל את הקוד' })
+    await user.click(revoke!)
+    await user.click(screen.getByRole('button', { name: 'כן, קוד חדש' }))
+    expect(await screen.findByText(/קוד חדש. השלט הישן כבר לא עובד/)).toBeInTheDocument()
+    expect(screen.queryByText(/חשד: ייתכן/)).toBeNull()
+  })
+
   it('a place switched to a screen, its code revoked, and switched back, ends on a sign with the new code', async () => {
     const user = userEvent.setup()
     api.getCodes.mockResolvedValue([sign])

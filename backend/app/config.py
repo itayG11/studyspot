@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # The address in their API documentation (ORS core 9.10, October 2026).
     ors_matrix_url: str = "https://api.heigit.org/openrouteservice/v2/matrix/foot-walking"
     email_login_dev_log: bool = False
+    # How long a request waits for a free database connection before it is
+    # answered "busy" (503). The pool is small (15); the old wait, 30 seconds,
+    # let a crowd stop the server for minutes (docs/load/).
+    db_pool_timeout: float = Field(default=5, gt=0, le=60)
     # Proof of work before an emailed code is sent (app/pow.py): the leading
     # zero bits asked of the visitor's browser, about 2^bits tries (16: around
     # a second on a phone). 0 turns it off, as in the tests and the demo

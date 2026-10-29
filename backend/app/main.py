@@ -14,6 +14,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from app.activity import Activity
 from app.api import (
@@ -148,6 +149,14 @@ def health() -> dict[str, str]:
 async def validation_failed(request: Request, error: RequestValidationError) -> JSONResponse:
     errors = [{key: value for key, value in item.items() if key not in ("input", "ctx", "url")} for item in error.errors()]
     return Utf8JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
+
+
+# Every database connection taken: say so at once and ask the browser to try
+# again in a moment (app/config.py, db_pool_timeout).
+@app.exception_handler(PoolTimeout)
+async def server_busy(request: Request, error: PoolTimeout) -> JSONResponse:
+    logger.warning("database pool exhausted: %s %s", request.method, request.url.path)
+    return JSONResponse({"detail": "server_busy"}, status_code=503, headers={"Retry-After": "2"})
 
 
 # A body over the cap never reaches the app (app/body_limit.py). Added

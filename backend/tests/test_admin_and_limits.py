@@ -212,3 +212,75 @@ def test_admin_writes_are_rate_limited(client, braude, admin):
     statuses = [client.post(f"/admin/buildings/{nx.id}/location", json=body).status_code for _ in range(31)]
     assert statuses[:30].count(429) == 0
     assert statuses[30] == 429
+
+
+# --- A sign whose photo is shared ---------------------------------------------------
+#
+# A printed code is the same for everyone, so a photo of it works from home.
+# The mark shows the institution's admin a place where many more people checked
+# in over the last hour than a place that size could seat: they decide whether
+# to replace the code (the "revoke" button above). It is a hint, never a block.
+
+
+def _check_in_many(session, braude, place, count, minutes_ago=10, simulated=False):
+    from datetime import timedelta
+
+    from conftest import SUNDAY_10AM
+
+    from app.models import CheckIn
+
+    for n in range(count):
+        user = User(institution_id=braude.id, email=f"x{place.id}-{n}@braude.example", display_name=f"X{n}")
+        session.add(user)
+        session.flush()
+        started = SUNDAY_10AM - timedelta(minutes=minutes_ago)
+        session.add(
+            CheckIn(
+                institution_id=braude.id, user_id=user.id, place_id=place.id, started_at=started,
+                ended_at=started + timedelta(minutes=2), end_reason="checkout", simulated=simulated,
+                expires_at=started + timedelta(hours=2),
+            )
+        )
+    session.flush()
+
+
+def _flags(client, admin):
+    client.user = admin
+    return {c["place_id"]: c["suspected_shared"] for c in client.get("/admin/institutions/braude/codes").json()}
+
+
+def test_a_quiet_place_is_not_marked(client, braude, admin, session):
+    area = place_named(braude, "L", "מתחם לימוד")
+    _check_in_many(session, braude, area, 3)
+    assert not any(_flags(client, admin).values())
+
+
+def test_a_place_with_far_more_check_ins_than_seats_is_marked(client, braude, admin, session):
+    area = place_named(braude, "L", "מתחם לימוד")
+    _check_in_many(session, braude, area, area.capacity * 2 + 1)
+    flags = _flags(client, admin)
+    assert flags[area.id] is True
+    assert sum(flags.values()) == 1  # only that one
+
+
+def test_old_check_ins_do_not_count(client, braude, admin, session):
+    area = place_named(braude, "L", "מתחם לימוד")
+    _check_in_many(session, braude, area, area.capacity * 2 + 1, minutes_ago=180)
+    assert not _flags(client, admin)[area.id]
+
+
+def test_made_up_demo_check_ins_do_not_count(client, braude, admin, session):
+    area = place_named(braude, "L", "מתחם לימוד")
+    _check_in_many(session, braude, area, area.capacity * 2 + 1, simulated=True)
+    assert not _flags(client, admin)[area.id]
+
+
+def test_the_answer_to_replacing_a_code_carries_no_mark(client, braude, admin, session):
+    # The list may keep the mark for up to an hour after the code is replaced,
+    # since the earlier check-ins are still within the hour (a known limit:
+    # no column records when the code was replaced). The page hides the mark
+    # on a sign it has just replaced.
+    area = place_named(braude, "L", "מתחם לימוד")
+    _check_in_many(session, braude, area, area.capacity * 2 + 1)
+    client.user = admin
+    assert client.post(f"/admin/places/{area.id}/revoke-code").json()["suspected_shared"] is False

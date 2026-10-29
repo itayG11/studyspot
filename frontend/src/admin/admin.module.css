@@ -143,6 +143,14 @@
   animation: stamp 480ms var(--ease-out) both;
 }
 
+.suspectNote {
+  padding: var(--s-2) var(--s-3);
+  color: var(--busy);
+  background: var(--busy-tint);
+  border-radius: var(--r-md);
+  font-weight: 600;
+}
+
 .freshNote {
   padding: var(--s-2) var(--s-3);
   color: var(--busy);

@@ -6,6 +6,7 @@ const MESSAGES: Record<string, string> = {
   network_error: 'אין חיבור לשרת. בדוק את החיבור לאינטרנט ונסה שוב.',
   unknown_error: 'משהו השתבש. נסה שוב.',
   validation_error: 'חלק מהפרטים לא תקינים.',
+  server_busy: 'השרת עמוס כרגע. נסה שוב בעוד כמה שניות.',
   too_many_requests: 'יותר מדי בקשות. חכה רגע ונסה שוב.',
 
   // Signing in
