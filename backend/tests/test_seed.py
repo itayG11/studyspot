@@ -139,7 +139,7 @@ def test_seeding_again_adds_missing_login_rules(session: Session, braude: Instit
 
 
 def test_every_braude_building_is_on_the_map(braude: Institution):
-    # Positions copied by Itay from Google Maps (docs/CAMPUS_DATA.md).
+    # Positions copied from Google Maps (docs/CAMPUS_DATA.md).
     positions = {b.code: (b.latitude, b.longitude) for b in braude.buildings}
     assert positions["M"] == (Decimal("32.912751"), Decimal("35.282293"))
     assert positions["P"] == (Decimal("32.917067"), Decimal("35.281550"))

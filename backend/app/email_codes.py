@@ -204,8 +204,8 @@ def check_code(db: Session, email: str, code: str, now: datetime, key: bytes, id
 
 def identity_for(email: str) -> ProviderIdentity:
     """The address is the identity: whoever reads its inbox is its owner.
-    The shown name is made from the part before the @ ("itay.gabay" ->
-    "Itay Gabay"); it is never used to decide anything."""
+    The shown name is made from the part before the @ ("dana.levi" ->
+    "Dana Levi"); it is never used to decide anything."""
     local = email.split("@", 1)[0]
     words = [w for w in re.split(r"[._+-]+", local) if w]
     name = " ".join(w.capitalize() for w in words) or local

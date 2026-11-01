@@ -1,7 +1,7 @@
 """Usage: python3 assemble2.py <video_dir> <narration en|he> <out.mp4>
 Cuts the recorded scene windows (dropping page loads and waits), joins them, and lays each narration
 sentence at the start of its scene, so the voice never stops."""
-import json, subprocess, sys, glob
+import json, os, subprocess, sys, glob
 vdir, narr, out = sys.argv[1:4]
 scenes = json.load(open(f"{vdir}/scenes.json"))
 webm = glob.glob(f"{vdir}/*.webm")[0]
@@ -9,7 +9,7 @@ BOUNDS = {
     "en": [0, 4.87, 13.45, 18.22, 23.22, 28.09, 34.97, 38.11],
     "he": [0, 4.96, 13.47, 18.57, 23.40, 28.66, 35.95, 38.93],
 }[narr]
-mp3 = f"/tmp/claude-0/-home-user-studyspot/eb713306-e758-579b-ae3b-e9afc86229a1/scratchpad/audio2/{narr}.mp3"
+mp3 = os.path.join(os.environ.get("NARRATION_DIR", "audio"), f"{narr}.mp3")
 vf, vl, af, al, t = [], [], [], [], 0.0
 for i, sc in enumerate(scenes):
     d = sc["end"] - sc["start"]

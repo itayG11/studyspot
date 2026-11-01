@@ -111,7 +111,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 **אחרי שעבד:** ספר לי מה קרה. אם תרצה להיות מנהל המוסד, הרץ:
 
 ```bash
-python -m app.admin grant-role --email Itay.Gabay@e.braude.ac.il institution_admin
+python -m app.admin grant-role --email name.surname@e.braude.ac.il institution_admin
 ```
 
 ---

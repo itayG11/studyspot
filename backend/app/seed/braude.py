@@ -1,6 +1,6 @@
 """Braude College campus data, as collected in docs/CAMPUS_DATA.md (stage 1).
 
-Collected from the field by Itay. Room numbers are demo values that follow
+Collected from the field by the project author. Room numbers are demo values that follow
 the rule "floor 0 = rooms 1xx, floor 1 = rooms 2xx"; they are not the real
 room numbers. The exam period dates are invented and marked as demo.
 """
@@ -22,7 +22,7 @@ EXAM_PERIOD = "exam-period"  # tag used below to mark places open 24/7 in exams
 STUDENTS_TENANT = "49329ec4-6819-4a03-b6ae-bd7be2fcf6ab"  # e.braude.ac.il
 STAFF_TENANT = "d4b0e69c-5394-4005-977c-7817ac32ca5e"  # braude.ac.il
 
-# "position" is (latitude, longitude), copied by Itay from Google Maps on
+# "position" is (latitude, longitude), copied from Google Maps on
 # 2026-10-07 (the middle of each roof), rounded to the 6 decimals the
 # column keeps (about 10 cm).
 

@@ -1,7 +1,7 @@
 // An automatic accessibility check (axe) on every main screen, signed out
 // and signed in, at a computer width and at a phone width. axe finds about
 // a third of real problems: keyboard use and screen readers are still
-// checked by hand (docs/INTERVIEW_REPORT.md).
+// checked by hand.
 
 import { isMapTile } from './tiles.ts'
 import { AxeBuilder } from '@axe-core/playwright'

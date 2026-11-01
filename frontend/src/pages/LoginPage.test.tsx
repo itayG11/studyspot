@@ -111,7 +111,7 @@ describe('LoginPage return path', () => {
 })
 
 describe('LoginPage email code', () => {
-  const STUDENT = { ...ME, email: 'itay.gabay@e.braude.ac.il', display_name: 'Itay Gabay' }
+  const STUDENT = { ...ME, email: 'dana.levi@e.braude.ac.il', display_name: 'Dana Levi' }
   // A new code is offered a minute after the last: the clock is a fake one
   // that also runs on its own, so the rest of the page works as usual.
   const aMinutePasses = () => act(() => vi.advanceTimersByTimeAsync(60_000))
@@ -148,10 +148,10 @@ describe('LoginPage email code', () => {
 
   it('sends a code, then signs in with it and goes to the map', async () => {
     const router = renderLogin()
-    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), ' Itay.Gabay@e.braude.ac.il ')
+    await userEvent.type(await screen.findByLabelText('כתובת המייל של המכללה'), ' Dana.Levi@e.braude.ac.il ')
     await userEvent.click(screen.getByRole('button', { name: 'שליחת קוד' }))
-    expect(bodyOf('/auth/email/start')).toEqual({ email: 'Itay.Gabay@e.braude.ac.il' })
-    expect(await screen.findByText(/שלחנו קוד בן 6 ספרות אל/)).toHaveTextContent('itay.gabay@e.braude.ac.il')
+    expect(bodyOf('/auth/email/start')).toEqual({ email: 'Dana.Levi@e.braude.ac.il' })
+    expect(await screen.findByText(/שלחנו קוד בן 6 ספרות אל/)).toHaveTextContent('dana.levi@e.braude.ac.il')
 
     const code = screen.getByLabelText('הקוד מהמייל')
     expect(code).toHaveAttribute('autocomplete', 'one-time-code')
@@ -161,7 +161,7 @@ describe('LoginPage email code', () => {
     await userEvent.click(screen.getByRole('button', { name: 'כניסה' }))
     expect(await screen.findByText('מפה')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
-    expect(bodyOf('/auth/email/verify')).toEqual({ email: 'Itay.Gabay@e.braude.ac.il', code: '123456' })
+    expect(bodyOf('/auth/email/verify')).toEqual({ email: 'Dana.Levi@e.braude.ac.il', code: '123456' })
   })
 
   it('says in Hebrew when the address is not a college one', async () => {

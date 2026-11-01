@@ -86,7 +86,7 @@ def identity(session, email=STUDENT) -> UserIdentity | None:
         ("Qwerty!2024", "password_too_common"),
         ("P@ssw0rd!2026", "password_too_common"),  # digits and symbols for letters
         ("L3tm3in!2026", "password_too_common"),
-        ("Itay.Gabay#2026", "password_has_email"),
+        ("Dana.Levi#2026", "password_has_email"),
     ],
 )
 def test_a_weak_password_is_refused_with_its_reason(password, reason):

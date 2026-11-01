@@ -104,7 +104,7 @@ def microsoft_claims(tenant=STUDENTS_TENANT, oid="oid-1", **extra) -> dict:
     return {
         "iss": f"https://login.microsoftonline.com/{tenant}/v2.0",
         "sub": "pairwise-sub", "tid": tenant, "oid": oid,
-        "preferred_username": "Itay.Gabay@e.braude.ac.il", "name": "Itay Gabay",
+        "preferred_username": "Dana.Levi@e.braude.ac.il", "name": "Dana Levi",
         **extra,
     }
 
@@ -172,7 +172,7 @@ def test_braude_student_signs_in(auth_client, fake, session, braude):
     assert me.status_code == 200
     body = me.json()
     assert (body["institution_slug"], body["role"]) == ("braude", "student")
-    assert body["email"] == "itay.gabay@e.braude.ac.il"
+    assert body["email"] == "dana.levi@e.braude.ac.il"
     identity = session.scalars(select(UserIdentity)).one()
     assert identity.subject == f"{STUDENTS_TENANT}:oid-1"
 
@@ -443,7 +443,7 @@ def test_a_personal_microsoft_account_joins_the_open_campus(auth_client, fake, s
 
 def test_a_personal_microsoft_account_never_reaches_braude(auth_client, fake, braude):
     # Even with a Braude-looking address: the tenant decides, not the email.
-    claims = microsoft_claims(tenant=CONSUMERS_TENANT, preferred_username="Itay.Gabay@e.braude.ac.il")
+    claims = microsoft_claims(tenant=CONSUMERS_TENANT, preferred_username="Dana.Levi@e.braude.ac.il")
     assert redirect_error(finish_login(auth_client, fake, claims)) == "institution_not_supported"
 
 

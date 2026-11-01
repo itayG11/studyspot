@@ -37,7 +37,7 @@ from app.models import AuthProvider, EmailSignInCode, Institution, InstitutionLo
 from app.seed import seed_demo
 
 FRONTEND = "https://app.example"
-STUDENT = "Itay.Gabay@e.braude.ac.il"
+STUDENT = "Dana.Levi@e.braude.ac.il"
 
 
 class FakeMailer:
@@ -146,14 +146,14 @@ def test_the_code_hash_depends_on_the_secret_the_email_and_the_code():
 
 @pytest.mark.parametrize(
     "raw, clean",
-    [("  Itay.Gabay@E.Braude.AC.IL ", "itay.gabay@e.braude.ac.il"), ("a@braude.ac.il", "a@braude.ac.il")],
+    [("  Dana.Levi@E.Braude.AC.IL ", "dana.levi@e.braude.ac.il"), ("a@braude.ac.il", "a@braude.ac.il")],
 )
 def test_emails_are_trimmed_and_lowercased(raw, clean):
     assert normalize_email(raw) == clean
 
 
 @pytest.mark.parametrize(
-    "raw", ["", "no-at-sign", "itay+2@e.braude.ac.il", '"a"@e.braude.ac.il', "itáy@e.braude.ac.il", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
+    "raw", ["", "no-at-sign", "dana+2@e.braude.ac.il", '"a"@e.braude.ac.il', "dána@e.braude.ac.il", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
 )
 def test_malformed_emails_are_refused(raw):
     with pytest.raises(Refusal) as refused:
@@ -169,7 +169,7 @@ def test_a_braude_student_gets_a_six_digit_code(client, mailer, session):
     assert response.status_code == 202
     assert len(mailer.sent) == 1
     to, code = mailer.sent[0]
-    assert to == "itay.gabay@e.braude.ac.il"
+    assert to == "dana.levi@e.braude.ac.il"
     assert code.isdigit() and len(code) == 6
     stored = session.scalars(select(EmailSignInCode)).one()
     assert stored.code_hash != code and code not in stored.code_hash  # only the HMAC is kept
@@ -291,11 +291,11 @@ def test_the_right_code_signs_a_new_student_in_to_braude(client, mailer, session
     body = response.json()
     assert body["user"]["institution_slug"] == "braude"
     assert body["user"]["role"] == "student"
-    assert body["user"]["email"] == "itay.gabay@e.braude.ac.il"
-    assert body["user"]["display_name"] == "Itay Gabay"
+    assert body["user"]["email"] == "dana.levi@e.braude.ac.il"
+    assert body["user"]["display_name"] == "Dana Levi"
     assert "studyspot_refresh" in response.cookies
     identity = session.scalars(select(UserIdentity).where(UserIdentity.provider == AuthProvider.EMAIL)).one()
-    assert identity.subject == "itay.gabay@e.braude.ac.il"
+    assert identity.subject == "dana.levi@e.braude.ac.il"
     me = client.get("/me", headers={"Authorization": f"Bearer {body['access_token']}"})
     assert me.json()["id"] == body["user"]["id"]
 
@@ -311,10 +311,10 @@ def test_a_staff_address_joins_braude_as_a_student_too(client, mailer):
 def test_signing_in_again_is_the_same_user(client, mailer, session):
     start(client)
     first = verify(client, mailer.last_code()).json()["user"]["id"]
-    start(client, "  ITAY.GABAY@e.braude.ac.il")
-    second = verify(client, mailer.last_code(), "itay.gabay@E.braude.ac.il").json()["user"]["id"]
+    start(client, "  DANA.LEVI@e.braude.ac.il")
+    second = verify(client, mailer.last_code(), "dana.levi@E.braude.ac.il").json()["user"]["id"]
     assert first == second
-    assert session.scalar(select(func.count()).select_from(User).where(User.email == "itay.gabay@e.braude.ac.il")) == 1
+    assert session.scalar(select(func.count()).select_from(User).where(User.email == "dana.levi@e.braude.ac.il")) == 1
 
 
 def test_a_code_works_once(client, mailer):
@@ -469,10 +469,10 @@ def test_a_user_of_the_open_campus_whose_address_now_has_a_rule_moves_to_it(make
     # The code just proved the address, and the rule says it is Braude's.
     braude.is_active = True  # only an open institution takes students
     other = seed_demo(session)
-    user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
+    user = User(institution_id=other.id, email="dana.levi@e.braude.ac.il", display_name="X")
     session.add(user)
     session.flush()
-    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="dana.levi@e.braude.ac.il"))
     session.flush()
     start(client)
     assert verify(client, mailer.last_code()).status_code == 200
@@ -486,10 +486,10 @@ def test_a_user_of_a_real_institution_with_the_same_address_is_refused(client, m
     session.add(other)
     session.flush()
     other.login_rules.append(InstitutionLoginRule(provider=AuthProvider.EMAIL, value="other.ac.il"))
-    user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
+    user = User(institution_id=other.id, email="dana.levi@e.braude.ac.il", display_name="X")
     session.add(user)
     session.flush()
-    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="dana.levi@e.braude.ac.il"))
     session.flush()
     start(client)
     response = verify(client, mailer.last_code())

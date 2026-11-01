@@ -3,7 +3,7 @@
 // stuck, every stop shows a focus ring, a window as narrow as 200% zoom on
 // a laptop (or a 320 px phone) has no sideways scroll, and Windows
 // high-contrast mode (forced colors) keeps the page readable. A screen
-// reader is still checked by hand (docs/LAUNCH_GUIDE.md).
+// reader is still checked by hand.
 
 import { isMapTile } from './tiles.ts'
 import { expect, test, type Page } from '@playwright/test'
