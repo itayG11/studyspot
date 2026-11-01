@@ -161,6 +161,8 @@ export async function demoLogin(persona: DemoPersona): Promise<Me> {
 // First a puzzle: each request for a code sends an email, so the server asks
 // for a second of work from the browser before it sends one (src/auth/pow.ts).
 // A puzzle that expired or was used meanwhile gets one fresh try.
+const BUSY_RETRY_MS = 2000 // the server's Retry-After on a 503
+
 export async function emailStart(email: string): Promise<EmailStart> {
   for (let attempt = 0; ; attempt++) {
     const puzzle = await send<PowChallenge>('/auth/email/challenge', {})
@@ -168,8 +170,11 @@ export async function emailStart(email: string): Promise<EmailStart> {
     try {
       return await send<EmailStart>('/auth/email/start', { method: 'POST', body: pow ? { email, pow } : { email } })
     } catch (error) {
-      const stale = error instanceof ApiError && (error.code === 'pow_expired' || error.code === 'pow_used')
-      if (!stale || attempt > 0) throw error
+      // An expired, used or (after the server raised the difficulty) too easy
+      // puzzle: a fresh one. A busy server (503): the same, after its Retry-After.
+      const retryable = error instanceof ApiError && ['pow_expired', 'pow_used', 'pow_invalid', 'server_busy'].includes(error.code)
+      if (!retryable || attempt > 0) throw error
+      if (error.code === 'server_busy') await new Promise((resolve) => setTimeout(resolve, BUSY_RETRY_MS))
     }
   }
 }

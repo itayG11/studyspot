@@ -41,9 +41,9 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 
 - Every stage ended with tests, and a separate review for code and for security.
 - The live site was checked in real browsers and on a real phone, not only in tests.
-- 1440 server tests (`pytest`, on a real PostgreSQL).
-- 611 web app unit tests (`vitest`).
-- Browser tests (`Playwright`, with an `axe` accessibility check), and more on desktop, iPad and phone.
+- 1441 server tests (`pytest`, on a real PostgreSQL).
+- 613 web app unit tests (`vitest`).
+- 51 browser tests (`Playwright`, with `axe` and keyboard accessibility checks), and 39 more on desktop, iPad and phone.
 - Real browsers on BrowserStack: Chrome, Edge, Firefox and WebKit on desktop, a real Pixel phone and an iPhone. See [the results](docs/browserstack/RESULTS.md).
 - 29 database tables. Every API route has a row in an access table that says who may call it.
 

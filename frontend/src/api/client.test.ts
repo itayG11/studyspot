@@ -190,6 +190,32 @@ describe('email sign-in code', () => {
     expect(calledPaths()).toEqual(['/auth/email/challenge', '/auth/email/start', '/auth/email/challenge', '/auth/email/start'])
   })
 
+  it('also asks again when the server raised the difficulty meanwhile', async () => {
+    fetchMock
+      .mockResolvedValueOnce(challenge(4))
+      .mockResolvedValueOnce(json(400, { detail: 'pow_invalid' }))
+      .mockResolvedValueOnce(challenge(6))
+      .mockResolvedValueOnce(json(202, { expires_in: 600 }))
+    await expect(emailStart('a@b.c')).resolves.toEqual({ expires_in: 600 })
+  })
+
+  it('waits a moment and tries again when the server is busy', async () => {
+    vi.useFakeTimers()
+    try {
+      fetchMock
+        .mockResolvedValueOnce(challenge(0))
+        .mockResolvedValueOnce(json(503, { detail: 'server_busy' }))
+        .mockResolvedValueOnce(challenge(0))
+        .mockResolvedValueOnce(json(202, { expires_in: 600 }))
+      const result = emailStart('a@b.c')
+      await vi.advanceTimersByTimeAsync(2000)
+      await expect(result).resolves.toEqual({ expires_in: 600 })
+      expect(fetchMock).toHaveBeenCalledTimes(4)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('gives up after one retry', async () => {
     fetchMock
       .mockResolvedValueOnce(challenge(4))
