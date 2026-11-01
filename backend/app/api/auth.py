@@ -56,9 +56,10 @@ from app.pow import USED, Challenge, make_challenge
 from app.pow import verify as verify_pow
 from app.ratelimit import (
     address_key,
+    charge_email_start,
     client_address,
     email_challenge_limit,
-    email_start_limit,
+    email_prework_limit,
     refresh_address_limit,
     refresh_limit,
     sign_in_limit,
@@ -195,7 +196,7 @@ def email_challenge(settings: SettingsDep, now: NowDep):
     "/auth/email/start",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=EmailStartOut,
-    dependencies=[Depends(email_start_limit)],
+    dependencies=[Depends(email_prework_limit)],
 )
 def email_start(
     body: EmailStartIn,
@@ -226,6 +227,8 @@ def email_start(
             )
         except Refusal as refusal:
             raise HTTPException(refusal.status, refusal.code) from None
+    # Only a request that did the work counts against the strict limits.
+    charge_email_start(request, settings.trusted_proxy_hops)
     try:
         email = normalize_email(body.email)
         if not domain_is_supported(db, email):

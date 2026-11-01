@@ -7,6 +7,8 @@ visitor had long given up and the server kept working on stale requests
 a few seconds and answers 503 with Retry-After, so the browser asks again.
 """
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -50,7 +52,7 @@ def test_a_busy_pool_really_times_out_soon():
     # A pool of one, one connection held: the second asker gives up after the timeout
     import time
 
-    engine = create_engine("postgresql+psycopg://studyspot:studyspot@localhost/studyspot", pool_size=1, max_overflow=0, pool_timeout=0.3)
+    engine = create_engine(os.environ["TEST_DATABASE_URL"], pool_size=1, max_overflow=0, pool_timeout=0.3)
     held = engine.connect()
     started = time.monotonic()
     with pytest.raises(PoolTimeout):

@@ -21,7 +21,7 @@ from app.clock import get_now
 from app.config import Settings, get_settings
 from app.errors import Refusal
 from app.main import app
-from app.pow import CHALLENGE_LIFETIME, UsedSalts, make_challenge, solve, verify
+from app.pow import CHALLENGE_LIFETIME, Challenge, UsedSalts, make_challenge, solve, verify
 
 SECRET = b"a-test-secret-that-is-at-least-32-bytes-long!!"
 NOW = SUNDAY_10AM
@@ -178,17 +178,24 @@ def test_without_the_work_no_mail_is_sent(make_client, mailer):
 
 def test_a_wrong_answer_sends_no_mail(make_client, mailer):
     client = make_client(email_pow_bits=BITS)
-    body = pow_body(get_challenge(client))
-    body["nonce"] += 1
-    # One in 256 neighbours is a solution too: take a failing one
-    while not _refuses(client, body):
-        body["nonce"] += 1
+    data = get_challenge(client)
+    body = pow_body(data)
+    # A number that is certainly not a solution, picked by the rule itself
+    challenge = Challenge(data["salt"], data["expires"], data["bits"], data["signature"])
+    body["nonce"] = next(n for n in range(10_000) if not _is_solution(challenge, n))
+    response = client.post("/auth/email/start", json={"email": STUDENT, "pow": body})
+    assert (response.status_code, response.json()["detail"]) == (400, "pow_invalid")
     assert mailer.sent == []
 
 
-def _refuses(client, body) -> bool:
-    response = client.post("/auth/email/start", json={"email": STUDENT, "pow": body})
-    return response.status_code == 400 and response.json()["detail"] == "pow_invalid"
+def test_requests_without_the_work_do_not_use_up_the_strict_limits(make_client, mailer):
+    # A script could otherwise fill the sign-in limits with free refusals and
+    # lock real students out: only a request that did the work is counted.
+    client = make_client(email_pow_bits=BITS)
+    for _ in range(60):  # past the 30 per 10 minutes of the strict limit
+        assert client.post("/auth/email/start", json={"email": STUDENT}).status_code == 400
+    response = client.post("/auth/email/start", json={"email": STUDENT, "pow": pow_body(get_challenge(client))})
+    assert response.status_code == 202
 
 
 def test_the_same_work_cannot_be_used_twice(make_client, mailer):

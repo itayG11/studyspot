@@ -5,15 +5,20 @@ Every request for a code sends an email, and the day's email quota is small
 it all up and leave real students without one. Before it sends anything the
 server hands out a small puzzle: find a number that, written after a random
 salt, makes a SHA-256 hash start with `bits` zero bits. Finding it takes
-about 2^bits tries and checking it takes one, so a visitor pays about a
-second once, and a script pays that for every request.
+about 2^bits tries and checking it takes one. A phone pays about a second or
+more, once. A script written for speed pays far less (native code hashes
+much faster than a browser), so this is a speed bump, not a wall: the real
+limits are the per-address ones in app/ratelimit.py, which count a request
+only after its work is checked.
 
 It is not a test that the visitor is a person (that is what a CAPTCHA does):
 it makes bulk requests cost time. Nothing is stored for the puzzle itself,
 like the screen codes (app/codes.py): the salt, expiry and difficulty are
 signed with the server's secret, so a visitor cannot make up an easier one.
 Only the salts already spent are kept, in memory, so one solution cannot be
-used twice. With several servers that table would move to a shared store.
+used twice. A restart forgets them (a solved puzzle then works again until it
+expires, 5 minutes), and a full table drops its oldest: each costs one extra
+email at most. With several servers the table would move to a shared store.
 """
 
 import hashlib

@@ -182,6 +182,21 @@ sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, evict=True)
 # still has room, since a session lasts a week.
 _email_start_10_minutes = per_ip("email-start", limit=30, window_seconds=600, total_limit=200)
 _email_start_day = per_ip("email-start-day", limit=50, window_seconds=86_400)
+# A request without the work done is refused cheaply and must not use up the
+# strict limits above (or a script could fill their site-wide total with
+# unpaid requests and lock real students out): they count only once the work
+# is checked (charge_email_start, called by the route). This one is loose, for
+# the unpaid ones.
+email_prework_limit = per_ip("email-start-prework", limit=120, window_seconds=60, evict=True)
+
+
+def charge_email_start(request: Request, trusted_hops: int) -> None:
+    """The strict limits of a request for a code, for the route to call after
+    the work is checked."""
+    _email_start_10_minutes(request, trusted_hops)
+    _email_start_day(request, trusted_hops)
+
+
 # The puzzle is free for the server (signed, nothing stored), but each costs a
 # visitor's time to solve, so asking for many does a script no good: this only
 # keeps one address from flooding the route.
