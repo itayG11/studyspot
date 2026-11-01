@@ -116,6 +116,7 @@ One container serves the web app and the API from the same address, so the sign-
 
 ## More
 
+- [Design notes](docs/design/README.md): architecture, how double booking is prevented, decisions and trade-offs, and testing.
 - [API for institutions](docs/API.md), and on the live site the `/developers` page and `/api/v1/openapi.json`.
 - [Browser and device results](docs/browserstack/RESULTS.md).
 
