@@ -1,5 +1,5 @@
 // The note about cookies, at the bottom of the page until "got it". Only a
-// notice, not a consent: the site's two cookies are needed for signing in
+// notice, not a consent: the site's three cookies are needed for signing in
 // (see the privacy page), so there is nothing to refuse. Remembered on this
 // device; when storage is refused (private mode) the note comes back.
 export const COOKIE_NOTE_KEY = 'studyspot:cookie-note-seen'

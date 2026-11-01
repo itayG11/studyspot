@@ -104,7 +104,7 @@ def microsoft_claims(tenant=STUDENTS_TENANT, oid="oid-1", **extra) -> dict:
     return {
         "iss": f"https://login.microsoftonline.com/{tenant}/v2.0",
         "sub": "pairwise-sub", "tid": tenant, "oid": oid,
-        "preferred_username": "Itay.Gabay@e.braude.ac.il", "name": "Itay Gabay",
+        "preferred_username": "Dana.Levi@e.braude.ac.il", "name": "Dana Levi",
         **extra,
     }
 
@@ -172,7 +172,7 @@ def test_braude_student_signs_in(auth_client, fake, session, braude):
     assert me.status_code == 200
     body = me.json()
     assert (body["institution_slug"], body["role"]) == ("braude", "student")
-    assert body["email"] == "itay.gabay@e.braude.ac.il"
+    assert body["email"] == "dana.levi@e.braude.ac.il"
     identity = session.scalars(select(UserIdentity)).one()
     assert identity.subject == f"{STUDENTS_TENANT}:oid-1"
 
@@ -443,7 +443,7 @@ def test_a_personal_microsoft_account_joins_the_open_campus(auth_client, fake, s
 
 def test_a_personal_microsoft_account_never_reaches_braude(auth_client, fake, braude):
     # Even with a Braude-looking address: the tenant decides, not the email.
-    claims = microsoft_claims(tenant=CONSUMERS_TENANT, preferred_username="Itay.Gabay@e.braude.ac.il")
+    claims = microsoft_claims(tenant=CONSUMERS_TENANT, preferred_username="Dana.Levi@e.braude.ac.il")
     assert redirect_error(finish_login(auth_client, fake, claims)) == "institution_not_supported"
 
 
@@ -563,3 +563,21 @@ def test_new_open_campus_users_are_capped_per_day(auth_client, fake, session, op
     # Someone who already has an account still gets in.
     again = finish_login(auth_client, fake, personal_google(sub="g-1", email="one@gmail.com"), provider="google")
     assert redirect_error(again) is None
+
+
+def test_the_pending_login_cookie_has_a_key_of_its_own():
+    """The cookie and the access token must not be signed with the same key:
+    an access token must never pass as a pending login, or the other way."""
+    import jwt as pyjwt
+
+    from app.api import auth as auth_api
+    from app.config import get_settings
+    from app.errors import Refusal
+
+    settings = get_settings()
+    claims = {"provider": "google", "state": "s", "nonce": "n", "verifier": "v", "exp": int((SUNDAY_10AM + timedelta(minutes=5)).timestamp())}
+    with_access_key = pyjwt.encode(claims, settings.jwt_secret_bytes(), algorithm="HS256")
+    with pytest.raises(Refusal):
+        auth_api._read_pending(with_access_key, "google", SUNDAY_10AM, settings)
+    own = pyjwt.encode(claims, auth_api.login_key(settings.jwt_secret_bytes()), algorithm="HS256")
+    assert auth_api._read_pending(own, "google", SUNDAY_10AM, settings)["state"] == "s"

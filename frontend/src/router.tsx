@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceRedirect, PlacesRedirect } from './pages/PlacesRedirect'
+import { RouteErrorPage } from './pages/RouteErrorPage'
 import { SpacePage } from './features/space/SpacePage'
 
 // Pages few visitors open first load when asked for (wave 7.3): the home
@@ -17,7 +18,7 @@ import { SpacePage } from './features/space/SpacePage'
 // each one's code, arrive on the way there. A guard stays in front.
 const page = (load: () => Promise<ComponentType>) => ({ lazy: async () => ({ Component: await load() }) })
 
-export const routes = [
+const pageRoutes = [
   // The front page: the visitor's own institution, or the demo campus.
   { path: '/', element: <ToHomeInstitution /> },
   // Pages with one address for every institution. They show the visitor's
@@ -87,5 +88,9 @@ export const routes = [
     ],
   },
 ]
+
+// A crash in any page lands on RouteErrorPage (reported, in Hebrew), not on
+// the router's own English page.
+export const routes = [{ ErrorBoundary: RouteErrorPage, children: pageRoutes }]
 
 export const router = createBrowserRouter(routes)

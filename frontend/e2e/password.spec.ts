@@ -25,6 +25,8 @@ test('a code, then a password; out, and back in with the password', async ({ pag
   await expect(page.getByRole('heading', { name: 'יצירת סיסמה' })).toBeVisible()
   await page.getByLabel('כתובת המייל של המכללה').fill(email)
   await page.getByRole('button', { name: 'שליחת קוד' }).click()
+  // The code is sent after a small proof of work in the browser: wait for the code box
+  await expect(page.getByLabel('הקוד מהמייל')).toBeVisible()
   await page.getByLabel('הקוד מהמייל').fill(codeFor(email))
   await page.getByLabel('סיסמה חדשה').fill(PASSWORD)
   await page.getByRole('button', { name: 'שמירת הסיסמה' }).click()
@@ -54,6 +56,8 @@ test('a code, then a password; out, and back in with the password', async ({ pag
   await page.screenshot({ path: 'test-results/fix-password-reset.png' })
   await page.getByLabel('כתובת המייל של המכללה').fill(email)
   await page.getByRole('button', { name: 'שליחת קוד' }).click()
+  // The code is sent after a small proof of work in the browser: wait for the code box
+  await expect(page.getByLabel('הקוד מהמייל')).toBeVisible()
   await page.getByLabel('הקוד מהמייל').fill(codeFor(email))
   await page.getByLabel('סיסמה חדשה').fill(NEW_PASSWORD)
   await page.getByRole('button', { name: 'שמירת הסיסמה' }).click()

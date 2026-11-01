@@ -20,11 +20,12 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/לחתוך.*תעודת הזהות/)).toBeInTheDocument()
   })
 
-  it('lists the two cookies, both for signing in, and says there are no others', () => {
+  it('lists the three cookies, all for signing in, and says there are no others', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'עוגיות' })).toBeInTheDocument()
     expect(screen.getByText('studyspot_refresh')).toBeInTheDocument()
     expect(screen.getByText('studyspot_login')).toBeInTheDocument()
+    expect(screen.getByText('studyspot_email_code')).toBeInTheDocument()
     expect(screen.getByText(/אין עוגיות של פרסום/)).toBeInTheDocument()
   })
 
@@ -41,6 +42,17 @@ describe('PrivacyPage', () => {
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'כמה זמן נשמר' })).toBeInTheDocument()
     expect(screen.getByText(/השרת שלנו רושם.*בלי כתובת ה-IP/)).toBeInTheDocument()
+  })
+
+  it('says crashes are reported to Sentry, what is sent, and what is not', () => {
+    // Error reports are not tracking, but they leave the server: the page says so.
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    const item = screen.getByText(/דיווח על תקלות:/).closest('li') as HTMLElement
+    expect(item).toHaveTextContent('Sentry')
+    expect(item).toHaveTextContent('סוג התקלה והמקום בקוד')
+    expect(item).toHaveTextContent('לא נשלחים כתובת מייל, שם, עוגיות')
+    expect(item).toHaveTextContent('לא נשלחת כתובת ה-IP')
+    expect(item).toHaveTextContent('באיחוד האירופי')
   })
 
   it('says who joins the demo campus, that anyone can manage it, and that it resets daily', () => {

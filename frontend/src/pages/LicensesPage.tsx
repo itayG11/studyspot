@@ -24,7 +24,7 @@ const PARTS: { group: string; items: [string, string][] }[] = [
       ['FastAPI', 'MIT'], ['Uvicorn', 'BSD-3-Clause'], ['SQLAlchemy', 'MIT'], ['Alembic', 'MIT'],
       ['psycopg', 'LGPL-3.0'], ['PostgreSQL', 'PostgreSQL License'], ['pydantic-settings', 'MIT'], ['PyJWT', 'MIT'],
       ['HTTPX', 'BSD-3-Clause'], ['openpyxl', 'MIT'], ['defusedxml', 'PSF'], ['Anthropic SDK', 'MIT'],
-      ['http-ece', 'MIT'], ['py-vapid', 'MPL-2.0'], ['argon2-cffi', 'MIT'],
+      ['http-ece', 'MIT'], ['py-vapid', 'MPL-2.0'], ['argon2-cffi', 'MIT'], ['sentry-sdk', 'MIT'],
       ['רשימת הסיסמאות הנפוצות, SecLists', 'MIT'],
     ],
   },

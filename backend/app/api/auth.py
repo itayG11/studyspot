@@ -12,6 +12,7 @@
 - POST /auth/email/verify         the code -> signed in
 """
 
+import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta
@@ -35,19 +36,35 @@ from app.config import Settings, get_settings
 from app.demo import demo_still_allowed, demo_user
 from app.email_codes import (
     CODE_LIFETIME,
+    bind_cookie,
+    bind_key,
     check_code,
+    closing_without_account,
     code_key,
     domain_is_supported,
     identity_for,
     issue_code,
     normalize_email,
+    read_bind_cookie,
 )
 from app.errors import Refusal, is_duplicate
 from app.mailer import Mailer, mailer_from_settings
 from app.models import AuthProvider, AuthSession, EmailSignInCode, Institution, User, UserIdentity
 from app.oidc import Provider, configured_providers, new_pkce_pair
 from app.passwords import check_password, check_strength, set_password
-from app.ratelimit import email_start_limit, refresh_address_limit, refresh_limit, sign_in_limit, write_limit
+from app.pow import USED, Challenge, make_challenge
+from app.pow import verify as verify_pow
+from app.ratelimit import (
+    address_key,
+    charge_email_start,
+    client_address,
+    email_challenge_limit,
+    email_prework_limit,
+    refresh_address_limit,
+    refresh_limit,
+    sign_in_limit,
+    write_limit,
+)
 from app.schemas import (
     DemoLoginIn,
     EmailStartIn,
@@ -56,6 +73,7 @@ from app.schemas import (
     MeOut,
     PasswordLoginIn,
     PasswordSetIn,
+    PowChallengeOut,
     ProvidersOut,
     TokenOut,
 )
@@ -73,6 +91,7 @@ router = APIRouter(tags=["auth"])
 
 LOGIN_COOKIE = "studyspot_login"
 REFRESH_COOKIE = "studyspot_refresh"
+EMAIL_CODE_COOKIE = "studyspot_email_code"
 LOGIN_LIFETIME = timedelta(minutes=10)
 
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -157,15 +176,32 @@ def get_mailer(
     return mailer_from_settings(settings, http)
 
 
+@router.get(
+    "/auth/email/challenge",
+    response_model=PowChallengeOut,
+    dependencies=[Depends(email_challenge_limit)],
+)
+def email_challenge(settings: SettingsDep, now: NowDep):
+    """The puzzle to solve before asking for a code (app/pow.py). With the
+    work switched off it says so (bits 0), and the request needs none."""
+    if not settings.email_login_enabled():
+        raise HTTPException(404, "email_login_disabled")
+    if settings.email_pow_bits == 0:
+        return PowChallengeOut(salt="", expires=0, bits=0, signature="")
+    challenge = make_challenge(settings.jwt_secret_bytes(), settings.email_pow_bits, now)
+    return PowChallengeOut(**challenge.__dict__)
+
+
 @router.post(
     "/auth/email/start",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=EmailStartOut,
-    dependencies=[Depends(email_start_limit)],
+    dependencies=[Depends(email_prework_limit)],
 )
 def email_start(
     body: EmailStartIn,
     request: Request,
+    response: Response,
     db: SessionDep,
     settings: SettingsDep,
     now: NowDep,
@@ -176,11 +212,33 @@ def email_start(
     _require_allowed_origin(request, settings)  # a page elsewhere cannot send mail through us
     if not settings.email_login_enabled() or mailer is None:
         raise HTTPException(404, "email_login_disabled")
+    # The work first, before the database or the mail service are touched.
+    if settings.email_pow_bits:
+        if body.pow is None:
+            raise HTTPException(400, "pow_required")
+        try:
+            verify_pow(
+                settings.jwt_secret_bytes(),
+                Challenge(body.pow.salt, body.pow.expires, body.pow.bits, body.pow.signature),
+                body.pow.nonce,
+                now,
+                USED,
+                settings.email_pow_bits,
+            )
+        except Refusal as refusal:
+            raise HTTPException(refusal.status, refusal.code) from None
+    # Only a request that did the work counts against the strict limits.
+    charge_email_start(request, settings.trusted_proxy_hops)
     try:
         email = normalize_email(body.email)
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
+        if closing_without_account(db, email):
+            # The same answer as for any address: it never says who has an account.
+            return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
         code_id, code = issue_code(db, email, now, code_key(settings.jwt_secret_bytes()))
+        bind = bind_key(settings.jwt_secret_bytes())
+        earlier = _bound_ids(request, settings, email)
     except Refusal as refusal:
         db.rollback()
         raise HTTPException(refusal.status, refusal.code) from None
@@ -194,6 +252,15 @@ def email_start(
         db.execute(delete(EmailSignInCode).where(EmailSignInCode.id == code_id))
         db.commit()
         raise HTTPException(refusal.status, refusal.code) from None
+    response.set_cookie(
+        EMAIL_CODE_COOKIE,
+        bind_cookie(bind, email, [*earlier, code_id]),
+        max_age=int(CODE_LIFETIME.total_seconds()),
+        path=settings.auth_cookie_path(),
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
     return EmailStartOut(expires_in=int(CODE_LIFETIME.total_seconds()))
 
 
@@ -211,7 +278,7 @@ def email_verify(
         raise HTTPException(404, "email_login_disabled")
     try:
         email = normalize_email(body.email)
-        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()), _bound_ids(request, settings, email))
         try:
             with db.begin_nested():  # a refusal below undoes only this sign-in's writes
                 # The open campus only for a student it moves (the domain has a rule).
@@ -230,6 +297,11 @@ def email_verify(
     db.commit()
     _set_refresh_cookie(response, issued.refresh_token, settings)
     return _token_out(db, user, issued.session, now, settings)
+
+
+def _bound_ids(request: Request, settings: Settings, email: str) -> list[int]:
+    """The codes of this address that this browser asked for."""
+    return read_bind_cookie(bind_key(settings.jwt_secret_bytes()), email, request.cookies.get(EMAIL_CODE_COOKIE))
 
 
 def _email_identity(db: Session, email: str) -> UserIdentity:
@@ -256,7 +328,7 @@ def password_set(
     try:
         email = normalize_email(body.email)
         check_strength(body.password, email)  # before the code: a weak one does not use it up
-        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()))
+        check_code(db, email, body.code, now, code_key(settings.jwt_secret_bytes()), _bound_ids(request, settings, email))
         try:
             with db.begin_nested():
                 user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
@@ -299,7 +371,7 @@ def password_login(
         # different answers, and that tells a guesser which one was right.
         if not domain_is_supported(db, email):
             raise Refusal(403, "email_domain_not_supported")
-        check_password(db, email, body.password, now)
+        check_password(db, email, body.password, now, address_key(client_address(request, settings.trusted_proxy_hops)))
         with db.begin_nested():
             user = sign_in(db, AuthProvider.EMAIL, identity_for(email), now, settings.open_sign_in_institution)
             issued = start_session(db, user, now)
@@ -365,7 +437,7 @@ def login(
             "verifier": verifier,
             "exp": int((now + LOGIN_LIFETIME).timestamp()),
         },
-        settings.jwt_secret_bytes(),
+        login_key(settings.jwt_secret_bytes()),
         algorithm="HS256",
     )
     response = RedirectResponse(
@@ -431,13 +503,19 @@ def callback(
     return response
 
 
+def login_key(jwt_secret: bytes) -> bytes:
+    """A key of its own for the pending-login cookie, derived from the server
+    secret like the other keys, so it can never be the access tokens' key."""
+    return hmac.new(jwt_secret, b"studyspot pending oidc login", hashlib.sha256).digest()
+
+
 def _read_pending(pending: str | None, provider_name: str, now: datetime, settings: Settings):
     if pending is None:
         raise Refusal(400, "invalid_state")
     try:
         claims = jwt.decode(
             pending,
-            settings.jwt_secret_bytes(),
+            login_key(settings.jwt_secret_bytes()),
             algorithms=["HS256"],
             options={"require": ["exp"], "verify_exp": False},
         )

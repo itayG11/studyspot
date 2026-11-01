@@ -182,6 +182,25 @@ sign_in_limit = per_ip("sign-in", limit=120, window_seconds=60, evict=True)
 # still has room, since a session lasts a week.
 _email_start_10_minutes = per_ip("email-start", limit=30, window_seconds=600, total_limit=200)
 _email_start_day = per_ip("email-start-day", limit=50, window_seconds=86_400)
+# A request without the work done is refused cheaply and must not use up the
+# strict limits above (or a script could fill their site-wide total with
+# unpaid requests and lock real students out): they count only once the work
+# is checked (charge_email_start, called by the route). This one is loose, for
+# the unpaid ones.
+email_prework_limit = per_ip("email-start-prework", limit=120, window_seconds=60, evict=True)
+
+
+def charge_email_start(request: Request, trusted_hops: int) -> None:
+    """The strict limits of a request for a code, for the route to call after
+    the work is checked."""
+    _email_start_10_minutes(request, trusted_hops)
+    _email_start_day(request, trusted_hops)
+
+
+# The puzzle is free for the server (signed, nothing stored), but each costs a
+# visitor's time to solve, so asking for many does a script no good: this only
+# keeps one address from flooding the route.
+email_challenge_limit = per_ip("email-challenge", limit=60, window_seconds=60, evict=True)
 
 
 def email_start_limit(
@@ -196,14 +215,40 @@ refresh_limit = per_cookie("refresh", "studyspot_refresh", limit=10, window_seco
 # day at a time, so a person is far below this.
 FORECAST_PER_MINUTE = 60
 forecast_limit = per_ip("forecast", limit=FORECAST_PER_MINUTE, window_seconds=60, total_limit=1200)
+# The open read routes (buildings, places, one place, its free times) run
+# queries on every request, and the widget and every open tab ask often. One
+# bucket per address, generous (900 a minute is 15 a second) because a campus
+# network can put many students behind one address; a full table drops its
+# oldest, so made-up addresses cannot shut real ones out.
+PUBLIC_READ_PER_MINUTE = 900
+public_read_limit = per_ip("public-read", limit=PUBLIC_READ_PER_MINUTE, window_seconds=60, evict=True)
 # The campus's today view: every page asks for it (the pulse in the header,
 # in every open tab), and the server keeps it a minute (app/load_today.py),
 # so a repeat costs one query. Its own limit, and generous, so that a
 # campus network behind one address does not use up the forecasts' limit.
 load_today_limit = per_ip("load-today", limit=600, window_seconds=60, total_limit=6000)
-# A calendar app reads a feed every few hours; this is far above that, and
-# keeps someone guessing tokens slow (they are 256 bits anyway).
-calendar_limit = per_ip("calendar", limit=60, window_seconds=60, total_limit=1200)
+# A calendar app reads a feed every few hours. A calendar service (Google's)
+# reads many people's feeds from a few shared addresses, so the limit per
+# address is high, and each feed has its own, low one. No total: guessing
+# tokens (256 bits) is hopeless, and a total could shut every feed.
+CALENDAR_PER_TOKEN = 20
+calendar_limit = per_ip("calendar", limit=600, window_seconds=60, evict=True)
+def per_query(name: str, param: str, limit: int, window_seconds: float) -> Callable:
+    """Per value of a query parameter (a feed's token), hashed, so the token
+    is never kept. A full table drops its oldest."""
+    window = LIMITERS.setdefault(name, SlidingWindow(limit, window_seconds, evict=True))
+
+    def dependency(request: Request) -> None:
+        value = request.query_params.get(param)
+        if not value:
+            return
+        if not window.allow(hashlib.sha256(value.encode()).hexdigest()):
+            raise _too_many(window)
+
+    return dependency
+
+
+calendar_token_limit = per_query("calendar-token", "t", limit=CALENDAR_PER_TOKEN, window_seconds=60)
 # A screen asks about every 20 seconds, and a campus's screens may share one
 # address: 300 a minute is about 100 screens behind one network.
 # No total over all addresses, and a full table drops its oldest: otherwise

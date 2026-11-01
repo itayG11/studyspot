@@ -56,6 +56,7 @@ ACCESS = {
     ("GET", "/places/{place_id}/availability"): "public",
     ("GET", "/places/{place_id}/forecast"): "public",
     ("GET", "/push/key"): "public",
+    ("POST", "/client-errors"): "public",
     ("GET", "/v1/openapi.json"): "public",
     ("GET", "/screen"): "token",
     ("GET", "/shares/{token}"): "token",
@@ -68,6 +69,7 @@ ACCESS = {
     ("GET", "/v1/places/{place_id}"): "api_key",
     ("GET", "/v1/places/{place_id}/forecast"): "api_key",
     ("POST", "/auth/demo/login"): "auth",
+    ("GET", "/auth/email/challenge"): "auth",
     ("POST", "/auth/email/start"): "auth",
     ("POST", "/auth/email/verify"): "auth",
     ("POST", "/auth/logout"): "auth",
@@ -153,6 +155,7 @@ ACCESS = {
     ("POST", "/system/institutions/{slug}/reopen"): "system",
     ("POST", "/system/invites/{invite_id}/revoke"): "system",
     ("GET", "/system/login-rules"): "system",
+    ("GET", "/system/proxy-check"): "system",
     ("POST", "/system/login-rules/{rule_id}/approve"): "system",
 }
 

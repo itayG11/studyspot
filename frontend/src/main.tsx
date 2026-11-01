@@ -14,6 +14,7 @@ import { MotionProvider } from './design/MotionProvider'
 import { router } from './router'
 import { ToastProvider } from './ui/Toast'
 import { listenForInstallPrompt } from './logic/install'
+import { installErrorReporting, reportError } from './logic/errorReport'
 import { applyTheme, readTheme } from './logic/theme'
 
 // The visitor's own light or dark choice. public/theme-init.js already set
@@ -21,6 +22,9 @@ import { applyTheme, readTheme } from './logic/theme'
 applyTheme(readTheme())
 // Chrome's install prompt comes once, early; kept for the home screen tip.
 listenForInstallPrompt()
+// Crashes the visitor never sees go to our server, and from there to Sentry.
+// Only in the built site: a developer's console is a better place for them.
+if (import.meta.env.PROD) installErrorReporting(reportError)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -78,3 +78,19 @@ def test_the_forecast_is_rate_limited_per_address(client, braude):
     for _ in range(FORECAST_PER_MINUTE):
         assert client.get(f"/places/{area.id}/forecast").status_code == 200
     assert client.get(f"/places/{area.id}/forecast").status_code == 429
+
+
+def test_the_open_read_routes_share_a_limit_per_address(client, braude):
+    from app.ratelimit import PUBLIC_READ_PER_MINUTE
+
+    area = place_named(braude, "L", "מתחם לימוד")
+    for _ in range(PUBLIC_READ_PER_MINUTE):
+        assert client.get("/institutions/braude/buildings").status_code == 200
+    # One bucket for all of them: a loop on one route also closes the others.
+    for path in (
+        "/institutions/braude/buildings",
+        "/institutions/braude/places",
+        f"/places/{area.id}",
+        f"/places/{area.id}/availability?date=2026-10-11",
+    ):
+        assert client.get(path).status_code == 429, path

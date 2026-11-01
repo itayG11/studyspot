@@ -37,6 +37,8 @@ export default defineConfig({
         DEMO_LOGIN_ENABLED: 'true',
         // Sign-in codes go to the server log, not by email (e2e/email.spec.ts).
         EMAIL_LOGIN_DEV_LOG: 'true',
+        // The work before a code is sent (backend/app/pow.py), small: the email test goes through it
+        EMAIL_POW_BITS: '12',
         FRONTEND_URL: `http://localhost:${WEB_PORT}`,
         PUBLIC_API_URL: `http://localhost:${API_PORT}`,
         SWEEP_INTERVAL_SECONDS: '0',

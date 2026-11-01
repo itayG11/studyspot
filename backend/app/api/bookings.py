@@ -16,7 +16,7 @@ from app.clock import get_now
 from app.errors import Refusal
 from app.models import Booking, Place, User
 from app.models.waitlist import WaitlistEntry
-from app.ratelimit import write_limit
+from app.ratelimit import public_read_limit, write_limit
 from app.reminders import ALARM, START_AHEAD
 from app.schemas import (
     Availability,
@@ -99,7 +99,7 @@ def options(booking_id: BookingId, user: UserDep, session: SessionDep, now: NowD
         raise HTTPException(refusal.status, refusal.code) from None
 
 
-@router.get("/places/{place_id}/availability", response_model=Availability)
+@router.get("/places/{place_id}/availability", response_model=Availability, dependencies=[Depends(public_read_limit)])
 def availability(
     place_id: Annotated[int, Path(gt=0)],
     day: Annotated[date, Query(alias="date")],

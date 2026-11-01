@@ -64,7 +64,11 @@ def api_institution(
         raise _unauthorized("api_key_invalid")
     if not _per_key.allow(f"key:{row.id}"):
         raise _too_many(_per_key)
-    return db.get(Institution, row.institution_id)
+    institution = db.get(Institution, row.institution_id)
+    # A closing institution is hidden and its data is on its way out.
+    if institution.closes_at is not None:
+        raise HTTPException(403, "institution_closing")
+    return institution
 
 
 InstitutionDep = Annotated[Institution, Depends(api_institution)]

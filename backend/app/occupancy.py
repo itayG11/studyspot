@@ -6,7 +6,7 @@ every count filters on expires_at too.
 """
 
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import ColumnElement, and_, func, select
 from sqlalchemy.orm import Session
@@ -53,3 +53,34 @@ def open_all_day_place_ids(session: Session, institution_id: int, today: date) -
             )
         )
     )
+
+
+# A printed code is the same for everyone, so a photo of it works from home.
+# Far more people checking in over an hour than the place could seat is what
+# that looks like. Only a hint for the admin, who may replace the code.
+SHARED_WINDOW = timedelta(hours=1)
+SHARED_FACTOR = 2  # more than this many times the seats...
+SHARED_MINIMUM = 6  # ...and never fewer people than this
+
+
+def shared_sign_suspects(session: Session, places: Iterable[tuple[int, int]], now: datetime) -> set[int]:
+    """Of (place id, capacity) pairs, the ids where more distinct real people
+    started a check-in in the last hour than SHARED_FACTOR times the capacity
+    (and at least SHARED_MINIMUM). The made-up check-ins of the demo campus
+    (app/seed/live.py) do not count."""
+    capacity = dict(places)
+    if not capacity:
+        return set()
+    rows = session.execute(
+        select(CheckIn.place_id, func.count(func.distinct(CheckIn.user_id)))
+        .where(
+            CheckIn.place_id.in_(list(capacity)),
+            CheckIn.started_at > now - SHARED_WINDOW,
+            CheckIn.started_at <= now,
+            CheckIn.simulated.is_(False),
+        )
+        .group_by(CheckIn.place_id)
+    ).all()
+    return {
+        place_id for place_id, people in rows if people >= SHARED_MINIMUM and people > SHARED_FACTOR * capacity[place_id]
+    }

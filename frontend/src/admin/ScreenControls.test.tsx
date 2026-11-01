@@ -10,7 +10,7 @@ vi.mock('../institution', () => ({ useInstitution: () => ({ timezone: 'Asia/Jeru
 
 const sign: PlaceCode = {
   place_id: 18, building_code: 'EF', place_name: 'ספרייה', code: 'p18.v1.' + 'A'.repeat(43),
-  check_in_mode: 'sign', screen_active: false, screen_last_seen_at: null,
+  check_in_mode: 'sign', screen_active: false, screen_last_seen_at: null, suspected_shared: false,
 }
 const onScreen: PlaceCode = { ...sign, check_in_mode: 'screen' }
 const URL_ = 'https://getstudyspot.me/screen#t=secret-token-123'

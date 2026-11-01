@@ -33,6 +33,7 @@ from app.models import (
     User,
     UserRole,
 )
+from app.occupancy import shared_sign_suspects
 from app.permissions import can_manage, require_admin
 from app.ratelimit import campus_import_limit, dns_check_limit, geocode_limit, write_limit
 from app.schemas import (
@@ -62,6 +63,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 SessionDep = Annotated[Session, Depends(get_session)]
 AdminDep = Annotated[User, Depends(require_admin)]
 SecretDep = Annotated[bytes, Depends(get_code_secret)]
+NowDep = Annotated[datetime, Depends(get_now)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
@@ -79,9 +81,14 @@ class PlaceCode(BaseModel):
     check_in_mode: CheckInMode = CheckInMode.SIGN
     screen_active: bool = False  # a screen link exists
     screen_last_seen_at: datetime | None = None
+    # Many more check-ins in the last hour than the place seats: a photo of the
+    # printed sign may be going round (app/occupancy.py). A hint, not a block.
+    suspected_shared: bool = False
 
 
-def _code(place: Place, building_code: str, secret: bytes, screen: PlaceScreen | None = None) -> PlaceCode:
+def _code(
+    place: Place, building_code: str, secret: bytes, screen: PlaceScreen | None = None, suspected_shared: bool = False
+) -> PlaceCode:
     return PlaceCode(
         place_id=place.id,
         building_code=building_code,
@@ -90,6 +97,7 @@ def _code(place: Place, building_code: str, secret: bytes, screen: PlaceScreen |
         check_in_mode=place.check_in_mode,
         screen_active=screen is not None,
         screen_last_seen_at=screen.last_seen_at if screen else None,
+        suspected_shared=suspected_shared,
     )
 
 
@@ -113,7 +121,7 @@ def _managed_place(db: Session, admin: User, place_id: int) -> Place:
 
 
 @router.get("/institutions/{slug}/codes", response_model=list[PlaceCode])
-def list_codes(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: SessionDep, secret: SecretDep):
+def list_codes(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: SessionDep, secret: SecretDep, now: NowDep):
     institution = db.scalars(select(Institution).where(Institution.slug == slug)).first()
     if institution is None or not can_manage(admin, institution):
         raise HTTPException(404, "institution_not_found")
@@ -125,7 +133,10 @@ def list_codes(slug: Annotated[str, Path(max_length=64)], admin: AdminDep, db: S
     ).all()
     ids = [place.id for place, _ in rows]
     shown = {row.place_id: row for row in db.scalars(select(PlaceScreen).where(PlaceScreen.place_id.in_(ids)))}
-    return [_code(place, code, secret, shown.get(place.id)) for place, code in rows]
+    # A screen's code changes every minute, so only printed signs can be shared
+    signs = [(place.id, place.capacity) for place, _ in rows if place.check_in_mode is CheckInMode.SIGN]
+    suspects = shared_sign_suspects(db, signs, now)
+    return [_code(place, code, secret, shown.get(place.id), place.id in suspects) for place, code in rows]
 
 
 @router.post(

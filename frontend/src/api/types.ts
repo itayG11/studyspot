@@ -161,6 +161,14 @@ export interface Providers {
   email?: boolean // a one-time code by email (absent on older servers)
 }
 
+// The puzzle the server hands out before a sign-in code (backend/app/pow.py)
+export interface PowChallenge {
+  salt: string
+  expires: number
+  bits: number // 0: no work is asked
+  signature: string
+}
+
 export interface EmailStart {
   expires_in: number // seconds the code is valid
 }
@@ -221,6 +229,8 @@ export interface PlaceCode {
   check_in_mode: CheckInMode
   screen_active: boolean
   screen_last_seen_at: string | null
+  // Many more check-ins in the last hour than the place seats: a photo of the sign may be going round
+  suspected_shared: boolean
 }
 
 export interface ScreenLink {
@@ -279,6 +289,7 @@ export interface SystemInstitution {
   buildings: number
   admins: number
   closes_at?: string | null
+  can_close?: boolean // false for the demo and the open campus
 }
 
 export interface NewInstitution {

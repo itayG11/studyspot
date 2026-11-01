@@ -5,7 +5,8 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,7 +21,7 @@ from app.errors import FOREIGN_KEY_VIOLATION, Refusal, is_duplicate, sqlstate
 from app.mailer import Mailer
 from app.models import AdminInvite, Building, Institution, InstitutionLoginRule, User, UserRole
 from app.permissions import require_role
-from app.ratelimit import write_limit
+from app.ratelimit import client_address, write_limit
 from app.schemas import (
     InstitutionCreateIn,
     InviteCreatedOut,
@@ -54,8 +55,30 @@ def _institution(db: Session, slug: str) -> Institution:
     return institution
 
 
+class ProxyCheckOut(BaseModel):
+    connected_address: str
+    forwarded_for: str
+    trusted_hops: int
+    counted_address: str
+
+
+@router.get("/system/proxy-check", response_model=ProxyCheckOut)
+def proxy_check(owner: OwnerDep, request: Request, response: Response, settings: SettingsDep):
+    """Which address the rate limits count for this request. Open it once on
+    the live site: if `counted_address` is not your own address, the number
+    of trusted proxies (TRUSTED_PROXY_HOPS) is wrong, and everyone is counted
+    as one visitor (or the limits can be fooled)."""
+    response.headers["Cache-Control"] = "no-store"
+    return ProxyCheckOut(
+        connected_address=request.client.host if request.client else "unknown",
+        forwarded_for=request.headers.get("x-forwarded-for", ""),
+        trusted_hops=settings.trusted_proxy_hops,
+        counted_address=client_address(request, settings.trusted_proxy_hops),
+    )
+
+
 @router.get("/system/institutions", response_model=list[SystemInstitutionOut])
-def list_all(owner: OwnerDep, db: SessionDep):
+def list_all(owner: OwnerDep, db: SessionDep, settings: SettingsDep):
     buildings = (
         select(func.count()).select_from(Building).where(Building.institution_id == Institution.id).scalar_subquery()
     )
@@ -69,7 +92,7 @@ def list_all(owner: OwnerDep, db: SessionDep):
     return [
         SystemInstitutionOut(
             slug=i.slug, name=i.name, timezone=i.timezone, is_active=i.is_active, buildings=b, admins=a,
-            closes_at=i.closes_at,
+            closes_at=i.closes_at, can_close=i.slug not in _kept(settings),
         )
         for i, b, a in rows
     ]

@@ -4,10 +4,13 @@
    (its exact domain); otherwise no email is sent, so the site cannot be
    used to mail strangers. A random 6-digit code is made, its HMAC stored
    for 10 minutes, and the code emailed.
-2. verify: any code of the address still in time counts, not only the
-   newest: a college mailbox may hold an email for minutes, and by then a
-   new code was asked for. A wrong try counts on every open code, so open
-   codes do not add guesses; after MAX_ATTEMPTS they are locked. A sign-in
+2. verify: any code this browser asked for, still in time, counts, not
+   only the newest: a college mailbox may hold an email for minutes, and by
+   then a new code was asked for. Which codes are this browser's is in a
+   signed cookie (bind_cookie): whoever only knows the address cannot count
+   wrong tries against the student's codes and lock them out. A wrong try
+   counts on every one of those codes, so they do not add guesses; after
+   MAX_ATTEMPTS they are locked. A sign-in
    uses up every open code of the address. The comparisons are in
    constant time. Then the usual sign-in (app/accounts.py) runs, with the
    address as the identity and its domain as the institution key.
@@ -21,17 +24,19 @@ import hashlib
 import hmac
 import re
 import secrets
+from collections.abc import Collection
 from datetime import datetime, timedelta
 
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, EmailSignInCode, InstitutionLoginRule
+from app.models import AuthProvider, EmailSignInCode, Institution, InstitutionLoginRule, UserIdentity
 from app.oidc import ProviderIdentity
 
 CODE_LIFETIME = timedelta(minutes=10)  # still past a college mailbox's few minutes of scanning
 MAX_ATTEMPTS = 5
+RESERVED_FOR_KNOWN = 50  # of the day's codes, kept for addresses that signed in before
 CODES_PER_ADDRESS_PER_HOUR = 5
 CODES_PER_ADDRESS_PER_DAY = 10  # with 5 tries each: at most 50 guesses a day at one address
 CODES_PER_DAY = 250  # Brevo's free plan sends 300 a day
@@ -58,6 +63,32 @@ def code_key(jwt_secret: bytes) -> bytes:
     return hmac.new(jwt_secret, b"studyspot email sign-in codes", hashlib.sha256).digest()
 
 
+def bind_key(jwt_secret: bytes) -> bytes:
+    return hmac.new(jwt_secret, b"studyspot email code browser binding", hashlib.sha256).digest()
+
+
+MAX_BOUND = 5  # codes one browser may hold at once; the address allows 5 an hour
+
+
+def bind_cookie(key: bytes, email: str, ids: Collection[int]) -> str:
+    """The cookie that says which codes of this address this browser asked
+    for: "id,id.signature". The signature covers the address too."""
+    listed = ",".join(str(i) for i in sorted(ids)[-MAX_BOUND:])
+    return f"{listed}.{hmac.new(key, f'{email}\n{listed}'.encode(), hashlib.sha256).hexdigest()}"
+
+
+def read_bind_cookie(key: bytes, email: str, value: str | None) -> list[int]:
+    """The code ids in the cookie, or none when it is missing, forged, or
+    made for another address."""
+    if not value or value.count(".") != 1:
+        return []
+    listed, signature = value.split(".")
+    expected = hmac.new(key, f"{email}\n{listed}".encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return []
+    return [int(i) for i in listed.split(",") if i.isdigit()]
+
+
 def hash_code(key: bytes, email: str, code: str) -> str:
     return hmac.new(key, f"{email}\n{code}".encode(), hashlib.sha256).hexdigest()
 
@@ -74,6 +105,28 @@ def domain_is_supported(db: Session, email: str) -> bool:
             InstitutionLoginRule.approved,
         )
     ).first() is not None
+
+
+def closing_without_account(db: Session, email: str) -> bool:
+    """True for an address with no account at an institution that is closing.
+    It cannot join (app/accounts.py refuses at sign-in), so no code is made and
+    no email goes out. The caller still answers as for any address, so the
+    answer never says who has an account."""
+    institution_id = db.scalar(
+        select(InstitutionLoginRule.institution_id).where(
+            InstitutionLoginRule.provider == AuthProvider.EMAIL,
+            InstitutionLoginRule.value == _domain(email),
+            InstitutionLoginRule.approved,
+        )
+    )
+    if institution_id is None:
+        return False
+    known = db.scalar(
+        select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
+    )
+    # The test of app/closing.py refuse_if_closing (not imported: it would be a
+    # circle, closing -> notify -> mailer -> this module).
+    return known is None and db.scalar(select(Institution.closes_at).where(Institution.id == institution_id)) is not None
 
 
 def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int, str]:
@@ -97,7 +150,11 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int,
     today = db.scalar(
         select(func.count()).select_from(EmailSignInCode).where(EmailSignInCode.created_at > now - timedelta(days=1))
     )
-    if today >= CODES_PER_DAY:
+    # A new address cannot use the part kept for people who already have an account.
+    known = db.scalar(
+        select(UserIdentity.id).where(UserIdentity.provider == AuthProvider.EMAIL, UserIdentity.subject == email)
+    )
+    if today >= (CODES_PER_DAY if known is not None else CODES_PER_DAY - RESERVED_FOR_KNOWN):
         raise Refusal(429, "email_daily_limit")
     code = f"{secrets.randbelow(1_000_000):06d}"
     row = EmailSignInCode(
@@ -108,13 +165,23 @@ def issue_code(db: Session, email: str, now: datetime, key: bytes) -> tuple[int,
     return row.id, code
 
 
-def check_code(db: Session, email: str, code: str, now: datetime, key: bytes) -> None:
-    """Use up the address's open codes with this one, or refuse. A wrong
-    try is counted on the rows, so the caller commits even when this
-    refuses."""
+def check_code(db: Session, email: str, code: str, now: datetime, key: bytes, ids: Collection[int]) -> None:
+    """Use up this browser's open codes (ids, from its cookie) with this
+    one, or refuse. A wrong try is counted on those rows only, so the
+    caller commits even when this refuses."""
+    if not ids:
+        # No cookie, or one made elsewhere: not this browser's code. Said
+        # plainly, since a person who changed browser would otherwise be told
+        # the (right) code is wrong.
+        raise Refusal(400, "email_code_browser")
     rows = db.scalars(
         select(EmailSignInCode)
-        .where(EmailSignInCode.email == email, EmailSignInCode.used_at.is_(None), EmailSignInCode.expires_at > now)
+        .where(
+            EmailSignInCode.id.in_(ids),
+            EmailSignInCode.email == email,
+            EmailSignInCode.used_at.is_(None),
+            EmailSignInCode.expires_at > now,
+        )
         .order_by(EmailSignInCode.id)
         .with_for_update()  # two tabs with the same code: the second waits, then sees it used
     ).all()
@@ -137,8 +204,8 @@ def check_code(db: Session, email: str, code: str, now: datetime, key: bytes) ->
 
 def identity_for(email: str) -> ProviderIdentity:
     """The address is the identity: whoever reads its inbox is its owner.
-    The shown name is made from the part before the @ ("itay.gabay" ->
-    "Itay Gabay"); it is never used to decide anything."""
+    The shown name is made from the part before the @ ("dana.levi" ->
+    "Dana Levi"); it is never used to decide anything."""
     local = email.split("@", 1)[0]
     words = [w for w in re.split(r"[._+-]+", local) if w]
     name = " ".join(w.capitalize() for w in words) or local

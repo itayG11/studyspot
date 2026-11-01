@@ -9,7 +9,7 @@
 // - After a page reload the variable is empty, and one refresh restores it.
 
 import { API_URL } from '../config'
-import type { DemoPersona, EmailStart, Me, TokenResponse } from './types'
+import type { DemoPersona, EmailStart, Me, PowChallenge, TokenResponse } from './types'
 
 // A refusal from the server, with its stable English code
 // (for example "place_not_found"). src/i18n/errors.ts turns it into Hebrew.
@@ -157,8 +157,26 @@ export async function demoLogin(persona: DemoPersona): Promise<Me> {
 
 // Sign-in with a one-time code: the server emails it to a college address,
 // and the code typed back starts a session like any other sign-in.
-export function emailStart(email: string): Promise<EmailStart> {
-  return send<EmailStart>('/auth/email/start', { method: 'POST', body: { email } })
+//
+// First a puzzle: each request for a code sends an email, so the server asks
+// for a second of work from the browser before it sends one (src/auth/pow.ts).
+// A puzzle that expired or was used meanwhile gets one fresh try.
+const BUSY_RETRY_MS = 2000 // the server's Retry-After on a 503
+
+export async function emailStart(email: string): Promise<EmailStart> {
+  for (let attempt = 0; ; attempt++) {
+    const puzzle = await send<PowChallenge>('/auth/email/challenge', {})
+    const pow = puzzle.bits === 0 ? undefined : { ...puzzle, nonce: await (await import('../auth/pow')).solve(puzzle.salt, puzzle.bits) }
+    try {
+      return await send<EmailStart>('/auth/email/start', { method: 'POST', body: pow ? { email, pow } : { email } })
+    } catch (error) {
+      // An expired, used or (after the server raised the difficulty) too easy
+      // puzzle: a fresh one. A busy server (503): the same, after its Retry-After.
+      const retryable = error instanceof ApiError && ['pow_expired', 'pow_used', 'pow_invalid', 'server_busy'].includes(error.code)
+      if (!retryable || attempt > 0) throw error
+      if (error.code === 'server_busy') await new Promise((resolve) => setTimeout(resolve, BUSY_RETRY_MS))
+    }
+  }
 }
 
 export async function emailVerify(email: string, code: string): Promise<Me> {

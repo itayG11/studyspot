@@ -112,7 +112,7 @@ def view_for(session: Session, token: str, now: datetime, key: bytes) -> ShareVi
             return None
         stay, place, building, institution, user = found
         starts_at, until = stay.starts_at, stay.ends_at
-        here_now = stay.status is BookingStatus.CHECKED_IN or stay.starts_at <= now
+        here_now = stay.status is BookingStatus.CHECKED_IN  # booked, not arrived: not here yet
     return ShareView(
         name=user.display_name if claim.named else None,
         here_now=here_now,

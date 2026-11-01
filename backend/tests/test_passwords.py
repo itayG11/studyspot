@@ -86,7 +86,7 @@ def identity(session, email=STUDENT) -> UserIdentity | None:
         ("Qwerty!2024", "password_too_common"),
         ("P@ssw0rd!2026", "password_too_common"),  # digits and symbols for letters
         ("L3tm3in!2026", "password_too_common"),
-        ("Itay.Gabay#2026", "password_has_email"),
+        ("Dana.Levi#2026", "password_has_email"),
     ],
 )
 def test_a_weak_password_is_refused_with_its_reason(password, reason):
@@ -187,6 +187,34 @@ def test_wrong_tries_lock_it_for_a_while(client, mailer, session):
     client.clock.now = SUNDAY_10AM + LOCK_FOR + timedelta(seconds=1)
     assert login(client).status_code == 200
     assert identity(session).failed_logins == 0
+
+
+def _from(client, address, password=GOOD):
+    return client.post(
+        "/auth/password/login",
+        json={"email": STUDENT, "password": password},
+        headers={"X-Forwarded-For": address},
+    )
+
+
+def test_wrong_tries_from_one_address_do_not_lock_the_owner(make_client, mailer):
+    client = make_client(trusted_proxy_hops=1)
+    set_password(client, mailer)
+    for _ in range(MAX_FAILURES + 3):
+        assert _from(client, "6.6.6.6", "Wrong-Password 1").status_code == 401
+    assert _from(client, "6.6.6.6").status_code == 401  # that address is refused, even with the right one
+    assert _from(client, "2.2.2.2").status_code == 200  # the owner, from their own address, is not
+
+
+def test_many_addresses_together_still_lock_the_account(make_client, mailer, monkeypatch):
+    from app import passwords
+
+    client = make_client(trusted_proxy_hops=1)
+    set_password(client, mailer)
+    monkeypatch.setattr(passwords, "ACCOUNT_MAX_FAILURES", 3)
+    for n in range(3):
+        _from(client, f"7.7.7.{n}", "Wrong-Password 1")
+    assert _from(client, "2.2.2.2").status_code == 401  # the account lock: a code still works
 
 
 def test_a_right_password_clears_the_wrong_tries(client, mailer, session):
@@ -316,3 +344,16 @@ def test_a_reset_also_ends_the_calendar_address(client, mailer, session):
     client.clock.now += timedelta(minutes=2)  # a new code may be sent after a minute
     assert set_password(client, mailer, password="Another-Good 9 pass").status_code == 200
     assert session.scalar(select(CalendarFeed).where(CalendarFeed.user_id == user.id)) is None
+
+
+def test_a_full_table_of_wrong_tries_drops_the_least_recently_used(monkeypatch):
+    from app import passwords
+
+    monkeypatch.setattr(passwords, "MAX_KEPT", 2)
+    tries = passwords.WrongTries()
+    now = SUNDAY_10AM
+    tries.add("a", now)
+    tries.add("b", now)
+    tries.add("a", now)  # "a" was used last, so "b" is the one to go
+    tries.add("c", now)
+    assert set(tries._tries) == {"a", "c"}

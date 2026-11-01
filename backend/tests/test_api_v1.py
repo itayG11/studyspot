@@ -90,6 +90,14 @@ def test_a_revoked_key_stops_working_and_stays_in_the_list(client, admin):
     assert (answer.status_code, answer.json()["detail"]) == (401, "api_key_invalid")
 
 
+def test_a_closing_institutions_key_is_refused(client, admin, braude):
+    made = _make_key(client, admin)
+    headers = _as_key(client, made["key"])
+    braude.closes_at = SUNDAY_10AM + timedelta(days=3)
+    answer = client.get("/v1/institution", headers=headers)
+    assert (answer.status_code, answer.json()["detail"]) == (403, "institution_closing")
+
+
 def test_the_demo_campus_retires_its_oldest_key_instead_of_refusing(session, admin, braude):
     now = SUNDAY_10AM
     made = [

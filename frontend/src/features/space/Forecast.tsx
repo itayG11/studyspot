@@ -117,7 +117,7 @@ export function PlaceForecast({ place, timeZone, now: start }: Props) {
       </h2>
       <div className={styles.forecastDays} role="group" aria-label="יום בשבוע">
         {WEEK_ORDER.map((day) => (
-          <Chip key={day} className={styles.forecastDay} selected={day === weekday} aria-label={weekdayName(day)} onClick={() => setPicked(day)}>
+          <Chip key={day} className={styles.forecastDay} selected={day === weekday} aria-label={`${SHORT[day]}, ${weekdayName(day)}`} onClick={() => setPicked(day)}>
             {SHORT[day]}
           </Chip>
         ))}

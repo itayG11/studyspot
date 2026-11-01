@@ -14,6 +14,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from app.activity import Activity
 from app.api import (
@@ -24,6 +25,7 @@ from app.api import (
     campus,
     checkins,
     classes,
+    client_errors,
     connections,
     push,
     screens,
@@ -34,6 +36,7 @@ from app.api import (
 )
 from app.body_limit import BodyLimit
 from app.config import Settings, get_settings
+from app.monitoring import init_monitoring
 from app.reminders import prime_alarm
 from app.sweeper import run_forever, run_once, sweep_safely
 
@@ -41,6 +44,10 @@ from app.sweeper import run_forever, run_once, sweep_safely
 SWEEP_INTERVAL = float(os.environ.get("SWEEP_INTERVAL_SECONDS", "60"))
 
 logger = logging.getLogger("studyspot")
+
+# Crash reports (app/monitoring.py): before the app is built, so the SDK can
+# hook into it. Without SENTRY_DSN this does nothing.
+init_monitoring(get_settings())
 
 # Real visits, so the sweep can rest while the site is quiet (app/activity.py).
 activity = Activity()
@@ -144,6 +151,14 @@ async def validation_failed(request: Request, error: RequestValidationError) -> 
     return Utf8JSONResponse({"detail": jsonable_encoder(errors)}, status_code=422)
 
 
+# Every database connection taken: say so at once and ask the browser to try
+# again in a moment (app/config.py, db_pool_timeout).
+@app.exception_handler(PoolTimeout)
+async def server_busy(request: Request, error: PoolTimeout) -> JSONResponse:
+    logger.warning("database pool exhausted: %s %s", request.method, request.url.path)
+    return JSONResponse({"detail": "server_busy"}, status_code=503, headers={"Retry-After": "2"})
+
+
 # A body over the cap never reaches the app (app/body_limit.py). Added
 # before CORS, so CORS wraps it: a 413 carries the CORS headers, and the
 # browser shows it as a refusal, not as a lost connection.
@@ -172,4 +187,5 @@ app.include_router(v1.router)
 app.include_router(webhook_tester.router)
 app.include_router(system.router)
 app.include_router(push.router)
+app.include_router(client_errors.router)
 

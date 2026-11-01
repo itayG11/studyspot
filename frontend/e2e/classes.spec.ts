@@ -28,7 +28,7 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   // The demo student is shared: a new course name is not kept, the sample's are.
   await week.getByLabel(/שם הקורס/).fill('מבני נתונים')
   await week.getByRole('button', { name: 'הוספת שיעור' }).click()
-  const added = week.getByRole('button', { name: 'מבני נתונים, יום חמישי 16:00 עד 17:00, בניין M' })
+  const added = week.getByRole('button', { name: 'מבני נתונים 16:00–17:00 M, יום חמישי' })
   await expect(added).toBeVisible()
   await added.click()
   const details = week.getByRole('region', { name: 'פרטי השיעור' })
@@ -44,7 +44,7 @@ test('the demo student sees a sample week, adds and removes a class, and gets su
   await week.getByRole('button', { name: 'להוסיף שיעור אחד' }).click()
   await expect(week.getByText(/נוסף שיעור אחד מתוך 1/)).toBeVisible()
   // The shared demo student keeps only the sample's course names: "שיעור" here.
-  const imported = week.getByRole('button', { name: /יום חמישי 17:00 עד 18:30/ })
+  const imported = week.getByRole('button', { name: /17:00–18:30.*יום חמישי/ })
   await expect(imported).toBeVisible()
 
   // A break on any day answers with its own places (another day: by the forecast).

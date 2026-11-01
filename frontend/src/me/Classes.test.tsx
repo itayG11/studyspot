@@ -193,9 +193,9 @@ describe('the timetable', () => {
     renderMe()
     const week = await weekSection()
     const sunday = await within(week).findByRole('list', { name: 'יום ראשון' })
-    expect(within(sunday).getByRole('button', { name: 'מבני נתונים, יום ראשון 08:30 עד 10:00, בניין M' })).toBeInTheDocument()
-    expect(within(sunday).getByRole('button', { name: 'שיעור, יום ראשון 11:30 עד 13:00, בניין EF' })).toBeInTheDocument()
-    expect(within(sunday).getByRole('button', { name: 'הפסקה של 90 דקות, יום ראשון 10:00 עד 11:30' })).toBeInTheDocument()
+    expect(within(sunday).getByRole('button', { name: 'מבני נתונים 08:30–10:00 M, יום ראשון' })).toBeInTheDocument()
+    expect(within(sunday).getByRole('button', { name: 'שיעור 11:30–13:00 EF, יום ראשון' })).toBeInTheDocument()
+    expect(within(sunday).getByRole('button', { name: 'הפסקה 90 דק׳, יום ראשון 10:00 עד 11:30' })).toBeInTheDocument()
   })
 
   it('a break today shows where to go in it', async () => {
@@ -204,7 +204,7 @@ describe('the timetable', () => {
     const user = userEvent.setup()
     renderMe()
     const week = await weekSection()
-    await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
+    await user.click(await within(week).findByRole('button', { name: /^הפסקה 90 דק׳/ }))
     const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
     expect(within(details).getByRole('link', { name: 'ספרייה' })).toBeInTheDocument()
   })
@@ -235,7 +235,7 @@ describe('the timetable', () => {
     const user = userEvent.setup()
     renderMe()
     const week = await weekSection()
-    await user.click(await within(week).findByRole('button', { name: /^הפסקה של 90 דקות/ }))
+    await user.click(await within(week).findByRole('button', { name: /^הפסקה 90 דק׳/ }))
     const details = within(week).getByRole('region', { name: 'פרטי ההפסקה' })
     // Sunday's places, asked for that day, by the forecast.
     expect(await within(details).findByRole('link', { name: /ספרייה/ })).toBeInTheDocument()
@@ -264,7 +264,7 @@ describe('the timetable', () => {
     const user = userEvent.setup()
     renderMe()
     const week = await weekSection()
-    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים, יום ראשון/ }))
+    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים 08:30/ }))
     const details = within(week).getByRole('region', { name: 'פרטי השיעור' })
     expect(details).toHaveTextContent('יום ראשון · 08:30–10:00 · בניין M')
   })
@@ -287,7 +287,7 @@ describe('the timetable', () => {
       body: { weekday: 0, starts: '14:00', ends: '15:30', building_code: 'EF', title: 'אלגוריתמים' },
     }))
     const monday = await within(week).findByRole('list', { name: 'יום שני' })
-    expect(await within(monday).findByRole('button', { name: 'אלגוריתמים, יום שני 14:00 עד 15:30, בניין EF' })).toBeInTheDocument()
+    expect(await within(monday).findByRole('button', { name: 'אלגוריתמים 14:00–15:30 EF, יום שני' })).toBeInTheDocument()
     await waitFor(() => expect(asked()).toBeGreaterThan(before))
   })
 
@@ -306,7 +306,7 @@ describe('the timetable', () => {
       body: { weekday: 6, starts: '14:00', ends: '15:30', place_text: 'אולם ספורט', title: null },
     }))
     const sunday = await within(week).findByRole('list', { name: 'יום ראשון' })
-    await user.click(await within(sunday).findByRole('button', { name: 'שיעור, יום ראשון 14:00 עד 15:30, אולם ספורט' }))
+    await user.click(await within(sunday).findByRole('button', { name: 'שיעור 14:00–15:30 אולם ספורט, יום ראשון' }))
     expect(await screen.findByText(/עוד לא במפה של המוסד/)).toBeInTheDocument()
   })
 
@@ -354,7 +354,7 @@ describe('the timetable', () => {
     const user = userEvent.setup()
     renderMe()
     const week = await weekSection()
-    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים, יום ראשון/ }))
+    await user.click(await within(week).findByRole('button', { name: /^מבני נתונים 08:30/ }))
     const details = within(week).getByRole('region', { name: 'פרטי השיעור' })
     await user.click(within(details).getByRole('button', { name: 'הסרה' }))
     expect(sent).toEqual([])

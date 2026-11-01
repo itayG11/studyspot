@@ -37,7 +37,7 @@ from app.models import AuthProvider, EmailSignInCode, Institution, InstitutionLo
 from app.seed import seed_demo
 
 FRONTEND = "https://app.example"
-STUDENT = "Itay.Gabay@e.braude.ac.il"
+STUDENT = "Dana.Levi@e.braude.ac.il"
 
 
 class FakeMailer:
@@ -146,14 +146,14 @@ def test_the_code_hash_depends_on_the_secret_the_email_and_the_code():
 
 @pytest.mark.parametrize(
     "raw, clean",
-    [("  Itay.Gabay@E.Braude.AC.IL ", "itay.gabay@e.braude.ac.il"), ("a@braude.ac.il", "a@braude.ac.il")],
+    [("  Dana.Levi@E.Braude.AC.IL ", "dana.levi@e.braude.ac.il"), ("a@braude.ac.il", "a@braude.ac.il")],
 )
 def test_emails_are_trimmed_and_lowercased(raw, clean):
     assert normalize_email(raw) == clean
 
 
 @pytest.mark.parametrize(
-    "raw", ["", "no-at-sign", "itay+2@e.braude.ac.il", '"a"@e.braude.ac.il', "itáy@e.braude.ac.il", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
+    "raw", ["", "no-at-sign", "dana+2@e.braude.ac.il", '"a"@e.braude.ac.il', "dána@e.braude.ac.il", "a@b@e.braude.ac.il", "@e.braude.ac.il", "a@", "a b@e.braude.ac.il", "a@localhost"]
 )
 def test_malformed_emails_are_refused(raw):
     with pytest.raises(Refusal) as refused:
@@ -169,7 +169,7 @@ def test_a_braude_student_gets_a_six_digit_code(client, mailer, session):
     assert response.status_code == 202
     assert len(mailer.sent) == 1
     to, code = mailer.sent[0]
-    assert to == "itay.gabay@e.braude.ac.il"
+    assert to == "dana.levi@e.braude.ac.il"
     assert code.isdigit() and len(code) == 6
     stored = session.scalars(select(EmailSignInCode)).one()
     assert stored.code_hash != code and code not in stored.code_hash  # only the HMAC is kept
@@ -221,11 +221,39 @@ def test_codes_for_the_whole_site_are_capped_per_day(client, mailer, monkeypatch
     from app import email_codes
 
     monkeypatch.setattr(email_codes, "CODES_PER_DAY", 2)
+    monkeypatch.setattr(email_codes, "RESERVED_FOR_KNOWN", 0)
     assert start(client, "a@e.braude.ac.il").status_code == 202
     assert start(client, "b@e.braude.ac.il").status_code == 202
     response = start(client, "c@e.braude.ac.il")
     assert response.status_code == 429
     assert response.json()["detail"] == "email_daily_limit"
+
+
+def test_a_part_of_the_day_is_kept_for_addresses_that_signed_in_before(client, mailer, monkeypatch):
+    from app import email_codes
+
+    monkeypatch.setattr(email_codes, "CODES_PER_DAY", 4)
+    monkeypatch.setattr(email_codes, "RESERVED_FOR_KNOWN", 2)
+    assert start(client, "known@e.braude.ac.il").status_code == 202
+    assert verify(client, mailer.last_code(), "known@e.braude.ac.il").status_code == 200  # now known
+    assert start(client, "new1@e.braude.ac.il").status_code == 202  # 2 of the 2 open to new addresses
+    refused = start(client, "new2@e.braude.ac.il")
+    assert (refused.status_code, refused.json()["detail"]) == (429, "email_daily_limit")
+    assert start(client, "known@e.braude.ac.il").status_code == 202  # the reserve is theirs
+
+
+def test_a_closing_institution_sends_no_code_to_a_new_address_and_says_nothing_about_it(client, mailer, session, braude):
+    assert start(client, "old@e.braude.ac.il").status_code == 202
+    assert verify(client, mailer.last_code(), "old@e.braude.ac.il").status_code == 200  # has an account
+    braude.closes_at = client.clock.now + timedelta(days=14)
+    session.flush()
+    sent = len(mailer.sent)
+    unknown = start(client, "new@e.braude.ac.il")
+    assert unknown.status_code == 202  # the same answer as for an address with an account
+    assert len(mailer.sent) == sent  # but no email goes to an address that cannot join
+    known = start(client, "old@e.braude.ac.il")
+    assert (known.status_code, known.json()) == (202, unknown.json())
+    assert len(mailer.sent) == sent + 1  # the old ones still sign in
 
 
 def test_a_failed_email_leaves_no_code_behind(client, mailer, session):
@@ -263,11 +291,11 @@ def test_the_right_code_signs_a_new_student_in_to_braude(client, mailer, session
     body = response.json()
     assert body["user"]["institution_slug"] == "braude"
     assert body["user"]["role"] == "student"
-    assert body["user"]["email"] == "itay.gabay@e.braude.ac.il"
-    assert body["user"]["display_name"] == "Itay Gabay"
+    assert body["user"]["email"] == "dana.levi@e.braude.ac.il"
+    assert body["user"]["display_name"] == "Dana Levi"
     assert "studyspot_refresh" in response.cookies
     identity = session.scalars(select(UserIdentity).where(UserIdentity.provider == AuthProvider.EMAIL)).one()
-    assert identity.subject == "itay.gabay@e.braude.ac.il"
+    assert identity.subject == "dana.levi@e.braude.ac.il"
     me = client.get("/me", headers={"Authorization": f"Bearer {body['access_token']}"})
     assert me.json()["id"] == body["user"]["id"]
 
@@ -283,10 +311,10 @@ def test_a_staff_address_joins_braude_as_a_student_too(client, mailer):
 def test_signing_in_again_is_the_same_user(client, mailer, session):
     start(client)
     first = verify(client, mailer.last_code()).json()["user"]["id"]
-    start(client, "  ITAY.GABAY@e.braude.ac.il")
-    second = verify(client, mailer.last_code(), "itay.gabay@E.braude.ac.il").json()["user"]["id"]
+    start(client, "  DANA.LEVI@e.braude.ac.il")
+    second = verify(client, mailer.last_code(), "dana.levi@E.braude.ac.il").json()["user"]["id"]
     assert first == second
-    assert session.scalar(select(func.count()).select_from(User).where(User.email == "itay.gabay@e.braude.ac.il")) == 1
+    assert session.scalar(select(func.count()).select_from(User).where(User.email == "dana.levi@e.braude.ac.il")) == 1
 
 
 def test_a_code_works_once(client, mailer):
@@ -322,6 +350,35 @@ def test_an_earlier_code_still_in_time_works(client, mailer):
     late = mailer.last_code()
     start(client)
     assert verify(client, late).status_code == 200
+
+
+def _wrong(code: str) -> str:
+    return "000000" if code != "000000" else "111111"
+
+
+def test_wrong_guesses_from_another_browser_do_not_lock_the_real_student(client, make_client, mailer):
+    start(client)
+    code = mailer.last_code()
+    stranger = make_client()  # knows the address, never asked for a code from this browser
+    for _ in range(MAX_ATTEMPTS + 2):
+        assert verify(stranger, _wrong(code)).json()["detail"] == "email_code_browser"
+    assert verify(client, code).status_code == 200
+
+
+def test_a_stranger_who_asks_for_a_code_cannot_try_the_students_code(client, make_client, mailer):
+    start(client)
+    students_code = mailer.last_code()
+    stranger = make_client()
+    start(stranger)  # their own code, mailed to the student's inbox, which they cannot read
+    assert verify(stranger, students_code).json()["detail"] == "email_code_invalid"
+    for _ in range(MAX_ATTEMPTS):
+        verify(stranger, _wrong(students_code))
+    assert verify(client, students_code).status_code == 200  # theirs are used up, not the student's
+
+
+def test_the_right_code_needs_the_browser_that_asked_for_it(client, make_client, mailer):
+    start(client)
+    assert verify(make_client(), mailer.last_code()).json()["detail"] == "email_code_browser"
 
 
 def test_signing_in_uses_up_every_open_code_of_the_address(client, mailer):
@@ -382,13 +439,13 @@ def test_a_code_belongs_to_its_address(client, mailer):
     start(client, "a@e.braude.ac.il")
     response = verify(client, mailer.last_code(), "b@e.braude.ac.il")
     assert response.status_code == 400
-    assert response.json()["detail"] == "email_code_invalid"
+    assert response.json()["detail"] == "email_code_browser"  # this browser asked for no code of b's
 
 
 def test_no_code_was_asked_for(client):
     response = verify(client, "123456")
     assert response.status_code == 400
-    assert response.json()["detail"] == "email_code_invalid"
+    assert response.json()["detail"] == "email_code_browser"
 
 
 @pytest.mark.parametrize("code", ["12345", "1234567", "abcdef", "12 456", ""])
@@ -412,10 +469,10 @@ def test_a_user_of_the_open_campus_whose_address_now_has_a_rule_moves_to_it(make
     # The code just proved the address, and the rule says it is Braude's.
     braude.is_active = True  # only an open institution takes students
     other = seed_demo(session)
-    user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
+    user = User(institution_id=other.id, email="dana.levi@e.braude.ac.il", display_name="X")
     session.add(user)
     session.flush()
-    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="dana.levi@e.braude.ac.il"))
     session.flush()
     start(client)
     assert verify(client, mailer.last_code()).status_code == 200
@@ -429,10 +486,10 @@ def test_a_user_of_a_real_institution_with_the_same_address_is_refused(client, m
     session.add(other)
     session.flush()
     other.login_rules.append(InstitutionLoginRule(provider=AuthProvider.EMAIL, value="other.ac.il"))
-    user = User(institution_id=other.id, email="itay.gabay@e.braude.ac.il", display_name="X")
+    user = User(institution_id=other.id, email="dana.levi@e.braude.ac.il", display_name="X")
     session.add(user)
     session.flush()
-    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="itay.gabay@e.braude.ac.il"))
+    session.add(UserIdentity(user_id=user.id, provider=AuthProvider.EMAIL, subject="dana.levi@e.braude.ac.il"))
     session.flush()
     start(client)
     response = verify(client, mailer.last_code())
@@ -598,9 +655,9 @@ def test_ten_code_requests_at_once_stay_within_the_hourly_limit(engine, race_ema
 
 def test_one_code_typed_in_two_tabs_at_once_signs_in_once(engine, race_email):
     with Session(engine) as db:
-        _, code = issue_code(db, race_email, SUNDAY_10AM, RACE_KEY)
+        code_id, code = issue_code(db, race_email, SUNDAY_10AM, RACE_KEY)
         db.commit()
-    outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY))
+    outcomes = _race(engine, 2, lambda db: check_code(db, race_email, code, SUNDAY_10AM, RACE_KEY, [code_id]))
     assert sorted(outcomes) == ["email_code_invalid", "ok"]
 
 
@@ -615,3 +672,11 @@ def test_a_long_run_of_dashes_is_refused_at_once():
             normalize_email(raw)
         assert time.perf_counter() - start < 0.05
     assert normalize_email("a@x-y.e.braude.ac.il") == "a@x-y.e.braude.ac.il"
+
+
+def test_the_mail_states_the_real_lifetime_of_the_code():
+    from app import mailer
+    from app.email_codes import CODE_LIFETIME
+
+    minutes = int(CODE_LIFETIME.total_seconds() // 60)
+    assert f"{minutes} דקות" in mailer._text("123456")
