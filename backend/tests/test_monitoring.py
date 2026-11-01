@@ -176,3 +176,18 @@ def test_a_real_crash_is_reported_scrubbed_and_a_404_is_not(monkeypatch):
     assert "dana@braude.example" not in text and "123456" not in text and "Bearer" not in text
     error = sent[0]["exception"]["values"][0]
     assert error["type"] == "ValueError" and error["value"] == "no account for [email]"
+
+
+def test_hiding_emails_stays_fast_on_a_long_run_of_plus_signs():
+    import time
+
+    text = "+" * 200_000 + " and then " + "a." * 100_000
+    started = time.perf_counter()
+    hidden = monitoring.hide_emails(text)
+    assert time.perf_counter() - started < 2
+    assert hidden.startswith("+")
+
+
+def test_a_normal_address_is_still_hidden_after_bounding_the_search():
+    assert monitoring.hide_emails("write to dana.levi+x@e.braude.ac.il now") == "write to [email] now"
+

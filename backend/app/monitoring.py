@@ -15,7 +15,9 @@ import sentry_sdk
 
 from app.config import Settings
 
-EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# Lengths are bounded (an address is at most 64 + 255 characters), so a long run
+# of "+" or "." in an error text cannot make the search slow.
+EMAIL = re.compile(r"[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}")
 # The only headers worth a look when reading a crash: the rest carry the
 # session, the access token and the visitor's address.
 SAFE_HEADERS = {"user-agent", "content-type"}
