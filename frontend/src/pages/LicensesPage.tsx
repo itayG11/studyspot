@@ -34,7 +34,7 @@ export function LicensesPage() {
   return (
     <article className={styles.privacy}>
       <h1>רישיונות</h1>
-      <p>האתר בנוי על קוד פתוח. תודה לכל מי שכתב אותו. אלה החלקים העיקריים, והרישיון של כל אחד:</p>
+      <p>האתר בנוי על ספריות קוד פתוח, וכל אחת מהן מוצעת ברישיון שמתיר להשתמש בה. אלה החלקים העיקריים, והרישיון של כל אחד:</p>
       {PARTS.map(({ group, items }) => (
         <section key={group}>
           <h2>{group}</h2>
