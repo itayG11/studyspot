@@ -7,8 +7,8 @@
   overflow-x: auto;
   scrollbar-width: none;
   padding: 3px;
-  background: var(--stone-2);
-  border: 1px solid var(--hairline);
+  background: var(--fill);
+  border: 0;
   border-radius: var(--r-pill);
 }
 
@@ -36,8 +36,8 @@
    (the delay), so the mark is seen moving rather than the option jumping;
    the option left behind loses it at once (the base rule has no delay). */
 .option[aria-pressed='true'] {
-  color: var(--on-selected);
-  background: var(--selected);
+  color: var(--ink);
+  background: var(--seg-thumb);
   transition:
     color var(--dur-ui) ease,
     background-color 0s linear 300ms;
@@ -60,7 +60,8 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--selected);
+  background: var(--seg-thumb);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 12%), 0 3px 1px rgb(0 0 0 / 4%);
 }
 
 .label {

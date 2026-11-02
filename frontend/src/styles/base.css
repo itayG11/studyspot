@@ -48,7 +48,8 @@ h2,
 h3 {
   font-family: var(--font-heading);
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.12;
+  letter-spacing: -0.015em; /* large type sits tighter, as Apple sets it */
   margin: 0 0 0.4em;
 }
 
@@ -57,7 +58,7 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 

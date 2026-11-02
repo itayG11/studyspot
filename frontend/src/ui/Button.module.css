@@ -37,7 +37,7 @@
 }
 
 .button:focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--primary);
   outline-offset: 3px;
 }
 
@@ -60,15 +60,14 @@
 .primary {
   --bg: var(--primary);
   --fg: var(--on-primary);
-  background-image: linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: var(--shadow-1), 0 6px 18px -8px var(--primary-glow);
+  /* Flat, one blue, as on apple.com: the colour is the emphasis. */
+  background-image: none;
 }
 
 .secondary {
-  --bg: var(--stone-0);
+  --bg: color-mix(in srgb, var(--ink) 7%, var(--stone-0));
   --fg: var(--ink);
-  --border: var(--stone-3);
-  box-shadow: var(--shadow-1);
+  --border: transparent;
 }
 
 .ghost {
@@ -84,10 +83,10 @@
 /* Hover only where there is a mouse: on a phone, a tap would leave it stuck. */
 @media (hover: hover) {
   .primary:hover:not(:disabled) {
-    box-shadow: var(--shadow-2), 0 10px 26px -8px var(--primary-glow);
+    --bg: color-mix(in srgb, var(--primary) 88%, var(--on-primary));
   }
   .secondary:hover:not(:disabled) {
-    --border: var(--ink-3);
+    --bg: color-mix(in srgb, var(--ink) 11%, var(--stone-0));
   }
   .ghost:hover:not(:disabled) {
     --bg: var(--stone-2);
