@@ -12,7 +12,8 @@
   top: var(--header-h, 0px);
   height: calc(100dvh - var(--header-h, 0px));
   overflow: hidden;
-  background: var(--stone-1);
+  /* A black stage in both themes: the photo is the product, as on apple.com. */
+  background: #000;
   container-type: size;
 }
 
@@ -74,7 +75,7 @@
 .dim {
   position: absolute;
   inset: 0;
-  background: #0b1222;
+  background: #000;
   opacity: 0;
   pointer-events: none;
 }
@@ -83,7 +84,7 @@
 .shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to left, rgb(9 14 28 / 72%) 0%, rgb(9 14 28 / 45%) 30%, rgb(9 14 28 / 0%) 60%);
+  background: linear-gradient(to left, rgb(var(--tint, 9 14 28) / 74%) 0%, rgb(var(--tint, 9 14 28) / 46%) 30%, rgb(var(--tint, 9 14 28) / 0%) 60%);
   pointer-events: none;
 }
 
@@ -121,9 +122,9 @@
   gap: 0.3em;
   margin: 0;
   font: 700 var(--text-hero) / 1 var(--font-heading);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.035em;
   color: #fff;
-  text-shadow: 0 2px 24px rgb(9 14 28 / 45%);
+  text-shadow: 0 2px 30px rgb(0 0 0 / 40%);
   pointer-events: none;
 }
 
@@ -144,11 +145,45 @@
   margin-top: -9rem;
   padding: var(--s-6) var(--s-8);
   color: #fff;
-  background: rgb(12 19 36 / 62%);
-  border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: var(--r-lg);
+  /* Glass: a dark translucent material over the photo, a bright top edge. */
+  background: rgb(28 28 30 / 58%);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-bottom-color: rgb(255 255 255 / 6%);
+  border-radius: 28px;
   box-shadow: var(--shadow-3);
 }
+
+@media (prefers-reduced-transparency: reduce) {
+  .panel {
+    background: rgb(28 28 30 / 94%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* The room's word, very large and faint, behind its text on the reading side. */
+.word {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 2vw;
+  z-index: 2;
+  translate: 0 -62%;
+  font: 800 clamp(7rem, 22vw, 20rem) / 0.9 var(--font-heading);
+  letter-spacing: -0.06em;
+  color: rgb(255 255 255 / 17%);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Each room tints its shade a little, so the stage changes colour with the
+   kind of place (the colour change in the shoe and jacket references). */
+.layer[data-kind='open_area'] .shade { --tint: 70 50 22; }
+.layer[data-kind='computer_lab'] .shade { --tint: 20 36 70; }
+.layer[data-kind='group_room'] .shade { --tint: 30 50 34; }
+.layer[data-kind='library'] .shade { --tint: 56 34 50; }
 
 .roomText {
   position: absolute;
@@ -187,7 +222,8 @@
 }
 
 .number {
-  font: 600 clamp(3rem, 7vw, 5.5rem) / 1 var(--font-mono);
+  font: 700 clamp(3rem, 7vw, 5.5rem) / 1 var(--font-heading);
+  letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -271,7 +307,15 @@
   }
 
   .shade {
-    background: linear-gradient(to top, rgb(9 14 28 / 78%) 0%, rgb(9 14 28 / 45%) 32%, rgb(9 14 28 / 0%) 55%);
+    background: linear-gradient(to top, rgb(var(--tint, 9 14 28) / 80%) 0%, rgb(var(--tint, 9 14 28) / 46%) 32%, rgb(var(--tint, 9 14 28) / 0%) 55%);
+  }
+
+  .word {
+    top: auto;
+    bottom: 34%;
+    inset-inline-start: var(--s-4);
+    translate: none;
+    font-size: clamp(6rem, 34vw, 9rem);
   }
 
   .title {

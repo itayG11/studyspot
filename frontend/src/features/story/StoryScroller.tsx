@@ -36,11 +36,13 @@ import { useLiveSimulated } from '../../institution'
 import { kindLine } from './storyNumbers'
 import styles from './story.module.css'
 
-const ROOMS: { kind: PlaceKind; line: string }[] = [
-  { kind: 'open_area', line: 'שולחן באור השמש, ואפשר לדבר.' },
-  { kind: 'computer_lab', line: 'תא שקט עם מחשב, בלי לחפש בין הקומות.' },
-  { kind: 'group_room', line: 'חדר לכל הצוות, מוזמן מראש.' },
-  { kind: 'library', line: 'שקט של ספרייה, ליום ארוך של מבחנים.' },
+// "word": one large word behind each room's text (wave 17, the apple.com
+// product-page move), decoration only, hidden from screen readers.
+const ROOMS: { kind: PlaceKind; line: string; word: string }[] = [
+  { kind: 'open_area', line: 'שולחן באור השמש, ואפשר לדבר.', word: 'אור' },
+  { kind: 'computer_lab', line: 'תא שקט עם מחשב, בלי לחפש בין הקומות.', word: 'מחשב' },
+  { kind: 'group_room', line: 'חדר לכל הצוות, מוזמן מראש.', word: 'יחד' },
+  { kind: 'library', line: 'שקט של ספרייה, ליום ארוך של מבחנים.', word: 'שקט' },
 ]
 const ROOMS_FROM = 0.24
 const ROOM_SPAN = 0.17
@@ -128,7 +130,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         </m.div>
 
         {ROOMS.map((room, i) => (
-          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} places={places} near={roomsNear} />
+          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} word={room.word} places={places} near={roomsNear} />
         ))}
 
         <span className={styles.simLabel}>הדמיה</span>
@@ -150,7 +152,7 @@ function useStepBack(progress: MotionValue<number>, from: number) {
   return { transform: useMotionTemplate`scale(${scale})`, dim }
 }
 
-function Room({ progress, index, kind, line, places, near }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; places: Place[]; near: boolean }) {
+function Room({ progress, index, kind, line, word, places, near }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; word: string; places: Place[]; near: boolean }) {
   const from = ROOMS_FROM + index * ROOM_SPAN
   const rise = useTransform(progress, [from, from + ENTER], [100, 0])
   const back = useStepBack(progress, from + ROOM_SPAN)
@@ -160,13 +162,19 @@ function Room({ progress, index, kind, line, places, near }: { progress: MotionV
   const textOpacity = useTransform(progress, [from + 0.035, from + 0.08], [0, 1])
   const textY = useTransform(progress, [from + 0.035, from + 0.08], [24, 0])
   const text = useMotionTemplate`translateY(${textY}px)`
+  // The big word drifts a little slower than the photo: depth, not motion for its own sake.
+  const wordX = useTransform(progress, [from, from + ROOM_SPAN + ENTER], [6, -6])
+  const wordMove = useMotionTemplate`translateX(${wordX}%)`
   const { count, text: unit } = kindLine(places, kind)
 
   return (
     // Above the opening's panel (z-index 6), each room above the one before.
-    <m.div className={styles.layer} style={{ transform: layer, zIndex: 7 + index }}>
+    <m.div className={styles.layer} data-kind={kind} style={{ transform: layer, zIndex: 7 + index }}>
       <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + ENTER} load={near} />
       <div className={styles.shade} />
+      <m.span className={styles.word} style={{ opacity: textOpacity, transform: wordMove }} aria-hidden="true">
+        {word}
+      </m.span>
       <m.div className={styles.roomText} style={{ opacity: textOpacity, transform: text }}>
         <h2 className={styles.eyebrowLight}>{KIND_LABELS[kind]}</h2>
         <p className={styles.bigLine}>
