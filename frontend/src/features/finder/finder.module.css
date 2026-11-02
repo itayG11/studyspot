@@ -356,6 +356,36 @@
   order: -1; /* on a phone the map comes first, the list under it */
 }
 
+/* Phone: the list rises over the map's lower edge as a sheet, with a grab
+   bar, as the results card in Apple Maps. */
+@media (max-width: 899px) {
+  .mapLayout {
+    gap: 0;
+  }
+
+  .mapLayout > .list {
+    position: relative;
+    z-index: 1;
+    margin-top: calc(-1 * var(--s-6));
+    padding: var(--s-6) var(--s-3) var(--s-4);
+    background: var(--stone-1);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 25%);
+  }
+
+  .mapLayout > .list::before {
+    content: '';
+    position: absolute;
+    top: var(--s-2);
+    left: 50%;
+    width: 36px;
+    height: 5px;
+    margin-left: -18px;
+    border-radius: var(--r-pill);
+    background: var(--stone-3);
+  }
+}
+
 @media (min-width: 900px) {
   .mapLayout {
     grid-template-columns: minmax(300px, 380px) 1fr;
