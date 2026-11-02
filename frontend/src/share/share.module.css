@@ -5,8 +5,8 @@
   margin: var(--s-8) auto;
   padding: var(--s-6);
   background: var(--stone-0);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
+  border-radius: 28px;
+  box-shadow: var(--shadow-1);
 }
 
 .who {
@@ -17,6 +17,7 @@
 .title {
   margin: 0;
   font: 700 var(--text-2xl) / 1.15 var(--font-heading);
+  letter-spacing: -0.035em;
 }
 
 .facts {

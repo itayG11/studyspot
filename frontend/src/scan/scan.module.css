@@ -7,7 +7,7 @@
   margin: var(--s-6) auto var(--s-16);
   overflow: hidden;
   background: var(--stone-0);
-  border-radius: var(--r-lg);
+  border-radius: 28px;
   box-shadow: var(--shadow-3);
   animation: arrive 420ms var(--ease-out) both;
 }
@@ -42,6 +42,7 @@
 .title {
   margin: 0;
   font: 700 var(--text-2xl) / 1.05 var(--font-heading);
+  letter-spacing: -0.035em;
 }
 
 .meta {
@@ -142,7 +143,7 @@
   height: 56px;
   margin-bottom: var(--s-2);
   color: var(--ink);
-  background: var(--stone-2);
+  background: var(--fill);
   border-radius: 50%;
 }
 
@@ -154,6 +155,7 @@
 .formTitle {
   margin: 0;
   font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  letter-spacing: -0.035em;
 }
 
 .label {
