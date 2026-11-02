@@ -442,3 +442,10 @@
     -webkit-backdrop-filter: none;
   }
 }
+
+/* Room under the page for the phone's tab bar (TabBar.tsx sets --tabbar-h). */
+@media (max-width: 760px) {
+  .app {
+    padding-bottom: var(--tabbar-h, 0px);
+  }
+}

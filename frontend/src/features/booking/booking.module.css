@@ -62,11 +62,11 @@
 
 .time {
   min-height: 38px;
-  font: 500 var(--text-sm) / 1 var(--font-mono);
+  font: 600 var(--text-sm) / 1 var(--font-body);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-  background: var(--stone-0);
-  border: 1px solid var(--stone-3);
+  background: var(--fill);
+  border: 1px solid transparent;
   border-radius: var(--r-sm);
   cursor: pointer;
   transition:
@@ -79,14 +79,15 @@
 }
 
 .time:focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--primary);
   outline-offset: 1px;
 }
 
+/* The chosen time in the one blue, as a picked time on iOS. */
 .time[aria-pressed='true'] {
-  color: var(--on-selected);
-  background: var(--selected);
-  border-color: var(--selected);
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 /* Booked: struck through, not only greyed, so it reads without colour. */
@@ -100,7 +101,7 @@
 
 @media (hover: hover) {
   .time:not(:disabled, [aria-pressed='true']):hover {
-    border-color: var(--ink-3);
+    background: color-mix(in srgb, var(--ink) 12%, transparent);
   }
 }
 

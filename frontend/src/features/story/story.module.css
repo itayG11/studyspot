@@ -10,7 +10,8 @@
 .stage {
   position: sticky;
   top: var(--header-h, 0px);
-  height: calc(100dvh - var(--header-h, 0px));
+  /* A screen tall, less the header, and the phone's tab bar when it shows. */
+  height: calc(100dvh - var(--header-h, 0px) - var(--tabbar-h, 0px));
   overflow: hidden;
   /* A black stage in both themes: the photo is the product, as on apple.com. */
   background: #000;
@@ -251,6 +252,7 @@
   position: absolute;
   bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
   inset-inline-start: var(--s-4);
+
   z-index: 20;
   transition: opacity var(--dur-ui) ease;
 }
