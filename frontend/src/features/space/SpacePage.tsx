@@ -93,6 +93,38 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   const form = (
     <BookingForm key={seatId ?? 'room'} place={place} seat={seat} rules={rules} timeZone={timezone} booked={booked} onBooked={setBooked} />
   )
+  // A lab you can book has its seat map inside the booking itself: in the card beside the page on a
+  // computer, in the booking sheet on a phone. (A lab that cannot be booked keeps the map in the page.)
+  const hasMap = Boolean(place.seats && place.lab_rows && place.lab_cols)
+  const mapInBooking = isLab && place.bookable && hasMap
+  const openBooking = () => {
+    setSheet(true)
+    setSheetUsed(true)
+  }
+  const seatMap = hasMap && (
+    <>
+      <p className={styles.muted}>כדי להזמין מראש, בחר תא.</p>
+      {place.is_open && <LiveNote simulated={simulated} />}
+      <SeatGrid
+        seats={place.seats ?? []}
+        rows={place.lab_rows ?? 0}
+        cols={place.lab_cols ?? 0}
+        placeOpen={place.is_open}
+        timeZone={timezone}
+        canSelect={() => true}
+        selectedId={seatId}
+        onSelect={(s) => {
+          setSeatId(s.id === seatId ? null : s.id)
+          setBooked(null)
+        }}
+      />
+    </>
+  )
+  const seatMapHeading = (
+    <h3 id="seats" tabIndex={-1} className={`${styles.h3} ${styles.jumpTarget}`}>
+      מפת התאים
+    </h3>
+  )
 
   return (
     <article className={styles.page}>
@@ -123,7 +155,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
         </button>
       </header>
 
-      <div className={styles.layout}>
+      <div className={mapInBooking && !tall ? `${styles.layout} ${styles.layoutWide}` : styles.layout}>
         <div className={styles.main}>
           <section className={styles.card} aria-labelledby="facts">
             <h2 id="facts" className={styles.h2}>
@@ -162,27 +194,13 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             {place.details_are_demo && <p className={styles.demo}>הציוד והאווירה הם נתוני דמו, ולא נבדקו במקום.</p>}
           </section>
 
-          {/* The seat map comes right after the facts, beside the booking card, not far below it. */}
-          {place.seats && place.lab_rows && place.lab_cols && (
+          {/* A lab that cannot be booked: the seat map stays in the page. */}
+          {hasMap && !mapInBooking && (
             <section className={styles.card} aria-labelledby="seats">
               <h2 id="seats" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
                 מפת התאים
               </h2>
-              <p className={styles.muted}>כדי להזמין מראש, בחר תא.</p>
-              {place.is_open && <LiveNote simulated={simulated} />}
-              <SeatGrid
-                seats={place.seats}
-                rows={place.lab_rows}
-                cols={place.lab_cols}
-                placeOpen={place.is_open}
-                timeZone={timezone}
-                canSelect={() => true}
-                selectedId={seatId}
-                onSelect={(s) => {
-                  setSeatId(s.id === seatId ? null : s.id)
-                  setBooked(null)
-                }}
-              />
+              {seatMap}
             </section>
           )}
 
@@ -192,7 +210,10 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             </h2>
             {isLab && !seat ? (
               <p className={styles.muted}>
-                <JumpTo id="seats">בחר תא במפה</JumpTo>, ותראה מתי הוא פנוי היום.
+                <JumpTo id={mapInBooking && tall ? 'today' : 'seats'} onJump={mapInBooking && tall ? openBooking : undefined}>
+                  בחר תא במפה
+                </JumpTo>
+                , ותראה מתי הוא פנוי היום.
               </p>
             ) : (
               <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
@@ -208,13 +229,17 @@ function SpaceView({ place }: { place: PlaceDetail }) {
 
         {!place.bookable && !tall && <WalkIn place={place} className={styles.aside} />}
         {place.bookable && !tall && (
-          <aside className={styles.aside} aria-labelledby="book">
+          <aside className={mapInBooking ? `${styles.aside} ${styles.asideLab}` : styles.aside} aria-labelledby="book">
             <h2 id="book" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
               הזמנה מראש
             </h2>
-            {canBook ? form : <p className={styles.muted}>
-                <JumpTo id="seats">בחר תא במפת התאים</JumpTo>, ואז זמן.
-              </p>}
+            {mapInBooking && (
+              <>
+                {seatMapHeading}
+                {seatMap}
+              </>
+            )}
+            {canBook ? form : <p className={styles.muted}>{mapInBooking ? 'בחר תא במפה, ואז זמן.' : <><JumpTo id="seats">בחר תא במפת התאים</JumpTo>, ואז זמן.</>}</p>}
           </aside>
         )}
       </div>
@@ -222,11 +247,13 @@ function SpaceView({ place }: { place: PlaceDetail }) {
       {place.bookable && tall && (
         <>
           <div className={styles.bookBar}>
-            {canBook ? (
-              <Button size="lg" block onClick={() => {
-                  setSheet(true)
-                  setSheetUsed(true)
-                }}>
+            {mapInBooking ? (
+              // The seat map is in the booking sheet: one button opens it, to choose a station and book.
+              <Button size="lg" block variant={seat ? 'primary' : 'secondary'} onClick={openBooking}>
+                {seat ? `להזמין את תא ${seat.label}` : 'בחר תא והזמן'}
+              </Button>
+            ) : canBook ? (
+              <Button size="lg" block onClick={openBooking}>
                 {seat ? `להזמין את תא ${seat.label}` : 'להזמין'}
               </Button>
             ) : (
@@ -238,7 +265,17 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             )}
           </div>
           <Sheet open={sheet} onClose={() => setSheet(false)} title={`הזמנה · ${place.name}${seat ? `, תא ${seat.label}` : ''}`}>
-            {sheetUsed && canBook && form}
+            {mapInBooking ? (
+              sheetUsed && (
+                <>
+                  {seatMapHeading}
+                  {seatMap}
+                  {canBook ? form : <p className={styles.muted}>בחר תא במפה, ואז זמן.</p>}
+                </>
+              )
+            ) : (
+              sheetUsed && canBook && form
+            )}
           </Sheet>
         </>
       )}

@@ -36,13 +36,16 @@ beforeEach(() => {
 })
 
 describe('Connections', () => {
-  it('shows the widget first, and folds the keys and webhooks under "for IT"', async () => {
+  it('folds all of it under "for the IT": the widget first inside, then the keys and webhooks', async () => {
     api.getApiKeys.mockResolvedValue([])
     show()
-    const folded = (await screen.findByText('לאנשי המחשוב של המוסד: מפתחות API ו-webhooks')).closest('details')!
+    expect(await screen.findByText(/הכול כאן מיועד לאנשי המחשוב של המוסד\./)).toBeInTheDocument()
+    const folded = (await screen.findByText("לאנשי המחשוב של המוסד: וידג'ט, מפתחות API ו-webhooks")).closest('details')!
     expect(folded).not.toHaveAttribute('open')
-    expect(within(folded).getByRole('heading', { name: 'מפתחות API' })).toBeInTheDocument()
-    expect(folded.compareDocumentPosition(screen.getByRole('heading', { name: /וידג'ט/ })) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    const widget = within(folded).getByRole('heading', { name: /וידג'ט/ })
+    const keys = within(folded).getByRole('heading', { name: 'מפתחות API' })
+    // The widget is inside the fold too, and comes before the keys.
+    expect(widget.compareDocumentPosition(keys) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('makes a key and shows it once, with a curl example', async () => {

@@ -77,8 +77,17 @@ for (const [label, viewport, colorScheme] of [
     await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible() // signed in; not the name, which the login button contains too
 
     await page.goto(`/spaces/${await firstPlace(page, 'M206')}`)
-    await expect(page.getByRole('list', { name: 'תאים' })).toBeVisible()
-    await check(page, 'lab')
+    if (viewport.width <= 760) {
+      // On a phone the seat map is in the booking sheet (3 Nov): the page first, then the open sheet.
+      await check(page, 'lab')
+      await page.getByRole('button', { name: 'בחר תא והזמן' }).click()
+      await expect(page.getByRole('list', { name: 'תאים' })).toBeVisible()
+      await check(page, 'lab booking sheet')
+    } else {
+      // On a computer it is inside the booking card beside the page.
+      await expect(page.getByRole('list', { name: 'תאים' })).toBeVisible()
+      await check(page, 'lab')
+    }
 
     await page.goto(`/spaces/${await firstPlace(page, 'EM107')}`)
     await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
