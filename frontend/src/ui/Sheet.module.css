@@ -33,7 +33,7 @@
 }
 
 .sheet::backdrop {
-  background: rgb(20 32 58 / 0%);
+  background: rgb(0 0 0 / 0%);
   transition:
     background-color var(--dur-exit) ease,
     overlay var(--dur-exit) allow-discrete,
@@ -47,7 +47,7 @@
 
 @starting-style {
   .sheet[open]::backdrop {
-    background: rgb(20 32 58 / 0%);
+    background: rgb(0 0 0 / 0%);
   }
 }
 

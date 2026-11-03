@@ -20,8 +20,8 @@
   font: 400 var(--text-lg) / 1.2 var(--font-body);
   color: var(--ink);
   background: var(--stone-0);
-  border: 1px solid var(--stone-3);
-  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
   box-shadow: var(--shadow-1);
   transition:
     border-color var(--dur-ui) ease,

@@ -52,7 +52,7 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
               // path with the pulsing class (it only reads className once).
               key={`${building.code}-${isSelected}`}
               center={points[i]}
-              radius={isSelected ? 19 : 15}
+              radius={isSelected ? 24 : 20}
               pathOptions={{
                 // A white ring reads on both the dark photo and the light street map.
                 color: isSelected ? SELECTED_COLOR : '#ffffff',
@@ -69,7 +69,9 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
                 direction="center"
                 className={level === 'construction' ? 'map-label map-label-dark' : 'map-label'}
               >
-                {building.code}
+                {/* As a pin in Apple Maps: the building, and how many places are free in it now. */}
+                <span className="map-code">{building.code}</span>
+                {level !== 'construction' && <span className="map-free">{building.available}</span>}
               </Tooltip>
             </CircleMarker>
           )
@@ -79,6 +81,13 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
         <span className={styles.liveDot} />
         מתעדכן כל 30 שניות
       </div>
+      {/* What the colours mean, and the number in each circle. */}
+      <ul className={styles.legend} aria-label="מקרא המפה">
+        <li><span className={styles.swatch} style={{ background: LEVEL_COLORS.low }} />פנוי</li>
+        <li><span className={styles.swatch} style={{ background: LEVEL_COLORS.medium }} />בינוני</li>
+        <li><span className={styles.swatch} style={{ background: LEVEL_COLORS.high }} />עמוס</li>
+        <li className={styles.legendNote}>המספר: מקומות פנויים עכשיו</li>
+      </ul>
     </div>
   )
 }

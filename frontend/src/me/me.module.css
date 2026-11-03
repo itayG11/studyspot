@@ -23,7 +23,8 @@
 
 .name {
   margin: 0;
-  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  font: 700 clamp(2rem, 4.5vw, 2.8rem) / 1.08 var(--font-heading);
+  letter-spacing: -0.035em;
 }
 
 .email {
@@ -40,7 +41,8 @@
 
 .heading {
   margin: 0;
-  font: 600 var(--text-xl) / 1.2 var(--font-heading);
+  font: 700 var(--text-xl) / 1.2 var(--font-heading);
+  letter-spacing: -0.02em;
 }
 
 .num {
@@ -50,10 +52,10 @@
 
 /* Nothing here yet: a quiet sunken box, not a big empty state. */
 .idle {
-  padding: var(--s-5);
+  padding: var(--s-5) var(--s-6);
   background: var(--stone-0);
-  border: 1px dashed var(--stone-3);
-  border-radius: var(--r-lg);
+  border-radius: 22px;
+  box-shadow: var(--shadow-1);
 }
 
 .idleTitle {
@@ -83,10 +85,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s-4) var(--s-5);
-  padding: var(--s-5) var(--s-6);
+  padding: var(--s-6);
   color: var(--on-night);
   background: var(--night);
-  border-radius: var(--r-lg);
+  border-radius: 28px;
   box-shadow: var(--shadow-3);
 }
 
@@ -155,7 +157,7 @@
   padding: var(--s-3);
   padding-inline-end: var(--s-4);
   background: var(--stone-0);
-  border-radius: var(--r-lg);
+  border-radius: 22px;
   box-shadow: var(--shadow-1);
 }
 
@@ -183,7 +185,7 @@
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--ink-2);
-  background: var(--stone-2);
+  background: var(--fill);
   border-radius: var(--r-pill);
 }
 
@@ -194,6 +196,7 @@
 
 .bookingTitle {
   font: 600 var(--text-lg) / 1.3 var(--font-heading);
+  letter-spacing: -0.015em;
 }
 
 .bookingWhen {
@@ -252,10 +255,10 @@
 .gap {
   display: grid;
   gap: var(--s-3);
-  padding: var(--s-5);
+  padding: var(--s-5) var(--s-6);
   background: var(--stone-0);
-  border: 1px solid var(--stone-3);
-  border-radius: var(--r-lg);
+  border-radius: 22px;
+  box-shadow: var(--shadow-1);
 }
 
 .gapHead {
@@ -399,9 +402,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s-2);
-  padding: var(--s-3);
-  border: 1px solid var(--hairline);
+  padding: var(--s-3) var(--s-4);
+  background: var(--stone-0);
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
 }
 
 .waitFreed {
@@ -423,9 +427,9 @@
 .feedAddress {
   margin: 0;
   padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--stone-3);
-  border-radius: var(--r-sm);
-  background: var(--stone-1);
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   overflow-wrap: anywhere;

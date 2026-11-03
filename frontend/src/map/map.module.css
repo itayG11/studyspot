@@ -31,10 +31,58 @@
   padding: 0.3rem 0.7rem;
   font: 600 var(--text-xs) var(--font-body);
   color: var(--on-night);
-  background: var(--night);
+  background: rgb(28 28 30 / 72%);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
   border-radius: var(--r-pill);
   direction: rtl;
 }
+
+/* The legend: a small glass card at the top, between Leaflet's zoom buttons
+   (left) and layers button (right), clear of the live tag and the credits. */
+.legend {
+  position: absolute;
+  z-index: 800;
+  top: 0.6rem;
+  left: 3.4rem;
+  right: 3.6rem;
+  width: fit-content;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  list-style: none;
+  font: 600 var(--text-xs) / 1.3 var(--font-body);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--stone-0) 78%, transparent);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-1);
+  direction: rtl;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.legendNote {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
 
 .liveDot {
   width: 0.55rem;
@@ -58,8 +106,10 @@
 
 /* Leaflet draws its own elements; these rules reach them with :global. */
 .frame :global(.leaflet-tooltip.map-label) {
+  display: grid;
+  justify-items: center;
   padding: 0;
-  font: 700 var(--text-md) / 1 var(--font-mono);
+  font: 700 var(--text-sm) / 1 var(--font-body);
   color: #fff;
   background: none;
   border: none;
@@ -75,6 +125,14 @@
 
 .frame :global(.leaflet-tooltip.map-label::before) {
   display: none;
+}
+
+.frame :global(.map-free) {
+  margin-top: 1px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.95;
 }
 
 /* A soft dark glow lifts the building circles off the aerial photo. */
@@ -100,6 +158,7 @@
 
 .frame :global(.leaflet-control-layers),
 .frame :global(.leaflet-bar) {
+  overflow: hidden;
   border: 0;
   border-radius: var(--r-md);
   box-shadow: var(--shadow-2);
@@ -132,9 +191,11 @@
 
 /* Leaflet's own zoom buttons and credit line, in the site's colours. */
 .frame :global(.leaflet-bar a) {
-  color: var(--ink);
-  background: var(--stone-0);
-  border-color: var(--stone-3);
+  color: var(--primary-text);
+  background: color-mix(in srgb, var(--stone-0) 86%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: var(--hairline);
 }
 
 .frame :global(.leaflet-control-attribution) {
@@ -144,4 +205,20 @@
 
 .frame :global(.leaflet-control-attribution a) {
   color: var(--ink);
+}
+
+/* Less blur where the device asks for less transparency: solid instead. */
+@media (prefers-reduced-transparency: reduce) {
+  .live {
+    background: var(--night);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .legend,
+  .frame :global(.leaflet-bar a) {
+    background: var(--stone-0);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }

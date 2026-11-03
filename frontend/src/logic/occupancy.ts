@@ -8,7 +8,7 @@ export const HIGH_FROM = 0.85
 
 // The ring of the building chosen on a map: the site's indigo. A colour
 // value, not a CSS variable: Leaflet writes it into an SVG attribute.
-export const SELECTED_COLOR = '#4f46e5'
+export const SELECTED_COLOR = '#0071e3' // the site's one blue (tokens.css --primary)
 
 export const LEVEL_COLORS: Record<Level, string> = {
   low: '#2e9e4f',

@@ -21,14 +21,17 @@
   /* Glass over the page's light: an edge of its own, so that it reads as
      a panel and not as a hole in the glow. */
   background: color-mix(in srgb, var(--stone-1) 72%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
   border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
 }
 
+/* A large title, as an iOS screen opens. */
 .heading {
   margin: 0 0 var(--s-3);
-  font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  font: 700 clamp(2.2rem, 5vw, 3.4rem) / 1.05 var(--font-heading);
+  letter-spacing: -0.035em;
   color: var(--ink);
   /* In the site's colours (tokens.css --headline); plain ink where the
      system forces its own colours. */
@@ -174,9 +177,9 @@
   overflow: hidden;
   background: var(--stone-0);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-1);
   transition:
-    transform var(--dur-press) var(--ease-out),
+    transform 320ms var(--ease-out),
     box-shadow var(--dur-ui) ease;
 }
 
@@ -209,7 +212,8 @@
 
 @media (hover: hover) {
   .card:hover {
-    box-shadow: var(--shadow-3);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-2);
   }
   .card:hover .artPhoto img {
     transform: scale(1.04);
@@ -238,6 +242,7 @@
 .title {
   margin: var(--s-1) 0 0;
   font: 700 var(--text-xl) / 1.15 var(--font-heading);
+  letter-spacing: -0.02em;
 }
 
 .link {
@@ -351,6 +356,36 @@
   order: -1; /* on a phone the map comes first, the list under it */
 }
 
+/* Phone: the list rises over the map's lower edge as a sheet, with a grab
+   bar, as the results card in Apple Maps. */
+@media (max-width: 899px) {
+  .mapLayout {
+    gap: 0;
+  }
+
+  .mapLayout > .list {
+    position: relative;
+    z-index: 1;
+    margin-top: calc(-1 * var(--s-6));
+    padding: var(--s-6) var(--s-3) var(--s-4);
+    background: var(--stone-1);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 25%);
+  }
+
+  .mapLayout > .list::before {
+    content: '';
+    position: absolute;
+    top: var(--s-2);
+    left: 50%;
+    width: 36px;
+    height: 5px;
+    margin-left: -18px;
+    border-radius: var(--r-pill);
+    background: var(--stone-3);
+  }
+}
+
 @media (min-width: 900px) {
   .mapLayout {
     grid-template-columns: minmax(300px, 380px) 1fr;
@@ -402,7 +437,7 @@
   font: 600 var(--text-sm) var(--font-body);
   color: var(--on-primary);
   text-decoration: none;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: var(--primary);
   border-radius: var(--r-pill);
   transition: transform var(--dur-press) ease-out;
 }
@@ -540,10 +575,9 @@
   padding: 0 var(--s-4);
   font: 600 var(--text-sm) var(--font-body);
   color: var(--on-primary);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  background: var(--primary);
   border: 0;
   border-radius: var(--r-pill);
-  box-shadow: 0 4px 14px -6px var(--primary-glow);
   cursor: pointer;
   transition: transform var(--dur-press) ease-out;
 }
@@ -628,4 +662,13 @@
 .quickEmpty {
   margin: 0;
   color: var(--ink-2);
+}
+
+/* Less blur where the device asks for less transparency: solid instead. */
+@media (prefers-reduced-transparency: reduce) {
+  .bar {
+    background: var(--stone-1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }

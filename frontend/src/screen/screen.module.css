@@ -27,7 +27,9 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: clamp(2.25rem, 7vw, 4.5rem);
+  font-weight: 700;
   line-height: 1.05;
+  letter-spacing: -0.04em;
 }
 
 .code {
@@ -43,7 +45,7 @@
   aspect-ratio: 1;
   padding: var(--s-3);
   background: #fff; /* a QR code needs a light field around it, in dark mode too */
-  border-radius: var(--r-md);
+  border-radius: 28px;
 }
 
 .call {

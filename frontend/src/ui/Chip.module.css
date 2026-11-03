@@ -6,8 +6,8 @@
   padding: 0 var(--s-4);
   font: 500 var(--text-sm) / 1 var(--font-body);
   color: var(--ink);
-  background: var(--stone-0);
-  border: 1px solid var(--stone-3);
+  background: var(--fill);
+  border: 1px solid transparent;
   border-radius: var(--r-pill);
   white-space: nowrap;
   cursor: pointer;
@@ -29,7 +29,7 @@
 }
 
 .chip:focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -41,7 +41,7 @@
 
 @media (hover: hover) {
   .chip[aria-pressed='false']:hover {
-    border-color: var(--ink-3);
+    background: color-mix(in srgb, var(--ink) 12%, transparent);
   }
 }
 

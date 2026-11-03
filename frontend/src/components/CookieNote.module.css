@@ -2,7 +2,7 @@
 .note {
   position: fixed;
   inset-inline: var(--s-4);
-  bottom: var(--s-4);
+  bottom: calc(var(--s-4) + var(--tabbar-h, 0px));
   z-index: 40;
   display: grid;
   grid-template-columns: 1fr auto;

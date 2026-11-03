@@ -92,7 +92,7 @@
   inset-inline: 0;
   bottom: 0;
   background: var(--load-usual);
-  border-radius: 4px 4px 2px 2px;
+  border-radius: 6px 6px 3px 3px;
 }
 
 /* Another day: the usual bar alone, coloured by its level. */
@@ -100,14 +100,14 @@
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  border-radius: 4px 4px 2px 2px;
+  border-radius: 6px 6px 3px 3px;
 }
 
 /* Today: a narrower filled bar in front, so the usual one shows around it. */
 .today {
   position: relative;
   width: 58%;
-  border-radius: 4px 4px 2px 2px;
+  border-radius: 6px 6px 3px 3px;
   box-shadow: 0 0 0 2px var(--stone-0); /* a gap from the bar behind */
   transform-origin: bottom;
   animation: rise 420ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
@@ -186,15 +186,16 @@
 .card {
   display: grid;
   gap: var(--s-3);
-  padding: var(--s-5);
+  padding: var(--s-6);
   background: var(--stone-0);
-  border-radius: var(--r-lg);
+  border-radius: 28px;
   box-shadow: var(--shadow-1);
 }
 
 .title {
   margin: 0;
-  font: 600 var(--text-lg) var(--font-heading);
+  font: 700 var(--text-xl) var(--font-heading);
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
@@ -227,20 +228,28 @@
 
 .tile {
   display: grid;
-  gap: 2px;
-  padding: var(--s-3);
+  gap: 4px;
+  padding: var(--s-4);
   background: var(--stone-1);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-md);
+  border-radius: 20px;
 }
 
 .tileValue {
-  font: 700 var(--text-xl) / 1.1 var(--font-mono);
+  font: 700 var(--text-2xl) / 1.05 var(--font-heading);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .tileLabel {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  font-weight: 500;
   color: var(--ink-2);
+}
+
+/* On a phone two tiles share a row: a smaller number, so a word fits. */
+@media (max-width: 640px) {
+  .tileValue {
+    font-size: var(--text-lg);
+  }
 }

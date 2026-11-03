@@ -1,7 +1,7 @@
 .region {
   position: fixed;
   inset-inline: var(--s-4);
-  bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+  bottom: calc(var(--s-4) + max(var(--tabbar-h, 0px), env(safe-area-inset-bottom)));
   z-index: var(--z-toast);
   pointer-events: none;
 }

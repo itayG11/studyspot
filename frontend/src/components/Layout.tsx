@@ -13,6 +13,7 @@ import { DemoCampusBanner } from './DemoCampusBanner'
 import { VisitingBanner } from './VisitingBanner'
 import { SiteFooter } from './SiteFooter'
 import { CookieNote } from './CookieNote'
+import { TabBar } from './TabBar'
 import { scrollKey } from '../logic/scroll'
 import { CampusPulse } from './CampusPulse'
 import { BookingsDrawer } from './BookingsDrawer'
@@ -124,6 +125,8 @@ export function Layout() {
         <Outlet />
       </main>
       <SiteFooter />
+      {/* The phone's tab bar, on the pages a student moves between. */}
+      {(pathname.replace(/\/$/, '') === home || pathname === '/me' || pathname === '/institutions') && <TabBar home={home} />}
       <CookieNote />
       {/* A new page starts at the top; "back" returns to where you were. */}
       <ScrollRestoration getKey={scrollKey} />

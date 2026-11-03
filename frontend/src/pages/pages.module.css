@@ -20,7 +20,7 @@
   gap: var(--s-4);
   padding: var(--s-8) var(--s-6);
   background: var(--stone-0);
-  border-radius: var(--r-lg);
+  border-radius: 28px;
   box-shadow: var(--shadow-2);
 }
 
@@ -45,6 +45,7 @@
 .loginTitle {
   margin: 0;
   font: 700 var(--text-2xl) / 1.1 var(--font-heading);
+  letter-spacing: -0.035em;
 }
 
 .loginLead {
@@ -93,9 +94,8 @@
   gap: var(--s-3);
   margin-top: var(--s-2);
   padding: var(--s-5);
-  background: var(--stone-1);
-  border: 1px dashed var(--stone-3);
-  border-radius: var(--r-md);
+  background: var(--fill);
+  border-radius: 20px;
 }
 
 .demoTitle {
@@ -124,9 +124,8 @@
   gap: var(--s-3);
   margin-top: var(--s-2);
   padding: var(--s-5);
-  background: var(--stone-1);
-  border: 1px solid var(--stone-3);
-  border-radius: var(--r-md);
+  background: var(--fill);
+  border-radius: 20px;
 }
 
 .emailForm {
@@ -266,8 +265,7 @@
   gap: var(--s-1) var(--s-3);
   padding: var(--s-5);
   background: var(--stone-0);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
+  border-radius: 22px;
   box-shadow: var(--shadow-1);
   transition: transform var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) ease;
 }
@@ -395,8 +393,8 @@
   font: 400 var(--text-sm) / 1.5 var(--font-mono);
   text-align: left;
   white-space: pre;
-  background: var(--stone-1);
-  border-radius: var(--r-sm);
+  background: var(--fill);
+  border-radius: 12px;
 }
 
 .table {
