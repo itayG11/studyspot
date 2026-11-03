@@ -446,6 +446,6 @@
 /* Room under the page for the phone's tab bar (TabBar.tsx sets --tabbar-h). */
 @media (max-width: 760px) {
   .app {
-    padding-bottom: var(--tabbar-h, 0px);
+    padding-bottom: calc(var(--cookie-note-h, 0px) + var(--tabbar-h, 0px));
   }
 }

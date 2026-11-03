@@ -12,7 +12,7 @@
     z-index: 900; /* as the header: above the map's own layers */
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    height: calc(var(--tabbar-h, 64px) + env(safe-area-inset-bottom));
+    height: var(--tabbar-h, 64px); /* with the phone's home-indicator strip (TabBar.tsx) */
     padding-bottom: env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--stone-1) 76%, transparent);
     backdrop-filter: blur(20px) saturate(1.8);

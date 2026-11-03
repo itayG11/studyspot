@@ -24,7 +24,7 @@ export function TabBar({ home }: { home: string }) {
     if (typeof window.matchMedia !== 'function') return // an old browser, or a test
     const phone = window.matchMedia('(max-width: 760px)')
     const set = () => {
-      if (phone.matches) document.documentElement.style.setProperty('--tabbar-h', '64px')
+      if (phone.matches) document.documentElement.style.setProperty('--tabbar-h', 'calc(64px + env(safe-area-inset-bottom))')
       else document.documentElement.style.removeProperty('--tabbar-h')
     }
     set()

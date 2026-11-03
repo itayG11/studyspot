@@ -431,3 +431,18 @@
 .jumpTarget:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* Less blur where the device asks for less transparency: solid instead. */
+@media (prefers-reduced-transparency: reduce) {
+  .star {
+    background: var(--stone-0);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .bookBar {
+    background: var(--stone-1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

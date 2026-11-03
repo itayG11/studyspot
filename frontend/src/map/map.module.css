@@ -38,17 +38,20 @@
   direction: rtl;
 }
 
-/* The legend: a small glass card in the corner, as Apple Maps draws its controls. */
+/* The legend: a small glass card at the top, between Leaflet's zoom buttons
+   (left) and layers button (right), clear of the live tag and the credits. */
 .legend {
   position: absolute;
   z-index: 800;
-  bottom: 0.75rem;
-  right: 0.75rem;
+  top: 0.6rem;
+  left: 3.4rem;
+  right: 3.6rem;
+  width: fit-content;
+  margin-inline: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.75rem;
-  max-width: calc(100% - 13rem);
   margin: 0;
   padding: 0.35rem 0.8rem;
   list-style: none;
@@ -80,13 +83,6 @@
   font-weight: 500;
 }
 
-@media (max-width: 640px) {
-  .legend {
-    top: 0.75rem;
-    bottom: auto;
-    max-width: calc(100% - 1.5rem);
-  }
-}
 
 .liveDot {
   width: 0.55rem;
@@ -209,4 +205,20 @@
 
 .frame :global(.leaflet-control-attribution a) {
   color: var(--ink);
+}
+
+/* Less blur where the device asks for less transparency: solid instead. */
+@media (prefers-reduced-transparency: reduce) {
+  .live {
+    background: var(--night);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .legend,
+  .frame :global(.leaflet-bar a) {
+    background: var(--stone-0);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
