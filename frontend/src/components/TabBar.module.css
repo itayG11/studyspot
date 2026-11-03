@@ -40,7 +40,7 @@
 }
 
 .tab[aria-current='page'] {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 600;
 }
 

@@ -59,6 +59,8 @@
      (AA: 5.2:1 and 6.3:1). */
   --primary: #0071e3;
   --primary-2: #0071e3;
+  /* Blue as text (tab label, map buttons): darker or lighter than --primary, AA at 11px. */
+  --primary-text: #0066cc;
   --on-primary: #fff;
   /* Chosen: a chip, a tab, a start time. One look everywhere; the gradient
      is kept for the main action of a screen. */
@@ -170,6 +172,7 @@
     --night: #1c1c1e;
     --primary: #0071e3;
     --primary-2: #0071e3;
+    --primary-text: #409cff;
     --primary-glow: rgb(10 132 255 / 30%);
     --glow-a: transparent;
     --glow-b: transparent;
@@ -223,6 +226,7 @@
   --night: #1c1c1e;
   --primary: #0071e3;
   --primary-2: #0071e3;
+  --primary-text: #409cff;
   --primary-glow: rgb(10 132 255 / 30%);
   --glow-a: transparent;
   --glow-b: transparent;

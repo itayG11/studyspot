@@ -195,7 +195,7 @@
 
 /* Leaflet's own zoom buttons and credit line, in the site's colours. */
 .frame :global(.leaflet-bar a) {
-  color: var(--primary);
+  color: var(--primary-text);
   background: color-mix(in srgb, var(--stone-0) 86%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
