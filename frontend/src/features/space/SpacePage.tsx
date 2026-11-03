@@ -162,21 +162,7 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             {place.details_are_demo && <p className={styles.demo}>הציוד והאווירה הם נתוני דמו, ולא נבדקו במקום.</p>}
           </section>
 
-          <section className={styles.card} aria-labelledby="today">
-            <h2 id="today" className={styles.h2}>
-              היום{seat && ` · תא ${seat.label}`}
-            </h2>
-            {isLab && !seat ? (
-              <p className={styles.muted}>
-                <JumpTo id="seats">בחר תא במפה</JumpTo> למטה, ותראה מתי הוא פנוי היום.
-              </p>
-            ) : (
-              <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
-            )}
-          </section>
-          {!place.bookable && tall && <WalkIn place={place} />}
-          <PlaceForecast place={place} timeZone={timezone} />
-
+          {/* The seat map comes right after the facts, beside the booking card, not far below it. */}
           {place.seats && place.lab_rows && place.lab_cols && (
             <section className={styles.card} aria-labelledby="seats">
               <h2 id="seats" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
@@ -199,6 +185,21 @@ function SpaceView({ place }: { place: PlaceDetail }) {
               />
             </section>
           )}
+
+          <section className={styles.card} aria-labelledby="today">
+            <h2 id="today" className={styles.h2}>
+              היום{seat && ` · תא ${seat.label}`}
+            </h2>
+            {isLab && !seat ? (
+              <p className={styles.muted}>
+                <JumpTo id="seats">בחר תא במפה</JumpTo>, ותראה מתי הוא פנוי היום.
+              </p>
+            ) : (
+              <AvailabilityTimeline place={place} seatId={seat?.id ?? null} rules={rules} timeZone={timezone} bookedId={booked?.id ?? null} />
+            )}
+          </section>
+          {!place.bookable && tall && <WalkIn place={place} />}
+          <PlaceForecast place={place} timeZone={timezone} />
 
           <section className={styles.card}>
             <Timetable place={place} timeZone={timezone} />

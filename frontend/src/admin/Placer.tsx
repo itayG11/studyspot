@@ -1,12 +1,13 @@
 // Placing buildings on the map: choose a building, click its roof.
 
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import { placeBuilding } from '../api/admin'
 import { getBuildings } from '../api/campus'
 import { useAction } from '../hooks/useAction'
 import { useApi } from '../hooks/useApi'
 import { AERIAL_ENABLED } from '../map/tiles'
-import { ActionError, ErrorState, Notice, PageLoading } from '../ui'
+import { ActionError, Button, ErrorState, Notice, PageLoading } from '../ui'
 import styles from './admin.module.css'
 import { PickMap } from './PickMap'
 import { useInstitution } from '../institution'
@@ -36,6 +37,24 @@ export function Placer({ initial = null, onSaved }: { initial?: string | null; o
     <div className={styles.placer}>
       <div className={styles.side}>
         <p className={styles.lead}>בחר בניין, ואז לחץ על הגג שלו {AERIAL_ENABLED ? 'בתצלום האוויר' : 'במפה'}.</p>
+        {chosen && (
+          // While a building is chosen, every click on the map saves and moves it:
+          // a way out, so a stray click cannot move it by mistake.
+          <div className={styles.chosenNow}>
+            <p className={styles.chosenNote}>{`בניין ${chosen.code} נבחר. לחיצה על המפה תזיז אותו.`}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<X aria-hidden="true" />}
+              onClick={() => {
+                setSelected(null)
+                setDone(null)
+              }}
+            >
+              ביטול הבחירה
+            </Button>
+          </div>
+        )}
         <ul className={styles.choices}>
           {buildings.data.map((b) => (
             <li key={b.code}>

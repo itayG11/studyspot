@@ -158,6 +158,21 @@ describe('AdminPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('בניין NX מוקם על המפה')
   })
 
+  it('lets go of the chosen building, so a click on the map no longer moves it', async () => {
+    // With a building chosen every click on the map saves its place: "cancel" is the way out.
+    renderAdmin()
+    await userEvent.click(await screen.findByRole('button', { name: 'מיקום בניינים' }))
+    expect(screen.queryByRole('button', { name: 'ביטול הבחירה' })).not.toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: /בניין NX/ }))
+    expect(screen.getByText('בניין NX נבחר. לחיצה על המפה תזיז אותו.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /בניין NX/ })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'ביטול הבחירה' }))
+    expect(screen.queryByRole('button', { name: 'ביטול הבחירה' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /בניין NX/ })).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(screen.getByRole('button', { name: 'לחיצה על המפה' }))
+    expect(posts.map((p) => p.path)).not.toContain('/admin/buildings/6/location')
+  })
+
   it('adds a building by its name and short name, where the map was clicked', async () => {
     renderAdmin()
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))

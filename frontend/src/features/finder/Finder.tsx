@@ -45,6 +45,11 @@ const FLAG_LABELS: Record<Flag, string> = {
 
 const TYPING_PAUSE_MS = 300
 
+// Closes the phone's keyboard, so what the page goes to is not behind it.
+function blurNow() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+}
+
 const FLAG_ICONS = { free: CircleDot, quiet: Volume1, group: Users, computers: Computer, outlets: Plug }
 
 interface FinderProps {
@@ -95,17 +100,47 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
   // Un-starring the last favourite hides the chip: its filter goes off too.
   const favoritesOn = onlyFavorites && favorites.length > 0
 
+  // The results, in view: when what was typed or chosen has its answer out of sight
+  // (below the screen, or under the sticky search), the page goes to it, so nobody
+  // has to scroll for it, with a keyboard over half the screen.
+  const bar = useRef<HTMLDivElement>(null)
+  const typed = useRef(false) // only after the reader typed: a link's own text must not move the page
+  const revealResults = () => {
+    const results = document.getElementById('finder-results')
+    if (!results) return
+    const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 0
+    const under = header + (bar.current?.offsetHeight ?? 0) // the bottom of the search, where it sticks
+    const top = results.getBoundingClientRect().top
+    const view = window.visualViewport?.height ?? window.innerHeight
+    if (top >= under && top < view - 120) return // already in view
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollBy({ top: top - under - 8, behavior: calm ? 'auto' : 'smooth' })
+  }
+  // After a pause in the typing, the same.
+  useEffect(() => {
+    if (!typed.current || text === '') return
+    const timer = window.setTimeout(revealResults, 600)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- revealResults only reads the page
+  }, [text])
+  // How many places match, for the advanced panel's "show" button.
+  const matches = places && buildings ? applyFilters(places, filters, buildings).filter((p) => !favoritesOn || favorites.includes(p.id)).length : null
+
   return (
     <section id="finder" className={styles.finder} aria-labelledby="finder-title" tabIndex={-1}>
       {/* The heading scrolls away; only the search and the chips stay. */}
       <h2 id="finder-title" className={styles.heading}>
         איפה תלמד היום?
       </h2>
-      <div className={styles.bar}>
+      <div ref={bar} className={styles.bar}>
         <SearchField
           label="חיפוש מקום"
           value={filters.q}
-          onChange={(q) => update({ ...filters, q }, TYPING_PAUSE_MS)}
+          onChange={(q) => {
+            typed.current = true
+            update({ ...filters, q }, TYPING_PAUSE_MS)
+          }}
+          onSubmit={() => window.setTimeout(revealResults, 120)} // after the keyboard has gone
           placeholder="שם, בניין, סוג או ציוד"
         />
         <div className={styles.chips} role="group" aria-label="סינון">
@@ -143,9 +178,18 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
         <AdvancedFiltersButton open={moreOpen} onToggle={() => setMoreOpen(!moreOpen)} filters={filters} />
         <QuickFinder places={places} />
       </div>
-      <AdvancedFilters open={moreOpen} filters={filters} buildings={buildings} update={update} />
-
-      {today && <CampusLoad data={today} places={places} timeZone={timezone} />}
+      <AdvancedFilters
+        open={moreOpen}
+        filters={filters}
+        buildings={buildings}
+        update={update}
+        matches={matches}
+        onShow={() => {
+          setMoreOpen(false)
+          blurNow()
+          window.setTimeout(revealResults, 320) // after the panel has folded and the keyboard has gone
+        }}
+      />
 
       <Results
         places={places}
@@ -160,6 +204,10 @@ export function Finder({ places, buildings, today = null, error, onRetry }: Find
         selected={selected}
         setSelected={setSelected}
       />
+
+      {/* Under the results, not between them and the filters: it is some 800 pixels
+          tall on a phone, and the results are what a search is for. */}
+      {today && <CampusLoad data={today} places={places} timeZone={timezone} />}
     </section>
   )
 }
@@ -194,7 +242,7 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
   return (
     <>
       {error && <ErrorState error={error} onRetry={onRetry} compact />}
-      <div className={styles.toolbar}>
+      <div id="finder-results" className={styles.toolbar}>
         <p className={styles.count} aria-live="polite">
           {shown.length === 1 ? 'מקום אחד' : `${shown.length} מקומות`}
         </p>
@@ -258,7 +306,7 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
           </ul>
         )}
         {isMap && (
-          <div className={styles.mapBox}>
+          <div id="finder-map" className={styles.mapBox}>
             <Suspense fallback={<Skeleton height="100%" radius="var(--r-lg)" />}>
               <FinderMap buildings={buildings} selected={selected} onSelect={(code) => setSelected(code === selected ? null : code)} />
             </Suspense>

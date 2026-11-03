@@ -15,11 +15,41 @@ import { withLiveTotals } from '../logic/buildingTotals'
 import { hasFilters, readFilters } from '../logic/filters'
 import { useInstitution } from '../institution'
 
+// The map is aimed at while the finder's tray is still tilted (FinderReveal) and
+// today's load card above it is still arriving, and both move it a moment later.
+// So for about two seconds, frame by frame, the map is put back in the middle of
+// the screen, until it holds still or the reader takes over (a touch, the wheel, a key).
+function holdOnMap(map: HTMLElement) {
+  const EVENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown']
+  let frames = 0
+  let stopped = false
+  const stop = () => {
+    stopped = true
+    EVENTS.forEach((name) => window.removeEventListener(name, stop))
+  }
+  const step = () => {
+    if (stopped || !map.isConnected || ++frames > 120) return stop()
+    const box = map.getBoundingClientRect()
+    if (Math.abs(box.top + box.height / 2 - window.innerHeight / 2) > 4) map.scrollIntoView({ behavior: 'auto', block: 'center' })
+    window.requestAnimationFrame(step)
+  }
+  EVENTS.forEach((name) => window.addEventListener(name, stop, { passive: true }))
+  window.requestAnimationFrame(step)
+}
+
 function toFinder(smooth: boolean) {
   const finder = document.getElementById('finder')
   if (!finder) return
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  finder.scrollIntoView({ behavior: smooth && !reduce ? 'smooth' : 'auto', block: 'start' })
+  const behavior = smooth && !reduce ? 'smooth' : 'auto'
+  // Asked for the map ("?view=map", the phone's tab bar): to the map itself, which
+  // sits below the search, the filters and today's load; otherwise to the search.
+  const map = new URLSearchParams(window.location.search).get('view') === 'map' ? document.getElementById('finder-map') : null
+  if (map) {
+    // At once, not gliding: the page above the map is long, and the map moves as it arrives.
+    map.scrollIntoView({ behavior: 'auto', block: 'center' })
+    holdOnMap(map)
+  } else finder.scrollIntoView({ behavior, block: 'start' })
   // The keyboard continues from the finder too.
   finder.focus({ preventScroll: true })
 }
@@ -77,8 +107,18 @@ export function HomePage() {
   // Asked again while already here: glide down to the search. (The first
   // ask, on arrival, is the jump above.)
   const firstAsk = useRef(toFinderAsked)
+  const readyNow = useRef(ready) // read inside the effect below without re-running it
+  useEffect(() => {
+    readyNow.current = ready
+  }, [ready])
   useEffect(() => {
     if (toFinderAsked === undefined || toFinderAsked === firstAsk.current) return
+    // Asked before the data is in (the finder is still a placeholder, with no map
+    // to go to): the jump above does it as soon as the data arrives.
+    if (!readyNow.current) {
+      skipStory.current = true
+      return
+    }
     smoothToFinder()
     forgetToFinder()
   }, [toFinderAsked])
