@@ -8,7 +8,7 @@ import { resetSessionForTests } from './api/client'
 import { AuthProvider } from './auth/AuthContext'
 import { forgetVisitForTests } from './institution'
 import { routes } from './router'
-import { INSTITUTION, jsonResponse, place } from './test/fixtures'
+import { building, INSTITUTION, jsonResponse, place } from './test/fixtures'
 
 const DEMO = { ...INSTITUTION, slug: 'demo', name: 'קמפוס הדגמה' }
 const BRAUDE = INSTITUTION
@@ -48,6 +48,7 @@ beforeEach(() => {
     if (path === '/places/7') {
       return Promise.resolve(jsonResponse({
         ...place({ id: 7, name: 'EM107', kind: 'group_room' }),
+        building: building({ code: 'EM' }),
         institution_slug: 'braude',
         opening_hours: [], open_all_day_today: false, lab_rows: null, lab_cols: null, seats: null,
       }))

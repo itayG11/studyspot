@@ -3,6 +3,7 @@
 import json
 import socket
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 import httpx
 import pytest
@@ -504,6 +505,115 @@ def test_the_demo_campus_cannot_add_addresses(client, session, receiver, monkeyp
     assert (answer.status_code, answer.json()["detail"]) == (403, "demo_campus_locked")
 
 
+# --- wave 18: the call goes to the address that was checked (DNS rebinding) ----------------
+
+
+def test_the_call_goes_to_the_checked_address_not_to_a_second_lookup(session, braude):
+    """A name that answers with a public address when we check it and with an
+    internal one when the HTTP client looks again must not reach the inside."""
+    answers = iter(["93.184.216.34", "127.0.0.1", "127.0.0.1", "169.254.169.254"])
+
+    def rebinding(host, port, type=0):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (next(answers), port))]
+
+    seen = Receiver()
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(seen), KEY, SUNDAY_10AM, False, rebinding)
+    assert delivery.status == DeliveryStatus.SENT
+    request = seen.requests[0]
+    assert request.url.host == "93.184.216.34"  # the number that was checked, not the name
+    assert request.headers["host"] == urlsplit(endpoint.url).hostname  # the receiver still sees its own name
+    assert request.extensions["sni_hostname"] == urlsplit(endpoint.url).hostname  # and the certificate is checked by the name
+    assert next(answers) == "127.0.0.1"  # no second lookup was made
+
+
+def test_a_pinned_call_keeps_a_port_and_an_ipv6_address():
+    url, headers, extensions = webhooks._pinned("https://hooks.example.edu:8443/in?x=1", "2606:2800:220:1::1")
+    assert url == "https://[2606:2800:220:1::1]:8443/in?x=1"
+    assert headers == {"Host": "hooks.example.edu:8443"}
+    assert extensions == {"sni_hostname": "hooks.example.edu"}
+
+
+def test_a_name_with_several_addresses_has_them_all_checked_and_then_tried_in_order():
+    def two(host, port, type=0):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", port)),
+        ]
+
+    # One private address among them refuses the whole name.
+    assert webhooks.checked_address("https://mixed.example.edu/h", False, two) == ("webhook_url_private", [])
+    assert webhooks.checked_address("https://ok.example.edu/h", False, resolve_to(PUBLIC)) == (None, [PUBLIC])
+
+
+IPV6 = "2606:2800:220:1:248:1893:25c8:1946"
+
+
+def resolve_to_all(*addresses: str):
+    def resolve(host, port, type=0):
+        return [
+            (socket.AF_INET6 if ":" in a else socket.AF_INET, socket.SOCK_STREAM, 6, "", (a, port)) for a in addresses
+        ]
+
+    return resolve
+
+
+def test_a_name_whose_first_address_does_not_connect_falls_back_to_the_next(session, braude):
+    """As the HTTP client itself would: a name with an IPv6 and an IPv4 address, IPv6 not reachable from here."""
+    reached: list[str] = []
+
+    def receiver(request: httpx.Request) -> httpx.Response:
+        reached.append(request.url.host)
+        if request.url.host.startswith("2606"):
+            raise httpx.ConnectError("no route")
+        return httpx.Response(200)
+
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(receiver), KEY, SUNDAY_10AM, False, resolve_to_all(IPV6, PUBLIC))
+    assert reached == [IPV6, PUBLIC]
+    assert delivery.status == DeliveryStatus.SENT
+
+
+def test_an_answer_stops_the_fallback_so_an_event_is_not_sent_twice(session, braude):
+    reached: list[str] = []
+
+    def receiver(request: httpx.Request) -> httpx.Response:
+        reached.append(request.url.host)
+        return httpx.Response(500)
+
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(receiver), KEY, SUNDAY_10AM, False, resolve_to_all(PUBLIC, "93.184.216.35"))
+    assert reached == [PUBLIC]  # a 500 is an answer: one try, counted once
+    assert (delivery.attempts, delivery.status) == (1, DeliveryStatus.PENDING)
+
+
+def test_no_address_connecting_is_one_failed_try(session, braude):
+    def receiver(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(receiver), KEY, SUNDAY_10AM, False, resolve_to_all(IPV6, PUBLIC))
+    assert (delivery.attempts, delivery.last_error) == (1, "ConnectError")
+
+
+def test_the_fallback_stays_inside_the_total_deadline(session, braude, monkeypatch):
+    import anyio
+
+    async def slow(request):
+        await anyio.sleep(10)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(webhooks, "TOTAL_SECONDS", 0.3)
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(slow), KEY, SUNDAY_10AM, False, resolve_to_all(PUBLIC, "93.184.216.35"))
+    assert (delivery.attempts, delivery.last_error) == (1, "Timeout")
+
+
 # --- the wave 14 review: slow servers, long batches, odd failures --------------------------
 
 
@@ -572,3 +682,10 @@ def test_an_event_that_fails_never_stops_the_sweep(client, session, braude, monk
     monkeypatch.setattr(sweeper, "check_in_event", boom)
     result = sweep(session, SUNDAY_10AM + timedelta(hours=12))
     assert result.expired_check_ins == 1
+
+
+def test_the_same_address_twice_is_one_and_a_long_list_is_cut_at_four():
+    many = resolve_to_all(PUBLIC, PUBLIC, "93.184.216.35", "93.184.216.36", "93.184.216.37", "93.184.216.38")
+    problem, addresses = webhooks.checked_address("https://many.example.edu/h", False, many)
+    assert problem is None
+    assert addresses == [PUBLIC, "93.184.216.35", "93.184.216.36", "93.184.216.37"]

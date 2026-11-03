@@ -107,3 +107,24 @@ def test_a_closed_room_is_not_free_now(client):
     room = next(p for p in client.get("/institutions/braude/places?building=EM").json() if p["name"] == "EM107")
     assert room["free_now"] is False
     assert room["free_from"] is None
+
+
+# --- Wave 18: the place's page carries its building, for the small map ----------------------
+
+
+def test_a_place_carries_its_building_with_the_numbers_the_buildings_list_shows(client, braude):
+    """The place's page used to fetch every building to read one: the same numbers now come with the place."""
+    listed = {b["code"]: b for b in client.get("/institutions/braude/buildings").json()}
+    for code, name in (("M", "M206"), ("EM", "EM107")):
+        place = place_named(braude, code, name)
+        building = client.get(f"/places/{place.id}").json()["building"]
+        assert building == listed[code]  # the same fields, the same numbers, nothing more to fetch
+
+
+def test_a_building_not_yet_on_the_map_has_no_position_in_its_places(client, braude, session):
+    place = place_named(braude, "M", "M206")
+    place.building.latitude = place.building.longitude = None
+    session.flush()
+    building = client.get(f"/places/{place.id}").json()["building"]
+    assert (building["latitude"], building["longitude"]) == (None, None)
+    assert building["code"] == "M"

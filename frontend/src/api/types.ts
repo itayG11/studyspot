@@ -129,6 +129,7 @@ export interface CampusToday {
 }
 
 export interface PlaceDetail extends Place {
+  building: Building // the place's building: its position on the map, and what is free in it now
   institution_slug: string // old links carry no institution; the site reads it here
   opening_hours: OpeningHours[]
   open_all_day_today: boolean

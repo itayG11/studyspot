@@ -14,23 +14,23 @@ import styles from './me.module.css'
 
 type State = 'loading' | 'needs-install' | 'unsupported' | 'denied' | 'off' | 'on'
 
+// What is known at once, without asking the browser anything: this device cannot, or has refused. Otherwise
+// "loading" until the browser says whether it is subscribed.
+function startingState(isDemo: boolean): State {
+  if (isDemo) return 'loading'
+  const support = pushSupport(currentPushEnvironment(detectPlatform(currentDevice())))
+  if (support !== 'supported') return support
+  return permission() === 'denied' ? 'denied' : 'loading'
+}
+
 export function PushToggle({ isDemo }: { isDemo: boolean }) {
-  const [state, setState] = useState<State>('loading')
+  const [state, setState] = useState<State>(() => startingState(isDemo))
   const [note, setNote] = useState<string | null>(null)
   const action = useAction()
   const titleId = useId()
 
   useEffect(() => {
-    if (isDemo) return
-    const support = pushSupport(currentPushEnvironment(detectPlatform(currentDevice())))
-    if (support !== 'supported') {
-      setState(support)
-      return
-    }
-    if (permission() === 'denied') {
-      setState('denied')
-      return
-    }
+    if (startingState(isDemo) !== 'loading' || isDemo) return
     let live = true
     currentSubscription()
       .then((sub) => live && setState(sub ? 'on' : 'off'))

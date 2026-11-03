@@ -23,6 +23,7 @@ const INSTITUTION = {
 function lab(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
   return {
     ...place(),
+    building: building({ code: 'M', name: null, available: 7 }),
     institution_slug: 'braude',
     opening_hours: [{ weekday: 6, opens: '07:00:00', closes: '20:00:00' }],
     open_all_day_today: false,
@@ -34,18 +35,14 @@ function lab(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
 }
 
 let placeResponses: (() => Response)[] = []
-let buildingsList: Building[] | null = null // null: the buildings list cannot be loaded
 let fetchMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   placeResponses = []
-  buildingsList = [building({ code: 'M', name: null, available: 7 })]
   fetchMock = vi.fn((url: string) => {
     const path = new URL(url).pathname
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path.startsWith('/auth/')) return Promise.resolve(jsonResponse({ detail: 'not_authenticated' }, 401))
-    if (path === '/institutions/braude/buildings')
-      return buildingsList ? Promise.resolve(jsonResponse(buildingsList)) : Promise.reject(new TypeError('Failed to fetch'))
     // The load forecast has its own tests (Forecast.test.tsx): no history here.
     if (path.endsWith('/forecast'))
       return Promise.resolve(jsonResponse({ weekday: 6, capacity: 2, weeks: 0, simulated: false, closed: false, slots: [], frees_at: null }))
@@ -175,22 +172,18 @@ describe('SpacePage', () => {
     })
 
     it('has no card when the building is not on the map yet', async () => {
-      buildingsList = [building({ code: 'M', latitude: null, longitude: null })]
-      placeResponses.push(() => jsonResponse(lab({ building_code: 'M' })))
+      placeResponses.push(() => jsonResponse(lab({ building: building({ code: 'M', latitude: null, longitude: null }) })))
       renderAt('/spaces/1')
       await screen.findByRole('region', { name: 'מה יש כאן' })
-      await act(async () => {})
       expect(screen.queryByRole('region', { name: 'איפה זה' })).not.toBeInTheDocument()
     })
 
-    it('has no card, and no error, when the buildings cannot be loaded', async () => {
-      buildingsList = null
-      placeResponses.push(() => jsonResponse(lab({ building_code: 'M' })))
+    // (Wave 18: the card no longer fetches the buildings list, so "the list cannot be loaded" is gone.)
+    it('makes no request for the buildings list: the building comes with the place', async () => {
+      placeResponses.push(() => jsonResponse(lab({ building: building({ code: 'M' }) })))
       renderAt('/spaces/1')
-      await screen.findByRole('region', { name: 'מה יש כאן' })
-      await act(async () => {})
-      expect(screen.queryByRole('region', { name: 'איפה זה' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      await screen.findByRole('region', { name: 'איפה זה' })
+      expect(fetchMock.mock.calls.some(([url]) => new URL(url).pathname.endsWith('/buildings'))).toBe(false)
     })
   })
 

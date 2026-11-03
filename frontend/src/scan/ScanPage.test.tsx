@@ -6,7 +6,7 @@ import { resetSessionForTests } from '../api/client'
 import type { Booking, PlaceDetail } from '../api/types'
 import { AuthProvider } from '../auth/AuthContext'
 import { InstitutionProvider } from '../institution'
-import { jsonResponse, place, seat } from '../test/fixtures'
+import { building, jsonResponse, place, seat } from '../test/fixtures'
 import { ScanPage } from './ScanPage'
 
 const SIG = 'A'.repeat(43)
@@ -19,11 +19,13 @@ const NOW = new Date('2026-10-11T07:00:00Z') // Sunday 10:00 in Israel
 
 const AREA: PlaceDetail = {
   ...place({ id: 5, kind: 'open_area', name: 'מתחם לימוד', building_code: 'L', capacity: 50, available: 50, occupied: 0, bookable: false, counted: true }),
+  building: building(),
   institution_slug: 'braude',
   opening_hours: [], open_all_day_today: false, lab_rows: null, lab_cols: null, seats: null,
 }
 const LAB: PlaceDetail = {
   ...place({ id: 1 }),
+  building: building(),
   institution_slug: 'braude',
   opening_hours: [], open_all_day_today: false, lab_rows: 1, lab_cols: 2,
   seats: [seat(), seat({ id: 2, col: 2, label: 'A2', occupied: true, free_now: false })],

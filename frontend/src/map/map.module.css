@@ -230,6 +230,5 @@
 }
 
 .placeMap {
-  height: 220px;
-  width: 100%;
+  width: 100%; /* the height comes from placeMapSize.ts */
 }

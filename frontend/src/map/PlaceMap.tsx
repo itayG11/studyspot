@@ -7,10 +7,12 @@ import 'leaflet/dist/leaflet.css'
 import { Browser } from 'leaflet'
 import { CircleMarker, MapContainer, Tooltip } from 'react-leaflet'
 import type { Building } from '../api/types'
-import { LEVEL_COLORS, occupancyLevel, position } from '../logic/occupancy'
+import { occupancyLevel, position } from '../logic/occupancy'
 import styles from './map.module.css'
-import { SourceLayer } from './CampusMap'
-import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS } from './tiles'
+import { circleStyle } from './circleStyle'
+import { BaseLayers } from './layers'
+import { PLACE_MAP_HEIGHT } from './placeMapSize'
+import { MAX_ZOOM } from './tiles'
 
 const ZOOM = 17
 
@@ -32,27 +34,15 @@ export default function PlaceMap({ building }: { building: Building }) {
         // Nothing to pan by keys: no extra tab stop in the page (the zoom buttons stay reachable).
         keyboard={false}
         className={styles.placeMap}
+        style={{ height: PLACE_MAP_HEIGHT }}
       >
-        {/* No layer switch here (the campus map has one): the card shows the photo when it is on, else the streets. */}
-        {AERIAL_ENABLED ? (
-          <>
-            <SourceLayer source={AERIAL} />
-            <SourceLayer source={AERIAL_LABELS} />
-          </>
-        ) : (
-          <SourceLayer source={STREETS} />
-        )}
+        {/* No layer switch here (the campus map has one): an unnamed control in a corner of a small map. */}
+        <BaseLayers switcher={false} />
         <CircleMarker
           center={center}
           radius={22}
           interactive={false}
-          pathOptions={{
-            color: '#ffffff',
-            weight: 3,
-            fillColor: level === 'construction' ? '#ffcc00' : LEVEL_COLORS[level],
-            fillOpacity: 0.95,
-            dashArray: level === 'construction' ? '5 4' : undefined,
-          }}
+          pathOptions={circleStyle(level)}
         >
           <Tooltip permanent direction="center" className={level === 'construction' ? 'map-label map-label-dark' : 'map-label'}>
             <span className="map-code">{building.code}</span>

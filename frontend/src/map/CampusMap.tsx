@@ -4,11 +4,16 @@
 import 'leaflet/dist/leaflet.css'
 import { latLngBounds } from 'leaflet'
 import { useEffect } from 'react'
-import { CircleMarker, LayerGroup, LayersControl, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Tooltip, useMap } from 'react-leaflet'
 import type { Building } from '../api/types'
 import styles from './map.module.css'
 import { LEVEL_COLORS, occupancyLevel, position, SELECTED_COLOR } from '../logic/occupancy'
-import { AERIAL, AERIAL_ENABLED, AERIAL_LABELS, MAX_ZOOM, STREETS, type TileSource } from './tiles'
+import { MAX_ZOOM } from './tiles'
+import { circleStyle } from './circleStyle'
+import { BaseLayers } from './layers'
+
+// PickMap (the admin's) takes the tile layer from here.
+export { SourceLayer } from './layers'
 
 interface Props {
   buildings: Building[] // only buildings that have a position
@@ -26,21 +31,7 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
     // Leaflet is built for left-to-right pages, so the map itself stays LTR.
     <div dir="ltr" className={styles.frame}>
       <MapContainer bounds={bounds} maxZoom={MAX_ZOOM} scrollWheelZoom className={styles.map}>
-        {AERIAL_ENABLED ? (
-          <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="תצלום אוויר">
-              <LayerGroup>
-                <SourceLayer source={AERIAL} />
-                <SourceLayer source={AERIAL_LABELS} />
-              </LayerGroup>
-            </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="מפת רחובות">
-              <SourceLayer source={STREETS} />
-            </LayersControl.BaseLayer>
-          </LayersControl>
-        ) : (
-          <SourceLayer source={STREETS} />
-        )}
+        <BaseLayers switcher />
 
         {flyToSelected && <FlyTo target={points[buildings.findIndex((b) => b.code === selected)] ?? null} />}
         {buildings.map((building, i) => {
@@ -54,12 +45,7 @@ export function CampusMap({ buildings, selected, onSelect, flyToSelected = false
               center={points[i]}
               radius={isSelected ? 24 : 20}
               pathOptions={{
-                // A white ring reads on both the dark photo and the light street map.
-                color: isSelected ? SELECTED_COLOR : '#ffffff',
-                weight: isSelected ? 4 : 3,
-                fillColor: level === 'construction' ? '#ffcc00' : LEVEL_COLORS[level],
-                fillOpacity: 0.95,
-                dashArray: level === 'construction' ? '5 4' : undefined,
+                ...circleStyle(level, isSelected ? SELECTED_COLOR : '#ffffff', isSelected ? 4 : 3),
                 className: isSelected ? 'marker-selected' : undefined,
               }}
               eventHandlers={{ click: () => onSelect(building.code) }}
@@ -103,15 +89,4 @@ function FlyTo({ target }: { target: [number, number] | null }) {
     else map.flyTo([lat, lng], FLY_ZOOM, { duration: 0.9 })
   }, [map, lat, lng])
   return null
-}
-
-export function SourceLayer({ source }: { source: TileSource }) {
-  return (
-    <TileLayer
-      url={source.url}
-      attribution={source.attribution}
-      maxNativeZoom={source.maxNativeZoom}
-      maxZoom={MAX_ZOOM}
-    />
-  )
 }

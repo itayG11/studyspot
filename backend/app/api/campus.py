@@ -259,28 +259,33 @@ def list_buildings(slug: Slug, session: SessionDep, now: NowDep):
         for view in _place_views(session, institution, places, now)
         if view.is_open and view.kind != PlaceKind.GROUP_ROOM
     ]
-    result = []
-    for building in institution.buildings:
-        own = [p for p in places if p.building_id == building.id]
-        open_here = [v for v in walk_in if v.building_code == building.code]
-        capacity = sum(v.capacity for v in open_here)
-        taken = sum(v.occupied for v in open_here)
-        result.append(
-            BuildingOut(
-                id=building.id,
-                code=building.code,
-                name=building.name,
-                status=building.status,
-                floors_count=building.floors_count,
-                latitude=building.latitude,
-                longitude=building.longitude,
-                places_count=len(own),
-                capacity=capacity,
-                occupied=taken,
-                available=max(capacity - taken, 0),
-            )
+    return [
+        _building_out(
+            building,
+            [p for p in places if p.building_id == building.id],
+            [v for v in walk_in if v.building_code == building.code],
         )
-    return result
+        for building in institution.buildings
+    ]
+
+
+def _building_out(building: Building, own: list[Place], open_here: list[PlaceOut]) -> BuildingOut:
+    """`own`: every place in the building; `open_here`: those a student can walk into now."""
+    capacity = sum(v.capacity for v in open_here)
+    taken = sum(v.occupied for v in open_here)
+    return BuildingOut(
+        id=building.id,
+        code=building.code,
+        name=building.name,
+        status=building.status,
+        floors_count=building.floors_count,
+        latitude=building.latitude,
+        longitude=building.longitude,
+        places_count=len(own),
+        capacity=capacity,
+        occupied=taken,
+        available=max(capacity - taken, 0),
+    )
 
 
 @router.get("/institutions/{slug}/places", response_model=list[PlaceOut], dependencies=[Depends(public_read_limit)])
@@ -355,8 +360,17 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
         seats = _seat_map(session, place, now)
+    # The building's own numbers, for the small map on the place's page: only this building's places.
+    here = session.scalars(_places_query().where(Place.building_id == place.building_id)).all()
+    here_views = _place_views(session, institution, here, now, all_day)
+    building = _building_out(
+        place.building,
+        list(here),
+        [v for v in here_views if v.is_open and v.kind != PlaceKind.GROUP_ROOM],
+    )
     return PlaceDetail(
         **view.model_dump(),
+        building=building,
         institution_slug=institution.slug,
         opening_hours=[OpeningHoursOut.model_validate(h) for h in place.opening_hours],
         open_all_day_today=place.id in all_day,

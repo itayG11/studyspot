@@ -427,6 +427,7 @@ class CampusTodayOut(BaseModel):
 
 
 class PlaceDetail(PlaceOut):
+    building: BuildingOut  # the place's building: where it is on the map, and what is free in it now
     institution_slug: str  # old links carry no institution; the site reads it here
     opening_hours: list[OpeningHoursOut]
     open_all_day_today: bool
