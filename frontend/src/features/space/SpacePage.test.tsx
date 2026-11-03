@@ -76,6 +76,17 @@ describe('SpacePage', () => {
     expect(screen.queryByRole('button', { name: /להזמין/ })).not.toBeInTheDocument()
   })
 
+  it('shows a lab\'s seat map right after the facts, beside the booking card, not far below it', async () => {
+    placeResponses.push(() => jsonResponse(lab()))
+    renderAt('/spaces/1')
+    const seats = await screen.findByRole('heading', { name: 'מפת התאים' })
+    const today = screen.getByRole('heading', { name: 'היום' })
+    // The seat map comes before "today" in the page, so it is not pushed below the fold.
+    expect(seats.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // And "today" no longer says the map is "below".
+    expect(today.parentElement).toHaveTextContent('בחר תא במפה, ותראה מתי הוא פנוי היום.')
+  })
+
   it('on a phone, the bar under a lab with no station chosen leads to the station map, not a dead button', async () => {
     // A greyed-out button reads as broken; this one says what to do and does it.
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }))

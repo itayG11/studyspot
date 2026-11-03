@@ -258,7 +258,7 @@ function Results({ places, buildings, today, error, onRetry, filters, update, fa
           </ul>
         )}
         {isMap && (
-          <div className={styles.mapBox}>
+          <div id="finder-map" className={styles.mapBox}>
             <Suspense fallback={<Skeleton height="100%" radius="var(--r-lg)" />}>
               <FinderMap buildings={buildings} selected={selected} onSelect={(code) => setSelected(code === selected ? null : code)} />
             </Suspense>

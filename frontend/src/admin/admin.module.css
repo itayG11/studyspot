@@ -216,6 +216,18 @@
   outline-offset: 2px;
 }
 
+.chosenNow {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-2);
+}
+
+.chosenNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
 .coords {
   font: 500 var(--text-xs) var(--font-mono);
   color: var(--ink-2);
@@ -238,6 +250,62 @@
   color: var(--ink);
   background: var(--stone-0);
   border-color: var(--stone-3);
+}
+
+/* The same look as the campus map (src/map/map.module.css): zoom buttons as
+   glass with blue symbols, and each building's label as a small dark pill. */
+.pickMap :global(.leaflet-bar) {
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+}
+
+.pickMap :global(.leaflet-bar a) {
+  color: var(--primary-text);
+  background: color-mix(in srgb, var(--stone-0) 86%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: var(--hairline);
+}
+
+.pickMap :global(.leaflet-tooltip.pick-label) {
+  padding: 2px 9px;
+  font: 700 var(--text-xs) / 1.4 var(--font-body);
+  color: #fff;
+  background: rgb(28 28 30 / 78%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+}
+
+.pickMap :global(.leaflet-tooltip.pick-label-on) {
+  background: var(--primary);
+}
+
+.pickMap :global(.leaflet-tooltip-top.pick-label::before) {
+  display: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pickMap :global(.leaflet-bar a) {
+    background: var(--stone-0);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .pickMap :global(.leaflet-tooltip.pick-label) {
+    background: var(--night);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .pickMap :global(.leaflet-tooltip.pick-label-on) {
+    background: var(--primary);
+  }
 }
 
 .pickMap :global(.leaflet-control-attribution) {

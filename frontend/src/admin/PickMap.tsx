@@ -65,9 +65,9 @@ export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
               center={at}
               radius={b.code === selected ? 14 : 10}
               interactive={false}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: b.code === selected ? SELECTED_COLOR : '#141a2e', fillOpacity: 0.95 }}
+              pathOptions={{ color: '#ffffff', weight: 3, fillColor: b.code === selected ? SELECTED_COLOR : '#1d1d1f', fillOpacity: 0.95 }}
             >
-              <Tooltip permanent direction="top" offset={[0, -10]}>
+              <Tooltip permanent direction="top" offset={[0, -10]} className={b.code === selected ? 'pick-label pick-label-on' : 'pick-label'}>
                 {b.code}
               </Tooltip>
             </CircleMarker>
@@ -80,7 +80,7 @@ export function PickMap({ buildings, selected, onPick, flyTo, picked }: Props) {
             interactive={false}
             pathOptions={{ color: '#ffffff', weight: 3, fillColor: SELECTED_COLOR, fillOpacity: 0.95 }}
           >
-            <Tooltip permanent direction="top" offset={[0, -10]}>
+            <Tooltip permanent direction="top" offset={[0, -10]} className="pick-label pick-label-on">
               הבניין החדש
             </Tooltip>
           </CircleMarker>
