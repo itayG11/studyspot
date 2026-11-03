@@ -128,39 +128,45 @@ def _resolve_by_deadline(resolve: Callable, host: str, port: int):
         raise OSError("name lookup timed out") from None
 
 
+MAX_ADDRESSES = 4  # a name with more is tried at its first four
+
+
 def checked_address(
     url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo
-) -> tuple[str | None, str | None]:
-    """(problem, address): why the URL may not be called, or else the one
-    address to call.
+) -> tuple[str | None, list[str]]:
+    """(problem, addresses): why the URL may not be called, or else the
+    addresses to call, in the order the name gave them.
 
     Every address the name resolves to must be on the public internet: a
     name that points at 127.0.0.1, 10.x or the cloud's metadata address
     (169.254.169.254) would let anyone make our server call inside its own
     network. Checked when the endpoint is saved and again before each call,
     since a name can be pointed elsewhere later. The call then goes to the
-    very address that was checked (see _post): a second lookup by the HTTP
-    client could be answered differently ("DNS rebinding").
+    very addresses that were checked (see _post), one after the other if one
+    does not connect (as the HTTP client itself would, for a name with an
+    IPv6 and an IPv4 address): a second lookup by the HTTP client could be
+    answered differently ("DNS rebinding").
     """
     parts = urlsplit(url)
     if parts.scheme != "https" and not (allow_private and parts.scheme == "http"):
-        return "webhook_url_https", None
+        return "webhook_url_https", []
     if not parts.hostname or parts.username or parts.password:
-        return "webhook_url_invalid", None
+        return "webhook_url_invalid", []
     try:
         port = parts.port or (443 if parts.scheme == "https" else 80)
         found = _resolve_by_deadline(resolve, parts.hostname, port)
     except (OSError, ValueError, UnicodeError):
-        return "webhook_url_unresolved", None
+        return "webhook_url_unresolved", []
     if not found:
-        return "webhook_url_unresolved", None
+        return "webhook_url_unresolved", []
     if not allow_private:
         for *_, sockaddr in found:
             address = ipaddress.ip_address(sockaddr[0])
             mapped = getattr(address, "ipv4_mapped", None)
             if not (mapped or address).is_global or any(address in net for net in _TUNNELS):
-                return "webhook_url_private", None
-    return None, str(found[0][-1][0])
+                return "webhook_url_private", []
+    addresses = list(dict.fromkeys(str(found_one[-1][0]) for found_one in found))
+    return None, addresses[:MAX_ADDRESSES]
 
 
 def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo) -> str | None:
@@ -290,27 +296,37 @@ def _post(
     body: bytes,
     headers: dict[str, str],
     transport: httpx.AsyncBaseTransport | None,
-    address: str | None = None,
+    addresses: list[str] | None = None,
 ) -> int:
     """POST, and the status code. Under a deadline for the whole call:
     httpx's own timeout counts each read separately, so a server sending a
     byte every few seconds would hold the call (and the sweep) for hours.
     Streamed and closed unread: the answer's body is never loaded. Redirects
-    are not followed (they could lead inside our network). With `address`
-    (the one that was checked), the call goes to that address and no name is
-    looked up again."""
-    extensions: dict[str, str] = {}
-    if address is not None:
-        url, extra, extensions = _pinned(url, address)
-        headers = {**headers, **extra}
+    are not followed (they could lead inside our network). With `addresses`
+    (the ones that were checked), the call goes to them, no name is looked up
+    again, and the next one is tried only when a connection could not be
+    made: an answer of any kind, even an error, ends the tries, so an event
+    is never sent twice. The deadline is for all of them together."""
+
+    async def one(target: str, extra: dict[str, str], extensions: dict[str, str]) -> int:
+        async with (
+            httpx.AsyncClient(transport=transport, timeout=TIMEOUT_SECONDS, follow_redirects=False) as http,
+            http.stream("POST", target, content=body, headers={**headers, **extra}, extensions=extensions) as answer,
+        ):
+            return answer.status_code
 
     async def go() -> int:
         with anyio.fail_after(TOTAL_SECONDS):
-            async with (
-                httpx.AsyncClient(transport=transport, timeout=TIMEOUT_SECONDS, follow_redirects=False) as http,
-                http.stream("POST", url, content=body, headers=headers, extensions=extensions) as answer,
-            ):
-                return answer.status_code
+            if not addresses:
+                return await one(url, {}, {})
+            for number, address in enumerate(addresses, start=1):
+                target, extra, extensions = _pinned(url, address)
+                try:
+                    return await one(target, extra, extensions)
+                except (httpx.ConnectError, httpx.ConnectTimeout):
+                    if number == len(addresses):
+                        raise
+            raise AssertionError("unreachable")  # the loop returns or raises
 
     return anyio.run(go)
 
@@ -328,11 +344,11 @@ def attempt(
     before the call: the signature's time is the time it is sent."""
     status_code: int | None = None
     error: str | None = None
-    address: str | None = None
+    addresses: list[str] = []
     if not endpoint.active:
         error = "endpoint_disabled"
     else:
-        error, address = checked_address(endpoint.url, allow_private, resolve)
+        error, addresses = checked_address(endpoint.url, allow_private, resolve)
     if error is None:
         body = body_of(delivery.payload)
         stamp = int(now.timestamp())
@@ -344,7 +360,7 @@ def attempt(
             "StudySpot-Signature": signature_header(secret_for(key, endpoint), stamp, body),
         }
         try:
-            status_code = _post(endpoint.url, body, headers, transport, address)
+            status_code = _post(endpoint.url, body, headers, transport, addresses)
         except TimeoutError:
             error = "Timeout"
         except Exception as failure:  # noqa: BLE001 - any failure is a failed try, counted, never a loop
