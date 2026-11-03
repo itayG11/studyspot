@@ -158,6 +158,28 @@
   box-shadow: var(--shadow-2);
 }
 
+/* A lab: the seat map and the booking form in one card. Taller than a short screen: it scrolls inside. */
+.asideLab {
+  max-height: calc(100dvh - var(--header-h, 0px) - var(--s-8));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Wide enough for a lab's whole row of stations (8 of them) without scrolling sideways. */
+@media (min-width: 1100px) {
+  .layoutWide {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 500px);
+  }
+}
+
+.h3 {
+  margin: var(--s-2) 0 0;
+  font: 700 var(--text-lg) / 1.2 var(--font-heading);
+  letter-spacing: -0.015em;
+  text-align: start;
+  color: var(--ink);
+}
+
 .h2 {
   margin: 0;
   font: 700 var(--text-xl) / 1.2 var(--font-heading);

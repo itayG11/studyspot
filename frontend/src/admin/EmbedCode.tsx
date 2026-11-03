@@ -1,6 +1,7 @@
-// The occupancy widget, in the "Connections" tab (wave 14.4): the admin picks
-// a building and a look, copies the iframe code into the institution's own
-// site, and sees it live here first. The page is /embed/<slug> (src/embed/).
+// The occupancy widget, in the "Connections" tab (wave 14.4), inside the part
+// folded for the institution's IT: the code is picked (a building and a look),
+// copied into the institution's own site, and seen live here first. The page is
+// /embed/<slug> (src/embed/).
 
 import { Copy } from 'lucide-react'
 import { useState } from 'react'
@@ -33,8 +34,7 @@ export function EmbedCode() {
         וידג'ט לאתר של המוסד
       </h2>
       <p className={styles.screenNote}>
-        חלון קטן עם התפוסה של המקומות, לאתר של המוסד. מעתיקים את הקוד שלמטה, ושולחים אותו למי שמנהל את האתר של המוסד.
-        הוא מדביק אותו בדף, והחלון מופיע שם ומתעדכן לבד כל דקה.
+        אפשרות לחלון קטן עם תפוסת המקומות באתרי המוסד. החלון מופיע ומתעדכן כל דקה.
       </p>
       <label className={styles.label} htmlFor="embed-building">
         בניין
@@ -78,6 +78,7 @@ export function EmbedCode() {
       >
         {copied ? 'הועתק' : 'להעתיק את הקוד'}
       </Button>
+      <p className={styles.screenNote}>להטמעה: לוחצים על "להעתיק את הקוד" ומדביקים אותו בדף באתר המוסד.</p>
       <iframe className={styles.embedPreview} src={address} title="תצוגה מקדימה של הווידג'ט" loading="lazy" />
     </section>
   )

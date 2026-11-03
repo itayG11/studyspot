@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PlaceDetail } from '../../api/types'
@@ -76,30 +76,41 @@ describe('SpacePage', () => {
     expect(screen.queryByRole('button', { name: /להזמין/ })).not.toBeInTheDocument()
   })
 
-  it('shows a lab\'s seat map right after the facts, beside the booking card, not far below it', async () => {
+  it('a lab\'s seat map is inside the booking card beside the page, not far below it', async () => {
     placeResponses.push(() => jsonResponse(lab()))
     renderAt('/spaces/1')
-    const seats = await screen.findByRole('heading', { name: 'מפת התאים' })
-    const today = screen.getByRole('heading', { name: 'היום' })
-    // The seat map comes before "today" in the page, so it is not pushed below the fold.
-    expect(seats.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // And "today" no longer says the map is "below".
-    expect(today.parentElement).toHaveTextContent('בחר תא במפה, ותראה מתי הוא פנוי היום.')
+    const booking = await screen.findByRole('complementary', { name: 'הזמנה מראש' })
+    expect(within(booking).getByRole('heading', { name: 'מפת התאים' })).toBeInTheDocument()
+    expect(within(booking).getByRole('button', { name: /A1/ })).toBeInTheDocument()
+    // One seat map on the page, not a second one in the page itself.
+    expect(screen.getAllByRole('heading', { name: 'מפת התאים' })).toHaveLength(1)
+    expect(within(booking).getByText('בחר תא במפה, ואז זמן.')).toBeInTheDocument()
   })
 
-  it('on a phone, the bar under a lab with no station chosen leads to the station map, not a dead button', async () => {
+  it('on a phone, the bar under a lab opens the booking sheet, and the seat map is in the sheet', async () => {
+    // Changed on 3 Nov at the user's request: it used to lead to a seat map in the page.
     // A greyed-out button reads as broken; this one says what to do and does it.
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }))
     try {
       placeResponses.push(() => jsonResponse(lab()))
       renderAt('/spaces/1')
-      const bar = await screen.findByRole('button', { name: 'בחר תא כדי להזמין' })
+      const bar = await screen.findByRole('button', { name: 'בחר תא והזמן' })
       expect(bar).toBeEnabled()
+      expect(screen.queryByRole('heading', { name: 'מפת התאים' })).not.toBeInTheDocument() // not in the page
       act(() => bar.click())
-      expect(document.activeElement?.id).toBe('seats')
+      const sheet = await screen.findByRole('dialog', { name: /הזמנה/ })
+      expect(within(sheet).getByRole('heading', { name: 'מפת התאים' })).toBeInTheDocument()
+      expect(within(sheet).getByRole('button', { name: /A1/ })).toBeInTheDocument()
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it('a lab that cannot be booked keeps its seat map in the page', async () => {
+    placeResponses.push(() => jsonResponse(lab({ bookable: false })))
+    renderAt('/spaces/1')
+    expect(await screen.findByRole('heading', { name: 'מפת התאים' })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'הזמנה מראש' })).not.toBeInTheDocument()
   })
 
   it('"book" on a card opens the booking at once: the sheet on a phone', async () => {

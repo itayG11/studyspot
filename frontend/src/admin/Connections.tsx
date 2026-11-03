@@ -1,8 +1,8 @@
-// The "Connections" tab (wave 14): the widget for the institution's own
-// site, open to every admin; then, folded under "for the institution's IT",
-// the API keys (its own systems read places and live occupancy, backend
-// app/api/v1.py) and the webhooks. A new key is shown once, like the
-// screen's link: the server keeps only an HMAC.
+// The "Connections" tab (wave 14): all of it is for the institution's IT, so
+// it is folded under "for the institution's IT": the widget for the
+// institution's own site, the API keys (its own systems read places and live
+// occupancy, backend app/api/v1.py) and the webhooks. A new key is shown
+// once, like the screen's link: the server keeps only an HMAC.
 
 import { Copy, KeyRound } from 'lucide-react'
 import { useState } from 'react'
@@ -27,13 +27,12 @@ export function Connections() {
   return (
     <div className={styles.connections}>
       <p className={styles.lead}>
-        איך להראות את המקומות של המוסד גם מחוץ ל-StudySpot. הווידג'ט, למטה, מתאים לכל מנהל. מה שמתחתיו מיועד לאנשי
-        המחשוב של המוסד.
+        איך להראות את המקומות של המוסד גם מחוץ ל-StudySpot. הכול כאן מיועד לאנשי המחשוב של המוסד.
       </p>
-      <EmbedCode />
-      {/* Closed by default: most admins need only the widget. */}
+      {/* Closed by default: it is for the institution's IT, not for every admin. */}
       <details className={styles.forIt}>
-        <summary className={styles.forItSummary}>לאנשי המחשוב של המוסד: מפתחות API ו-webhooks</summary>
+        <summary className={styles.forItSummary}>לאנשי המחשוב של המוסד: וידג'ט, מפתחות API ו-webhooks</summary>
+        <EmbedCode />
         <p className={styles.screenNote}>
           מפתח API נותן למערכת של המוסד לקרוא את התפוסה. Webhook שולח למערכת של המוסד הודעה בכל כניסה והזמנה, למשל כדי
           שמסך בלובי יתעדכן מיד. אין צורך באף אחד מהם כדי להשתמש ב-StudySpot.
