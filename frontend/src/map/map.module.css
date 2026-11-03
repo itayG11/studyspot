@@ -222,3 +222,14 @@
     -webkit-backdrop-filter: none;
   }
 }
+
+/* --- The small map on a place's page: one building, a fixed height so the page does not jump
+   when the map loads. */
+.placeFrame {
+  box-shadow: var(--shadow-1);
+}
+
+.placeMap {
+  height: 220px;
+  width: 100%;
+}

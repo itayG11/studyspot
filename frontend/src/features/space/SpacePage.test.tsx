@@ -6,8 +6,14 @@ import { REFRESH_INTERVAL_MS } from '../../config'
 import { AuthProvider } from '../../auth/AuthContext'
 import { resetSessionForTests } from '../../api/client'
 import { InstitutionProvider } from '../../institution'
-import { jsonResponse, place, seat } from '../../test/fixtures'
+import type { Building } from '../../api/types'
+import { building, jsonResponse, place, seat } from '../../test/fixtures'
 import { SpacePage } from './SpacePage'
+
+// Leaflet does not run in jsdom: the small map is a stand-in with the building's code.
+vi.mock('../../map/PlaceMap', () => ({
+  default: ({ building: b }: { building: Building }) => <div data-testid="place-map">{b.code}</div>,
+}))
 
 const INSTITUTION = {
   slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
@@ -28,14 +34,18 @@ function lab(overrides: Partial<PlaceDetail> = {}): PlaceDetail {
 }
 
 let placeResponses: (() => Response)[] = []
+let buildingsList: Building[] | null = null // null: the buildings list cannot be loaded
 let fetchMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   placeResponses = []
+  buildingsList = [building({ code: 'M', name: null, available: 7 })]
   fetchMock = vi.fn((url: string) => {
     const path = new URL(url).pathname
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path.startsWith('/auth/')) return Promise.resolve(jsonResponse({ detail: 'not_authenticated' }, 401))
+    if (path === '/institutions/braude/buildings')
+      return buildingsList ? Promise.resolve(jsonResponse(buildingsList)) : Promise.reject(new TypeError('Failed to fetch'))
     // The load forecast has its own tests (Forecast.test.tsx): no history here.
     if (path.endsWith('/forecast'))
       return Promise.resolve(jsonResponse({ weekday: 6, capacity: 2, weeks: 0, simulated: false, closed: false, slots: [], frees_at: null }))
@@ -111,6 +121,75 @@ describe('SpacePage', () => {
     renderAt('/spaces/1')
     expect(await screen.findByRole('heading', { name: 'מפת התאים' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'הזמנה מראש' })).not.toBeInTheDocument()
+  })
+
+  describe('where it is (the small map of its building)', () => {
+    const kinds: [string, Partial<PlaceDetail>][] = [
+      ['a walk-in place', { id: 4, kind: 'open_area', name: 'מתחם לימוד', lab_rows: null, lab_cols: null, seats: null, bookable: false }],
+      ['a group room, booked ahead', { id: 5, kind: 'group_room', name: 'חדר קבוצתי', lab_rows: null, lab_cols: null, seats: null, bookable: true }],
+      ['a lab, booked ahead', { bookable: true }],
+      ['a lab that cannot be booked', { bookable: false }],
+    ]
+    for (const [label, overrides] of kinds) {
+      it(`${label}: shows the map of its building, with what is free there`, async () => {
+        placeResponses.push(() => jsonResponse(lab({ building_code: 'M', ...overrides })))
+        renderAt('/spaces/1')
+        const card = await screen.findByRole('region', { name: 'איפה זה' })
+        expect(within(card).getByTestId('place-map')).toHaveTextContent('M')
+        expect(card).toHaveTextContent('בניין M')
+        expect(card).toHaveTextContent('7 מקומות פנויים בבניין עכשיו')
+        expect(within(card).getByRole('link', { name: 'לכל המקומות במפת הקמפוס' })).toHaveAttribute('href', '/braude?view=map#finder-map')
+      })
+    }
+
+    it('a walk-in place has it above the walk-in steps, and a booked one has the booking above it', async () => {
+      placeResponses.push(() => jsonResponse(lab({ building_code: 'M', kind: 'open_area', lab_rows: null, lab_cols: null, seats: null, bookable: false })))
+      renderAt('/spaces/1')
+      const where = await screen.findByRole('region', { name: 'איפה זה' })
+      const walkIn = screen.getByRole('region', { name: 'בלי הזמנה מראש' })
+      expect(where.compareDocumentPosition(walkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('a booked place keeps the booking on top of the side column', async () => {
+      placeResponses.push(() => jsonResponse(lab({ building_code: 'M', bookable: true })))
+      renderAt('/spaces/1')
+      const where = await screen.findByRole('region', { name: 'איפה זה' })
+      const booking = screen.getByRole('complementary', { name: 'הזמנה מראש' })
+      expect(booking.compareDocumentPosition(where) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('on a phone it comes right after what is here, in the page itself', async () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }))
+      try {
+        placeResponses.push(() => jsonResponse(lab({ building_code: 'M', bookable: false })))
+        renderAt('/spaces/1')
+        const where = await screen.findByRole('region', { name: 'איפה זה' })
+        const facts = screen.getByRole('region', { name: 'מה יש כאן' })
+        expect(facts.compareDocumentPosition(where) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        expect(screen.getAllByRole('region', { name: 'איפה זה' })).toHaveLength(1)
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+    it('has no card when the building is not on the map yet', async () => {
+      buildingsList = [building({ code: 'M', latitude: null, longitude: null })]
+      placeResponses.push(() => jsonResponse(lab({ building_code: 'M' })))
+      renderAt('/spaces/1')
+      await screen.findByRole('region', { name: 'מה יש כאן' })
+      await act(async () => {})
+      expect(screen.queryByRole('region', { name: 'איפה זה' })).not.toBeInTheDocument()
+    })
+
+    it('has no card, and no error, when the buildings cannot be loaded', async () => {
+      buildingsList = null
+      placeResponses.push(() => jsonResponse(lab({ building_code: 'M' })))
+      renderAt('/spaces/1')
+      await screen.findByRole('region', { name: 'מה יש כאן' })
+      await act(async () => {})
+      expect(screen.queryByRole('region', { name: 'איפה זה' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 
   it('"book" on a card opens the booking at once: the sheet on a phone', async () => {

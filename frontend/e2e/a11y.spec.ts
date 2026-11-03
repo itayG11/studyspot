@@ -93,6 +93,11 @@ for (const [label, viewport, colorScheme] of [
     await expect(page.getByRole('heading', { name: 'EM107' })).toBeVisible()
     await check(page, 'room')
 
+    // A walk-in place: its steps and the small map of its building (the "where is it" card).
+    await page.goto(`/spaces/${await firstPlace(page, 'ספרייה')}`)
+    await expect(page.getByRole('region', { name: 'איפה זה' }).locator('.leaflet-container')).toBeVisible()
+    await check(page, 'walk-in place with its map')
+
     await page.goto('/me')
     await expect(page.getByRole('region', { name: 'המועדפים' })).toBeVisible()
     await check(page, 'my area')

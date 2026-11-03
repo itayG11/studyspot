@@ -24,6 +24,7 @@ import { BookingForm } from '../booking/BookingForm'
 import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
 import { PlaceForecast } from './Forecast'
+import { PlaceLocation } from './PlaceLocation'
 import { Timetable } from './Timetable'
 import { artTransitionName } from './transition'
 import { backToFinder } from './backLink'
@@ -194,6 +195,9 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             {place.details_are_demo && <p className={styles.demo}>הציוד והאווירה הם נתוני דמו, ולא נבדקו במקום.</p>}
           </section>
 
+          {/* One column: where it is, right after what is here. Two columns: in the side column. */}
+          {tall && <PlaceLocation place={place} />}
+
           {/* A lab that cannot be booked: the seat map stays in the page. */}
           {hasMap && !mapInBooking && (
             <section className={styles.card} aria-labelledby="seats">
@@ -227,20 +231,33 @@ function SpaceView({ place }: { place: PlaceDetail }) {
           </section>
         </div>
 
-        {!place.bookable && !tall && <WalkIn place={place} className={styles.aside} />}
-        {place.bookable && !tall && (
-          <aside className={mapInBooking ? `${styles.aside} ${styles.asideLab}` : styles.aside} aria-labelledby="book">
-            <h2 id="book" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
-              הזמנה מראש
-            </h2>
-            {mapInBooking && (
+        {!tall && (
+          <div className={styles.side}>
+            {/* Not booked ahead: the map above the walk-in steps. Booked: the booking stays on top, the map under it. */}
+            {!place.bookable && (
               <>
-                {seatMapHeading}
-                {seatMap}
+                <PlaceLocation place={place} />
+                <WalkIn place={place} />
               </>
             )}
-            {canBook ? form : <p className={styles.muted}>{mapInBooking ? 'בחר תא במפה, ואז זמן.' : <><JumpTo id="seats">בחר תא במפת התאים</JumpTo>, ואז זמן.</>}</p>}
-          </aside>
+            {place.bookable && (
+              <>
+                <aside className={styles.aside} aria-labelledby="book">
+                  <h2 id="book" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
+                    הזמנה מראש
+                  </h2>
+                  {mapInBooking && (
+                    <>
+                      {seatMapHeading}
+                      {seatMap}
+                    </>
+                  )}
+                  {canBook ? form : <p className={styles.muted}>{mapInBooking ? 'בחר תא במפה, ואז זמן.' : <><JumpTo id="seats">בחר תא במפת התאים</JumpTo>, ואז זמן.</>}</p>}
+                </aside>
+                <PlaceLocation place={place} />
+              </>
+            )}
+          </div>
         )}
       </div>
 
