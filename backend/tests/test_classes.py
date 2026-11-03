@@ -95,6 +95,17 @@ def test_the_title_is_plain_text(client):
     assert body["title"] == "אלגוריתמים"
 
 
+def test_a_class_saved_before_the_fix_with_a_lecturers_title_is_shown_without_it(client, session, student):
+    # From the user's check, 3 Nov: the import has taken the title out since 25 Oct,
+    # but a class saved before that still has "ד"ר" in its name. Shown clean, the data untouched.
+    saved = client.post("/me/classes", json=lesson(title="מבנים אלגבריים")).json()
+    session.get(ClassSlot, saved["id"]).title = 'ד"ר מבנים אלגבריים'
+    session.flush()
+    [shown] = client.get("/me/classes").json()
+    assert shown["title"] == "מבנים אלגבריים"
+    assert session.get(ClassSlot, saved["id"]).title == 'ד"ר מבנים אלגבריים'
+
+
 def test_classes_go_with_the_account(client, session, student):
     client.post("/me/classes", json=lesson())
     session.delete(student)

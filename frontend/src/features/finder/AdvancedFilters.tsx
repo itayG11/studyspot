@@ -10,7 +10,7 @@ import type { Building } from '../../api/types'
 import { ENTER, EXIT } from '../../design/motion'
 import { AMENITIES, AMENITY_LABELS } from '../../i18n/labels'
 import { advancedCount, PEOPLE_OPTIONS, toggleAmenity, type Filters } from '../../logic/filters'
-import { Chip } from '../../ui'
+import { Button, Chip } from '../../ui'
 import styles from './finder.module.css'
 
 interface AdvancedFiltersProps {
@@ -19,6 +19,8 @@ interface AdvancedFiltersProps {
   filters: Filters
   buildings: Building[] | null
   update: (next: Filters) => void
+  matches?: number | null // how many places the filters match now, on the button
+  onShow?: () => void // "show them": closes the panel and the keyboard, and goes to the results
 }
 
 export function AdvancedFiltersButton({ open, onToggle, filters }: Pick<AdvancedFiltersProps, 'open' | 'onToggle' | 'filters'>) {
@@ -36,7 +38,7 @@ export function AdvancedFiltersButton({ open, onToggle, filters }: Pick<Advanced
   )
 }
 
-export function AdvancedFilters({ open, filters, buildings, update }: Omit<AdvancedFiltersProps, 'onToggle'>) {
+export function AdvancedFilters({ open, filters, buildings, update, matches = null, onShow }: Omit<AdvancedFiltersProps, 'onToggle'>) {
   const reduce = useReducedMotionConfig()
   const hidden = reduce ? { opacity: 0 } : { opacity: 0, clipPath: 'inset(0% 0% 100% 0%)' }
   const shown = reduce ? { opacity: 1 } : { opacity: 1, clipPath: 'inset(0% 0% 0% 0%)' }
@@ -93,6 +95,13 @@ export function AdvancedFilters({ open, filters, buildings, update }: Omit<Advan
               ))}
             </div>
           </fieldset>
+          {onShow && (
+            <div className={styles.showRow}>
+              <Button block onClick={onShow}>
+                {matches === null ? 'הצג את התוצאות' : matches === 1 ? 'הצג מקום אחד' : `הצג ${matches} מקומות`}
+              </Button>
+            </div>
+          )}
         </m.div>
       )}
     </AnimatePresence>

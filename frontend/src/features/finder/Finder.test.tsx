@@ -61,6 +61,32 @@ describe('Finder', () => {
     expect(within(card).getByText(/בעוד שעה: בדרך כלל/)).toBeInTheDocument()
   })
 
+  it('puts the results right under the filters, and the campus load under the results', async () => {
+    // On a phone the load card is some 800 pixels tall: between the filters and the results it
+    // pushed a search's answer below the screen, behind the keyboard.
+    renderFinder({
+      today: { weekday: 6, capacity: 50, occupied: 10, free_now: 40, weeks: 8, simulated: false, slots: [{ start: '09:00:00', usual: 12, today: 10 }], places: [] },
+    })
+    const load = await screen.findByRole('heading', { name: 'העומס היום בקמפוס' })
+    const filters = screen.getByRole('button', { name: 'סינון מורחב' })
+    const firstCard = screen.getByRole('link', { name: 'M206' })
+    expect(filters.compareDocumentPosition(firstCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(firstCard.compareDocumentPosition(load) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('the expanded filters end with a "show N places" button that closes the panel', async () => {
+    renderFinder()
+    await userEvent.click(await screen.findByRole('button', { name: 'סינון מורחב' }))
+    const panel = screen.getByRole('group', { name: 'סינון מורחב' })
+    expect(within(panel).getByRole('button', { name: 'הצג 2 מקומות' })).toBeInTheDocument()
+    await userEvent.selectOptions(within(panel).getByLabelText('בניין'), 'EM')
+    // The number follows the choices, so a wrong choice shows before anyone looks below.
+    const show = within(panel).getByRole('button', { name: 'הצג מקום אחד' })
+    await userEvent.click(show)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'סינון מורחב' })).toHaveAttribute('aria-expanded', 'false'))
+    expect(cards()).toEqual(['EM107']) // the choices stay
+  })
+
   it('shows every place as a card, with its live line', async () => {
     renderFinder()
     expect(await screen.findByRole('link', { name: 'M206' })).toBeInTheDocument()

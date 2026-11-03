@@ -31,9 +31,12 @@ NowDep = Annotated[datetime, Depends(get_now)]
 
 
 def _out(row: ClassSlot) -> ClassSlotOut:
+    # A class saved before the import took lecturers' titles out (25 Oct) may still
+    # have "ד"ר" in its name: shown without it, and the saved row left as it is.
+    title = timetable_import.without_titles(row.title) or None if row.title else None
     return ClassSlotOut(
         id=row.id, weekday=row.weekday, starts=row.starts, ends=row.ends,
-        building_code=row.building.code if row.building else None, place_text=row.place_text, title=row.title,
+        building_code=row.building.code if row.building else None, place_text=row.place_text, title=title,
     )
 
 
