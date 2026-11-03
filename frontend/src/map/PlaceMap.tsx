@@ -29,6 +29,8 @@ export default function PlaceMap({ building }: { building: Building }) {
         // with a finger the page scrolls past it, and the zoom buttons stay.
         scrollWheelZoom={false}
         dragging={!Browser.mobile}
+        // Nothing to pan by keys: no extra tab stop in the page (the zoom buttons stay reachable).
+        keyboard={false}
         className={styles.placeMap}
       >
         {/* No layer switch here (the campus map has one): the card shows the photo when it is on, else the streets. */}

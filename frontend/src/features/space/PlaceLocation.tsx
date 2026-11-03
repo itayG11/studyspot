@@ -7,6 +7,7 @@ import { lazy, Suspense } from 'react'
 import { Link } from 'react-router'
 import { getBuildings } from '../../api/campus'
 import type { PlaceDetail } from '../../api/types'
+import { REFRESH_INTERVAL_MS } from '../../config'
 import { useApi } from '../../hooks/useApi'
 import { floorLabel } from '../../i18n/labels'
 import { useInstitution } from '../../institution'
@@ -19,7 +20,7 @@ const PlaceMap = lazy(() => import('../../map/PlaceMap'))
 
 export function PlaceLocation({ place, className = styles.card }: { place: PlaceDetail; className?: string }) {
   const { slug } = useInstitution()
-  const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`)
+  const buildings = useApi(() => getBuildings(slug), `buildings-${slug}`, REFRESH_INTERVAL_MS)
   const building = buildings.data?.find((b) => b.code === place.building_code)
   if (!building || !position(building)) return null
   const free = building.available

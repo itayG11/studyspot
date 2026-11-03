@@ -153,20 +153,22 @@
 }
 
 .aside {
+  position: sticky;
+  top: calc(var(--header-h, 0px) + var(--s-4));
   box-shadow: var(--shadow-2);
 }
 
-/* The side column (booking or walk-in steps, and where the place is): it stays in view while the page
-   scrolls, and, taller than a short screen, scrolls inside. */
-.side {
-  display: grid;
-  gap: var(--s-5);
-  position: sticky;
-  top: calc(var(--header-h, 0px) + var(--s-4));
+/* A lab: the seat map and the booking form in one card. Taller than a short screen: it scrolls inside. */
+.asideLab {
   max-height: calc(100dvh - var(--header-h, 0px) - var(--s-8));
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: var(--s-2);
+}
+
+/* A walk-in place's side column: where it is, then the steps. Short, so it scrolls with the page. */
+.side {
+  display: grid;
+  gap: var(--s-5);
 }
 
 .locationLink {

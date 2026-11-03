@@ -61,19 +61,18 @@ for (const screen of SCREENS) {
           expect(cardBox.y).toBeGreaterThanOrEqual(facts.y + facts.height - 1)
           expect(Math.abs(cardBox.x - facts.x)).toBeLessThan(2)
         } else {
-          // Two columns: in the side column, beside the page and not under it.
-          const beside = cardBox.x + cardBox.width <= facts.x + 1 || cardBox.x >= facts.x + facts.width - 1
-          expect(beside, 'beside the page').toBe(true)
           if (place.booked) {
-            // The booking stays on top; the map is under it.
-            const booking = await box(page, 'הזמנה מראש', 'complementary')
-            expect(cardBox.y).toBeGreaterThanOrEqual(booking.y + booking.height - 1)
+            // Booked: the booking card stays alone in the side column; the map is in the page, after what is here.
+            expect(cardBox.y).toBeGreaterThanOrEqual(facts.y + facts.height - 1)
+            expect(Math.abs(cardBox.x - facts.x)).toBeLessThan(2)
           } else {
-            // The walk-in steps are under the map.
+            // Walk-in: in the side column, beside the page, with the steps under the map.
+            const beside = cardBox.x + cardBox.width <= facts.x + 1 || cardBox.x >= facts.x + facts.width - 1
+            expect(beside, 'beside the page').toBe(true)
             const walkIn = await box(page, 'בלי הזמנה מראש')
             expect(walkIn.y).toBeGreaterThanOrEqual(cardBox.y + cardBox.height - 1)
           }
-          // Reachable: the side column scrolls inside, so the card can be brought fully into view.
+          // Reachable: the card can be brought fully into view.
           await card.scrollIntoViewIfNeeded()
           await expect(card).toBeInViewport({ ratio: 0.99 })
         }

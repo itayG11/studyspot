@@ -142,7 +142,7 @@ describe('SpacePage', () => {
       })
     }
 
-    it('a walk-in place has it above the walk-in steps, and a booked one has the booking above it', async () => {
+    it('a walk-in place has it above the walk-in steps', async () => {
       placeResponses.push(() => jsonResponse(lab({ building_code: 'M', kind: 'open_area', lab_rows: null, lab_cols: null, seats: null, bookable: false })))
       renderAt('/spaces/1')
       const where = await screen.findByRole('region', { name: 'איפה זה' })
@@ -150,12 +150,14 @@ describe('SpacePage', () => {
       expect(where.compareDocumentPosition(walkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
-    it('a booked place keeps the booking on top of the side column', async () => {
+    it('a booked place has it in the page after what is here, so the booking card stays alone beside it', async () => {
       placeResponses.push(() => jsonResponse(lab({ building_code: 'M', bookable: true })))
       renderAt('/spaces/1')
       const where = await screen.findByRole('region', { name: 'איפה זה' })
       const booking = screen.getByRole('complementary', { name: 'הזמנה מראש' })
-      expect(booking.compareDocumentPosition(where) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(booking).not.toContainElement(where)
+      const facts = screen.getByRole('region', { name: 'מה יש כאן' })
+      expect(facts.compareDocumentPosition(where) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('on a phone it comes right after what is here, in the page itself', async () => {
