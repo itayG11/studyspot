@@ -1,15 +1,17 @@
 /* Design tokens: every colour, size, shadow and timing the site uses.
 
-   The direction is "Galilee daylight": warm white stone, night-blue ink,
-   soft long shadows and a lot of air. At night the stone turns to a deep
-   navy, lit by two soft glows, blue and violet; the main action is a blue
-   to indigo gradient in both themes. Colour carries meaning only where it
-   must (free / filling / full), and always together with a shape and words.
+   The direction (wave 17) follows Apple: neutral greys, the system font,
+   one flat blue for the main action, glass on bars that float, soft cards
+   without borders. Dark mode is true black with grey cards. Colour carries
+   meaning only where it must (free / filling / full), and always together
+   with a shape and words.
 
-   Contrast (WCAG AA, 4.5:1 for text) was measured for every text colour:
-   --ink, --ink-2, --free, --busy, --full and --closed pass on all three
-   stone surfaces; --ink-3 passes on --stone-0 and --stone-1 only, so it is
-   never used on --stone-2. --accent is decoration, never text. */
+   Contrast (WCAG AA, 4.5:1 for text), measured 3.11.2026 in both themes:
+   --ink, --ink-2, --free, --busy, --full, --closed and --primary-text pass
+   on all three stone surfaces (lowest: 4.56, --primary-text on --stone-2,
+   light). --ink-3 passes on --stone-0 and --stone-1 only (4.15 on
+   --stone-2), so it is never used there. White on --primary: 4.70.
+   --primary itself is never text: blue text uses --primary-text. */
 
 :root {
   /* Stone: page, raised card, sunken well */
