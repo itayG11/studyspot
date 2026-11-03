@@ -40,6 +40,7 @@ from app.models import (
     NoticeEmail,
 )
 from app.notify import email_from_settings, sender_from_settings
+from app.passwords import delete_old_tries
 from app.reminders import ALARM, Alarm, next_due, send_reminders
 from app.seed.demo import DEMO
 from app.seed.live import simulate_live
@@ -114,6 +115,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
     delete_past_waits(session, now)
     delete_old_deliveries(session, now)  # the webhook log is kept a week
     delete_old_test_hits(session, now)  # the demo's tester shows the last hour
+    delete_old_tries(session, now)  # wrong passwords count for 15 minutes
     session.flush()
     return SweepResult(
         no_shows=no_shows,

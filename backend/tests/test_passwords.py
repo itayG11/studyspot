@@ -11,7 +11,7 @@ import pytest
 from conftest import SUNDAY_10AM, Clock
 from factories import assert_rejected
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from test_email_sign_in import FRONTEND, STUDENT, FakeMailer, make_settings, start
 
 from app.api.auth import get_mailer
@@ -346,14 +346,61 @@ def test_a_reset_also_ends_the_calendar_address(client, mailer, session):
     assert session.scalar(select(CalendarFeed).where(CalendarFeed.user_id == user.id)) is None
 
 
-def test_a_full_table_of_wrong_tries_drops_the_least_recently_used(monkeypatch):
+# Changed on 3 Nov (wave 18, at the user's request): the per-client count moved from one server's
+# memory to the database. The old test here checked the memory table's size limit; these check
+# what replaced it: the count survives a restart, and old tries are deleted.
+
+
+def test_the_wrong_tries_of_a_pair_survive_a_restart(session):
     from app import passwords
 
-    monkeypatch.setattr(passwords, "MAX_KEPT", 2)
+    now = SUNDAY_10AM
+    for _ in range(passwords.MAX_FAILURES):
+        passwords.WrongTries().add(session, "a@x.edu|1.2.3.4", now)
+    session.flush()
+    fresh = passwords.WrongTries()  # a new server: nothing in its memory
+    assert fresh.blocked(session, "a@x.edu|1.2.3.4", now)
+    assert not fresh.blocked(session, "a@x.edu|5.6.7.8", now)  # another client address is not blocked
+    assert not fresh.blocked(session, "b@x.edu|1.2.3.4", now)
+
+
+def test_wrong_tries_stop_counting_after_the_lock_time_and_are_deleted(session):
+    from app import passwords
+    from app.models import PasswordTry
+
     tries = passwords.WrongTries()
     now = SUNDAY_10AM
-    tries.add("a", now)
-    tries.add("b", now)
-    tries.add("a", now)  # "a" was used last, so "b" is the one to go
-    tries.add("c", now)
-    assert set(tries._tries) == {"a", "c"}
+    for _ in range(passwords.MAX_FAILURES):
+        tries.add(session, "a@x.edu|1.2.3.4", now)
+    tries.add(session, "b@x.edu|1.2.3.4", now + passwords.LOCK_FOR - timedelta(minutes=1))
+    session.flush()
+    later = now + passwords.LOCK_FOR
+    assert not tries.blocked(session, "a@x.edu|1.2.3.4", later)
+    assert passwords.delete_old_tries(session, later) == passwords.MAX_FAILURES  # a's, not b's
+    assert session.scalar(select(func.count()).select_from(PasswordTry)) == 1
+
+
+def test_a_new_wrong_try_clears_that_pairs_old_ones_and_a_right_password_clears_all(session):
+    from app import passwords
+    from app.models import PasswordTry
+
+    tries = passwords.WrongTries()
+    now = SUNDAY_10AM
+    tries.add(session, "a@x.edu|1.2.3.4", now)
+    tries.add(session, "a@x.edu|1.2.3.4", now + passwords.LOCK_FOR)  # the first one no longer counts
+    session.flush()
+    assert session.scalar(select(func.count()).select_from(PasswordTry)) == 1
+    tries.clear(session, "a@x.edu|1.2.3.4")
+    session.flush()
+    assert session.scalar(select(func.count()).select_from(PasswordTry)) == 0
+
+
+def test_the_sweep_deletes_wrong_tries_that_no_longer_count(session):
+    from app import passwords
+    from app.models import PasswordTry
+    from app.sweeper import sweep
+
+    passwords.WrongTries().add(session, "a@x.edu|1.2.3.4", SUNDAY_10AM)
+    session.flush()
+    sweep(session, SUNDAY_10AM + passwords.LOCK_FOR + timedelta(minutes=1))
+    assert session.scalar(select(func.count()).select_from(PasswordTry)) == 0

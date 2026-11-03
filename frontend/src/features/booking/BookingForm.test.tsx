@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Booking, BookingRules, PlaceDetail } from '../../api/types'
 import { resetSessionForTests } from '../../api/client'
 import { AuthProvider } from '../../auth/AuthContext'
-import { jsonResponse, place } from '../../test/fixtures'
+import { building, jsonResponse, place } from '../../test/fixtures'
 import { BookingForm } from './BookingForm'
 
 const RULES: BookingRules = {
@@ -19,6 +19,7 @@ const NOW = new Date('2026-10-11T05:00:00Z')
 
 const ROOM: PlaceDetail = {
   ...place({ id: 3, kind: 'group_room', name: 'EM107', building_code: 'EM', capacity: 15, bookable: true }),
+  building: building(),
   institution_slug: 'braude',
   opening_hours: [6, 0, 1, 2, 3].map((weekday) => ({ weekday, opens: '07:00:00', closes: '20:00:00' })),
   open_all_day_today: false,

@@ -128,34 +128,44 @@ def _resolve_by_deadline(resolve: Callable, host: str, port: int):
         raise OSError("name lookup timed out") from None
 
 
-def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo) -> str | None:
-    """None if the address may be called, else why not.
+def checked_address(
+    url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo
+) -> tuple[str | None, str | None]:
+    """(problem, address): why the URL may not be called, or else the one
+    address to call.
 
     Every address the name resolves to must be on the public internet: a
     name that points at 127.0.0.1, 10.x or the cloud's metadata address
     (169.254.169.254) would let anyone make our server call inside its own
     network. Checked when the endpoint is saved and again before each call,
-    since a name can be pointed elsewhere later.
+    since a name can be pointed elsewhere later. The call then goes to the
+    very address that was checked (see _post): a second lookup by the HTTP
+    client could be answered differently ("DNS rebinding").
     """
     parts = urlsplit(url)
     if parts.scheme != "https" and not (allow_private and parts.scheme == "http"):
-        return "webhook_url_https"
+        return "webhook_url_https", None
     if not parts.hostname or parts.username or parts.password:
-        return "webhook_url_invalid"
+        return "webhook_url_invalid", None
     try:
         port = parts.port or (443 if parts.scheme == "https" else 80)
         found = _resolve_by_deadline(resolve, parts.hostname, port)
     except (OSError, ValueError, UnicodeError):
-        return "webhook_url_unresolved"
+        return "webhook_url_unresolved", None
     if not found:
-        return "webhook_url_unresolved"
+        return "webhook_url_unresolved", None
     if not allow_private:
         for *_, sockaddr in found:
             address = ipaddress.ip_address(sockaddr[0])
             mapped = getattr(address, "ipv4_mapped", None)
             if not (mapped or address).is_global or any(address in net for net in _TUNNELS):
-                return "webhook_url_private"
-    return None
+                return "webhook_url_private", None
+    return None, str(found[0][-1][0])
+
+
+def url_problem(url: str, allow_private: bool, resolve: Callable = socket.getaddrinfo) -> str | None:
+    """None if the address may be called, else why not."""
+    return checked_address(url, allow_private, resolve)[0]
 
 
 # IPv6 ranges that carry an IPv4 address inside, which Python counts as
@@ -263,18 +273,42 @@ def body_of(payload: dict[str, Any]) -> bytes:
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
 
 
-def _post(url: str, body: bytes, headers: dict[str, str], transport: httpx.AsyncBaseTransport | None) -> int:
+def _pinned(url: str, address: str) -> tuple[str, dict[str, str], dict[str, str]]:
+    """The URL with the checked address in place of the name, the Host header
+    the name would have sent, and the name for the TLS handshake (so the
+    certificate is still checked against the name, not the number)."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    shown = f"[{address}]" if ":" in address else address
+    netloc = shown + (f":{parts.port}" if parts.port else "")
+    host_header = (f"[{host}]" if ":" in host else host) + (f":{parts.port}" if parts.port else "")
+    return parts._replace(netloc=netloc).geturl(), {"Host": host_header}, {"sni_hostname": host}
+
+
+def _post(
+    url: str,
+    body: bytes,
+    headers: dict[str, str],
+    transport: httpx.AsyncBaseTransport | None,
+    address: str | None = None,
+) -> int:
     """POST, and the status code. Under a deadline for the whole call:
     httpx's own timeout counts each read separately, so a server sending a
     byte every few seconds would hold the call (and the sweep) for hours.
     Streamed and closed unread: the answer's body is never loaded. Redirects
-    are not followed (they could lead inside our network)."""
+    are not followed (they could lead inside our network). With `address`
+    (the one that was checked), the call goes to that address and no name is
+    looked up again."""
+    extensions: dict[str, str] = {}
+    if address is not None:
+        url, extra, extensions = _pinned(url, address)
+        headers = {**headers, **extra}
 
     async def go() -> int:
         with anyio.fail_after(TOTAL_SECONDS):
             async with (
                 httpx.AsyncClient(transport=transport, timeout=TIMEOUT_SECONDS, follow_redirects=False) as http,
-                http.stream("POST", url, content=body, headers=headers) as answer,
+                http.stream("POST", url, content=body, headers=headers, extensions=extensions) as answer,
             ):
                 return answer.status_code
 
@@ -294,10 +328,11 @@ def attempt(
     before the call: the signature's time is the time it is sent."""
     status_code: int | None = None
     error: str | None = None
+    address: str | None = None
     if not endpoint.active:
         error = "endpoint_disabled"
     else:
-        error = url_problem(endpoint.url, allow_private, resolve)
+        error, address = checked_address(endpoint.url, allow_private, resolve)
     if error is None:
         body = body_of(delivery.payload)
         stamp = int(now.timestamp())
@@ -309,7 +344,7 @@ def attempt(
             "StudySpot-Signature": signature_header(secret_for(key, endpoint), stamp, body),
         }
         try:
-            status_code = _post(endpoint.url, body, headers, transport)
+            status_code = _post(endpoint.url, body, headers, transport, address)
         except TimeoutError:
             error = "Timeout"
         except Exception as failure:  # noqa: BLE001 - any failure is a failed try, counted, never a loop

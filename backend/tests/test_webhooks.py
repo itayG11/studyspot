@@ -3,6 +3,7 @@
 import json
 import socket
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 import httpx
 import pytest
@@ -502,6 +503,48 @@ def test_the_demo_campus_cannot_add_addresses(client, session, receiver, monkeyp
     app.dependency_overrides[real] = lambda: settings
     answer = _add(client, demo_admin, slug="demo")
     assert (answer.status_code, answer.json()["detail"]) == (403, "demo_campus_locked")
+
+
+# --- wave 18: the call goes to the address that was checked (DNS rebinding) ----------------
+
+
+def test_the_call_goes_to_the_checked_address_not_to_a_second_lookup(session, braude):
+    """A name that answers with a public address when we check it and with an
+    internal one when the HTTP client looks again must not reach the inside."""
+    answers = iter(["93.184.216.34", "127.0.0.1", "127.0.0.1", "169.254.169.254"])
+
+    def rebinding(host, port, type=0):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (next(answers), port))]
+
+    seen = Receiver()
+    delivery = _one_delivery(session, braude)
+    endpoint = session.get(WebhookEndpoint, delivery.endpoint_id)
+    webhooks.attempt(delivery, endpoint, httpx.MockTransport(seen), KEY, SUNDAY_10AM, False, rebinding)
+    assert delivery.status == DeliveryStatus.SENT
+    request = seen.requests[0]
+    assert request.url.host == "93.184.216.34"  # the number that was checked, not the name
+    assert request.headers["host"] == urlsplit(endpoint.url).hostname  # the receiver still sees its own name
+    assert request.extensions["sni_hostname"] == urlsplit(endpoint.url).hostname  # and the certificate is checked by the name
+    assert next(answers) == "127.0.0.1"  # no second lookup was made
+
+
+def test_a_pinned_call_keeps_a_port_and_an_ipv6_address():
+    url, headers, extensions = webhooks._pinned("https://hooks.example.edu:8443/in?x=1", "2606:2800:220:1::1")
+    assert url == "https://[2606:2800:220:1::1]:8443/in?x=1"
+    assert headers == {"Host": "hooks.example.edu:8443"}
+    assert extensions == {"sni_hostname": "hooks.example.edu"}
+
+
+def test_a_name_with_several_addresses_is_called_at_the_first_one_after_all_are_checked():
+    def two(host, port, type=0):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", port)),
+        ]
+
+    # One private address among them refuses the whole name.
+    assert webhooks.checked_address("https://mixed.example.edu/h", False, two) == ("webhook_url_private", None)
+    assert webhooks.checked_address("https://ok.example.edu/h", False, resolve_to(PUBLIC)) == (None, PUBLIC)
 
 
 # --- the wave 14 review: slow servers, long batches, odd failures --------------------------

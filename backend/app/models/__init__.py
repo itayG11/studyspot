@@ -24,6 +24,7 @@ from app.models.checkins import CheckIn, CheckInEndReason
 from app.models.classes import ClassSlot
 from app.models.history import OccupancyHistory
 from app.models.hours import OpeningHours, SpecialPeriod, SpecialPeriodPlace
+from app.models.password_tries import PasswordTry
 from app.models.people import (
     AdminInvite,
     AuthProvider,
@@ -64,6 +65,7 @@ __all__ = [
     "NoticeEmail",
     "OccupancyHistory",
     "OpeningHours",
+    "PasswordTry",
     "Place",
     "PlaceAmenity",
     "PlaceAtmosphere",

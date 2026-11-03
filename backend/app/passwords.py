@@ -5,7 +5,7 @@ purpose, so guessing at scale costs a lot. Parameters are the library's
 defaults; a hash made with older ones is redone at the next sign-in.
 
 Wrong tries are counted twice. Per mail address and client address together
-(in memory, WrongTries): MAX_FAILURES wrong from one client refuse that
+(in the database too, WrongTries): MAX_FAILURES wrong from one client refuse that
 client for LOCK_FOR. So someone who only knows an address cannot lock its
 owner out from a single computer. And per mail address in the database, from
 everywhere: ACCOUNT_MAX_FAILURES in a row lock the password for LOCK_FOR,
@@ -15,8 +15,9 @@ in with a code). The answer to every failure is the same, locked or not,
 known address or not, so no one learns who has an account. Whoever is locked
 out can still sign in with a code, so a lock never shuts anyone out.
 
-The per-client table lives in one server's memory and starts empty after a
-restart; the database count does not.
+Both counts are in the database, so a restart or a second server does not
+give a guesser a fresh count. (Until 3 Nov the per-client count was in one
+server's memory.)
 """
 
 import re
@@ -27,17 +28,16 @@ from importlib.resources import files
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.errors import Refusal
-from app.models import AuthProvider, UserIdentity
+from app.models import AuthProvider, PasswordTry, UserIdentity
 
 MIN_LENGTH = 10
 MAX_LENGTH = 128  # hashing a huge text is slow: a way to tie up the server
 MAX_FAILURES = 5  # from one client address
 ACCOUNT_MAX_FAILURES = 20  # from all addresses together
-MAX_KEPT = 10_000  # clients remembered at once; the oldest are dropped first
 LOCK_FOR = timedelta(minutes=15)
 
 # OWASP's second argon2id setting: 19 MiB, 2 passes, 1 lane. The library's
@@ -134,37 +134,29 @@ def set_password(identity: UserIdentity, password: str, now: datetime) -> None:
 
 class WrongTries:
     """Wrong passwords per (mail address, client address), by the app's own
-    clock so tests can move it. Same interface as the rate limiters, so the
-    tests' reset between cases reaches it."""
+    clock so tests can move it. In the database (app.models.PasswordTry), in
+    the caller's transaction, which commits even on a refusal."""
 
-    def __init__(self) -> None:
-        self._tries: dict[str, list[datetime]] = {}
-        self._lock = threading.Lock()
+    def blocked(self, db: Session, key: str, now: datetime) -> bool:
+        recent = db.scalar(
+            select(func.count())
+            .select_from(PasswordTry)
+            .where(PasswordTry.pair == key, PasswordTry.tried_at > now - LOCK_FOR)
+        )
+        return (recent or 0) >= MAX_FAILURES
 
-    def blocked(self, key: str, now: datetime) -> bool:
-        with self._lock:
-            recent = [t for t in self._tries.get(key, []) if t > now - LOCK_FOR]
-            if recent:
-                self._tries[key] = recent
-            else:
-                self._tries.pop(key, None)
-            return len(recent) >= MAX_FAILURES
+    def add(self, db: Session, key: str, now: datetime) -> None:
+        # This pair's old tries go at the same time: the table stays as small as the live tries.
+        db.execute(delete(PasswordTry).where(PasswordTry.pair == key, PasswordTry.tried_at <= now - LOCK_FOR))
+        db.add(PasswordTry(pair=key, tried_at=now))
 
-    def add(self, key: str, now: datetime) -> None:
-        with self._lock:
-            tries = self._tries.pop(key, [])  # re-inserted last: the oldest key is the least recently used
-            tries.append(now)
-            self._tries[key] = tries
-            while len(self._tries) > MAX_KEPT:
-                self._tries.pop(next(iter(self._tries)))
+    def clear(self, db: Session, key: str) -> None:
+        db.execute(delete(PasswordTry).where(PasswordTry.pair == key))
 
-    def clear(self, key: str) -> None:
-        with self._lock:
-            self._tries.pop(key, None)
 
-    def reset(self) -> None:
-        with self._lock:
-            self._tries.clear()
+def delete_old_tries(db: Session, now: datetime) -> int:
+    """For the sweep: tries that no longer count (every pair, not only those that sign in again)."""
+    return db.execute(delete(PasswordTry).where(PasswordTry.tried_at <= now - LOCK_FOR)).rowcount
 
 
 wrong_tries = WrongTries()
@@ -183,17 +175,17 @@ def check_password(db: Session, email: str, password: str, now: datetime, client
     if identity is None or identity.password_hash is None:
         verify_password(_dummy_hash(), password)  # the same time as a real check
         raise Refusal(401, "password_invalid")
-    if (identity.locked_until is not None and identity.locked_until > now) or wrong_tries.blocked(pair, now):
+    if (identity.locked_until is not None and identity.locked_until > now) or wrong_tries.blocked(db, pair, now):
         verify_password(_dummy_hash(), password)
         raise Refusal(401, "password_invalid")
     if not verify_password(identity.password_hash, password):
-        wrong_tries.add(pair, now)
+        wrong_tries.add(db, pair, now)
         identity.failed_logins += 1
         if identity.failed_logins >= ACCOUNT_MAX_FAILURES:
             identity.failed_logins, identity.locked_until = 0, now + LOCK_FOR
         db.flush()
         raise Refusal(401, "password_invalid")
-    wrong_tries.clear(pair)
+    wrong_tries.clear(db, pair)
     identity.failed_logins, identity.locked_until = 0, None
     if _hasher.check_needs_rehash(identity.password_hash):
         identity.password_hash = hash_password(password)

@@ -54,7 +54,11 @@ export function Signs() {
               code={code}
               fresh={fresh !== undefined}
               onReplaced={(next) => {
-                setUpdated(({ [next.place_id]: _, ...rest }) => rest)
+                setUpdated((all) => {
+                  const rest = { ...all }
+                  delete rest[next.place_id]
+                  return rest
+                })
                 setReplaced((all) => ({ ...all, [next.place_id]: next }))
               }}
               onUpdated={(next) => setUpdated((all) => ({ ...all, [next.place_id]: next }))}
