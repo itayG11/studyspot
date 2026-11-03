@@ -33,6 +33,7 @@ For every choice: what I picked, the alternative, why, and what it costs.
 | Refresh every 30 seconds | Live push | Simple, fits a free server | Up to 30 seconds of delay |
 | Everything belongs to an institution | One site per institution | A new institution needs no code or server | Every query filters by institution |
 | Shared-sign mark is a hint only | Automatic block, or GPS | A block could hurt real students; GPS is a privacy cost | An admin has to look at it |
+| A neutral, Apple-like look with the device's own font, restyled through design tokens only | Custom web fonts, or rewriting components in a CSS framework | No new dependency or font server, the content security policy stays strict, and a restyle cannot break behaviour (checked with a before/after inventory of every link, form and ID) | Looks a little different on each operating system; blue as small text needed its own darker shade to pass contrast |
 
 ## What I decided not to build
 | What | Why |
