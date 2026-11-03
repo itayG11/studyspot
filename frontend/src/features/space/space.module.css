@@ -165,6 +165,22 @@
   overscroll-behavior: contain;
 }
 
+/* A walk-in place's side column: where it is, then the steps. Short, so it scrolls with the page. */
+.side {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.locationLink {
+  font-weight: 600;
+  color: var(--primary-text);
+  text-decoration: none;
+}
+
+.locationLink:hover {
+  text-decoration: underline;
+}
+
 /* Wide enough for a lab's whole row of stations (8 of them) without scrolling sideways. */
 @media (min-width: 1100px) {
   .layoutWide {

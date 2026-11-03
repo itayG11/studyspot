@@ -24,6 +24,7 @@ import { BookingForm } from '../booking/BookingForm'
 import { AMENITY_ICONS } from '../finder/amenityIcons'
 import { AvailabilityTimeline } from './AvailabilityTimeline'
 import { PlaceForecast } from './Forecast'
+import { PlaceLocation } from './PlaceLocation'
 import { Timetable } from './Timetable'
 import { artTransitionName } from './transition'
 import { backToFinder } from './backLink'
@@ -194,6 +195,10 @@ function SpaceView({ place }: { place: PlaceDetail }) {
             {place.details_are_demo && <p className={styles.demo}>הציוד והאווירה הם נתוני דמו, ולא נבדקו במקום.</p>}
           </section>
 
+          {/* Where it is, right after what is here: on a phone, and wherever the side column is the booking
+              (which scrolls on its own). A walk-in place has it in the side column, above the steps. */}
+          {(tall || place.bookable) && <PlaceLocation place={place} />}
+
           {/* A lab that cannot be booked: the seat map stays in the page. */}
           {hasMap && !mapInBooking && (
             <section className={styles.card} aria-labelledby="seats">
@@ -227,7 +232,12 @@ function SpaceView({ place }: { place: PlaceDetail }) {
           </section>
         </div>
 
-        {!place.bookable && !tall && <WalkIn place={place} className={styles.aside} />}
+        {!place.bookable && !tall && (
+          <div className={styles.side}>
+            <PlaceLocation place={place} />
+            <WalkIn place={place} className={styles.aside} />
+          </div>
+        )}
         {place.bookable && !tall && (
           <aside className={mapInBooking ? `${styles.aside} ${styles.asideLab}` : styles.aside} aria-labelledby="book">
             <h2 id="book" tabIndex={-1} className={`${styles.h2} ${styles.jumpTarget}`}>
