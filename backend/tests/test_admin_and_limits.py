@@ -10,7 +10,7 @@ from app.models import User, UserRole
 @pytest.fixture
 def admin(session, braude) -> User:
     user = User(
-        institution_id=braude.id, email="dalitc@braude.ac.il", display_name="Admin",
+        institution_id=braude.id, email="admin@braude.example", display_name="Admin",
         role=UserRole.INSTITUTION_ADMIN,
     )
     session.add(user)

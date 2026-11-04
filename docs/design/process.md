@@ -1,6 +1,6 @@
 # How I worked with AI
 
-I built StudySpot with Claude Code, an AI coding assistant, over four weeks (277 commits since 7 October 2026). Most lines of code were written by the assistant. What I did was decide what to build, in what order and why, approve every plan before it ran, and check the results myself. This page describes the process, so that "I asked it to make me a website" is not the picture.
+I built StudySpot with Claude Code, an AI coding assistant, over four weeks (about 280 commits since 7 October 2026; the history before 12 October was squashed into one commit). Most lines of code were written by the assistant. What I did was decide what to build, in what order and why, approve every plan before it ran, and check the results myself. This page describes the process, so that "I asked it to make me a website" is not the picture.
 
 ## Who did what
 
@@ -17,7 +17,7 @@ I built StudySpot with Claude Code, an AI coding assistant, over four weeks (277
 
 1. **A plan first.** The assistant explains what it is about to do and why, in plain language. I read it and approve, change or reject it. Nothing starts without that.
 2. **Requirements and states.** For each page or feature we write down what it does and what it shows in every state: loading, empty, error, no network (see [Requirements](requirements.md) and [Pages](pages.md)).
-3. **Tests with the code.** For a bug, the test is written first and must fail on the old code. For a rule that must never break (two people in one room), the database enforces it, and a test races real threads against it ([Preventing double booking](preventing-double-booking.md)).
+3. **Tests with the code.** For a bug, the test is written first and, when possible, must fail on the old code. For a rule that must never break (two people in one room), the database enforces it, and a test races real threads against it ([Preventing double booking](preventing-double-booking.md)).
 4. **Review by agents.** At the end of each stage a code-review agent and a security-review agent read the change. A blocking finding is fixed, with a test, before moving on.
 5. **My own check.** I open the real site, on a phone and a computer, and click through it. Most of the visible problems I found this way, not in tests.
 6. **Documents updated** with the change, and a pull request that I merge. The assistant does not merge.
@@ -27,7 +27,7 @@ I built StudySpot with Claude Code, an AI coding assistant, over four weeks (277
 - Plain Hebrew, right to left, short, one step at a time.
 - No new stage without my approval, and no cost, dependency, deployment or deletion without asking first.
 - Security is part of every stage: no secrets in code, validated input, an authorization test for every route.
-- A test is never edited to make it pass. If behaviour changed on purpose, the assistant says which test changed and why.
+- I did not allow weakening a test to get it to pass. When behaviour changed on purpose, the assistant says which test changed and why.
 - Where something was not verified, the document says "not verified".
 
 ## How the plan changed
@@ -36,8 +36,8 @@ I built StudySpot with Claude Code, an AI coding assistant, over four weeks (277
 |---|---|
 | 7 October | A plan, an audit of the idea, and the first stages: database, occupancy, bookings, check-in |
 | 8 to 11 October | The site, many institutions, self-service setup, timetable, load forecast |
-| 12 October | **A full audit by four review agents**, and one report. The plan became 16 waves, ordered by risk |
-| 13 to 20 October | Waves 4 to 14: automatic security checks, polish, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
+| 12 October | **A full audit by four review agents**, and one report. The plan became 16 waves, ordered by risk (waves 17 and 18 were added later) |
+| 12 to 20 October | Waves 1 to 14: automatic security checks, polish, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
 | 25 October | A full test round on the live site, and its findings |
 | late October to early November | Waves 15 to 18: the documents, monitoring and real devices on BrowserStack, a new look, and a round of technical debts (DNS rebinding closed, wrong-password counting moved into the database) |
 

@@ -1,6 +1,6 @@
 # Database
 
-PostgreSQL 16, 30 tables. The models are in `backend/app/models/` and the schema changes are migrations in `backend/migrations/` (Alembic). A CI step (`alembic check`) fails if a model and the migrations disagree, so this page cannot drift far from the truth.
+PostgreSQL 16, 30 tables. The models are in `backend/app/models/` and the schema changes are migrations in `backend/migrations/` (Alembic). A CI step (`alembic check`) fails if a model and the migrations disagree.
 
 ## The core tables
 
@@ -66,7 +66,7 @@ erDiagram
         int id PK
         int user_id
         int place_id
-        int booking_id "empty for a walk-in"
+        int booking_id "empty for an open area or a library"
         timestamptz started_at
         timestamptz expires_at
         timestamptz ended_at "empty while open"
@@ -79,7 +79,7 @@ erDiagram
     }
 ```
 
-`PK` is a primary key, `FK` a foreign key, `UK` a unique column. The full diagram (all 30 tables) is generated from the models, not drawn by hand.
+`PK` is a primary key, `FK` a foreign key, `UK` a unique column. Columns that are part of a composite foreign key (for example `user_id` with `institution_id` in `bookings`) are not marked. The other 22 tables are in `backend/app/models/`.
 
 ## Terms, with an example from this project
 
@@ -107,4 +107,4 @@ The rule that matters most is that two people cannot hold the same room at the s
 | Data of two institutions cannot be mixed | composite foreign keys that include `institution_id` | `fk_bookings_user`, `fk_bookings_place` in `backend/app/models/bookings.py` |
 | A seat belongs to the place it is booked in | composite foreign key `(seat_id, place_id)` | `fk_bookings_seat` |
 
-The last two are the reason a bug in a query cannot leak one institution's data into another's: the database would refuse the row.
+The composite keys mean the database refuses to save a booking, a check-in or a place whose user, place or building belongs to a different institution. Reading is still filtered by the application, and some tables, such as `waitlist_entries`, have plain foreign keys without this protection.

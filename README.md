@@ -47,7 +47,7 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 - 613 web app unit tests (`vitest`).
 - 51 browser tests (`Playwright`, with `axe` and keyboard accessibility checks), and 39 more on desktop, iPad and phone.
 - Real browsers on BrowserStack: Chrome, Edge, Firefox and WebKit on desktop, a real Pixel phone and an iPhone. See [the results](docs/browserstack/RESULTS.md).
-- 29 database tables. Every API route has a row in an access table that says who may call it.
+- 30 database tables. Every API route has a row in an access table that says who may call it.
 
 *Counted on 1 November 2026.*
 

@@ -2,7 +2,7 @@
 
 Every page of the web app, who can open it, and what it does. The routes are defined in `frontend/src/router.tsx`. Every page is loaded only when someone opens it (lazy loading), so the first script stays small.
 
-On a phone, the pages a student moves between (search, map, my area, institutions) also have a tab bar at the bottom.
+On a phone, the home page, `/me` and `/institutions` also have a tab bar at the bottom (search, map, my area, and institutions for a guest). The root address `/` sends a visitor to their institution; `/signed-in` is where Google and Microsoft sign-in return to; and `/places/<id>` and `/spaces/<id>` are old addresses that redirect to the place page.
 
 ## For students and guests
 
@@ -23,7 +23,7 @@ On a phone, the pages a student moves between (search, map, my area, institution
 | `/<institution>/admin` | that institution's admin, or the system admin | Five tabs: **Setup** (sign-in rules, proving an email domain through DNS, what is missing before the start), **Printable signs** (a QR sign per place, or a screen by the door), **Place buildings** (click on the map), **Add** (a building or place by hand, or a table from Excel), **Connections** (widget, API keys, webhooks) |
 | `/system` | the system admin only | A new institution, an invitation for its admin, sign-in rules to approve, and all institutions |
 | `/invite` | whoever got an invitation link | Joining as an institution admin |
-| `/screen` | a screen by the door, no sign-in | A code that changes every minute, and the free places |
+| `/screen` | a screen by the door: opened with a link that carries a token, no sign-in | A code that changes every minute, and the free places |
 
 The files are `frontend/src/admin/AdminPage.tsx`, `frontend/src/system/SystemPage.tsx`, `frontend/src/pages/InvitePage.tsx` and `frontend/src/screen/ScreenPage.tsx`.
 
@@ -40,7 +40,9 @@ The files are `frontend/src/admin/AdminPage.tsx`, `frontend/src/system/SystemPag
 | `/licenses` | Licenses of the libraries and fonts |
 | `/unsubscribe` | Stop emails, from a signed link |
 
-## What every page does in each state
+## What the pages do in each state
+
+The texts on the site are in Hebrew; they are described here in English.
 
 | State | What the person sees | Where |
 |---|---|---|
@@ -50,4 +52,4 @@ The files are `frontend/src/admin/AdminPage.tsx`, `frontend/src/system/SystemPag
 | No network | The booking form asks the server again for the times, because the request may have arrived | `frontend/src/features/booking/BookingForm.tsx` |
 | A page that does not exist | "Not found", inside the site's frame | `frontend/src/pages/NotFoundPage.tsx` |
 
-**How I checked the pages.** One test (`frontend/e2e/sweep.spec.ts`) opens every page as a guest, a student and a manager, on a computer, a tablet and a phone, and fails on any unexpected error. Another (`frontend/e2e/a11y.spec.ts`) runs an accessibility scan on the main pages, in the light and the dark theme. See [Testing](testing.md).
+**How I checked the pages.** One test (`frontend/e2e/sweep.spec.ts`) opens the main pages (14 as a guest, 6 as a student, and the five admin tabs) on a computer, a tablet and a phone, and fails on any unexpected error. Some pages, such as `/system`, `/screen` and `/unsubscribe`, are not in it. Another (`frontend/e2e/a11y.spec.ts`) runs an accessibility scan on the main pages, in the light and the dark theme. See [Testing](testing.md).

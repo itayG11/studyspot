@@ -241,7 +241,7 @@ def test_unknown_tenant_is_refused_and_creates_nobody(auth_client, fake, session
 
 def test_braude_email_from_a_foreign_tenant_is_refused(auth_client, fake):
     """nOAuth: an attacker's own tenant can carry any email. Only the tid counts."""
-    claims = microsoft_claims(tenant=OTHER_TENANT, email="dalitc@braude.ac.il")
+    claims = microsoft_claims(tenant=OTHER_TENANT, email="admin@braude.example")
     response = finish_login(auth_client, fake, claims)
     assert redirect_error(response) == "institution_not_supported"
 
