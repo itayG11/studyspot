@@ -284,7 +284,7 @@ def _pinned(url: str, address: str) -> tuple[str, dict[str, str], dict[str, str]
     the name would have sent, and the name for the TLS handshake (so the
     certificate is still checked against the name, not the number)."""
     parts = urlsplit(url)
-    host = parts.hostname or ""
+    host = (parts.hostname or "").encode("idna").decode("ascii")  # headers and TLS names are ASCII
     shown = f"[{address}]" if ":" in address else address
     netloc = shown + (f":{parts.port}" if parts.port else "")
     host_header = (f"[{host}]" if ":" in host else host) + (f":{parts.port}" if parts.port else "")

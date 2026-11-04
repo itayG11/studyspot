@@ -356,13 +356,13 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     institution = session.get(Institution, place.institution_id)
     local_today = now.astimezone(ZoneInfo(institution.timezone)).date()
     all_day = open_all_day_place_ids(session, institution.id, local_today)
-    view = _place_views(session, institution, [place], now, all_day)[0]
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
         seats = _seat_map(session, place, now)
     # The building's own numbers, for the small map on the place's page: only this building's places.
     here = session.scalars(_places_query().where(Place.building_id == place.building_id)).all()
     here_views = _place_views(session, institution, here, now, all_day)
+    view = next(v for v in here_views if v.id == place.id)  # the place's own numbers: one pass for the whole building
     building = _building_out(
         place.building,
         list(here),
