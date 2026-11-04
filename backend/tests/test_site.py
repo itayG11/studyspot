@@ -309,3 +309,65 @@ def test_search_engines_find_an_icon_a_title_and_the_site_name():
     assert title.startswith("StudySpot") and len(title) > len("StudySpot")
     data = json.loads(re.search(r'<script type="application/ld\+json">(.+?)</script>', page, re.DOTALL)[1])
     assert (data["@type"], data["name"], data["url"]) == ("WebSite", "StudySpot", "https://getstudyspot.me/")
+
+
+# --- the service's own *.onrender.com address ------------------------------------------
+
+
+@pytest.fixture
+def real_address(built: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    from app import site as site_module
+
+    real = site_module.get_settings().model_copy(update={"frontend_url": "https://studyspot.example"})
+    monkeypatch.setattr(site_module, "get_settings", lambda: real)
+    return TestClient(create_site(built), follow_redirects=False)
+
+
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_the_hosts_own_address_is_sent_on_to_the_real_one_keeping_path_query_and_method(real_address, method):
+    response = getattr(real_address, method)("/api/places/5?x=1&y=2", headers={"host": "studyspot-ab12.onrender.com"})
+    assert response.status_code == 307  # a POST stays a POST, and nothing is cached for good
+    assert response.headers["location"] == "https://studyspot.example/api/places/5?x=1&y=2"
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("host", ["studyspot-ab12.onrender.com:443", "studyspot-ab12.onrender.com.", "STUDYSPOT-AB12.OnRender.com", "x.onrender.com:80"])
+def test_the_hosts_own_address_is_found_however_the_host_is_written(real_address, host):
+    assert real_address.get("/me", headers={"host": host}).status_code == 307
+
+
+def test_a_path_is_sent_on_as_it_came(real_address):
+    """As a server hands it over: the decoded path, the original bytes (a %3F
+    is not a "?"), and the query apart (the test client mixes these up, so the
+    request is built by hand)."""
+    import asyncio
+
+    seen: dict = {}
+
+    async def send(message):
+        if message["type"] == "http.response.start":
+            seen["status"] = message["status"]
+            seen["headers"] = dict(message["headers"])
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "GET", "scheme": "https",
+        "path": "/api/places/a?b", "raw_path": b"/api/places/a%3Fb", "query_string": b"x=1", "root_path": "",
+        "headers": [(b"host", b"x.onrender.com")], "client": ("1.2.3.4", 1234), "server": ("x.onrender.com", 443),
+    }
+    real_address.app.site.middleware_stack = None  # build the stack once, for this scope
+    asyncio.run(real_address.app(scope, receive, send))
+    assert seen["status"] == 307
+    assert seen["headers"][b"location"] == b"https://studyspot.example/api/places/a%3Fb?x=1"
+
+
+def test_the_health_check_is_answered_on_the_hosts_own_address(real_address):
+    response = real_address.get("/api/health", headers={"host": "studyspot-ab12.onrender.com"})
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("host", ["studyspot.example", "localhost:8001", "testserver"])
+def test_the_real_address_and_other_hosts_are_not_sent_anywhere(real_address, host):
+    assert real_address.get("/", headers={"host": host}).status_code == 200

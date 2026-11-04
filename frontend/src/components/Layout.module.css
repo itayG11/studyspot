@@ -307,6 +307,15 @@
   }
 }
 
+/* Where the phone's tab bar shows (TabBar.tsx), it already has "search" and,
+   for a guest, "institutions": the header drops those copies, and is two
+   rows instead of three (135px of a 664px screen, a fifth). A signed-in
+   student keeps "all institutions" (the bar has no tab for it), and the
+   links for a manager stay. Pages without the bar keep every link. */
+:global(html[data-tabbar]) .navDup {
+  display: none;
+}
+
 /* The bottom line of every page: quiet, out of the way. */
 .footer {
   display: flex;

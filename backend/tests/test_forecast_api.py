@@ -92,5 +92,7 @@ def test_the_open_read_routes_share_a_limit_per_address(client, braude):
         "/institutions/braude/places",
         f"/places/{area.id}",
         f"/places/{area.id}/availability?date=2026-10-11",
+        "/institutions",  # the list of institutions (a join over all places) and one institution, too
+        "/institutions/braude",
     ):
         assert client.get(path).status_code == 429, path

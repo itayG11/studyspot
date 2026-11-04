@@ -535,6 +535,16 @@ def test_a_pinned_call_keeps_a_port_and_an_ipv6_address():
     assert extensions == {"sni_hostname": "hooks.example.edu"}
 
 
+def test_a_name_with_non_ascii_letters_is_sent_in_its_ascii_form():
+    """Headers and the TLS name are ASCII: the Host header of "bücher.example"
+    could not even be built before the name was converted (it used to be sent
+    correctly, when the HTTP client looked the name up itself)."""
+    url, headers, extensions = webhooks._pinned("https://bücher.example/in", "93.184.216.34")
+    assert headers == {"Host": "xn--bcher-kva.example"}
+    assert extensions == {"sni_hostname": "xn--bcher-kva.example"}
+    httpx.Request("POST", url, headers=headers, extensions=extensions)  # builds without an encoding error
+
+
 def test_a_name_with_several_addresses_has_them_all_checked_and_then_tried_in_order():
     def two(host, port, type=0):
         return [

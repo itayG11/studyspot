@@ -11,14 +11,17 @@ Run with:  STATIC_DIR=../frontend/dist uvicorn app.site:app
 (the Dockerfile builds the web app and sets STATIC_DIR).
 """
 
+import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote, urlsplit
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -28,8 +31,8 @@ from app.api.shares import share_key
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.edge import Edge, configure_logging
+from app.main import HEALTH_PATHS, lifespan
 from app.main import app as api
-from app.main import lifespan
 from app.ratelimit import share_page_limit
 
 # What the page may load, and from where: only this site, plus the map's
@@ -100,6 +103,37 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
             site.add_api_route(path, no_docs, methods=["GET"], include_in_schema=False)
 
     site.mount("/api", api)
+
+    # The service is also reachable at its own *.onrender.com address, where
+    # the number of proxies in front of it was never measured (the client's
+    # address for the rate limits is counted from the right: TRUSTED_PROXY_HOPS,
+    # docs/DEPLOY.md). Anything arriving there is sent on to the real address,
+    # so every request that reaches the app came through the measured path.
+    # The health check is answered where it is (the host's own probe).
+    canonical = urlsplit(get_settings().frontend_url)
+    if not (canonical.scheme and canonical.hostname):
+        # Without it the redirect cannot work: say so, rather than stay silent.
+        logging.getLogger("studyspot.site").warning("FRONTEND_URL has no scheme or host: the *.onrender.com redirect is off")
+
+    @site.middleware("http")
+    async def one_address(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        # The name as the browser meant it: no port, no trailing dot, any case
+        # ("x.onrender.com:443" and "X.OnRender.com." are the same address).
+        host = (request.url.hostname or "").rstrip(".")  # hostname: lower case, without the port
+        elsewhere = host.endswith(".onrender.com") and bool(canonical.hostname) and host != canonical.hostname
+        if elsewhere and request.url.path not in HEALTH_PATHS:
+            # The path as it was sent (a %3F stays a %3F), not decoded.
+            raw_path = request.scope.get("raw_path")
+            path = raw_path.split(b"?", 1)[0].decode("latin-1") if raw_path else quote(request.url.path)
+            target = f"{canonical.scheme}://{canonical.netloc}{path}"
+            query = request.scope.get("query_string", b"")  # not request.url.query: a decoded "?" in the path confuses it
+            if query:
+                target += f"?{query.decode('latin-1')}"
+            # 307, not 308: the method and body stay, and nothing is remembered
+            # by the browser for good (a permanent redirect would outlive a mistake).
+            return RedirectResponse(target, status_code=307, headers={"Cache-Control": "no-store"})
+        return await call_next(request)
+
     # Text (scripts, styles, pages, API answers) gzipped for a browser that
     # asks; Starlette leaves out what is compressed already (images, fonts)
     # and anything under 1 KB.

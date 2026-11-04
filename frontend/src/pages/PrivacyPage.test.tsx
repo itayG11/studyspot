@@ -13,6 +13,12 @@ describe('PrivacyPage', () => {
     expect(screen.getByRole('link', { name: 'האזור שלי' })).toHaveAttribute('href', '/me')
   })
 
+  it('says wrong password tries are kept with the time and network address, and for how long', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByText(/כתובת הרשת שממנה בא.*אחרי כרבע שעה/)).toBeInTheDocument()
+    expect(screen.getByText(/לנעול את הסיסמה אחרי 20/)).toBeInTheDocument()
+  })
+
   it('says a timetable photo goes abroad, and to crop the name and ID number out first', () => {
     // A screenshot of the timetable often shows both.
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)

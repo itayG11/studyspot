@@ -24,14 +24,21 @@ export function TabBar({ home }: { home: string }) {
     if (typeof window.matchMedia !== 'function') return // an old browser, or a test
     const phone = window.matchMedia('(max-width: 760px)')
     const set = () => {
-      if (phone.matches) document.documentElement.style.setProperty('--tabbar-h', 'calc(64px + env(safe-area-inset-bottom))')
-      else document.documentElement.style.removeProperty('--tabbar-h')
+      const root = document.documentElement
+      if (phone.matches) {
+        root.style.setProperty('--tabbar-h', 'calc(64px + env(safe-area-inset-bottom))')
+        root.dataset.tabbar = '' // the header drops the links the bar repeats (Layout.module.css)
+      } else {
+        root.style.removeProperty('--tabbar-h')
+        delete root.dataset.tabbar
+      }
     }
     set()
     phone.addEventListener('change', set)
     return () => {
       phone.removeEventListener('change', set)
       document.documentElement.style.removeProperty('--tabbar-h')
+      delete document.documentElement.dataset.tabbar
     }
   }, [])
 

@@ -71,7 +71,7 @@ export function Layout() {
           <NavLink
             to={home}
             end
-            className={styles.navLink}
+            className={`${styles.navLink} ${styles.navDup}`}
             onClick={(event) => {
               // Ctrl, Cmd or Shift: the browser's own new tab or window.
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -95,7 +95,14 @@ export function Layout() {
           {user?.role === 'system_admin' && (
             <NavLink to="/system" className={styles.navLink} viewTransition>ניהול המערכת</NavLink>
           )}
-          <NavLink to="/institutions" className={styles.navLink} viewTransition>כל המוסדות</NavLink>
+          {/* The phone's tab bar has "institutions" only for a guest (TabBar.tsx): signed in, this is the way to it. */}
+          <NavLink
+            to="/institutions"
+            className={status === 'signed-in' ? styles.navLink : `${styles.navLink} ${styles.navDup}`}
+            viewTransition
+          >
+            כל המוסדות
+          </NavLink>
         </nav>
         <Pulse home={home} />
         <div className={styles.account}>
