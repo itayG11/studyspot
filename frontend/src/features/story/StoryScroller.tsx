@@ -1,9 +1,9 @@
 // The home page story, told with illustrative photos (docs/IMAGES.md).
 //
-//   opening  0.00-0.24  the campus photo grows from a framed card to the
+//   opening  0.00-0.24  (0.22 on a phone) the campus photo grows from a framed card to the
 //                       whole screen, the headline parts, and a panel with
 //                       the live number rises. The pin lands on the campus.
-//   rooms    0.24-0.92  four kinds of places. Each photo rises from below
+//   rooms    0.24-0.92  (0.22-0.90 on a phone) four kinds of places. Each photo rises from below
 //                       over the one before it, which steps back and dims.
 //                       A slow zoom inside each photo; the pin lands on the
 //                       free seat; a label and one live number.
@@ -151,8 +151,8 @@ function useRestAfterTouch(section: React.RefObject<HTMLElement | null>, p: Moti
   useEffect(() => {
     if (!tall || typeof window.matchMedia !== 'function' || !window.matchMedia('(pointer: coarse)').matches) return
     const windows = transitionWindows(g, ROOMS.length)
-    let byTouch = false
-    let touching = false
+    let touching = false // a finger is down
+    let byTouch = false // the page was moved by a finger (a tap alone does not count)
     let timer: number | undefined
     const settle = () => {
       const element = section.current
@@ -162,15 +162,26 @@ function useRestAfterTouch(section: React.RefObject<HTMLElement | null>, p: Moti
       const target = restingPoint(here, windows)
       if (target === here) return
       // The progress runs over the section's height less one screen (Motion's offset "start start" to "end end").
-      const total = element.offsetHeight - window.innerHeight
+      const total = element.offsetHeight - document.documentElement.clientHeight
       window.scrollTo({ top: window.scrollY + (target - here) * total, behavior: 'smooth' })
     }
     const start = () => {
       touching = true
+      window.clearTimeout(timer)
+    }
+    const move = () => {
       byTouch = true
     }
-    const end = () => {
+    const end = (event: TouchEvent) => {
+      if (event.touches.length > 0) return // another finger is still down
       touching = false
+      // The finger lifted with no momentum left (it stopped the page, or paused): no more
+      // scrolling is coming to end the move, so look once the page has stood still a moment.
+      const at = window.scrollY
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        if (window.scrollY === at) settle()
+      }, 180)
     }
     const cancel = () => {
       byTouch = false
@@ -181,6 +192,7 @@ function useRestAfterTouch(section: React.RefObject<HTMLElement | null>, p: Moti
     }
     const hasScrollEnd = 'onscrollend' in window
     window.addEventListener('touchstart', start, { passive: true })
+    window.addEventListener('touchmove', move, { passive: true })
     window.addEventListener('touchend', end, { passive: true })
     window.addEventListener('touchcancel', end, { passive: true })
     window.addEventListener('wheel', cancel, { passive: true })
@@ -190,6 +202,7 @@ function useRestAfterTouch(section: React.RefObject<HTMLElement | null>, p: Moti
     return () => {
       window.clearTimeout(timer)
       window.removeEventListener('touchstart', start)
+      window.removeEventListener('touchmove', move)
       window.removeEventListener('touchend', end)
       window.removeEventListener('touchcancel', end)
       window.removeEventListener('wheel', cancel)

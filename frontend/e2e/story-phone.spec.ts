@@ -22,14 +22,21 @@ const progress = (page: Page) =>
     return (window.scrollY - top) / (section.offsetHeight - window.innerHeight)
   })
 
-async function swipeUp(page: Page, distance: number) {
+// The last 220px of the way by a real swipe of the finger, ending still (no flick, so no
+// momentum). The way up to there is made by the page (a scroll the story leaves alone),
+// because the swipe's own stops on the way would be finished by the story too.
+async function dragTo(page: Page, scrollY: number) {
+  const piece = 220
+  await page.evaluate((y) => window.scrollTo(0, y), scrollY - piece)
+  await page.waitForTimeout(700)
   const cdp = await page.context().newCDPSession(page)
-  const steps = Math.max(4, Math.round(distance / 10))
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 760 }] })
+  const steps = 11
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 700 }] })
   for (let i = 1; i <= steps; i++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 200, y: 760 - (distance * i) / steps }] })
-    await page.waitForTimeout(8)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 200, y: 700 - (piece * i) / steps }] })
+    await page.waitForTimeout(25)
   }
+  await page.waitForTimeout(150) // held still before lifting: no flick
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 }
 
@@ -56,19 +63,16 @@ test('a photo takes about half a screen of scrolling to rise over the one before
   expect(moving).toBeGreaterThanOrEqual(0.45 * screen) // it was about a quarter of a screen
 })
 
-test('a swipe that ends with a photo half risen finishes the move, and does not rest halfway', async ({ page }) => {
-  const { top, total } = await geometry(page)
-  const [from, to] = windows[2]
-  const halfway = from + (to - from) * 0.55
-  await swipeUp(page, Math.round(top + halfway * total))
-  await expect
-    .poll(async () => {
-      const at = await progress(page)
-      return windows.some(([a, b]: [number, number]) => at > a + 0.004 && at < b - 0.004)
-    }, { timeout: 5000 })
-    .toBe(false)
-  expect(await progress(page)).toBeGreaterThan(from - 0.005) // it went on forward: past the middle
-})
+for (const [where, share, ends] of [['past the middle', 0.62, 'to'], ['before the middle', 0.38, 'from']] as const) {
+  test(`a swipe that ends with a photo half risen, ${where}, finishes the move the way it was going`, async ({ page }) => {
+    expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true)
+    const { top, total } = await geometry(page)
+    const [from, to] = windows[2]
+    await dragTo(page, Math.round(top + (from + (to - from) * share) * total))
+    const wanted = ends === 'to' ? to : from
+    await expect.poll(async () => Math.abs((await progress(page)) - wanted), { timeout: 6000 }).toBeLessThan(0.01)
+  })
+}
 
 test('a scroll made by the page itself is left where it is', async ({ page }) => {
   const { top, total } = await geometry(page)
@@ -79,13 +83,15 @@ test('a scroll made by the page itself is left where it is', async ({ page }) =>
   expect(Math.abs((await progress(page)) - halfway)).toBeLessThan(0.002)
 })
 
-test('below the story, a swipe goes as far as the finger, and nothing finishes it', async ({ page }) => {
-  await page.goto('/demo#finder')
-  await expect(page.getByRole('searchbox', { name: 'חיפוש מקום' })).toBeVisible()
-  await page.waitForTimeout(800)
-  const before = await page.evaluate(() => window.scrollY)
-  await swipeUp(page, 150)
+test('a tap with no swipe leaves a half-finished photo where it is', async ({ page }) => {
+  const { top, total } = await geometry(page)
+  const [from, to] = windows[2]
+  const halfway = from + (to - from) * 0.5
+  await page.evaluate((y) => window.scrollTo(0, y), top + halfway * total)
+  await page.waitForTimeout(600)
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 400 }] })
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await page.waitForTimeout(900)
-  const moved = (await page.evaluate(() => window.scrollY)) - before
-  expect(Math.abs(moved - 150)).toBeLessThan(25) // the finger's own slop, not a move of the page's own
+  expect(Math.abs((await progress(page)) - halfway)).toBeLessThan(0.003)
 })
