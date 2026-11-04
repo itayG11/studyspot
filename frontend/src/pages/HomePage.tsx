@@ -37,6 +37,37 @@ function holdOnMap(map: HTMLElement) {
   window.requestAnimationFrame(step)
 }
 
+// A scroll asked for while the page was changing is sometimes dropped: the phone's
+// "search" tab navigates with a view transition (the page is frozen for a moment, and
+// a scroll made then does nothing), found as a test that failed one run in ten. So for
+// about two seconds, frame by frame, once the page has stood still for a few frames
+// away from the search, it is scrolled there again, until it is there or the reader
+// takes over. (Not while it is moving: a glide is left to finish.)
+function holdOnFinder(finder: HTMLElement) {
+  const EVENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown']
+  let frames = 0
+  let still = 0
+  let last = window.scrollY
+  let stopped = false
+  const stop = () => {
+    stopped = true
+    EVENTS.forEach((name) => window.removeEventListener(name, stop))
+  }
+  const step = () => {
+    if (stopped || !finder.isConnected || ++frames > 120) return stop()
+    still = window.scrollY === last ? still + 1 : 0
+    last = window.scrollY
+    const margin = parseFloat(getComputedStyle(finder).scrollMarginTop) || 0
+    if (still >= 6 && Math.abs(finder.getBoundingClientRect().top - margin) > 40) {
+      finder.scrollIntoView({ behavior: 'auto', block: 'start' })
+      still = 0
+    }
+    window.requestAnimationFrame(step)
+  }
+  EVENTS.forEach((name) => window.addEventListener(name, stop, { passive: true }))
+  window.requestAnimationFrame(step)
+}
+
 function toFinder(smooth: boolean) {
   const finder = document.getElementById('finder')
   if (!finder) return
@@ -49,7 +80,10 @@ function toFinder(smooth: boolean) {
     // At once, not gliding: the page above the map is long, and the map moves as it arrives.
     map.scrollIntoView({ behavior: 'auto', block: 'center' })
     holdOnMap(map)
-  } else finder.scrollIntoView({ behavior, block: 'start' })
+  } else {
+    finder.scrollIntoView({ behavior, block: 'start' })
+    holdOnFinder(finder)
+  }
   // The keyboard continues from the finder too.
   finder.focus({ preventScroll: true })
 }

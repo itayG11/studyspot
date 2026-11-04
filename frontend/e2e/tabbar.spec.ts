@@ -78,3 +78,24 @@ test('on a phone, a signed-in student keeps "all institutions" in the header: th
   await expect(nav.getByRole('link', { name: 'כל המוסדות' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'חיפוש מקום' })).toBeHidden()
 })
+
+// Found as the "search" tab test failing one run in ten: a scroll made while the page is
+// frozen by the tab's view transition is dropped, and the page stayed at the top. Here the
+// first scroll to the search is swallowed on purpose (what the frozen page does); the page
+// must still end at the search.
+test('on a phone, the "search" tab reaches the search even when the first scroll is lost', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Element.prototype.scrollIntoView
+    let lost = false
+    Element.prototype.scrollIntoView = function (...args: []) {
+      if (!lost && (this as HTMLElement).id === 'finder') {
+        lost = true
+        return
+      }
+      return original.apply(this, args)
+    }
+  })
+  await page.goto('/demo')
+  await tabBar(page).getByRole('link', { name: 'חיפוש' }).click()
+  await expect(page.getByRole('heading', { name: 'איפה תלמד היום?' })).toBeInViewport()
+})
