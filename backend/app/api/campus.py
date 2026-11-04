@@ -57,7 +57,7 @@ def _institution(session: Session, slug: str) -> Institution:
     return institution
 
 
-@router.get("/institutions", response_model=list[InstitutionCard])
+@router.get("/institutions", response_model=list[InstitutionCard], dependencies=[Depends(public_read_limit)])
 def list_institutions(session: SessionDep, settings: Annotated[Settings, Depends(get_settings)]):
     """The institutions a visitor can pick. One being set up stays hidden
     until its admin marks it active, but still opens by its address.
@@ -85,7 +85,7 @@ def list_institutions(session: SessionDep, settings: Annotated[Settings, Depends
     ]
 
 
-@router.get("/institutions/{slug}", response_model=InstitutionOut)
+@router.get("/institutions/{slug}", response_model=InstitutionOut, dependencies=[Depends(public_read_limit)])
 def get_institution(slug: Slug, session: SessionDep):
     institution = _institution(session, slug)
     return InstitutionOut(
@@ -348,6 +348,10 @@ def get_campus_today(slug: Slug, session: SessionDep, now: NowDep):
 
 @router.get("/places/{place_id}", response_model=PlaceDetail, dependencies=[Depends(public_read_limit)])
 def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: NowDep):
+    # By id, for any institution, one still being set up included: the same
+    # data its address already serves ("hidden until active, but still opens
+    # by its address"), and nothing about people. A deliberate choice (4 Nov,
+    # the audit): hiding it here would break an admin's preview of a place.
     place = session.scalars(
         _places_query().where(Place.id == place_id).options(selectinload(Place.seats))
     ).first()

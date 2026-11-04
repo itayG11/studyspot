@@ -38,8 +38,26 @@
   color: var(--ink-2);
 }
 
+/* On a phone the note is one short strip, not a quarter of the screen: the
+   text and the button side by side, the heading kept for screen readers
+   (the region's name) but not drawn. */
 @media (max-width: 30rem) {
   .note {
-    grid-template-columns: 1fr;
+    padding: var(--s-3) var(--s-4);
+    gap: var(--s-2) var(--s-3);
+  }
+
+  .title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .text {
+    font-size: var(--text-xs, 0.8125rem);
+    line-height: 1.4;
   }
 }
