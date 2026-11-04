@@ -1,9 +1,9 @@
 // The home page story, told with illustrative photos (docs/IMAGES.md).
 //
-//   opening  0.00-0.24  the campus photo grows from a framed card to the
+//   opening  0.00-0.24  (0.22 on a phone) the campus photo grows from a framed card to the
 //                       whole screen, the headline parts, and a panel with
 //                       the live number rises. The pin lands on the campus.
-//   rooms    0.24-0.92  four kinds of places. Each photo rises from below
+//   rooms    0.24-0.92  (0.22-0.90 on a phone) four kinds of places. Each photo rises from below
 //                       over the one before it, which steps back and dims.
 //                       A slow zoom inside each photo; the pin lands on the
 //                       free seat; a label and one live number.
@@ -24,7 +24,7 @@ import {
   type MotionStyle,
   type MotionValue,
 } from 'motion/react'
-import { memo, useRef, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { Building, Place, PlaceKind } from '../../api/types'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import { KIND_LABELS } from '../../i18n/labels'
@@ -34,6 +34,7 @@ import { Button, Photo, TALL_QUERY } from '../../ui'
 import { LiveNote } from '../../components/LiveNote'
 import { useLiveSimulated } from '../../institution'
 import { kindLine } from './storyNumbers'
+import { restingPoint, TALL_GEOMETRY, transitionWindows, WIDE_GEOMETRY, type Geometry } from './storyGeometry'
 import styles from './story.module.css'
 
 // "word": one large word behind each room's text (wave 17, the apple.com
@@ -44,10 +45,6 @@ const ROOMS: { kind: PlaceKind; line: string; word: string }[] = [
   { kind: 'group_room', line: 'חדר לכל הצוות, מוזמן מראש.', word: 'יחד' },
   { kind: 'library', line: 'שקט של ספרייה, ליום ארוך של מבחנים.', word: 'שקט' },
 ]
-const ROOMS_FROM = 0.24
-const ROOM_SPAN = 0.17
-const ENTER = 0.06 // how long a photo takes to rise over the one before it
-
 interface StoryProps {
   buildings: Building[]
   places: Place[]
@@ -66,15 +63,17 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const section = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: section, offset: ['start start', 'end end'] })
   const tall = useMediaQuery(TALL_QUERY)
+  const g = tall ? TALL_GEOMETRY : WIDE_GEOMETRY
+  useRestAfterTouch(section, p, tall, g)
   // One state change when the opening is covered, so its buttons stop
   // taking clicks and keyboard focus once nobody can see them.
   const [opening, setOpening] = useState(true)
   // The rooms' photos wait for the first scroll: on a phone their downloads
   // would share the slow connection with the opening photo, the largest
-  // thing on the first screen. The first room rises only at ROOMS_FROM.
+  // thing on the first screen. The first room rises only at roomsFrom.
   const [roomsNear, setRoomsNear] = useState(false)
   useMotionValueEvent(p, 'change', (v) => {
-    setOpening(v < ROOMS_FROM + ENTER)
+    setOpening(v < g.roomsFrom + g.enter)
     if (v > 0.02) setRoomsNear(true)
   })
 
@@ -95,10 +94,10 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   const rightHalf = useMotionTemplate`translateX(${part}vw)`
   const leftHalf = useMotionTemplate`translateX(calc(-1 * ${part}vw))`
   // Rises with the open photo, and leaves as the first room rises over it.
-  const panelOpacity = useTransform(p, [0.11, 0.16, ROOMS_FROM, ROOMS_FROM + 0.03], [0, 1, 1, 0])
+  const panelOpacity = useTransform(p, [0.11, 0.16, g.roomsFrom, g.roomsFrom + 0.03], [0, 1, 1, 0])
   const panelY = useTransform(p, [0.11, 0.16], [28, 0])
   const panel = useMotionTemplate`translateY(${panelY}px)`
-  const heroBack = useStepBack(p, ROOMS_FROM)
+  const heroBack = useStepBack(p, g.roomsFrom, g.enter)
 
   return (
     <section ref={section} className={styles.story} aria-label="סיפור: המקום שלך בקמפוס">
@@ -130,7 +129,7 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
         </m.div>
 
         {ROOMS.map((room, i) => (
-          <Room key={room.kind} progress={p} index={i} kind={room.kind} line={room.line} word={room.word} places={places} near={roomsNear} />
+          <Room key={room.kind} progress={p} g={g} index={i} kind={room.kind} line={room.line} word={room.word} places={places} near={roomsNear} />
         ))}
 
         <span className={styles.simLabel}>הדמיה</span>
@@ -145,32 +144,101 @@ function ScrollStory({ buildings, places, onToFinder }: StoryProps) {
   )
 }
 
+// On a phone, after a swipe ends with a photo half risen, finish the move to the nearer
+// end: no resting halfway. Only after a touch (not for the keyboard, the wheel, or a scroll
+// made by the page itself, such as the jump to the search), and only inside the story.
+function useRestAfterTouch(section: React.RefObject<HTMLElement | null>, p: MotionValue<number>, tall: boolean, g: Geometry) {
+  useEffect(() => {
+    if (!tall || typeof window.matchMedia !== 'function' || !window.matchMedia('(pointer: coarse)').matches) return
+    const windows = transitionWindows(g, ROOMS.length)
+    let touching = false // a finger is down
+    let byTouch = false // the page was moved by a finger (a tap alone does not count)
+    let timer: number | undefined
+    const settle = () => {
+      const element = section.current
+      if (!byTouch || touching || !element) return
+      byTouch = false
+      const here = p.get()
+      const target = restingPoint(here, windows)
+      if (target === here) return
+      // The progress runs over the section's height less one screen (Motion's offset "start start" to "end end").
+      const total = element.offsetHeight - document.documentElement.clientHeight
+      window.scrollTo({ top: window.scrollY + (target - here) * total, behavior: 'smooth' })
+    }
+    const start = () => {
+      touching = true
+      window.clearTimeout(timer)
+    }
+    const move = () => {
+      byTouch = true
+    }
+    const end = (event: TouchEvent) => {
+      if (event.touches.length > 0) return // another finger is still down
+      touching = false
+      // The finger lifted with no momentum left (it stopped the page, or paused): no more
+      // scrolling is coming to end the move, so look once the page has stood still a moment.
+      const at = window.scrollY
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        if (window.scrollY === at) settle()
+      }, 180)
+    }
+    const cancel = () => {
+      byTouch = false
+    }
+    const afterScroll = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(settle, 150) // a browser without the "scrollend" event
+    }
+    const hasScrollEnd = 'onscrollend' in window
+    window.addEventListener('touchstart', start, { passive: true })
+    window.addEventListener('touchmove', move, { passive: true })
+    window.addEventListener('touchend', end, { passive: true })
+    window.addEventListener('touchcancel', end, { passive: true })
+    window.addEventListener('wheel', cancel, { passive: true })
+    window.addEventListener('keydown', cancel)
+    if (hasScrollEnd) window.addEventListener('scrollend', settle)
+    else window.addEventListener('scroll', afterScroll, { passive: true })
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('touchstart', start)
+      window.removeEventListener('touchmove', move)
+      window.removeEventListener('touchend', end)
+      window.removeEventListener('touchcancel', end)
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('keydown', cancel)
+      window.removeEventListener('scrollend', settle)
+      window.removeEventListener('scroll', afterScroll)
+    }
+  }, [section, p, tall, g])
+}
+
 // Once the next photo starts to rise, this one steps back and darkens.
-function useStepBack(progress: MotionValue<number>, from: number) {
-  const scale = useTransform(progress, [from, from + ENTER], [1, 0.92])
-  const dim = useTransform(progress, [from, from + ENTER], [0, 0.55])
+function useStepBack(progress: MotionValue<number>, from: number, enter: number) {
+  const scale = useTransform(progress, [from, from + enter], [1, 0.92])
+  const dim = useTransform(progress, [from, from + enter], [0, 0.55])
   return { transform: useMotionTemplate`scale(${scale})`, dim }
 }
 
-function Room({ progress, index, kind, line, word, places, near }: { progress: MotionValue<number>; index: number; kind: PlaceKind; line: string; word: string; places: Place[]; near: boolean }) {
-  const from = ROOMS_FROM + index * ROOM_SPAN
-  const rise = useTransform(progress, [from, from + ENTER], [100, 0])
-  const back = useStepBack(progress, from + ROOM_SPAN)
+function Room({ progress, g, index, kind, line, word, places, near }: { progress: MotionValue<number>; g: Geometry; index: number; kind: PlaceKind; line: string; word: string; places: Place[]; near: boolean }) {
+  const from = g.roomsFrom + index * g.roomSpan
+  const rise = useTransform(progress, [from, from + g.enter], [100, 0])
+  const back = useStepBack(progress, from + g.roomSpan, g.enter)
   const layer = useMotionTemplate`translateY(${rise}%) ${back.transform}`
-  const zoomValue = useTransform(progress, [from, from + ROOM_SPAN + ENTER], [1.12, 1])
+  const zoomValue = useTransform(progress, [from, from + g.roomSpan + g.enter], [1.12, 1])
   const zoom = useMotionTemplate`scale(${zoomValue})`
   const textOpacity = useTransform(progress, [from + 0.035, from + 0.08], [0, 1])
   const textY = useTransform(progress, [from + 0.035, from + 0.08], [24, 0])
   const text = useMotionTemplate`translateY(${textY}px)`
   // The big word drifts a little slower than the photo: depth, not motion for its own sake.
-  const wordX = useTransform(progress, [from, from + ROOM_SPAN + ENTER], [6, -6])
+  const wordX = useTransform(progress, [from, from + g.roomSpan + g.enter], [6, -6])
   const wordMove = useMotionTemplate`translateX(${wordX}%)`
   const { count, text: unit } = kindLine(places, kind)
 
   return (
     // Above the opening's panel (z-index 6), each room above the one before.
     <m.div className={styles.layer} data-kind={kind} style={{ transform: layer, zIndex: 7 + index }}>
-      <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + ENTER} load={near} />
+      <Scene name={KIND_PHOTO[kind]} zoom={zoom} pinProgress={progress} pinFrom={from + g.enter} load={near} />
       <div className={styles.shade} />
       <m.span className={styles.word} style={{ opacity: textOpacity, transform: wordMove }} aria-hidden="true">
         {word}

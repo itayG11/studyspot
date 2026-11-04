@@ -294,8 +294,10 @@
 /* --- Phone ------------------------------------------------------------- */
 
 @media (max-width: 760px) {
+  /* Taller than on a computer, so that each move is about half a screen of scrolling
+     and a fast flick does not go past it (TALL_GEOMETRY in StoryScroller.tsx). */
   .story {
-    height: 520vh;
+    height: 680vh;
   }
 
   .cover {

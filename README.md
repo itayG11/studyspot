@@ -4,6 +4,8 @@ Find a place to study on campus: what is free right now, what is usually free la
 
 **Live:** https://getstudyspot.me. It opens on a demo campus, and you can sign in as the demo student, as the demo admin, or with Google. The free server sleeps after 15 idle minutes, so the first visit can take about a minute.
 
+**Reading this as a reviewer?** [Requirements](docs/design/requirements.md) · [Database](docs/design/database.md) · [Pages](docs/design/pages.md) · [How I worked with AI](docs/design/process.md) · [Design decisions](docs/design/decisions.md)
+
 I built StudySpot in October 2026 as my first complete web project, next to my second year of software engineering at Braude College. I built it in partnership with Claude Code, an AI coding assistant: I decided what to build and in what order and made the design decisions, we wrote the code together, and I reviewed and tested the results.
 
 ![Searching for a computer lab and opening its page](docs/screenshots/flow-v2.gif)
@@ -45,7 +47,7 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 - 613 web app unit tests (`vitest`).
 - 51 browser tests (`Playwright`, with `axe` and keyboard accessibility checks), and 39 more on desktop, iPad and phone.
 - Real browsers on BrowserStack: Chrome, Edge, Firefox and WebKit on desktop, a real Pixel phone and an iPhone. See [the results](docs/browserstack/RESULTS.md).
-- 29 database tables. Every API route has a row in an access table that says who may call it.
+- 30 database tables. Every API route has a row in an access table that says who may call it.
 
 *Counted on 1 November 2026.*
 
@@ -97,6 +99,22 @@ flowchart LR
 
 One container serves the web app and the API from the same address, so the sign-in cookie is first-party. The sweeper releases no-shows, ends expired check-ins, sends reminders and records occupancy history. It runs while the site has visitors, or when a reminder is due, so the database can sleep.
 
+The core of the database, eight of its 30 tables. The rest are supporting tables (sign-in, opening hours, notices, API keys, webhooks). [Database notes](docs/design/database.md) explain the keys and the rules the database enforces.
+
+```mermaid
+erDiagram
+  institutions ||--o{ buildings : has
+  institutions ||--o{ users : has
+  buildings ||--o{ places : contains
+  places ||--o{ seats : has
+  users ||--o{ bookings : makes
+  places ||--o{ bookings : "booked for"
+  seats ||--o{ bookings : "booked for"
+  bookings ||--o| check_ins : "confirmed by"
+  users ||--o{ waitlist_entries : joins
+  places ||--o{ waitlist_entries : "waited for"
+```
+
 ## Security, in short
 
 - Sign-in with Google or Microsoft (OIDC with PKCE), an email code, or a password (`argon2id`), with lockout after five tries.
@@ -116,7 +134,7 @@ One container serves the web app and the API from the same address, so the sign-
 
 ## More
 
-- [Design notes](docs/design/README.md): architecture, how double booking is prevented, decisions and trade-offs, and testing.
+- [Design notes](docs/design/README.md): requirements, the database, the pages, how I worked with AI, architecture, how double booking is prevented, decisions and trade-offs, and testing.
 - [API for institutions](docs/API.md), and on the live site the `/developers` page and `/api/v1/openapi.json`.
 - [Browser and device results](docs/browserstack/RESULTS.md).
 

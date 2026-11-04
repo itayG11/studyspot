@@ -4,6 +4,10 @@ Short notes on how StudySpot is built and why. Written for a reader who wants to
 
 | Note | What it answers |
 |---|---|
+| [Requirements](requirements.md) | What I set out to build, what I built, and what I did not |
+| [Database](database.md) | The core tables, the terms, and the rules the database enforces |
+| [Pages](pages.md) | Every page, who can open it, and what it shows in each state |
+| [How I worked with AI](process.md) | The process for every stage, who did what, and examples of my part |
 | [Architecture](architecture.md) | What runs where, and how a request travels |
 | [Preventing double booking](preventing-double-booking.md) | The hardest correctness problem, and how the database solves it |
 | [Decisions and trade-offs](decisions.md) | The choices I made, what I gave up, and what I did not build |

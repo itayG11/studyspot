@@ -3,16 +3,16 @@
 ## Five layers
 | Layer | Tool | Count | What it catches |
 |---|---|---|---|
-| Server tests | pytest on a real PostgreSQL | 1441 | Rules, permissions, constraints, concurrency |
-| Web unit tests | vitest | 613 | One component or function, no server |
-| Real browser | Playwright | 51 | A full path: click, server, database |
-| Three devices | Playwright (`playwright.edge.config.ts`) | 39 | Desktop, iPad and phone: overflow, button size, accessibility |
+| Server tests | pytest on a real PostgreSQL | 1469 | Rules, permissions, constraints, concurrency |
+| Web unit tests | vitest | 634 | One component or function, no server |
+| Real browser | Playwright | 80 | A full path: click, server, database |
+| Three devices | Playwright (`playwright.edge.config.ts`) | 45 (15 tests on 3 devices) | Desktop, iPad and phone: overflow, button size, accessibility |
 | Real devices | BrowserStack, plus my own checks | | Real Safari on iPhone, camera, email |
 
-Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counts as of 1 November 2026.
+Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counts as of 4 November 2026.
 
 ## How I test
-- **Test first for fixes.** I write the failing test, then the fix. Each fix is also checked against the old code to see the test fail.
+- **Test first for fixes.** I write the failing test, then the fix, and where possible check the test against the old code to see it fail.
 - **Mutation check on permissions.** Breaking the permission check on purpose made 27 of 30 cases in the access table fail.
 - **One access table.** Every route has a row that says who may call it, and a test checks that no route is missing.
 - **Time is a parameter,** so time-based rules are tested without waiting.
