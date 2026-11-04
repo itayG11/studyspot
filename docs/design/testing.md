@@ -3,13 +3,13 @@
 ## Five layers
 | Layer | Tool | Count | What it catches |
 |---|---|---|---|
-| Server tests | pytest on a real PostgreSQL | 1441 | Rules, permissions, constraints, concurrency |
-| Web unit tests | vitest | 613 | One component or function, no server |
-| Real browser | Playwright | 51 | A full path: click, server, database |
+| Server tests | pytest on a real PostgreSQL | 1469 | Rules, permissions, constraints, concurrency |
+| Web unit tests | vitest | 634 | One component or function, no server |
+| Real browser | Playwright | 80 | A full path: click, server, database |
 | Three devices | Playwright (`playwright.edge.config.ts`) | 39 | Desktop, iPad and phone: overflow, button size, accessibility |
 | Real devices | BrowserStack, plus my own checks | | Real Safari on iPhone, camera, email |
 
-Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counts as of 1 November 2026.
+Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counts as of 4 November 2026.
 
 ## How I test
 - **Test first for fixes.** I write the failing test, then the fix. Each fix is also checked against the old code to see the test fail.
