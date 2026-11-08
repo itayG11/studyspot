@@ -33,6 +33,7 @@ for (const [label, viewport, colorScheme] of [
     await page.waitForFunction(
       "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
     )
+    await expect(page.locator('.leaflet-tooltip:empty')).toHaveCount(0) // a map label still being filled in has no name yet
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
     expect(result.violations.map((v) => `${v.id} ${v.nodes[0]?.target.join(' ')}`)).toEqual([])
   })

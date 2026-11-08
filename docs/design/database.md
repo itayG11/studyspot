@@ -1,10 +1,10 @@
 # Database
 
-PostgreSQL 16, 30 tables. The models are in `backend/app/models/` and the schema changes are migrations in `backend/migrations/` (Alembic). A CI step (`alembic check`) fails if a model and the migrations disagree.
+PostgreSQL 16, 31 tables. The models are in `backend/app/models/` and the schema changes are migrations in `backend/migrations/` (Alembic). A CI step (`alembic check`) fails if a model and the migrations disagree.
 
 ## The core tables
 
-Eight of the 30 tables carry the main story: an institution has buildings, a building has places, a place can have seats, a student (user) books a place or a seat, and checking in (scanning a code) confirms it. The rest are supporting: sign-in, opening hours, notices, API keys, webhooks and so on.
+Eight of the 31 tables carry the main story: an institution has buildings, a building has places, a place can have seats, a student (user) books a place or a seat, and checking in (scanning a code) confirms it. The rest are supporting: sign-in, opening hours, notices, API keys, webhooks and so on.
 
 ```mermaid
 erDiagram
@@ -70,6 +70,7 @@ erDiagram
         timestamptz started_at
         timestamptz expires_at
         timestamptz ended_at "empty while open"
+        timestamptz break_until "empty unless on a break"
     }
     waitlist_entries {
         int id PK
@@ -79,7 +80,9 @@ erDiagram
     }
 ```
 
-`PK` is a primary key, `FK` a foreign key, `UK` a unique column. Columns that are part of a composite foreign key (for example `user_id` with `institution_id` in `bookings`) are not marked. The other 22 tables are in `backend/app/models/`.
+`PK` is a primary key, `FK` a foreign key, `UK` a unique column. Columns that are part of a composite foreign key (for example `user_id` with `institution_id` in `bookings`) are not marked. The other 23 tables are in `backend/app/models/`.
+
+`occupancy_reports` holds a student's report that their booked place was taken. It points at the reporter's own booking and never at the person who stayed, and it is deleted after 90 days (`backend/app/models/reports.py`).
 
 ## Terms, with an example from this project
 

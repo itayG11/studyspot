@@ -1,54 +1,70 @@
-# How I worked with AI
+# How I built it
 
-I built StudySpot with Claude Code, an AI coding assistant, over four weeks (about 280 commits since 7 October 2026; the history before 12 October was squashed into one commit). Most lines of code were written by the assistant. What I did was decide what to build, in what order and why, approve every plan before it ran, and check the results myself. This page describes the process, so that "I asked it to make me a website" is not the picture.
+StudySpot is my first complete web project, built next to my second year of software engineering at Braude College. I used Claude Code, an AI coding tool, and most of the code was written with its help. I want to say that plainly, because it decides what I can claim. What is mine is the product, the specification, the decisions, the order of the work and the checks. I can explain each decision on these pages and why I chose it over the alternative. I did not type most of the code, and I do not claim to.
 
-## Who did what
+This page shows how I worked, so that every claim comes with something you can open: a pull request, a test, or a before and after.
 
-| Me | The assistant |
-|---|---|
-| Chose the problem and the product | Proposed structure, technologies and alternatives, with reasons |
-| Collected the campus data on site, in a spreadsheet | Wrote the code, the tests and the documents |
-| Approved every plan before every stage | Ran the tests, and code and security review agents |
-| Tested by hand on a phone and a computer, and found problems | Fixed them, with a test that fails before the fix |
-| Chose when there were several ways | Laid out the ways, with a recommendation |
-| Ran the services: domain, hosting, email, DNS | Wrote step-by-step instructions |
+## What I decided and what I checked
+
+- **The problem and the product.** I chose what to build, for whom, and what to leave out (see [Requirements](requirements.md) and [Decisions and trade-offs](decisions.md)).
+- **The campus data.** I collected it on site, in a spreadsheet, and I never let the tool guess a building or a floor.
+- **The plan for every stage.** I read the plan before it ran. I approved it, changed it or rejected it. Nothing started without that.
+- **The checks.** I opened the real site, on a phone and on a computer, and clicked through it. Most of the visible problems I found this way, not in tests.
+- **The services.** I set up the domain, hosting, email and DNS myself, from step-by-step instructions.
+- **The merge.** I merge every pull request. The tool never does.
 
 ## The process, for every stage
 
-1. **A plan first.** The assistant explains what it is about to do and why, in plain language. I read it and approve, change or reject it. Nothing starts without that.
-2. **Requirements and states.** For each page or feature we write down what it does and what it shows in every state: loading, empty, error, no network (see [Requirements](requirements.md) and [Pages](pages.md)).
+1. **A plan first,** in plain language: what is about to change, and why.
+2. **Requirements and states.** For each page or feature, what it does and what it shows in every state: loading, empty, error, no network ([Requirements](requirements.md), [Pages](pages.md)).
 3. **Tests with the code.** For a bug, the test is written first and, when possible, must fail on the old code. For a rule that must never break (two people in one room), the database enforces it, and a test races real threads against it ([Preventing double booking](preventing-double-booking.md)).
-4. **Review by agents.** At the end of each stage a code-review agent and a security-review agent read the change. A blocking finding is fixed, with a test, before moving on.
-5. **My own check.** I open the real site, on a phone and a computer, and click through it. Most of the visible problems I found this way, not in tests.
-6. **Documents updated** with the change, and a pull request that I merge. The assistant does not merge.
+4. **Review.** At the end of a stage, a code-review pass and a security-review pass read the change. A blocking finding is fixed, with a test, before I move on.
+5. **My own check** on the live site.
+6. **Documents updated,** and a pull request that I merge.
 
-## Rules I set for the work
+## Rules I set
 
-- Plain Hebrew, right to left, short, one step at a time.
 - No new stage without my approval, and no cost, dependency, deployment or deletion without asking first.
 - Security is part of every stage: no secrets in code, validated input, an authorization test for every route.
-- I did not allow weakening a test to get it to pass. When behaviour changed on purpose, the assistant says which test changed and why.
+- A test is never weakened to make it pass. When behaviour changed on purpose, the pull request says which test changed and why.
 - Where something was not verified, the document says "not verified".
 
-## How the plan changed
+## The timeline, in general
 
-| Date | What happened |
+| When | What happened |
 |---|---|
-| 7 October | A plan, an audit of the idea, and the first stages: database, occupancy, bookings, check-in |
-| 8 to 11 October | The site, many institutions, self-service setup, timetable, load forecast |
-| 12 October | **A full audit by four review agents**, and one report. The plan became 16 waves, ordered by risk (waves 17 and 18 were added later) |
-| 12 to 20 October | Waves 1 to 14: automatic security checks, polish, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
-| 25 October | A full test round on the live site, and its findings |
-| late October to early November | Waves 15 to 18: the documents, monitoring and real devices on BrowserStack, a new look, and a round of technical debts (DNS rebinding closed, wrong-password counting moved into the database) |
+| First week | The idea, an audit of it, and the database: places, occupancy, bookings, check-in |
+| Second week | The site, many institutions on one site, self-service setup, timetable, load forecast |
+| The middle | A full audit of everything built so far, which turned the plan into sixteen waves ordered by risk; then the waves: automatic security checks, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
+| The end | Documents, monitoring and real devices, a new look, technical debts (DNS rebinding closed, wrong-password counting moved into the database), and a last wave on people who stay after their time |
 
-## Three examples of my part
+## Four examples, each with its proof
 
-- **A bug I found by hand.** On my phone, a lecturer's title ("Dr.") appeared in front of course names that were saved before an earlier fix. The fix had been applied only when importing. The assistant moved the cleaning to where the names are read, with a test.
-- **A decision I made.** For sign-in codes I first wanted a human-verification challenge (a CAPTCHA). When we looked at what it costs (it hurts accessibility, and an outside vendor changes the security policy and the privacy page), I decided against it. We added a small proof-of-work in the browser instead, and wrote down that it makes flooding expensive but does not prove a human. The reasoning is in [Decisions and trade-offs](decisions.md).
-- **A mistake of the assistant that I caught.** On a phone, the list of places slid up over the map and covered it. It was the assistant's own design, from a new look. I said so, and it removed the overlap: the map, then the list.
+**1. A problem I noticed myself: someone stays after their time (the last wave).** The system assumed that when a booking ends, the student leaves. Nothing in the software can see a chair, so the assumption can be wrong, and the next student finds the room taken. I asked how an institution could handle this without hardware and without punishing anyone by software. I chose layers: prevention, detection, immediate help, and an interface for the institution.
+
+| Layer | Before | After | Proof |
+|---|---|---|---|
+| Prevention | No warning when a booking ends | A reminder five minutes before the end; a room whose time just ran out is shown "free, maybe still taken" for a grace period the institution sets (0 to 15 minutes, 5 by default). `free_now` itself does not change, so the API and the webhooks keep their contract | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_lingering.py` |
+| Keeping a place for a moment | Leaving for ten minutes meant losing the place, or leaving it blocked | "Going on a break": up to 20 minutes, once per stay. Coming back means scanning the sign again (a button could be pressed from home). If the break runs out, the place is let go at once, without waiting for the background task | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_break.py` |
+| Immediate help | A student who found their room taken had nowhere to go | One tap says "someone is in my place" and returns up to three free places nearby, sorted by walking time. The report holds no name | [PR 35](https://github.com/itayG11/studyspot/pull/35), `backend/tests/test_reports.py` |
+| The institution | Nothing | A policy per institution (none, reminders, reports), a table of reports by place and hour, advice after three reports in a week, and a webhook event. No automatic punishment | [PR 36](https://github.com/itayG11/studyspot/pull/36), `backend/tests/test_overstay_admin.py` |
+
+Three decisions inside it, with their cost:
+
+- *A hint, not a block.* I could not know that someone is still there, so the site says "maybe" and never refuses a booking because of it. The cost: a student can still find the place taken. That is why the report exists.
+- *Reports without names.* The report points at the booking of the person who reports, never at the person who stayed. I would rather the institution fix a place than chase a person.
+- *Weighing the reporters.* A person whose reports were closed as "nobody was there" three times in thirty days stops counting in the table, so the feature cannot be used for revenge. The reporter is not told.
+
+I dropped two things I first planned, and the plan file says so: a "still here?" question during long stays (a check-in already ends after two hours), and moving the student to another booking automatically (that is a new booking with its own rules, so the site gives a link instead).
+
+**2. A bug I found by hand.** On my phone, a lecturer's title ("Dr.") appeared in front of course names that had been saved before an earlier fix. The fix ran only when importing. The cleaning moved to where names are read. Proof: `test_a_class_saved_before_the_fix_with_a_lecturers_title_is_shown_without_it` in `backend/tests/test_classes.py`.
+
+**3. A decision against the easy option.** For sign-in codes I first wanted a human-verification challenge. Then I looked at the cost: it hurts accessibility, and an outside vendor changes the security policy and the privacy page. I decided against it and added a small proof-of-work in the browser. The note says it makes flooding expensive but does not prove a human. The reasoning is in [Decisions and trade-offs](decisions.md) and the test is `backend/tests/test_pow.py`.
+
+**4. A mistake in the tool's work that I caught, and a bug the new tests found.** On a phone, the list of places slid up over the map and covered it. It was a design from a new look. I said so, and the overlap was removed: the map first, then the list. Later, the browser test I wrote for the new report button found an accessibility error that had been there before: the "My area" link in the header had an accessible name that left out the number shown on it. I rebuilt the name from the visible text. Proof: `frontend/e2e/report.spec.ts` and PR 35.
 
 ## What I can and cannot say honestly
 
-- I can explain every decision on these pages and in [Decisions and trade-offs](decisions.md), and why it was chosen over the alternative.
-- I did not type most of the code, and I do not claim to. What I own is the product, the decisions, the checks and the result.
-- Some areas I have used more than studied yet (for example the details of OpenID sign-in). [Decisions and trade-offs](decisions.md) and the "known limitations" in the README say what is not proven.
+- I can explain every decision on these pages and why it was chosen over the alternative.
+- Some areas I have used more than studied (for example the details of OpenID sign-in). [Decisions and trade-offs](decisions.md) and the known limitations in the [README](../../README.md) say what is not proven.
+- No real campus has used the site yet. The numbers on the demo campus are simulated.
