@@ -181,6 +181,13 @@ describe('MyPage, someone is in the booked place', () => {
     expect(within(room).queryByRole('button', { name: 'יש מישהו במקום' })).not.toBeInTheDocument()
   })
 
+  it('does not offer it again for a booking already reported (after a reload)', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65), reported: true }]
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(room).queryByRole('button', { name: 'יש מישהו במקום' })).not.toBeInTheDocument()
+  })
+
   it('does not offer it far from the start, after the arrival window, or for a lab seat that is not booked', async () => {
     bookings = [{ ...ROOM, starts_at: inMinutes(120), ends_at: inMinutes(180) }]
     renderMe()

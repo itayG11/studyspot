@@ -4,7 +4,7 @@ institution's admin gets 404, as if it did not exist."""
 
 from collections.abc import Callable
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, get_args
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -104,20 +104,23 @@ def revoke_api_key(slug: Slug, key_id: Annotated[int, Path(gt=0)], admin: AdminD
 
 ClientDep = Annotated[httpx.AsyncBaseTransport | None, Depends(webhooks.get_transport)]
 ResolveDep = Annotated[Callable, Depends(webhooks.get_resolver)]
-EventName = Literal["checkin.started", "checkin.ended", "booking.created", "booking.cancelled"]
+EventName = Literal[
+    "checkin.started", "checkin.ended", "booking.created", "booking.cancelled", "place.overstay_reported"
+]
+assert set(get_args(EventName)) == set(webhooks.EVENTS)  # one list, or the API refuses an event the sender knows
 
 
 class WebhookIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     url: Annotated[str, StringConstraints(strip_whitespace=True, min_length=8, max_length=500)]
-    events: list[EventName] = Field(min_length=1, max_length=4)
+    events: list[EventName] = Field(min_length=1, max_length=len(webhooks.EVENTS))
 
 
 class WebhookUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    events: list[EventName] | None = Field(default=None, min_length=1, max_length=4)
+    events: list[EventName] | None = Field(default=None, min_length=1, max_length=len(webhooks.EVENTS))
     active: bool | None = None
 
 

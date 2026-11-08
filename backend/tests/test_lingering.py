@@ -206,3 +206,13 @@ def test_the_grace_is_limited_to_fifteen_minutes(session, braude):
     with pytest.raises(IntegrityError):
         session.flush()
     session.rollback()
+
+
+def test_scanning_out_after_the_time_ran_out_is_leaving_by_oneself(client, session, braude, student):
+    """Not a stay that ran over: the room must not be shown as maybe still taken."""
+    from app.checkins import check_out
+
+    room = place_named(braude, "EM", "EM107")
+    row = stay(session, braude, student, room, ended_minutes_ago=0, reason=None, swept=False)
+    check_out(session, student, row.id, NOW + timedelta(minutes=1))
+    assert lingering_room_ids(session, [room.id], NOW + timedelta(minutes=1), GRACE) == set()

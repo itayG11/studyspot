@@ -129,6 +129,9 @@ const MESSAGES: Record<string, string> = {
   report_too_late: 'חלון ההגעה להזמנה הזו כבר נסגר.',
   report_not_open: 'אפשר לדווח רק על הזמנה שעוד לא התחילה.',
   report_not_allowed: 'אפשר לדווח רק על חדר או על תא מחשב.',
+  report_disabled: 'המוסד הזה לא קיבל דיווחים.',
+  report_not_found: 'הדיווח לא נמצא.',
+  report_already_closed: 'הדיווח הזה כבר נסגר.',
 
   // Check-in
   break_used: 'כבר יצאת להפסקה בישיבה הזו. אפשר פעם אחת.',

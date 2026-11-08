@@ -44,9 +44,9 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 
 - Every stage ended with tests, and a separate review for code and for security.
 - The live site was checked in real browsers and on a real phone, not only in tests.
-- 1574 server tests (`pytest`, on a real PostgreSQL).
-- 670 web app unit tests (`vitest`).
-- 93 browser tests (`Playwright`, with `axe` and keyboard accessibility checks), and the device suite on desktop, iPad and phone (39 ran, 6 skipped on purpose, depending on the day).
+- 1581 server tests (`pytest`, on a real PostgreSQL).
+- 671 web app unit tests (`vitest`).
+- 93 browser tests (`Playwright`, with `axe` and keyboard accessibility checks), and the device suite on desktop, iPad and phone (45 listed: 39 ran, 6 skipped because they belong to one device only).
 - Real browsers on BrowserStack: Chrome, Edge, Firefox and WebKit on desktop, a real Pixel phone and an iPhone. See [the results](docs/browserstack/RESULTS.md).
 - 31 database tables. Every API route has a row in an access table that says who may call it.
 
@@ -100,7 +100,7 @@ flowchart LR
 
 One container serves the web app and the API from the same address, so the sign-in cookie is first-party. The sweeper releases no-shows, ends expired check-ins, sends reminders and records occupancy history. It runs while the site has visitors, or when a reminder is due, so the database can sleep.
 
-The core of the database, eight of its 30 tables. The rest are supporting tables (sign-in, opening hours, notices, API keys, webhooks). [Database notes](docs/design/database.md) explain the keys and the rules the database enforces.
+The core of the database, eight of its 31 tables. The rest are supporting tables (sign-in, opening hours, notices, API keys, webhooks). [Database notes](docs/design/database.md) explain the keys and the rules the database enforces.
 
 ```mermaid
 erDiagram
@@ -118,7 +118,7 @@ erDiagram
 
 ## Security, in short
 
-- Sign-in with Google or Microsoft (OIDC with PKCE), an email code, or a password (`argon2id`), with lockout after five tries.
+- Sign-in with Google or Microsoft (OIDC with PKCE), an email code, or a password (`argon2id`), with a limit of five wrong tries per address and a 15-minute lock of the account after 20 wrong tries.
 - A 15-minute access token in memory and a refresh cookie (`HttpOnly`, `Secure`, `SameSite`), rotated on use.
 - Every API route has a row in an access table. Tests then check the refusals: a guest, a student, an institution admin, another student's things, and another institution's things.
 - A strict Content Security Policy, rate limits, a request body cap, and an SSRF guard for webhooks.

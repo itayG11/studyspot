@@ -44,9 +44,9 @@ This page shows how I worked, so that every claim comes with something you can o
 
 | Layer | Before | After | Proof |
 |---|---|---|---|
-| Prevention | No warning when a booking ends | A reminder five minutes before the end; a room whose time just ran out is shown "free, maybe still taken" for a grace period the institution sets (0 to 15 minutes, 5 by default). `free_now` itself does not change, so the API and the webhooks keep their contract | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_lingering.py` |
-| Keeping a place for a moment | Leaving for ten minutes meant losing the place, or leaving it blocked | "Going on a break": up to 20 minutes, once per stay. Coming back means scanning the sign again (a button could be pressed from home). If the break runs out, the place is let go at once, without waiting for the background task | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_break.py` |
-| Immediate help | A student who found their room taken had nowhere to go | One tap says "someone is in my place" and returns up to three free places nearby, sorted by walking time. The report holds no name | [PR 35](https://github.com/itayG11/studyspot/pull/35), `backend/tests/test_reports.py` |
+| Prevention | No warning when a booking ends | A reminder five minutes before the end; a room whose time just ran out is shown "free, maybe still taken" for a grace period the institution sets (0 to 15 minutes, 5 by default). `free_now` itself does not change, so the API and the webhooks keep their contract | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_lingering.py` and `test_reminders.py` |
+| Keeping a place for a moment | Leaving for ten minutes meant losing the place, or leaving it blocked | "Going on a break": 20 minutes by default (the institution sets 0 to 60), once per stay. Coming back means scanning the sign again (a button could be pressed from home). If the break runs out, the place is let go at once, without waiting for the background task | [PR 34](https://github.com/itayG11/studyspot/pull/34), `backend/tests/test_break.py` |
+| Immediate help | A student who found their room taken had nowhere to go | One tap says "someone is in my place" and returns up to three free places nearby: rooms by walking time, seats in the same lab first. The report holds no name | [PR 35](https://github.com/itayG11/studyspot/pull/35), `backend/tests/test_reports.py` |
 | The institution | Nothing | A policy per institution (none, reminders, reports), a table of reports by place and hour, advice after three reports in a week, and a webhook event. No automatic punishment | [PR 36](https://github.com/itayG11/studyspot/pull/36), `backend/tests/test_overstay_admin.py` |
 
 Three decisions inside it, with their cost:
@@ -55,7 +55,7 @@ Three decisions inside it, with their cost:
 - *Reports without names.* The report points at the booking of the person who reports, never at the person who stayed. I would rather the institution fix a place than chase a person.
 - *Weighing the reporters.* A person whose reports were closed as "nobody was there" three times in thirty days stops counting in the table, so the feature cannot be used for revenge. The reporter is not told.
 
-I dropped two things I first planned, and the plan file says so: a "still here?" question during long stays (a check-in already ends after two hours), and moving the student to another booking automatically (that is a new booking with its own rules, so the site gives a link instead).
+I dropped two things I first planned: a second "still here?" question during long stays (a check-in already ends after two hours, and the question that exists already covers a stay without a booking), and moving the student to another booking automatically (that is a new booking with its own rules, so the site gives a link instead).
 
 **2. A bug I found by hand.** On my phone, a lecturer's title ("Dr.") appeared in front of course names that had been saved before an earlier fix. The fix ran only when importing. The cleaning moved to where names are read. Proof: `test_a_class_saved_before_the_fix_with_a_lecturers_title_is_shown_without_it` in `backend/tests/test_classes.py`.
 

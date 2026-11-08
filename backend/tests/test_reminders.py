@@ -211,3 +211,30 @@ def test_the_alarm_wakes_for_the_end_notice(session, braude, student):
     assert next_due(session, END - timedelta(hours=1)) == booking.ends_at - END_AHEAD
     booking.reminded_end_at = END - END_AHEAD
     assert next_due(session, END - timedelta(hours=1)) is None
+
+
+def test_without_a_next_booking_the_notice_does_not_say_there_is_one(session, braude, student, monkeypatch):
+    """At closing time or the longest stay there is no room to extend, and nobody is booked after."""
+    browser, seen = Browser(), []
+    subscribe(session, student, browser)
+    booking = book(session, braude, student, status=BookingStatus.CHECKED_IN)
+    monkeypatch.setattr("app.reminders.latest_renewal", lambda *args, **kwargs: None)
+    send_reminders(session, push(seen), END - END_AHEAD)
+    [request] = seen
+    body = browser.read(request.content)["body"]
+    assert "ואי אפשר להאריך" in body and "מוזמן אחריך" not in body
+    assert booking.reminded_end_at is not None
+
+
+def test_extending_a_booking_gives_the_new_end_its_own_notice(session, braude, student):
+    from app.bookings import renew
+
+    browser, seen = Browser(), []
+    subscribe(session, student, browser)
+    booking = book(session, braude, student, status=BookingStatus.CHECKED_IN)
+    send_reminders(session, push(seen), END - END_AHEAD)
+    assert len(seen) == 1
+    assert renew(session, booking, END - END_AHEAD, until=END + timedelta(hours=1)) is True
+    assert booking.reminded_end_at is None
+    send_reminders(session, push(seen), END + timedelta(hours=1) - END_AHEAD)
+    assert len(seen) == 2

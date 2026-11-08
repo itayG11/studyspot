@@ -3,10 +3,10 @@
 ## Five layers
 | Layer | Tool | Count | What it catches |
 |---|---|---|---|
-| Server tests | pytest on a real PostgreSQL | 1574 | Rules, permissions, constraints, concurrency |
-| Web unit tests | vitest | 670 | One component or function, no server |
+| Server tests | pytest on a real PostgreSQL | 1581 | Rules, permissions, constraints, concurrency |
+| Web unit tests | vitest | 671 | One component or function, no server |
 | Real browser | Playwright | 93 | A full path: click, server, database |
-| Three devices | Playwright (`playwright.edge.config.ts`) | 45 listed: 39 ran, 6 skipped on purpose (for example when the campus is closed that day) | Desktop, iPad and phone: overflow, button size, accessibility |
+| Three devices | Playwright (`playwright.edge.config.ts`) | 45 listed: 39 ran, 6 skipped because they belong to one device only | Desktop, iPad and phone: overflow, button size, accessibility |
 | Real devices | BrowserStack, plus my own checks | | Real Safari on iPhone, camera, email |
 
 Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counted when I closed the last wave.

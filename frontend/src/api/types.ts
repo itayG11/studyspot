@@ -253,6 +253,7 @@ export interface Booking {
   ends_at: string
   status: BookingStatus
   source: 'advance' | 'walk_in'
+  reported?: boolean // "someone is in my place" was already said for it
 }
 
 // Somewhere else to go when the booked place is taken (backend/app/api/reports.py).
