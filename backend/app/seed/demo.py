@@ -18,5 +18,7 @@ DEMO["institution"] = {
     "timezone": BRAUDE["institution"]["timezone"],
     # Listed for every visitor. Braude stays hidden until the college agrees.
     "active": True,
+    # Reports on, so a visitor who opens the institution's screen sees them (app/seed/reports.py).
+    "overstay_policy": "reports",
 }
 DEMO["login_rules"] = []

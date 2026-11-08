@@ -20,9 +20,10 @@ interface Props<T extends string> {
   value: T
   onChange: (value: T) => void
   className?: string
+  disabled?: boolean // read-only (the shared demo campus)
 }
 
-export function Segmented<T extends string>({ label, options, value, onChange, className }: Props<T>) {
+export function Segmented<T extends string>({ label, options, value, onChange, className, disabled = false }: Props<T>) {
   const id = useId() // one mark per group: two groups on a page do not swap theirs
   return (
     // layoutScroll: the group scrolls sideways on a narrow screen, and Motion
@@ -31,7 +32,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, c
       {options.map((option) => {
         const chosen = option.value === value
         return (
-          <button key={option.value} type="button" className={styles.option} aria-pressed={chosen} onClick={() => onChange(option.value)}>
+          <button key={option.value} type="button" className={styles.option} aria-pressed={chosen} disabled={disabled} onClick={() => onChange(option.value)}>
             {chosen && <m.span layoutId={`segmented-${id}`} className={styles.mark} transition={SPRING} data-segmented-mark aria-hidden="true" />}
             <span className={styles.label}>{option.label}</span>
           </button>

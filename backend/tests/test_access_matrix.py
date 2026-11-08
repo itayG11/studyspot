@@ -27,6 +27,8 @@ from app.models import (
     ApiKey,
     AuthProvider,
     InstitutionLoginRule,
+    OccupancyReport,
+    ReportStatus,
     User,
     UserRole,
     WaitlistEntry,
@@ -121,6 +123,11 @@ ACCESS = {
     ("POST", "/admin/buildings/{building_id}/location"): "admin",
     ("POST", "/admin/buildings/{building_id}/places"): "admin",
     ("PATCH", "/admin/institutions/{slug}"): "admin",
+    ("GET", "/admin/institutions/{slug}/overstay"): "admin",
+    ("PATCH", "/admin/institutions/{slug}/overstay"): "admin",
+    ("GET", "/admin/institutions/{slug}/reports"): "admin",
+    ("GET", "/admin/institutions/{slug}/reports/heat"): "admin",
+    ("POST", "/admin/reports/{report_id}/resolve"): "admin",
     ("GET", "/admin/institutions/{slug}/api-keys"): "admin",
     ("POST", "/admin/institutions/{slug}/api-keys"): "admin",
     ("DELETE", "/admin/institutions/{slug}/api-keys/{key_id}"): "admin",
@@ -167,6 +174,8 @@ BODIES = {
     ("POST", "/admin/buildings/{building_id}/location"): {"latitude": 32.9, "longitude": 35.3},
     ("POST", "/admin/buildings/{building_id}/places"): {"kind": "open_area", "name": "Hall", "floor": 0, "capacity": 10},
     ("PATCH", "/admin/institutions/{slug}"): {"name": "Taken over"},
+    ("PATCH", "/admin/institutions/{slug}/overstay"): {"policy": "none"},
+    ("POST", "/admin/reports/{report_id}/resolve"): {"resolution": "handled"},
     ("POST", "/admin/institutions/{slug}/api-keys"): {"name": "Stolen"},
     ("POST", "/admin/institutions/{slug}/buildings"): {"code": "Z", "floors_count": 1},
     ("POST", "/admin/institutions/{slug}/import"): {"buildings": [{"code": "Z", "floors_count": 1}]},
@@ -229,8 +238,16 @@ def other(session):
     session.flush()
     delivery = WebhookDelivery(endpoint_id=endpoint.id, event_id="evt_other", event_type="booking.created", payload={}, created_at=NOW)
     session.add(delivery)
+    reporter = User(institution_id=institution.id, email="reporter@other.example", display_name="R")
+    session.add(reporter)
+    session.flush()
+    report = OccupancyReport(
+        institution_id=institution.id, place_id=place.id, reporter_id=reporter.id, created_at=NOW, status=ReportStatus.OPEN
+    )
+    session.add(report)
     session.flush()
     return {
+        "report_id": report.id,
         "slug": institution.slug,
         "building_id": building.id,
         "place_id": place.id,
@@ -255,7 +272,7 @@ def own_ids(braude) -> dict:
     return {
         "slug": braude.slug, "building_id": place.building_id, "place_id": place.id, "rule_id": 1, "endpoint_id": 1,
         "delivery_id": 1, "key_id": 1, "invite_id": 1, "booking_id": 1, "check_in_id": 1, "class_id": 1,
-        "entry_id": 1, "token": "x", "provider_name": "google",
+        "entry_id": 1, "report_id": 1, "token": "x", "provider_name": "google",
     }
 
 
@@ -320,6 +337,8 @@ def assert_untouched(session, other: dict) -> None:
     assert session.get(ApiKey, other["key_id"]).revoked_at is None
     assert session.get(AdminInvite, other["invite_id"]).revoked_at is None
     assert session.scalar(select(WebhookEndpoint.id).where(WebhookEndpoint.url.like("%attacker%"))) is None
+    report = session.get(OccupancyReport, other["report_id"])
+    assert (report.status, report.resolution) == (ReportStatus.OPEN, None)
 
 
 def test_an_admin_cannot_reach_another_institutions_thing_through_their_own_address(client, session, braude, other):

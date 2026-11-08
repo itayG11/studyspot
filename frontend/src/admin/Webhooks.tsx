@@ -28,8 +28,11 @@ const EVENT_LABELS: Record<WebhookEvent, string> = {
   'checkin.ended': 'יציאה ממקום',
   'booking.created': 'הזמנה חדשה',
   'booking.cancelled': 'הזמנה בוטלה',
+  'place.overstay_reported': 'דיווח שיש מישהו במקום',
 }
 const ALL_EVENTS = Object.keys(EVENT_LABELS) as WebhookEvent[]
+// Chosen when adding an address. The report event (wave 19) is for institutions that took reports, so it is asked for, not assumed.
+const DEFAULT_EVENTS = ALL_EVENTS.filter((event) => event !== 'place.overstay_reported')
 
 const STATUS_LABELS: Record<WebhookDelivery['status'], string> = {
   pending: 'ממתין לניסיון הבא',
@@ -75,7 +78,7 @@ export function Webhooks({ demo = false }: { demo?: boolean }) {
 function AddWebhook({ slug, onAdded }: { slug: string; onAdded: (secret: string) => void }) {
   const action = useAction()
   const [url, setUrl] = useState('')
-  const [events, setEvents] = useState<WebhookEvent[]>(ALL_EVENTS)
+  const [events, setEvents] = useState<WebhookEvent[]>(DEFAULT_EVENTS)
   const toggle = (event: WebhookEvent) =>
     setEvents((now) => (now.includes(event) ? now.filter((e) => e !== event) : [...now, event]))
   return (

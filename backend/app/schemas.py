@@ -23,6 +23,7 @@ from app.models import (
     BookingStatus,
     BuildingStatus,
     CheckInEndReason,
+    OverstayPolicy,
     PlaceAtmosphere,
     PlaceKind,
     SuitedFor,
@@ -66,6 +67,7 @@ class InstitutionOut(BaseModel):
     # The live numbers include made-up students (the demo campus, app/seed/live.py).
     live_simulated: bool = False
     closes_at: datetime | None = None  # closing: everything in it is deleted then (app/closing.py)
+    overstay_policy: OverstayPolicy = OverstayPolicy.REMINDERS  # what of wave 19 is on (app/policy.py)
 
 
 class BuildingLocationIn(BaseModel):
@@ -565,6 +567,64 @@ class ReportOut(BaseModel):
 
     reported: bool
     alternatives: list[AlternativeOut]
+
+
+class OverstayOut(BaseModel):
+    """An institution's wave 19 settings (what is on, for how long) and how many reports wait."""
+
+    policy: OverstayPolicy
+    grace_minutes: int
+    break_minutes: int
+    locked: bool  # the shared demo campus: shown, but not changed
+    open_reports: int
+
+
+class OverstayPatchIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    policy: OverstayPolicy | None = None
+    grace_minutes: int | None = Field(default=None, ge=0, le=15)
+    break_minutes: int | None = Field(default=None, ge=0, le=60)
+
+
+class ReportItemOut(BaseModel):
+    """One report, for the institution: where and when. Never who reported, never who was there."""
+
+    id: int
+    place_id: int
+    place_name: str
+    building_code: str
+    seat_label: str | None
+    created_at: datetime
+    status: Literal["open", "resolved"]
+    resolution: Literal["handled", "nobody_there"] | None
+
+
+class ResolveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resolution: Literal["handled", "nobody_there"]
+
+
+class HeatCell(BaseModel):
+    place_id: int
+    place_name: str
+    weekday: int = Field(description="0 = Monday ... 6 = Sunday, in the institution's time")
+    hour: int
+    count: int
+
+
+class Advice(BaseModel):
+    place_id: int
+    place_name: str
+    count: int  # reports in the last 7 days
+    kind: Literal["shorten_booking", "add_sign"]
+
+
+class HeatOut(BaseModel):
+    days: int
+    cells: list[HeatCell]
+    recommendations: list[Advice]
 
 
 class BusyRange(BaseModel):

@@ -11,9 +11,10 @@ import { FAVORITES_KEY } from '../logic/favorites'
 import { jsonResponse, place } from '../test/fixtures'
 import { MyPage } from './MyPage'
 
+let institutionPolicy = 'reports'
 let ME = { id: 1, email: 'noa@gmail.com', display_name: 'נועה', role: 'student', institution_slug: 'braude', is_demo: false }
 const INSTITUTION = {
-  slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem',
+  slug: 'braude', name: 'מכללת בראודה', timezone: 'Asia/Jerusalem', overstay_policy: 'reports',
   booking_rules: { slot_minutes: 15, max_minutes: 120, days_ahead: 4, horizon_minutes: 5760, max_upcoming: 2, arrive_early_minutes: 10, arrive_early_if_free_minutes: 30, no_show_after_minutes: 15 },
 }
 const ROOM: Booking = {
@@ -50,12 +51,13 @@ beforeEach(() => {
   extendRefuses = false
   roomMaybeTaken = false
   reportRefuses = false
+  institutionPolicy = 'reports'
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (init.method === 'POST') calls.push(path)
     if (path === '/auth/refresh')
       return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
-    if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
+    if (path === '/institutions/braude') return Promise.resolve(jsonResponse({ ...INSTITUTION, overstay_policy: institutionPolicy }))
     if (path === '/institutions/braude/places')
       return Promise.resolve(jsonResponse([place({ id: 1, name: 'M206', kind: 'computer_lab' }), place({ id: 3, name: 'EM107', kind: 'group_room', free_now: true, maybe_still_taken: roomMaybeTaken })]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
@@ -169,6 +171,14 @@ describe('MyPage, someone is in the booked place', () => {
     expect(within(list).getByRole('link', { name: /EM108/ })).toHaveAttribute('href', '/braude/spaces/9')
     expect(list).toHaveTextContent('2 דקות הליכה')
     expect(within(room).getByText(/בלי שם של מי שהיה שם/)).toBeInTheDocument()
+  })
+
+  it('does not offer it when the institution has not switched reports on', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65) }]
+    institutionPolicy = 'reminders'
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(room).queryByRole('button', { name: 'יש מישהו במקום' })).not.toBeInTheDocument()
   })
 
   it('does not offer it far from the start, after the arrival window, or for a lab seat that is not booked', async () => {

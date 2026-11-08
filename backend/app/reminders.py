@@ -34,7 +34,7 @@ from app import closing, waitlist
 from app.bookings import NO_SHOW_AFTER, latest_renewal
 from app.breaks import BREAK_ENDING_AHEAD
 from app.hours import place_status
-from app.models import Booking, BookingStatus, CheckIn, Institution
+from app.models import Booking, BookingStatus, CheckIn, Institution, OverstayPolicy
 from app.notify import EmailSender, Notice, PushSender, notify, reachable
 
 START_AHEAD = timedelta(minutes=10)
@@ -80,6 +80,11 @@ def _subscribed(user_id=Booking.user_id):
     return reachable(user_id)
 
 
+def _institution_reminds():
+    """The booking's institution has not switched wave 19 off (app/policy.py)."""
+    return Booking.institution_id.in_(select(Institution.id).where(Institution.overstay_policy != OverstayPolicy.NONE))
+
+
 def _asking_still_here(now: datetime):
     """Check-ins to ask about: open, no booking (a booked one ends with it),
     not asked yet, ending within STILL_HERE_AHEAD, a real student to tell."""
@@ -117,7 +122,7 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
     ending = session.scalars(
         select(Booking).where(
             Booking.status == BookingStatus.CHECKED_IN, Booking.reminded_end_at.is_(None),
-            Booking.ends_at - END_AHEAD <= now, Booking.ends_at > now, _subscribed(),
+            Booking.ends_at - END_AHEAD <= now, Booking.ends_at > now, _subscribed(), _institution_reminds(),
         ).options(selectinload(Booking.place)).with_for_update(skip_locked=True, of=Booking)
     ).all()
     zones = {i.id: i.timezone for i in session.scalars(select(Institution))}
@@ -196,7 +201,7 @@ def next_due(session: Session, now: datetime) -> datetime | None:
     first_end = session.scalar(
         select(func.min(Booking.ends_at - END_AHEAD)).where(
             Booking.status == BookingStatus.CHECKED_IN, Booking.reminded_end_at.is_(None),
-            Booking.ends_at > now, _subscribed(),
+            Booking.ends_at > now, _subscribed(), _institution_reminds(),
         )
     )
     first_break_end = session.scalar(

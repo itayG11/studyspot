@@ -8,6 +8,7 @@ about a place the student has no business at; one booking makes one report.
 The institution reads the reports as a count by place and hour (wave 19.3).
 """
 
+import logging
 from datetime import datetime
 
 from sqlalchemy import select
@@ -15,7 +16,11 @@ from sqlalchemy.orm import Session
 
 from app.bookings import ARRIVE_EARLY_IF_FREE, NO_SHOW_AFTER
 from app.errors import Refusal
-from app.models import Booking, BookingStatus, OccupancyReport, Place, PlaceKind, ReportStatus, User
+from app.models import Booking, BookingStatus, Institution, OccupancyReport, Place, PlaceKind, ReportStatus, User
+from app.policy import takes_reports
+from app.webhooks import report_event
+
+log = logging.getLogger(__name__)
 
 REPORTABLE = (PlaceKind.GROUP_ROOM, PlaceKind.COMPUTER_LAB)  # the places only one booking can hold
 
@@ -28,6 +33,8 @@ def report_occupied(session: Session, user: User, booking_id: int, now: datetime
     ).first()
     if booking is None:
         raise Refusal(404, "booking_not_found")
+    if not takes_reports(session.get(Institution, booking.institution_id)):
+        raise Refusal(409, "report_disabled")  # this institution has not switched reports on
     place = session.get(Place, booking.place_id)
     if place.kind not in REPORTABLE:
         raise Refusal(409, "report_not_allowed")
@@ -45,4 +52,10 @@ def report_occupied(session: Session, user: User, booking_id: int, now: datetime
     )
     session.add(row)
     session.flush()
+    if not user.simulated:  # the demo campus's made-up students send nothing out
+        try:
+            with session.begin_nested():
+                report_event(session, row, now)
+        except Exception:
+            log.exception("webhook event not written; the report stands")
     return row

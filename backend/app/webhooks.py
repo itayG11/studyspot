@@ -46,7 +46,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Building, DeliveryStatus, Place, WebhookDelivery, WebhookEndpoint
 
-EVENTS = ("checkin.started", "checkin.ended", "booking.created", "booking.cancelled")
+EVENTS = ("checkin.started", "checkin.ended", "booking.created", "booking.cancelled", "place.overstay_reported")
 TEST_EVENT = "test.ping"
 MAX_ENDPOINTS = 3
 RETRY_AFTER = (
@@ -248,6 +248,18 @@ def _delivery(endpoint: WebhookEndpoint, payload: dict[str, Any], now: datetime)
 def check_in_event(session: Session, event_type: str, place_id: int, institution_id: int, now: datetime) -> None:
     session.flush()  # the occupancy sent counts this very change
     emit(session, institution_id, event_type, now, lambda: _place_data(session, place_id, now))
+
+
+def report_event(session: Session, report, now: datetime) -> None:
+    """A student says a booked place is taken (wave 19). The place, the seat and the time:
+    never who reported, and never the booking, which would lead back to them."""
+
+    def data() -> dict[str, Any]:
+        body = _place_data(session, report.place_id, now)
+        body["report"] = {"id": report.id, "seat_id": report.seat_id, "created_at": report.created_at.isoformat()}
+        return body
+
+    emit(session, report.institution_id, "place.overstay_reported", now, data)
 
 
 def booking_event(session: Session, event_type: str, booking, now: datetime, reason: str | None = None) -> None:

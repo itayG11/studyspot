@@ -28,6 +28,12 @@ from app.models import (
 NOW = SUNDAY_10AM
 
 
+@pytest.fixture(autouse=True)
+def reports_are_on(braude):
+    """An institution takes reports only when it has chosen that (wave 19.3, app/policy.py)."""
+    braude.overstay_policy = "reports"
+
+
 @pytest.fixture
 def other(session, braude) -> User:
     return make_user(session, braude, "other@braude.example")

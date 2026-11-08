@@ -77,6 +77,7 @@ for place in answer.json():
 | `checkin.ended` | יציאה, מעבר מקום, או תפוגה |
 | `booking.created` | הזמנה חדשה |
 | `booking.cancelled` | הזמנה בוטלה. אם לא הסטודנט ביטל, יש גם `data.reason`: `no_show` (לא הגיע בזמן) או `institution_closing` (המוסד נסגר) |
+| `place.overstay_reported` | סטודנט דיווח שמצא תפוס את המקום שהזמין. נשלח רק במוסד שהפעיל דיווחים. ב-`data`: המקום ו-`report` (`id`, `seat_id`, `created_at`), בלי שם של אף אחד |
 | `test.ping` | הכפתור "לשלוח בדיקה" |
 
 - **מה לא שולח אירוע, בינתיים:** הארכת הזמנה. ביטול בגלל אי-הגעה וביטול בסגירת מוסד כן נשלחים, עם `data.reason`.
