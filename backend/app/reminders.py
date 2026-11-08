@@ -2,7 +2,13 @@
 
 - START_AHEAD before a booking starts: "your booking starts at 11:00";
 - RELEASE_WARNING_AFTER its start, if the student has not checked in: "the
-  place is released at 11:15" (app/bookings.py NO_SHOW_AFTER).
+  place is released at 11:15" (app/bookings.py NO_SHOW_AFTER);
+- BREAK_ENDING_AHEAD before a break ends (wave 19.1b): "scan the sign to come
+  back, or the place is let go";
+- END_AHEAD before a checked-in booking ends (wave 19): "your time ends at
+  12:00", with a way to extend, or, if the room is booked right after, a
+  request to leave on time. One message: two about the same thing teach
+  people to ignore both.
 
 Each is marked on the booking before it is sent, so it goes out once at
 most; the rows are locked while marked (FOR UPDATE SKIP LOCKED), so two
@@ -25,13 +31,15 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import closing, waitlist
-from app.bookings import NO_SHOW_AFTER
+from app.bookings import NO_SHOW_AFTER, latest_renewal
+from app.breaks import BREAK_ENDING_AHEAD
 from app.hours import place_status
 from app.models import Booking, BookingStatus, CheckIn, Institution
 from app.notify import EmailSender, Notice, PushSender, notify, reachable
 
 START_AHEAD = timedelta(minutes=10)
 RELEASE_WARNING_AFTER = timedelta(minutes=5)
+END_AHEAD = timedelta(minutes=5)  # a checked-in booking is about to end
 STILL_HERE_AHEAD = timedelta(minutes=15)  # "still here?" before a check-in ends
 
 
@@ -106,6 +114,12 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
             Booking.starts_at + RELEASE_WARNING_AFTER <= now, Booking.starts_at + NO_SHOW_AFTER > now, _subscribed(),
         ).options(selectinload(Booking.place)).with_for_update(skip_locked=True, of=Booking)
     ).all()
+    ending = session.scalars(
+        select(Booking).where(
+            Booking.status == BookingStatus.CHECKED_IN, Booking.reminded_end_at.is_(None),
+            Booking.ends_at - END_AHEAD <= now, Booking.ends_at > now, _subscribed(),
+        ).options(selectinload(Booking.place)).with_for_update(skip_locked=True, of=Booking)
+    ).all()
     zones = {i.id: i.timezone for i in session.scalars(select(Institution))}
     out = []
     for b in starting:
@@ -117,6 +131,24 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
         b.reminded_start_at = b.reminded_start_at or now  # past the start: that one is no use any more
         at = _hhmm(b.starts_at + NO_SHOW_AFTER, zones[b.institution_id])
         out.append(_Due(b.user_id, Notice("עוד לא נכנסת", f"{b.place.name} ישוחרר ב-{at}, אם לא תסרוק את השלט.", "/me")))
+    for b in ending:
+        b.reminded_end_at = now
+        at = _hhmm(b.ends_at, zones[b.institution_id])
+        if latest_renewal(session, b, now) is None:
+            out.append(_Due(b.user_id, Notice("הזמן שלך נגמר בקרוב", f"{b.place.name} נגמר ב-{at}, והוא מוזמן אחריך. תודה שתפנה בזמן.", "/me")))
+        else:
+            out.append(_Due(b.user_id, Notice("הזמן שלך נגמר בקרוב", f"{b.place.name} נגמר ב-{at}. אפשר להאריך או לצאת ב\"האזור שלי\".", "/me")))
+    on_break = session.scalars(
+        select(CheckIn).where(
+            CheckIn.ended_at.is_(None), CheckIn.break_until.is_not(None), CheckIn.break_reminded_at.is_(None),
+            ~CheckIn.simulated, CheckIn.break_until - BREAK_ENDING_AHEAD <= now, CheckIn.break_until > now,
+            _subscribed(CheckIn.user_id),
+        ).options(selectinload(CheckIn.place)).with_for_update(skip_locked=True, of=CheckIn)
+    ).all()
+    for c in on_break:
+        c.break_reminded_at = now
+        at = _hhmm(c.break_until, zones[c.institution_id])
+        out.append(_Due(c.user_id, Notice("ההפסקה נגמרת בקרוב", f"{c.place.name}: עד {at}. סורקים את השלט כדי לחזור, אחרת המקום יתפנה.", "/me")))
     asking = session.scalars(
         select(CheckIn).where(_asking_still_here(now), CheckIn.expires_at - STILL_HERE_AHEAD <= now)
         .options(selectinload(CheckIn.place)).with_for_update(skip_locked=True, of=CheckIn)
@@ -161,12 +193,24 @@ def next_due(session: Session, now: datetime) -> datetime | None:
             pending, Booking.reminded_release_at.is_(None), Booking.starts_at + NO_SHOW_AFTER > now
         )
     )
+    first_end = session.scalar(
+        select(func.min(Booking.ends_at - END_AHEAD)).where(
+            Booking.status == BookingStatus.CHECKED_IN, Booking.reminded_end_at.is_(None),
+            Booking.ends_at > now, _subscribed(),
+        )
+    )
+    first_break_end = session.scalar(
+        select(func.min(CheckIn.break_until - BREAK_ENDING_AHEAD)).where(
+            CheckIn.ended_at.is_(None), CheckIn.break_until.is_not(None), CheckIn.break_reminded_at.is_(None),
+            ~CheckIn.simulated, CheckIn.break_until > now, _subscribed(CheckIn.user_id),
+        )
+    )
     first_still_here = session.scalar(
         select(func.min(CheckIn.expires_at - STILL_HERE_AHEAD)).where(_asking_still_here(now))
     )
     times = [
         t
-        for t in (first_start, first_release, first_still_here, waitlist.next_due(session, now), closing.next_due(session, now))
+        for t in (first_start, first_release, first_end, first_break_end, first_still_here, waitlist.next_due(session, now), closing.next_due(session, now))
         if t is not None
     ]
     return min(times) if times else None

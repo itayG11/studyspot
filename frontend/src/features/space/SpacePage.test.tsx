@@ -73,6 +73,26 @@ function renderAt(path: string, state?: unknown) {
 const placeCalls = () => fetchMock.mock.calls.filter(([url]) => new URL(url).pathname.startsWith('/places'))
 
 describe('SpacePage', () => {
+  it('says that someone may not have left yet, for a room and for a seat, and otherwise says nothing', async () => {
+    const room = lab({ id: 5, kind: 'group_room', name: 'EM107', lab_rows: null, lab_cols: null, seats: null, free_now: true, maybe_still_taken: true })
+    placeResponses.push(() => jsonResponse(room))
+    renderAt('/spaces/5')
+    expect(await screen.findByRole('note', { name: 'אולי עדיין תפוס' })).toHaveTextContent('מי שהיה כאן אולי עוד לא יצא')
+  })
+
+  it('says it for a lab when one of its free seats is marked', async () => {
+    placeResponses.push(() => jsonResponse(lab({ seats: [seat({ maybe_still_taken: true }), seat({ id: 2, col: 2, label: 'A2' })] })))
+    renderAt('/spaces/1')
+    expect(await screen.findByRole('note', { name: 'אולי עדיין תפוס' })).toBeInTheDocument()
+  })
+
+  it('shows no such note when nothing is marked', async () => {
+    placeResponses.push(() => jsonResponse(lab()))
+    renderAt('/spaces/1')
+    await screen.findByRole('heading', { name: 'M206' })
+    expect(screen.queryByRole('note', { name: 'אולי עדיין תפוס' })).not.toBeInTheDocument()
+  })
+
   it('a walk-in place says plainly that it is not booked ahead, and how to get in', async () => {
     const area = lab({ id: 4, kind: 'open_area', name: 'מתחם לימוד', lab_rows: null, lab_cols: null, seats: null, bookable: false, available: 38, capacity: 50, is_open: true })
     placeResponses.push(() => jsonResponse(area))

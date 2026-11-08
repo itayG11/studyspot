@@ -90,6 +90,8 @@ function SpaceView({ place }: { place: PlaceDetail }) {
   const isLab = place.kind === 'computer_lab'
   const status = spaceStatus(place, timezone)
   const favorite = isFavorite(place.id)
+  // The last stay here ended by the clock a moment ago (wave 19): it may not have left.
+  const maybeTaken = Boolean(place.maybe_still_taken || place.seats?.some((s) => s.free_now && s.maybe_still_taken))
   const canBook = place.bookable && (!isLab || seat !== null)
   const form = (
     <BookingForm key={seatId ?? 'room'} place={place} seat={seat} rules={rules} timeZone={timezone} booked={booked} onBooked={setBooked} />
@@ -158,6 +160,11 @@ function SpaceView({ place }: { place: PlaceDetail }) {
 
       <div className={mapInBooking && !tall ? `${styles.layout} ${styles.layoutWide}` : styles.layout}>
         <div className={styles.main}>
+          {maybeTaken && (
+            <p className={styles.maybeTaken} role="note" aria-label="אולי עדיין תפוס">
+              מי שהיה כאן אולי עוד לא יצא. אפשר לחכות כמה דקות או לבחור מקום אחר.
+            </p>
+          )}
           <section className={styles.card} aria-labelledby="facts">
             <h2 id="facts" className={styles.h2}>
               מה יש כאן

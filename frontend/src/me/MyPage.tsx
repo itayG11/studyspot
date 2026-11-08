@@ -1,7 +1,7 @@
 // "My area": where I am checked in now, where to study between my classes,
 // my bookings, my timetable, my favourite places, and my account.
 
-import { CalendarX2, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
+import { CalendarX2, Coffee, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
 import { CalendarFeedCard } from './CalendarFeed'
 import { PasswordCard } from './PasswordCard'
@@ -11,7 +11,7 @@ import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, myCheckIn, myClasses, stillHere } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, goOnBreak, myCheckIn, myClasses, stillHere } from '../api/student'
 import { useMyBookings } from './myBookings'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -161,6 +161,8 @@ export function MyPage() {
 }
 
 const STILL_HERE_OFFER_MS = 30 * 60_000
+const ENDING_SOON_MS = 10 * 60_000 // the time is nearly up: say that leaving frees the place
+const PREVIOUS_MAY_STAY_MS = 30 * 60_000 // a booked room this close to its start: the last student may still be there
 
 // The check-in that is running: a dark card with a live dot.
 function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) {
@@ -168,6 +170,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
   const toast = useToast()
   const leave = useAction()
   const stay = useAction()
+  const rest = useAction()
   // The clock moves on while the page is open: the offer appears near the end,
   // as the "still here?" notice does (backend/app/reminders.py).
   const [now, setNow] = useState(() => Date.now())
@@ -176,6 +179,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
     return () => clearInterval(timer)
   }, [])
   const ending = Date.parse(checkIn.expires_at) - now <= STILL_HERE_OFFER_MS
+  const endingSoon = Date.parse(checkIn.expires_at) - now <= ENDING_SOON_MS
   return (
     <>
       <div className={styles.now}>
@@ -203,6 +207,22 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
         >
           יציאה
         </Button>
+        {checkIn.can_break && (
+          <Button
+            variant="secondary"
+            icon={<Coffee aria-hidden="true" />}
+            busy={rest.busy}
+            onClick={() =>
+              void rest.run(async () => {
+                const away = await goOnBreak(checkIn.id)
+                toast(`המקום שמור לך עד ${formatTime(away.break_until ?? away.expires_at, timezone)}. כשחוזרים, סורקים את השלט.`, 'success')
+                onLeft()
+              })
+            }
+          >
+            יוצא להפסקה
+          </Button>
+        )}
         {checkIn.can_extend && ending && (
           <Button
             variant="secondary"
@@ -221,8 +241,17 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
         )}
         <ShareStay kind="check_in" id={checkIn.id} placeName={checkIn.place_name} />
       </div>
+      {checkIn.break_until && (
+        <p className={styles.endingSoon}>
+          בהפסקה עד {formatTime(checkIn.break_until, timezone)}. כשחוזרים, סורקים את השלט, אחרת המקום יתפנה.
+        </p>
+      )}
+      {endingSoon && (
+        <p className={styles.endingSoon}>הזמן נגמר בקרוב. אם סיימת, אפשר ללחוץ "יציאה", והמקום יתפנה לאחרים.</p>
+      )}
       <ActionError action={leave} />
       <ActionError action={stay} />
+      <ActionError action={rest} />
     </>
   )
 }
@@ -251,6 +280,14 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
   // "Extend" first asks how far is free, and offers ends to choose from (the
   // live practice run, 26 Oct: it went to the longest end without asking).
   const [ends, setEnds] = useState<string[] | null>(null)
+  // A booked room about to start whose last stay ended by the clock a moment ago (wave 19).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  const previousMayStay =
+    booking.status === 'booked' && place?.maybe_still_taken === true && Date.parse(booking.starts_at) - now <= PREVIOUS_MAY_STAY_MS
 
   return (
     <li className={styles.booking} aria-label={`הזמנה: ${where}, ${day} ${time}`}>
@@ -265,6 +302,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
         <span className={styles.bookingWhen}>
           {day} · <span className={styles.num}>{time}</span>
         </span>
+        {previousMayStay && <span className={styles.bookingNote}>הקודם אולי עוד לא יצא. אפשר לחכות כמה דקות.</span>}
       </div>
       <div className={styles.actions}>
         <ShareStay kind="booking" id={booking.id} placeName={booking.place_name} />

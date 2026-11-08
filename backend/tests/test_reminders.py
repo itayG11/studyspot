@@ -12,7 +12,7 @@ from test_push import Browser, subscribe
 from app.bookings import NO_SHOW_AFTER
 from app.models import Booking, BookingSource, BookingStatus
 from app.notify import PushSender, vapid_key
-from app.reminders import RELEASE_WARNING_AFTER, START_AHEAD, Alarm, next_due, send_reminders
+from app.reminders import END_AHEAD, RELEASE_WARNING_AFTER, START_AHEAD, Alarm, next_due, send_reminders
 
 START = SUNDAY_10AM + timedelta(hours=1)  # 11:00 in Israel
 
@@ -157,3 +157,57 @@ def test_a_reminder_by_email_when_there_is_no_browser(session, braude, student):
     [(to, _subject, text, _headers)] = email.mailer.sent
     assert to == student.email and "11:00" in text
     assert booking.reminded_start_at is not None
+
+
+# --- Five minutes before a stay ends (wave 19.1) --------------------------------------------
+
+END = START + timedelta(hours=1)  # book() makes one-hour bookings: 12:00
+
+
+def test_a_stay_with_a_booking_is_told_it_ends_soon_once(session, braude, student):
+    browser, seen = Browser(), []
+    subscribe(session, student, browser)
+    booking = book(session, braude, student, status=BookingStatus.CHECKED_IN)
+    send_reminders(session, push(seen), END - END_AHEAD - timedelta(minutes=1))
+    assert seen == []  # not yet
+    send_reminders(session, push(seen), END - END_AHEAD)
+    send_reminders(session, push(seen), END - END_AHEAD + timedelta(minutes=1))
+    [request] = seen
+    body = browser.read(request.content)["body"]
+    assert "12:00" in body and "להאריך" in body  # local time, and there is room to extend
+    assert booking.reminded_end_at is not None
+
+
+def test_the_wording_changes_when_the_room_is_booked_right_after(session, braude, student):
+    from factories import make_user
+
+    browser, seen = Browser(), []
+    subscribe(session, student, browser)
+    book(session, braude, student, status=BookingStatus.CHECKED_IN)
+    book(session, braude, make_user(session, braude, "next@braude.example"), starts=END)
+    send_reminders(session, push(seen), END - END_AHEAD)
+    [request] = seen
+    body = browser.read(request.content)["body"]
+    assert "12:00" in body and "מוזמן אחריך" in body and "להאריך" not in body
+
+
+def test_no_end_notice_without_a_stay_or_a_subscription_or_after_the_end(session, braude, student):
+    seen = []
+    book(session, braude, student, status=BookingStatus.CHECKED_IN)  # nobody to tell
+    send_reminders(session, push(seen), END - END_AHEAD)
+    assert seen == []
+
+    subscribe(session, student, Browser())
+    waiting = book(session, braude, student, starts=END + timedelta(hours=1))  # booked, not checked in
+    waiting.reminded_start_at = END  # its own "starts soon" is not what this test is about
+    book(session, braude, student, starts=START - timedelta(hours=3), status=BookingStatus.CHECKED_IN)  # long over
+    send_reminders(session, push(seen), END + timedelta(hours=1) - END_AHEAD)
+    assert seen == []
+
+
+def test_the_alarm_wakes_for_the_end_notice(session, braude, student):
+    subscribe(session, student, Browser())
+    booking = book(session, braude, student, status=BookingStatus.CHECKED_IN)
+    assert next_due(session, END - timedelta(hours=1)) == booking.ends_at - END_AHEAD
+    booking.reminded_end_at = END - END_AHEAD
+    assert next_due(session, END - timedelta(hours=1)) is None

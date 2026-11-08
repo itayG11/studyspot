@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.actions import run_action
 from app.api.deps import get_code_secret, get_session
 from app.auth import get_current_user
+from app.breaks import break_allowed, start_break
 from app.checkins import check_in, check_out, current_check_in, still_here
 from app.clock import get_now
 from app.models import CheckIn, User
@@ -22,7 +23,7 @@ NowDep = Annotated[datetime, Depends(get_now)]
 UserDep = Annotated[User, Depends(get_current_user)]
 
 
-def _out(row: CheckIn, cut_short_by=None) -> CheckInOut:
+def _out(row: CheckIn, session: Session, now: datetime, cut_short_by=None) -> CheckInOut:
     return CheckInOut(
         booking_id=row.booking_id,
         cut_short_by=cut_short_by,
@@ -37,6 +38,8 @@ def _out(row: CheckIn, cut_short_by=None) -> CheckInOut:
         ended_at=row.ended_at,
         end_reason=row.end_reason,
         can_extend=row.booking_id is None and row.still_here_at is None and row.ended_at is None,
+        can_break=break_allowed(session, row, now),
+        break_until=row.break_until,
     )
 
 
@@ -57,7 +60,7 @@ def create_check_in(
     result = run_action(session, lambda: check_in(session, user, body.code, body.seat_id, now, secret))
     if not result.created:
         response.status_code = status.HTTP_200_OK
-    return _out(result.check_in, result.cut_short_by)
+    return _out(result.check_in, session, now, result.cut_short_by)
 
 
 @router.get("/me/check-in", response_model=CheckInOut | None)
@@ -65,7 +68,7 @@ def get_my_check_in(user: UserDep, session: SessionDep, now: NowDep):
     """The current check-in, or null. Not being checked in is the usual
     state, not an error (wave 7.4)."""
     row = current_check_in(session, user, now)
-    return None if row is None else _out(row)
+    return None if row is None else _out(row, session, now)
 
 
 @router.post(
@@ -76,7 +79,7 @@ def get_my_check_in(user: UserDep, session: SessionDep, now: NowDep):
 def check_out_endpoint(
     check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
 ):
-    return _out(run_action(session, lambda: check_out(session, user, check_in_id, now)))
+    return _out(run_action(session, lambda: check_out(session, user, check_in_id, now)), session, now)
 
 
 @router.post(
@@ -87,4 +90,16 @@ def check_out_endpoint(
 def still_here_endpoint(
     check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
 ):
-    return _out(run_action(session, lambda: still_here(session, user, check_in_id, now)))
+    return _out(run_action(session, lambda: still_here(session, user, check_in_id, now)), session, now)
+
+
+@router.post(
+    "/check-ins/{check_in_id}/break",
+    response_model=CheckInOut,
+    dependencies=[Depends(write_limit)],
+)
+def break_endpoint(
+    check_in_id: Annotated[int, Path(gt=0)], user: UserDep, session: SessionDep, now: NowDep
+):
+    """Step out and keep the place (rooms and lab seats, once per stay)."""
+    return _out(run_action(session, lambda: start_break(session, user, check_in_id, now)), session, now)
