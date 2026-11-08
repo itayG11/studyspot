@@ -6,13 +6,13 @@ Find a place to study on campus: what is free right now, what is usually free la
 
 **Reading this as a reviewer?** [Requirements](docs/design/requirements.md) · [Database](docs/design/database.md) · [Pages](docs/design/pages.md) · [How I built it](docs/design/process.md) · [Design decisions](docs/design/decisions.md)
 
-I built StudySpot as my first complete web project, next to my second year of software engineering at Braude College. Most of the code was written with Claude Code, an AI coding tool. What is mine is the product, the specification, the decisions and the checks, and [How I built it](docs/design/process.md) shows each with its proof.
+I built StudySpot as my first complete web project, during my second year of software engineering at Braude College. Most of the code was written with Claude Code, an AI coding tool. I defined the product and its requirements, planned and approved each stage, made the design decisions, and tested the results. [How I built it](docs/design/process.md) describes the process, with examples.
 
 ![Searching for a computer lab and opening its page](docs/screenshots/flow-v2.gif)
 
 ## The problem
 
-Between two classes a student has, say, 50 minutes. Where to go? The library may be full, a computer lab two minutes away may have six free seats, and a group room may be free until 14:00. Today the only way to find out is to walk around and look.
+Say a student has 50 minutes between two classes. Where should they go? The library may be full, a computer lab two minutes away may have six free seats, and a group room may be free until 14:00. Today the only way to find out is to walk around and look.
 
 The tools that exist each solve a part of it:
 
@@ -28,13 +28,13 @@ The tools that exist each solve a part of it:
 
 ## What makes StudySpot different
 
-- **Plans around your timetable.** Enter your week once, or upload the college's Excel export or a picture of your timetable, which AI reads. For every break the site suggests up to three places: open for the whole break, near your next class, and not full. Each suggestion comes with its reason. I found no other product that joins a timetable with occupancy.
-- **Live and usual load, side by side.** One chart per place: who is there now, next to the typical crowd for that weekday and hour over the last eight weeks.
+- **Plans around your timetable.** Enter your week once, or upload the college's Excel export or a picture of your timetable, which AI reads. For every break the site suggests up to three places: open for the whole break, near your next class, and not full. Each suggestion comes with its reason. In my search, I did not find another product that combines a timetable with occupancy.
+- **Current and typical occupancy, side by side.** One chart per place: how many people are there now, next to the typical occupancy for that weekday and hour over the last eight weeks.
 - **Booking, check-in and release in one place.** Group rooms, open areas, the library, and computer labs with a seat map. A booking nobody checks in to is released after 15 minutes.
-- **When someone stays after their time.** A room whose time just ran out is shown as "maybe still taken" for a few minutes, a student can go on a break and keep the place, and one tap on "someone is in my place" returns free places nearby. The report holds no name, and each institution chooses how much of this it uses.
-- **No hardware.** A printed QR sign at the door, or a screen whose code changes every minute.
-- **One site, any institution.** Each institution gets its own address and sets itself up: who signs in, buildings on the map, places and signs. For its own systems it gets read-only API keys, signed webhooks and a widget for its website.
-- **Rules that cannot be skipped.** Double booking is refused by the database itself, not only by the app.
+- **Handling someone who stays past their booking.** A room whose time just ran out is shown as "maybe still taken" for a few minutes, a student can go on a break and keep the place, and one tap on "someone is in my place" returns free places nearby. The report holds no name, and each institution chooses how much of this it uses.
+- **No hardware needed.** A printed QR sign at the door, or a screen whose code changes every minute.
+- **One site for many institutions.** Each institution gets its own address and sets itself up: who signs in, buildings on the map, places and signs. For its own systems it gets read-only API keys, signed webhooks and a widget for its website.
+- **Rules enforced by the database.** Double booking is refused by the database itself, not only by the app.
 
 ## Demo video
 
@@ -50,7 +50,7 @@ A tour of the live demo campus, about 45 seconds. There are three versions on th
 - Real browsers on BrowserStack: Chrome, Edge, Firefox and WebKit on desktop, a real Pixel phone and an iPhone. See [the results](docs/browserstack/RESULTS.md).
 - 31 database tables. Every API route has a row in an access table that says who may call it.
 
-*Counted when I closed the last wave.*
+*These counts are from the last full test run of this version.*
 
 ## Screenshots
 
@@ -120,7 +120,7 @@ erDiagram
 
 - Sign-in with Google or Microsoft (OIDC with PKCE), an email code, or a password (`argon2id`), with a limit of five wrong tries per address and a 15-minute lock of the account after 20 wrong tries.
 - A 15-minute access token in memory and a refresh cookie (`HttpOnly`, `Secure`, `SameSite`), rotated on use.
-- Every API route has a row in an access table. Tests then check the refusals: a guest, a student, an institution admin, another student's things, and another institution's things.
+- Every API route has a row in an access table. Tests check that access is refused where it should be: for a guest, a student, an institution admin, another student's data, and another institution's data.
 - A strict Content Security Policy, rate limits, a request body cap, and an SSRF guard for webhooks.
 - Crash reports go to Sentry with no emails, codes, cookies, request bodies or addresses. A test runs a real crash through the library and checks what would have been sent.
 - `CodeQL`, `pip-audit`, `npm audit` and `gitleaks` on every push, and Dependabot every week.
@@ -128,7 +128,7 @@ erDiagram
 ## Known limitations
 
 - Occupancy is only as good as the scanning. Auto check-out, "are you still here?" and no-show release reduce the error, but they do not remove it.
-- Nothing can see a chair. Someone who stays after their time is only a guess ("maybe still taken"), and a break is kept by trust until the sign is scanned again. The report and the institution's table are the answer, not a guarantee.
+- The system cannot verify whether someone is physically in a room or seat. Someone who stays past their booking is only a guess ("maybe still taken"), and a break is kept on trust until the sign is scanned again. The report and the institution's overview help manage this uncertainty, but they do not guarantee a free place.
 - A photo of a printed QR sign could be scanned from home. The door screen, with a code that changes every minute, closes this. Otherwise the admin sees a warning on a sign with far more check-ins than seats and can replace its code, and one active check-in per person limits the damage.
 - The demo campus's history and live crowd are simulated, and marked so on screen.
 - The free hosting sleeps when idle, and the first visit is slow.
@@ -166,7 +166,7 @@ npm install
 npm run dev                       # http://localhost:5173
 ```
 
-To sign in without a Google or Microsoft account, set `DEMO_LOGIN_ENABLED=true` in `.env`. The sign-in page then offers a demo student and a demo institution admin, in the demo campus. The server refuses demo sign-in for an institution with real sign-in rules, so it can never hand out a real institution's admin.
+To sign in without a Google or Microsoft account, set `DEMO_LOGIN_ENABLED=true` in `.env`. The sign-in page then offers a demo student and a demo institution admin, in the demo campus. The server refuses demo sign-in for an institution with real sign-in rules, so demo sign-in can never give admin access to a real institution.
 
 ## The whole site in one container
 

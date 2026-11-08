@@ -1,8 +1,8 @@
 # How I built it
 
-StudySpot is my first complete web project, built next to my second year of software engineering at Braude College. I used Claude Code, an AI coding tool, and most of the code was written with its help. I want to say that plainly, because it decides what I can claim. What is mine is the product, the specification, the decisions, the order of the work and the checks. I can explain each decision on these pages and why I chose it over the alternative. I did not type most of the code, and I do not claim to.
+StudySpot is my first complete web project, built during my second year of software engineering at Braude College. I used Claude Code, an AI coding tool, and most of the code was written with its help. My part was defining the product and its requirements, planning the order of the work, reviewing and approving each plan, making the design decisions, and testing the results. I can explain each decision on these pages and why I chose it over the alternative.
 
-This page shows how I worked, so that every claim comes with something you can open: a pull request, a test, or a before and after.
+This page describes how I worked. The examples below link to the pull request or test behind them.
 
 ## What I decided and what I checked
 
@@ -11,7 +11,7 @@ This page shows how I worked, so that every claim comes with something you can o
 - **The plan for every stage.** I read the plan before it ran. I approved it, changed it or rejected it. Nothing started without that.
 - **The checks.** I opened the real site, on a phone and on a computer, and clicked through it. Most of the visible problems I found this way, not in tests.
 - **The services.** I set up the domain, hosting, email and DNS myself, from step-by-step instructions.
-- **The merge.** I merge every pull request. The tool never does.
+- **The merge.** I merge every pull request myself.
 
 ## The process, for every stage
 
@@ -29,18 +29,18 @@ This page shows how I worked, so that every claim comes with something you can o
 - A test is never weakened to make it pass. When behaviour changed on purpose, the pull request says which test changed and why.
 - Where something was not verified, the document says "not verified".
 
-## The timeline, in general
+## Timeline
 
 | When | What happened |
 |---|---|
 | First week | The idea, an audit of it, and the database: places, occupancy, bookings, check-in |
 | Second week | The site, many institutions on one site, self-service setup, timetable, load forecast |
-| The middle | A full audit of everything built so far, which turned the plan into sixteen waves ordered by risk; then the waves: automatic security checks, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
-| The end | Documents, monitoring and real devices, a new look, technical debts (DNS rebinding closed, wrong-password counting moved into the database), and a last wave on people who stay after their time |
+| Middle weeks | A full audit of everything built so far, which turned the plan into sixteen waves ordered by risk; then the waves: automatic security checks, performance, a domain and email, backups, reminders, passwords, a calendar feed, a screen by the door, an API |
+| Final weeks | Documents, monitoring and real devices, a new look, technical debts (DNS rebinding closed, wrong-password counting moved into the database), and a last wave on people who stay after their time |
 
-## Four examples, each with its proof
+## Four examples from development
 
-**1. A problem I noticed myself: someone stays after their time (the last wave).** The system assumed that when a booking ends, the student leaves. Nothing in the software can see a chair, so the assumption can be wrong, and the next student finds the room taken. I asked how an institution could handle this without hardware and without punishing anyone by software. I chose layers: prevention, detection, immediate help, and an interface for the institution.
+**1. A problem I noticed myself: someone stays after their time (the last wave).** The system assumed that when a booking ends, the student leaves. The software cannot verify whether someone has physically left, so the assumption can be wrong, and the next student finds the room taken. I looked for a way an institution could handle this without hardware and without automatically penalizing anyone. I chose layers: prevention, detection, immediate help, and an interface for the institution.
 
 | Layer | Before | After | Proof |
 |---|---|---|---|
@@ -53,17 +53,17 @@ Three decisions inside it, with their cost:
 
 - *A hint, not a block.* I could not know that someone is still there, so the site says "maybe" and never refuses a booking because of it. The cost: a student can still find the place taken. That is why the report exists.
 - *Reports without names.* The report points at the booking of the person who reports, never at the person who stayed. I would rather the institution fix a place than chase a person.
-- *Weighing the reporters.* A person whose reports were closed as "nobody was there" three times in thirty days stops counting in the table, so the feature cannot be used for revenge. The reporter is not told.
+- *Repeated reports that turn out wrong.* A person whose reports were closed as "nobody was there" three times in thirty days stops counting in the table, so the feature cannot be used for revenge. The reporter is not told.
 
 I dropped two things I first planned: a second "still here?" question during long stays (a check-in already ends after two hours, and the question that exists already covers a stay without a booking), and moving the student to another booking automatically (that is a new booking with its own rules, so the site gives a link instead).
 
-**2. A bug I found by hand.** On my phone, a lecturer's title ("Dr.") appeared in front of course names that had been saved before an earlier fix. The fix ran only when importing. The cleaning moved to where names are read. Proof: `test_a_class_saved_before_the_fix_with_a_lecturers_title_is_shown_without_it` in `backend/tests/test_classes.py`.
+**2. A bug I found during manual testing.** On my phone, a lecturer's title ("Dr.") appeared in front of course names that had been saved before an earlier fix. The fix ran only when importing. I moved the title cleaning from import time to the point where names are read. Proof: `test_a_class_saved_before_the_fix_with_a_lecturers_title_is_shown_without_it` in `backend/tests/test_classes.py`.
 
-**3. A decision against the easy option.** For sign-in codes I first wanted a human-verification challenge. Then I looked at the cost: it hurts accessibility, and an outside vendor changes the security policy and the privacy page. I decided against it and added a small proof-of-work in the browser. The note says it makes flooding expensive but does not prove a human. The reasoning is in [Decisions and trade-offs](decisions.md) and the test is `backend/tests/test_pow.py`.
+**3. CAPTCHA or proof-of-work.** For sign-in codes I first wanted a human-verification challenge. Then I looked at the cost: it hurts accessibility, and an outside vendor changes the security policy and the privacy page. I decided against it and added a small proof-of-work in the browser. It makes flooding expensive, but it cannot verify that the visitor is human. The reasoning is in [Decisions and trade-offs](decisions.md) and the test is `backend/tests/test_pow.py`.
 
-**4. A mistake in the tool's work that I caught, and a bug the new tests found.** On a phone, the list of places slid up over the map and covered it. It was a design from a new look. I said so, and the overlap was removed: the map first, then the list. Later, the browser test I wrote for the new report button found an accessibility error that had been there before: the "My area" link in the header had an accessible name that left out the number shown on it. I rebuilt the name from the visible text. Proof: `frontend/e2e/report.spec.ts` and PR 35.
+**4. A layout problem I caught in review, and an older bug a new test found.** On a phone, the list of places slid up over the map and covered it. It came with the new look. I flagged the overlap during review, and it was fixed: the map first, then the list. Later, the browser test I wrote for the new report button found an accessibility error that had been there before: the "My area" link in the header had an accessible name that left out the number shown on it. I rebuilt the name from the visible text. Proof: `frontend/e2e/report.spec.ts` and PR 35.
 
-## What I can and cannot say honestly
+## What I learned, and what is still unverified
 
 - I can explain every decision on these pages and why it was chosen over the alternative.
 - Some areas I have used more than studied (for example the details of OpenID sign-in). [Decisions and trade-offs](decisions.md) and the known limitations in the [README](../../README.md) say what is not proven.

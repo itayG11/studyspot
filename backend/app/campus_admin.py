@@ -23,6 +23,7 @@ from app.models import (
     ClassSlot,
     Institution,
     OccupancyHistory,
+    OccupancyReport,
     Place,
     PlaceKind,
     PlaceScreen,
@@ -249,6 +250,8 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
         )
         if has_history is None:
             simulate_history(db, institution, today)
+        # And the made-up reports (wave 19.3), for a reset from before they existed.
+        if db.scalar(select(OccupancyReport.id).where(OccupancyReport.institution_id == institution.id).limit(1)) is None:
             simulate_reports(db, institution, today)
         # Same version gap: a demo student from before timetables has none.
         student = demo_student(db, institution)

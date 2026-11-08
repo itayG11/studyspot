@@ -9,12 +9,12 @@
 | Three devices | Playwright (`playwright.edge.config.ts`) | 45 listed: 39 ran, 6 skipped because they belong to one device only | Desktop, iPad and phone: overflow, button size, accessibility |
 | Real devices | BrowserStack, plus my own checks | | Real Safari on iPhone, camera, email |
 
-Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. Counted when I closed the last wave.
+Everything except the manual checks runs on GitHub on every push, together with CodeQL, a secret scan and linting. The counts are from the last full test run of this version.
 
 ## How I test
-- **A flaky test is not ignored.** In the last full run two browser tests failed once under load and passed on their own. I made the first (`break.spec.ts`) wait for a map label to be filled in before the accessibility scan. The second (`finder-phone.spec.ts`) is older and I have not fixed it; it most likely reads a position before the list is drawn. I list it here instead of hiding it.
-- **Test first for fixes.** I write the failing test, then the fix, and where possible check the test against the old code to see it fail.
-- **Mutation check on permissions.** Breaking the permission check on purpose made 27 of 30 cases in the access table fail.
+- **Flaky tests.** In the last full run, two browser tests failed once under load and passed when run on their own. I made the first (`break.spec.ts`) wait for a map label to be filled in before the accessibility scan. The second (`finder-phone.spec.ts`) is older and I have not fixed it; it most likely reads a position before the list is drawn. It is still open.
+- **Regression tests for bug fixes.** I write the failing test, then the fix, and where possible check the test against the old code to see it fail.
+- **Mutation check on permissions.** Deliberately disabling the permission check made 27 of 30 cases in the access table fail.
 - **One access table.** Every route has a row that says who may call it, and a test checks that no route is missing.
 - **Time is a parameter,** so time-based rules are tested without waiting.
 - **Concurrency.** Ten real threads race for one room (see [double booking](preventing-double-booking.md)).
@@ -29,6 +29,6 @@ Automated checks with axe, keyboard navigation, reflow at small sizes, and force
 - The live free server was not load-tested; it is weaker than the test machine.
 - Sign-in with Microsoft and email codes were not load-tested.
 - Occupancy accuracy depends on how many people scan, and no real campus has used it yet.
-- A concurrency test shows the bug did not appear. It cannot show that it never will.
+- A concurrency test shows the bug did not appear in that run; no test can prove it never will. The protection itself is the database constraint.
 
 Device results: [`docs/browserstack/RESULTS.md`](../browserstack/RESULTS.md).

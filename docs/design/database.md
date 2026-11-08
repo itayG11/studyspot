@@ -4,7 +4,7 @@ PostgreSQL 16, 31 tables. The models are in `backend/app/models/` and the schema
 
 ## The core tables
 
-Eight of the 31 tables carry the main story: an institution has buildings, a building has places, a place can have seats, a student (user) books a place or a seat, and checking in (scanning a code) confirms it. The rest are supporting: sign-in, opening hours, notices, API keys, webhooks and so on.
+Eight of the 31 tables form the core data model: an institution has buildings, a building has places, a place can have seats, a student (user) books a place or a seat, and checking in (scanning a code) confirms it. The remaining tables support it: sign-in, opening hours, notices, API keys, webhooks and more.
 
 ```mermaid
 erDiagram
@@ -95,11 +95,11 @@ erDiagram
 | `UNIQUE` | No two rows may have the same values in these columns | no two seats with the same row and column in a place |
 | Index | A structure that makes a lookup fast, like the index at the back of a book | `ix_bookings_user_status` |
 | Partial index | An index over only some of the rows | one open check-in per user: only rows where `ended_at IS NULL` |
-| `EXCLUDE` | No two rows may "collide" by a rule. Here: the same room, over overlapping time | `ex_bookings_room_overlap` |
+| `EXCLUDE` | No two rows may conflict under a rule. Here: the same room, over overlapping time | `ex_bookings_room_overlap` |
 
 ## Rules the database enforces, not only the code
 
-The rule that matters most is that two people cannot hold the same room at the same time. It is enforced in the database, because a check in application code can be beaten by two requests arriving together. Details, and the concurrency test: [Preventing double booking](preventing-double-booking.md).
+The rule that matters most is that two people cannot hold the same room at the same time. It is enforced in the database, because a check in application code can race when two requests arrive at the same time. Details, and the concurrency test: [Preventing double booking](preventing-double-booking.md).
 
 | Rule | How | Where |
 |---|---|---|
