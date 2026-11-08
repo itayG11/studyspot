@@ -1,7 +1,7 @@
 // What an institution admin can do. The server checks the role on every call.
 
 import { api } from './client'
-import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, WebhookTester, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, LoginRule, MentionedPlace, NewBuilding, NewPlace, PlaceCode, PlaceCreated, Setup } from './types'
+import type { ApiKey, ApiKeyCreated, Webhook, WebhookCreated, WebhookDelivery, WebhookEvent, WebhookTester, BuildingCreated, CheckInMode, ScreenLink, BuildingLocation, CampusImportBuilding, CampusPreview, CampusSaved, GeocodeResult, Heat, LoginRule, MentionedPlace, NewBuilding, NewPlace, OverstayPolicy, OverstaySettings, PlaceCode, PlaceCreated, ReportItem, Setup } from './types'
 
 export const getCodes = (slug: string) =>
   api<PlaceCode[]>(`/admin/institutions/${encodeURIComponent(slug)}/codes`, { auth: true })
@@ -91,3 +91,13 @@ export const setTesterFailing = (slug: string, failing: boolean) =>
   api<WebhookTester>(`${own(slug)}/webhook-tester`, { method: 'PATCH', body: { failing }, auth: true })
 export const sendTesterSample = (slug: string) =>
   api<WebhookDelivery>(`${own(slug)}/webhook-tester/send`, { method: 'POST', auth: true })
+
+// Someone stayed after their time (backend/app/api/overstay.py): what is on, the reports, and when they come.
+export const getOverstay = (slug: string) => api<OverstaySettings>(`/admin/institutions/${encodeURIComponent(slug)}/overstay`, { auth: true })
+export const saveOverstay = (slug: string, change: { policy?: OverstayPolicy; grace_minutes?: number; break_minutes?: number }) =>
+  api<OverstaySettings>(`/admin/institutions/${encodeURIComponent(slug)}/overstay`, { method: 'PATCH', body: change, auth: true })
+export const getReports = (slug: string, status: 'open' | 'resolved' = 'open') =>
+  api<ReportItem[]>(`/admin/institutions/${encodeURIComponent(slug)}/reports?status=${status}`, { auth: true })
+export const resolveReport = (reportId: number, resolution: 'handled' | 'nobody_there') =>
+  api<ReportItem>(`/admin/reports/${reportId}/resolve`, { method: 'POST', body: { resolution }, auth: true })
+export const getHeat = (slug: string, days = 30) => api<Heat>(`/admin/institutions/${encodeURIComponent(slug)}/reports/heat?days=${days}`, { auth: true })

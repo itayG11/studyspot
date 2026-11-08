@@ -15,6 +15,7 @@ from app.between_classes import walk_minutes, walk_table
 from app.bookings import holding
 from app.clock import get_now
 from app.models import Booking, Institution, Place, User
+from app.policy import effective_grace
 from app.ratelimit import report_limit, write_limit
 from app.reports import report_occupied
 from app.schemas import AlternativeOut, ReportOut
@@ -74,7 +75,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
 
     mine = next(s for s in here.seats if s.id == booking.seat_id)
     nearby = sorted(
-        (s for s in _seat_map(session, here, now, institution.grace_minutes)
+        (s for s in _seat_map(session, here, now, effective_grace(institution))
          if s.free_now and s.id != mine.id and s.id not in busy_seats and not s.maybe_still_taken and s.break_until is None),
         key=lambda s: (abs(s.row - mine.row) + abs(s.col - mine.col), s.row, s.col),
     )
@@ -88,7 +89,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
             break
         lab = by_id[place_id]
         free = [
-            s for s in _seat_map(session, lab, now, institution.grace_minutes)
+            s for s in _seat_map(session, lab, now, effective_grace(institution))
             if s.free_now and s.id not in busy_seats and not s.maybe_still_taken and s.break_until is None
         ]
         if free:

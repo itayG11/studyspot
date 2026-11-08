@@ -27,6 +27,7 @@ from app.api import (
     classes,
     client_errors,
     connections,
+    overstay,
     push,
     reports,
     screens,
@@ -185,6 +186,7 @@ app.include_router(screens.router)
 app.include_router(shares.router)
 app.include_router(admin.router)
 app.include_router(connections.router)
+app.include_router(overstay.router)
 app.include_router(v1.router)
 app.include_router(webhook_tester.router)
 app.include_router(system.router)

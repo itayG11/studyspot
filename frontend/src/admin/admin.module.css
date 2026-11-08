@@ -777,3 +777,60 @@
 .stepLink:hover span:not(.doneTag) {
   text-decoration: underline;
 }
+
+/* "Someone stayed after their time": the settings row, the ranked times and the open reports. */
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--s-3);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--s-2) var(--s-3);
+  text-align: start;
+  border-bottom: 1px solid var(--stone-3);
+}
+
+.table th[scope='row'] {
+  font-weight: 600;
+}
+
+/* The bar is only a picture of the number beside it, which is the truth. */
+.bar {
+  display: inline-block;
+  block-size: 8px;
+  max-inline-size: 60%;
+  margin-inline-end: var(--s-2);
+  vertical-align: middle;
+  background: var(--primary);
+  border-radius: var(--r-pill);
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+}
+
+.reportRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}

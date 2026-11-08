@@ -30,6 +30,7 @@ from app.models import (
     is_counted,
 )
 from app.occupancy import occupied_by_place, occupied_seat_ids, open_all_day_place_ids
+from app.policy import effective_grace
 from app.ratelimit import forecast_limit, load_today_limit, public_read_limit
 from app.schemas import (
     BookingRules,
@@ -97,6 +98,7 @@ def get_institution(slug: Slug, session: SessionDep):
         booking_rules=BOOKING_RULES,
         live_simulated=is_simulated_campus(institution),
         closes_at=institution.closes_at,
+        overstay_policy=institution.overstay_policy,
     )
 
 
@@ -129,7 +131,7 @@ def _place_views(
     occupied = occupied_by_place(session, [p.id for p in places], now)
     rooms = [p.id for p in places if p.kind == PlaceKind.GROUP_ROOM]
     held_until = _room_held_until(session, rooms, now)
-    lingering = lingering_room_ids(session, rooms, now, institution.grace_minutes)
+    lingering = lingering_room_ids(session, rooms, now, effective_grace(institution))
     on_break = room_breaks(session, rooms, now)
     # "Usually frees at" for the full places, all in one go (wave 7.2).
     full = [
@@ -374,7 +376,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     all_day = open_all_day_place_ids(session, institution.id, local_today)
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
-        seats = _seat_map(session, place, now, institution.grace_minutes)
+        seats = _seat_map(session, place, now, effective_grace(institution))
     # The building's own numbers, for the small map on the place's page: only this building's places.
     here = session.scalars(_places_query().where(Place.building_id == place.building_id)).all()
     here_views = _place_views(session, institution, here, now, all_day)

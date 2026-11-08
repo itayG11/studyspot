@@ -50,6 +50,14 @@ class BuildingStatus(enum.StrEnum):
     UNDER_CONSTRUCTION = "under_construction"
 
 
+class OverstayPolicy(enum.StrEnum):
+    """How much of wave 19 (someone stays after their time) an institution has on."""
+
+    NONE = "none"  # nothing: no hint, no break, no reminder, no reports
+    REMINDERS = "reminders"  # the hint, breaks and the "ends soon" reminder; no reports
+    REPORTS = "reports"  # and students can report a taken place; the institution reads and closes them
+
+
 class PlaceKind(enum.StrEnum):
     GROUP_ROOM = "group_room"
     OPEN_AREA = "open_area"
@@ -148,6 +156,9 @@ class Institution(Base):
     # How long a student in a room or at a lab seat may step out and keep the
     # place (app/breaks.py). 0 turns breaks off for this institution.
     break_minutes: Mapped[int] = mapped_column(default=20, server_default="20")
+    overstay_policy: Mapped[OverstayPolicy] = mapped_column(
+        _enum_column(OverstayPolicy, "overstay_policy"), default=OverstayPolicy.REMINDERS, server_default="reminders"
+    )
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

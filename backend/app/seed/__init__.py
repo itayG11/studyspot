@@ -22,6 +22,7 @@ from app.models import (
     Institution,
     InstitutionLoginRule,
     OpeningHours,
+    OverstayPolicy,
     Place,
     PlaceAmenity,
     PlaceAtmosphere,
@@ -100,6 +101,7 @@ def seed_institution(session: Session, data: Mapping[str, Any]) -> Institution:
         slug=info["slug"],
         timezone=info["timezone"],
         is_active=info.get("active", False),
+        overstay_policy=OverstayPolicy(info.get("overstay_policy", "reminders")),
     )
     periods = {
         p["key"]: SpecialPeriod(name=p["name"], starts_on=p["starts_on"], ends_on=p["ends_on"])

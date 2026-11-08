@@ -41,6 +41,51 @@ export interface Institution {
   live_simulated: boolean
   // Closing: everything in it is deleted then. Null when it is not closing.
   closes_at?: string | null
+  // What of "someone stayed after their time" the institution has on (backend/app/policy.py).
+  overstay_policy?: OverstayPolicy
+}
+
+export type OverstayPolicy = 'none' | 'reminders' | 'reports'
+
+// The institution's side of it (backend/app/api/overstay.py): places and times, never people.
+export interface OverstaySettings {
+  policy: OverstayPolicy
+  grace_minutes: number
+  break_minutes: number
+  locked: boolean // the shared demo campus: shown, not changed
+  open_reports: number
+}
+
+export interface ReportItem {
+  id: number
+  place_id: number
+  place_name: string
+  building_code: string
+  seat_label: string | null
+  created_at: string
+  status: 'open' | 'resolved'
+  resolution: 'handled' | 'nobody_there' | null
+}
+
+export interface HeatCell {
+  place_id: number
+  place_name: string
+  weekday: number // 0 = Monday ... 6 = Sunday
+  hour: number
+  count: number
+}
+
+export interface Advice {
+  place_id: number
+  place_name: string
+  count: number // reports in the last 7 days
+  kind: 'shorten_booking' | 'add_sign'
+}
+
+export interface Heat {
+  days: number
+  cells: HeatCell[]
+  recommendations: Advice[]
 }
 
 // capacity, occupied and available count seats a student can walk into now.
@@ -524,7 +569,7 @@ export interface ApiKeyCreated {
 }
 
 // Wave 14.3: webhooks (backend app/webhooks.py, app/api/connections.py).
-export type WebhookEvent = 'checkin.started' | 'checkin.ended' | 'booking.created' | 'booking.cancelled'
+export type WebhookEvent = 'checkin.started' | 'checkin.ended' | 'booking.created' | 'booking.cancelled' | 'place.overstay_reported'
 
 export interface Webhook {
   id: number

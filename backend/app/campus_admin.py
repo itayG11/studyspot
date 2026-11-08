@@ -235,6 +235,7 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
     if institution is None:
         return None
     from app.seed.history import simulate_history
+    from app.seed.reports import simulate_reports
     from app.seed.timetable import demo_student, give_sample_timetable
 
     if institution.demo_reset_on == today:
@@ -248,6 +249,7 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
         )
         if has_history is None:
             simulate_history(db, institution, today)
+            simulate_reports(db, institution, today)
         # Same version gap: a demo student from before timetables has none.
         student = demo_student(db, institution)
         if student is not None and not db.scalar(select(ClassSlot.id).where(ClassSlot.user_id == student.id).limit(1)):
@@ -256,6 +258,7 @@ def reset_demo_if_due(db: Session, slug: str, today: date) -> tuple[int, int] | 
     removed = reset_demo_extras(db, slug)
     # The forecast's made-up past moves on with the days (app/seed/history.py).
     simulate_history(db, db.get(Institution, institution.id), today)
+    simulate_reports(db, db.get(Institution, institution.id), today)
     # The shared student's timetable, back to the sample visitors changed.
     student = demo_student(db, institution)
     if student is not None:

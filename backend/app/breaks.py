@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.errors import Refusal
 from app.models import Booking, BookingStatus, CheckIn, CheckInEndReason, Institution, Place, PlaceKind
 from app.occupancy import is_active
+from app.policy import effective_break
 from app.webhooks import check_in_event
 
 log = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def break_allowed(session: Session, row: CheckIn, now: datetime) -> bool:
         return False
     place = session.get(Place, row.place_id)
     institution = session.get(Institution, row.institution_id)
-    return place.kind in HOLDS_ONE_BOOKING and institution.break_minutes > 0
+    return place.kind in HOLDS_ONE_BOOKING and effective_break(institution) > 0
 
 
 def start_break(session: Session, user, check_in_id: int, now: datetime) -> CheckIn:
@@ -57,7 +58,7 @@ def start_break(session: Session, user, check_in_id: int, now: datetime) -> Chec
     place = session.get(Place, row.place_id)
     if place.kind not in HOLDS_ONE_BOOKING:
         raise Refusal(409, "break_not_allowed")
-    minutes = session.get(Institution, row.institution_id).break_minutes
+    minutes = effective_break(session.get(Institution, row.institution_id))
     if minutes <= 0:
         raise Refusal(409, "break_disabled")
     if row.break_started_at is not None:
