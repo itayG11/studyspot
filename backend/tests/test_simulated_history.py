@@ -124,3 +124,15 @@ def test_a_demo_student_from_before_timetables_gets_the_sample_on_an_already_res
     session.flush()
     campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 11))
     assert session.query(ClassSlot).filter(ClassSlot.user_id == student.id).count() > 0
+
+
+def test_a_demo_reset_earlier_today_still_gets_its_made_up_reports(session):
+    """The admin's table was empty on the live demo until the next day's reset."""
+    from app.models import OccupancyReport
+
+    demo = seed_demo(session)
+    demo.demo_reset_on = date(2026, 10, 11)
+    session.flush()
+    assert session.query(OccupancyReport).filter_by(institution_id=demo.id).count() == 0
+    campus_admin.reset_demo_if_due(session, "demo", date(2026, 10, 11))
+    assert session.query(OccupancyReport).filter_by(institution_id=demo.id).count() > 0
