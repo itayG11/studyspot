@@ -1,7 +1,7 @@
 // What a signed-in student can do: book, check in, and manage both.
 
 import { api } from './client'
-import type { Availability, BetweenClasses, Booking, CheckIn, ClassSlot, ImportRow, NewClass } from './types'
+import type { Availability, BetweenClasses, Booking, CheckIn, ClassSlot, ImportRow, NewClass, ReportResult } from './types'
 
 export const getAvailability = (placeId: number, date: string) =>
   api<Availability>(`/places/${placeId}/availability?date=${encodeURIComponent(date)}`)
@@ -37,6 +37,10 @@ export const stillHere = (id: number) => api<CheckIn>(`/check-ins/${id}/still-he
 
 // "Going on a break": a room or a lab seat is kept for a while; coming back is scanning the sign (backend/app/breaks.py).
 export const goOnBreak = (id: number) => api<CheckIn>(`/check-ins/${id}/break`, { method: 'POST', auth: true })
+
+// "Someone is in my booked place": saved for the institution (no name of the other person), and somewhere else to go.
+export const reportOccupied = (bookingId: number) =>
+  api<ReportResult>(`/bookings/${bookingId}/report-occupied`, { method: 'POST', auth: true })
 
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })

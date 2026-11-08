@@ -548,6 +548,25 @@ class BookingOut(BaseModel):
     source: BookingSource
 
 
+class AlternativeOut(BaseModel):
+    """Somewhere else to go when the booked place is taken: a room, or a seat (wave 19.2)."""
+
+    place_id: int
+    place_name: str
+    building_code: str
+    walk_minutes: int  # from the place that was booked
+    seat_id: int | None = None
+    seat_label: str | None = None
+    free_until: datetime | None = None
+
+
+class ReportOut(BaseModel):
+    """What the student gets after reporting. Nothing about who was there."""
+
+    reported: bool
+    alternatives: list[AlternativeOut]
+
+
 class BusyRange(BaseModel):
     """Time held on a room (seat_id None) or a lab seat. Never says by whom."""
 

@@ -210,6 +210,22 @@ export interface Booking {
   source: 'advance' | 'walk_in'
 }
 
+// Somewhere else to go when the booked place is taken (backend/app/api/reports.py).
+export interface Alternative {
+  place_id: number
+  place_name: string
+  building_code: string
+  walk_minutes: number // from the place that was booked
+  seat_id: number | null
+  seat_label: string | null
+  free_until: string | null
+}
+
+export interface ReportResult {
+  reported: boolean
+  alternatives: Alternative[]
+}
+
 export interface CheckIn {
   id: number
   place_id: number

@@ -37,6 +37,7 @@ let latest: string | null
 let extendBody: unknown
 let extendRefuses: boolean
 let roomMaybeTaken: boolean
+let reportRefuses: boolean
 
 beforeEach(() => {
   resetSessionForTests()
@@ -48,6 +49,7 @@ beforeEach(() => {
   extendBody = null
   extendRefuses = false
   roomMaybeTaken = false
+  reportRefuses = false
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (init.method === 'POST') calls.push(path)
@@ -78,6 +80,13 @@ beforeEach(() => {
     }
     if (path === '/check-ins/3/still-here')
       return Promise.resolve(jsonResponse({ ...CHECK_IN, can_extend: false, expires_at: '2026-10-11T10:00:00Z' }))
+    if (path === '/bookings/7/report-occupied') {
+      if (reportRefuses) return Promise.resolve(jsonResponse({ detail: 'report_exists' }, 409))
+      return Promise.resolve(jsonResponse({
+        reported: true,
+        alternatives: [{ place_id: 9, place_name: 'EM108', building_code: 'EM', walk_minutes: 2, seat_id: null, seat_label: null, free_until: null }],
+      }))
+    }
     if (path === '/check-ins/3/break')
       return Promise.resolve(jsonResponse({ ...CHECK_IN, can_break: false, break_until: new Date(Date.now() + 20 * 60_000).toISOString() }))
     if (path === '/check-ins/3/checkout') {
@@ -144,6 +153,39 @@ describe('MyPage, a stay that is about to end or has just been left by the clock
     renderMe()
     const room = await screen.findByRole('listitem', { name: /EM107/ })
     expect(within(room).queryByText(/הקודם אולי עוד לא יצא/)).not.toBeInTheDocument()
+  })
+})
+
+describe('MyPage, someone is in the booked place', () => {
+  it('offers to say so for a booked room about to start, asks first, and then shows where else to go', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65) }]
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    await userEvent.click(within(room).getByRole('button', { name: 'יש מישהו במקום' }))
+    expect(calls).not.toContain('/bookings/7/report-occupied') // only after the second click
+    await userEvent.click(within(room).getByRole('button', { name: 'כן, לדווח' }))
+    expect(calls).toContain('/bookings/7/report-occupied')
+    const list = await within(room).findByRole('list', { name: 'מקומות פנויים קרובים' })
+    expect(within(list).getByRole('link', { name: /EM108/ })).toHaveAttribute('href', '/braude/spaces/9')
+    expect(list).toHaveTextContent('2 דקות הליכה')
+    expect(within(room).getByText(/בלי שם של מי שהיה שם/)).toBeInTheDocument()
+  })
+
+  it('does not offer it far from the start, after the arrival window, or for a lab seat that is not booked', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(120), ends_at: inMinutes(180) }]
+    renderMe()
+    const far = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(far).queryByRole('button', { name: 'יש מישהו במקום' })).not.toBeInTheDocument()
+  })
+
+  it('says plainly when the report was already made', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65) }]
+    reportRefuses = true
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    await userEvent.click(within(room).getByRole('button', { name: 'יש מישהו במקום' }))
+    await userEvent.click(within(room).getByRole('button', { name: 'כן, לדווח' }))
+    expect(await within(room).findByText(/כבר דיווחת/)).toBeInTheDocument()
   })
 })
 

@@ -149,7 +149,9 @@ function Pulse({ home }: { home: string }) {
 }
 
 // "My area", with how many bookings are still ahead: the count is also in
-// its name, for a screen reader. With bookings ahead, a button next to it
+// its name, for a screen reader. The name is built from what is seen, plus a
+// hidden word for the number ("Label in Name": an aria-label that left the
+// visible number out failed axe as soon as a student had a booking, 8 Nov). With bookings ahead, a button next to it
 // opens them in a drawer, to see or cancel one without leaving the page.
 function MyAreaLink() {
   const { slug, timezone } = useInstitution()
@@ -162,11 +164,15 @@ function MyAreaLink() {
       <NavLink
         to="/me"
         className={styles.navLink}
-        aria-label={count > 0 ? `האזור שלי, ${count === 1 ? 'הזמנה אחת' : `${count} הזמנות`}` : undefined}
         viewTransition
       >
         האזור שלי
-        {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
+        {count > 0 && (
+          <span className={styles.count}>
+            {count}
+            <span className="visually-hidden">{count === 1 ? ' הזמנה' : ' הזמנות'}</span>
+          </span>
+        )}
       </NavLink>
       {/* Always there for a signed-in student: with no bookings, the drawer says so and leads to the search. */}
       <button type="button" className={styles.drawerButton} aria-label="ההזמנות הקרובות" onClick={() => setDrawer(true)}>

@@ -11,9 +11,9 @@ import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, goOnBreak, myCheckIn, myClasses, stillHere } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, goOnBreak, myCheckIn, myClasses, reportOccupied, stillHere } from '../api/student'
 import { useMyBookings } from './myBookings'
-import type { Booking, CheckIn, Place } from '../api/types'
+import type { Alternative, Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { REFRESH_INTERVAL_MS } from '../config'
 import { SpaceCard } from '../features/finder/SpaceCard'
@@ -162,6 +162,8 @@ export function MyPage() {
 
 const STILL_HERE_OFFER_MS = 30 * 60_000
 const ENDING_SOON_MS = 10 * 60_000 // the time is nearly up: say that leaving frees the place
+const REPORT_FROM_MS = 30 * 60_000 // a booked room or seat can be reported taken from this long before its start...
+const REPORT_UNTIL_MS = 15 * 60_000 // ...until this long after it (the arrival window, backend/app/reports.py)
 const PREVIOUS_MAY_STAY_MS = 30 * 60_000 // a booked room this close to its start: the last student may still be there
 
 // The check-in that is running: a dark card with a live dot.
@@ -268,9 +270,11 @@ function extendEnds(currentEnd: string, latest: string): string[] {
 }
 
 function BookingRow({ booking, place, onChange }: { booking: Booking; place: Place | undefined; onChange: () => void }) {
-  const { timezone } = useInstitution()
+  const { slug, timezone } = useInstitution()
   const toast = useToast()
   const action = useAction()
+  const report = useAction()
+  const [elsewhere, setElsewhere] = useState<Alternative[] | null>(null)
   const day = formatDay(booking.starts_at, timezone)
   const time = `${formatTime(booking.starts_at, timezone)}–${formatTime(booking.ends_at, timezone)}`
   const where = `${booking.place_name}${booking.seat_label ? `, תא ${booking.seat_label}` : ''}`
@@ -288,6 +292,12 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
   }, [])
   const previousMayStay =
     booking.status === 'booked' && place?.maybe_still_taken === true && Date.parse(booking.starts_at) - now <= PREVIOUS_MAY_STAY_MS
+
+  // Someone is in the room or seat that was booked (wave 19.2): sayable in the arrival window only.
+  const untilStart = Date.parse(booking.starts_at) - now
+  const canReport =
+    booking.status === 'booked' && (place?.kind === 'group_room' || place?.kind === 'computer_lab') &&
+    untilStart <= REPORT_FROM_MS && untilStart > -REPORT_UNTIL_MS
 
   return (
     <li className={styles.booking} aria-label={`הזמנה: ${where}, ${day} ${time}`}>
@@ -320,6 +330,20 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
             להאריך
           </Button>
         )}
+        {canReport && elsewhere === null && (
+          <ConfirmButton
+            size="sm"
+            label="יש מישהו במקום"
+            confirmLabel="כן, לדווח"
+            busy={report.busy}
+            onConfirm={() =>
+              void report.run(async () => {
+                const result = await reportOccupied(booking.id)
+                setElsewhere(result.alternatives)
+              })
+            }
+          />
+        )}
         {canCancel && (
           <ConfirmButton
             size="sm"
@@ -336,6 +360,31 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
           />
         )}
       </div>
+      {elsewhere !== null && (
+        <div className={styles.elsewhere}>
+          <p>הדיווח נשמר למוסד, בלי שם של מי שהיה שם.</p>
+          {elsewhere.length === 0 ? (
+            <p>אין כרגע מקום פנוי קרוב לכל זמן ההזמנה. אפשר לחכות כמה דקות, או לחפש בדף הבית.</p>
+          ) : (
+            <ul aria-label="מקומות פנויים קרובים">
+              {elsewhere.map((a) => (
+                <li key={`${a.place_id}-${a.seat_id ?? 'room'}`}>
+                  <Link to={`/${slug}/spaces/${a.place_id}`}>
+                    {a.place_name}
+                    {a.seat_label && `, תא ${a.seat_label}`}
+                  </Link>{' '}
+                  · בניין {a.building_code} · {a.walk_minutes} דקות הליכה
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {report.error && (
+        <Notice tone="error" className={styles.rowError}>
+          {report.error}
+        </Notice>
+      )}
       {ends !== null && ends.length === 0 && (
         <Notice className={styles.rowError}>
           אין זמן פנוי להארכה: המקום מוזמן אחריך, או שהוא נסגר.{' '}

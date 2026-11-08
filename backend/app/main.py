@@ -28,6 +28,7 @@ from app.api import (
     client_errors,
     connections,
     push,
+    reports,
     screens,
     shares,
     system,
@@ -177,6 +178,7 @@ app.include_router(auth.router)
 app.include_router(campus.router)
 app.include_router(checkins.router)
 app.include_router(bookings.router)
+app.include_router(reports.router)
 app.include_router(classes.router)
 app.include_router(calendar.router)
 app.include_router(screens.router)

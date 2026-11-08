@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.orm import Session
 
-from app.models import ACTIVE_STATUSES, Booking, CheckIn, Institution
+from app.models import ACTIVE_STATUSES, Booking, CheckIn, Institution, OccupancyReport
 
 SLOT = timedelta(minutes=15)
 # The forecast reads eight weeks: older quarter hours are not counted again.
@@ -84,6 +84,7 @@ def delete_old_check_ins(session: Session, now: datetime) -> int:
             ),
         )
     ).rowcount
+    session.execute(delete(OccupancyReport).where(OccupancyReport.created_at < now - KEEP_CHECK_INS))
     session.execute(
         delete(Booking).where(Booking.status.not_in(ACTIVE_STATUSES), Booking.ends_at < now - KEEP_CHECK_INS)
     )
