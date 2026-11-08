@@ -22,6 +22,15 @@ describe('seatState', () => {
     expect(seatDescription(seat({ free_until: '2026-10-11T09:00:00Z' }), true, TZ)).toBe('A1: פנוי עד 12:00')
     expect(seatDescription(seat(), true, TZ)).toBe('A1: פנוי')
   })
+
+  it('a free seat whose last stay may not have left says so, and stays free to pick', () => {
+    const maybe = seat({ maybe_still_taken: true })
+    expect(seatState(maybe, true)).toBe('free')
+    expect(seatDescription(maybe, true, TZ)).toBe('A1: פנוי, אולי עדיין תפוס')
+    expect(seatDescription(seat({ maybe_still_taken: true, free_until: '2026-10-11T09:00:00Z' }), true, TZ)).toBe(
+      'A1: פנוי עד 12:00, אולי עדיין תפוס',
+    )
+  })
 })
 
 describe('SeatGrid', () => {

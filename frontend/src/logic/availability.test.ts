@@ -22,6 +22,20 @@ describe('spaceStatus', () => {
   })
 })
 
+describe('a room whose last stay may not have left yet', () => {
+  it('says so, in a softer tone, and still counts as free', () => {
+    const room = place({ kind: 'group_room', free_now: true, maybe_still_taken: true })
+    expect(spaceStatus(room, TZ)).toEqual({ tone: 'filling', label: 'פנוי, אולי עדיין תפוס' })
+    expect(isFreeNow(room)).toBe(true)
+  })
+
+  it('is not said of a room that is taken, closed, or not marked', () => {
+    expect(spaceStatus(place({ kind: 'group_room', free_now: false, maybe_still_taken: true }), TZ).label).toBe('תפוס')
+    expect(spaceStatus(place({ kind: 'group_room', free_now: true, maybe_still_taken: true, is_open: false }), TZ).label).toBe('סגור עכשיו')
+    expect(spaceStatus(place({ kind: 'group_room', free_now: true }), TZ).label).toBe('פנוי עכשיו')
+  })
+})
+
 describe('isFreeNow', () => {
   it('is an open place with room, or a group room nobody holds', () => {
     expect(isFreeNow(place({ available: 3 }))).toBe(true)

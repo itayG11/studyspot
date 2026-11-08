@@ -36,6 +36,7 @@ let calls: string[]
 let latest: string | null
 let extendBody: unknown
 let extendRefuses: boolean
+let roomMaybeTaken: boolean
 
 beforeEach(() => {
   resetSessionForTests()
@@ -46,6 +47,7 @@ beforeEach(() => {
   latest = null
   extendBody = null
   extendRefuses = false
+  roomMaybeTaken = false
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
     if (init.method === 'POST') calls.push(path)
@@ -53,7 +55,7 @@ beforeEach(() => {
       return Promise.resolve(jsonResponse({ access_token: 't', token_type: 'bearer', expires_in: 900, user: ME }))
     if (path === '/institutions/braude') return Promise.resolve(jsonResponse(INSTITUTION))
     if (path === '/institutions/braude/places')
-      return Promise.resolve(jsonResponse([place({ id: 1, name: 'M206', kind: 'computer_lab' }), place({ id: 3, name: 'EM107', kind: 'group_room' })]))
+      return Promise.resolve(jsonResponse([place({ id: 1, name: 'M206', kind: 'computer_lab' }), place({ id: 3, name: 'EM107', kind: 'group_room', free_now: true, maybe_still_taken: roomMaybeTaken })]))
     if (path === '/me/bookings') return Promise.resolve(jsonResponse(bookings))
     // The timetable and its suggestions have their own tests (Classes.test.tsx).
     if (path === '/me/classes') return Promise.resolve(jsonResponse([]))
@@ -106,6 +108,42 @@ function renderMe() {
   )
   return router
 }
+
+const inMinutes = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString()
+
+describe('MyPage, a stay that is about to end or has just been left by the clock', () => {
+  it('tells a running stay that its time is nearly up, and that leaving frees the place', async () => {
+    checkIn = { ...CHECK_IN, expires_at: inMinutes(6) }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    expect(await within(current).findByText(/הזמן נגמר בקרוב/)).toBeInTheDocument()
+    expect(within(current).getByRole('button', { name: 'יציאה' })).toBeInTheDocument()
+  })
+
+  it('says nothing of the kind while there is plenty of time', async () => {
+    checkIn = { ...CHECK_IN, expires_at: inMinutes(90) }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    await within(current).findByText(/M206/)
+    expect(within(current).queryByText(/הזמן נגמר בקרוב/)).not.toBeInTheDocument()
+  })
+
+  it('tells a booked room about to start that the last student may not have left yet', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65) }]
+    roomMaybeTaken = true
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(await within(room).findByText(/הקודם אולי עוד לא יצא/)).toBeInTheDocument()
+  })
+
+  it('does not say it of a booking that starts much later, even if the room is marked now', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(180), ends_at: inMinutes(240) }]
+    roomMaybeTaken = true
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(room).queryByText(/הקודם אולי עוד לא יצא/)).not.toBeInTheDocument()
+  })
+})
 
 describe('MyPage', () => {
   it('shows who is signed in, the check-in and the bookings', async () => {

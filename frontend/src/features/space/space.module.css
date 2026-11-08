@@ -274,6 +274,16 @@
   color: var(--ink-3);
 }
 
+/* "Maybe still taken": a quiet note, not an alarm. A hint that the last stay ended by the clock. */
+.maybeTaken {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--stone-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
 /* A walk-in place: no booking panel, but what is free and how to get in. */
 .walkInNow {
   margin: 0 0 var(--s-3);

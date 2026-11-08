@@ -204,6 +204,17 @@
   color: var(--ink-2);
 }
 
+.bookingNote {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.endingSoon {
+  margin: var(--s-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

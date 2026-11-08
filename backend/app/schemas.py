@@ -360,6 +360,10 @@ class PlaceOut(Occupancy):
     # Full now, and not a room (rooms have free_from): the first quarter
     # hour today that is usually not full, local time (app/forecast.py).
     usually_frees_at: time | None = None
+    # A free room whose last stay ended by the clock, not by the student
+    # leaving, within the institution's grace minutes (app/lingering.py).
+    # A hint: free_now stays as it is.
+    maybe_still_taken: bool = False
 
 
 class OpeningHoursOut(BaseModel):
@@ -380,6 +384,7 @@ class SeatOut(BaseModel):
     # closing time; None means no limit today). Helps pick a seat with time.
     free_now: bool
     free_until: datetime | None
+    maybe_still_taken: bool = False  # as PlaceOut's: free, but the last stay may not have left
 
 
 class SlotForecastOut(BaseModel):

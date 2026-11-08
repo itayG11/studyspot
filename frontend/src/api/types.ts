@@ -82,6 +82,9 @@ export interface Place extends Occupancy {
   // Full now and not a room: the first quarter hour today that is usually
   // not full, local "HH:MM:SS" (the load forecast).
   usually_frees_at?: string | null
+  // A free room whose last stay ended by the clock, not by the student leaving, within the
+  // institution's grace minutes: it may not have left yet. A hint; free_now stays as it is.
+  maybe_still_taken?: boolean
 }
 
 export interface OpeningHours {
@@ -98,6 +101,7 @@ export interface Seat {
   occupied: boolean
   free_now: boolean
   free_until: string | null // ISO time; null when not free, or free all day
+  maybe_still_taken?: boolean // free, but the last stay ended by the clock a moment ago
 }
 
 export interface SlotForecast {

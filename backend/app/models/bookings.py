@@ -89,6 +89,7 @@ class Booking(Base):
     # Push reminders already sent (app/reminders.py): each once at most.
     reminded_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reminded_release_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reminded_end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # "ends soon" (wave 19)
 
     place: Mapped[Place] = relationship(
         primaryjoin="Booking.place_id == Place.id", foreign_keys="Booking.place_id", viewonly=True

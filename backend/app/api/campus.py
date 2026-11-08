@@ -17,6 +17,7 @@ from app.clock import get_now
 from app.config import Settings, get_settings
 from app.forecast import forecast, forecast_many
 from app.hours import opening_status, place_status
+from app.lingering import lingering_room_ids, lingering_seat_ids
 from app.load_today import campus_today, place_today
 from app.models import (
     Booking,
@@ -127,6 +128,7 @@ def _place_views(
     occupied = occupied_by_place(session, [p.id for p in places], now)
     rooms = [p.id for p in places if p.kind == PlaceKind.GROUP_ROOM]
     held_until = _room_held_until(session, rooms, now)
+    lingering = lingering_room_ids(session, rooms, now, institution.grace_minutes)
     # "Usually frees at" for the full places, all in one go (wave 7.2).
     full = [
         p for p in places
@@ -139,9 +141,11 @@ def _place_views(
         taken = occupied.get(place.id, 0)
         is_open = opening_status(place.opening_hours, local_now, place.id in all_day).is_open
         free_now = free_from = frees_at = None
+        maybe_taken = False
         if place.kind == PlaceKind.GROUP_ROOM:
             free_from = held_until.get(place.id) if is_open else None
             free_now = is_open and free_from is None
+            maybe_taken = free_now and place.id in lingering
         elif is_open and taken >= place.capacity:
             frees_at = usually_frees[place.id].frees_at
         views.append(
@@ -165,6 +169,7 @@ def _place_views(
                 free_now=free_now,
                 free_from=free_from,
                 usually_frees_at=frees_at,
+                maybe_still_taken=maybe_taken,
             )
         )
     return views
@@ -198,7 +203,7 @@ def _room_held_until(session: Session, room_ids: list[int], now: datetime) -> di
     return held
 
 
-def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
+def _seat_map(session: Session, place: Place, now: datetime, grace_minutes: int) -> list[SeatOut]:
     """Each seat: taken now? free now? free until when (next booking or closing)?
 
     "Free now" means a walk-in would be accepted, so it uses the same rule
@@ -206,6 +211,7 @@ def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
     """
     status = place_status(session, place, now)
     taken = occupied_seat_ids(session, place.id, now)
+    lingering = lingering_seat_ids(session, place.id, now, grace_minutes)
     held_now: set[int] = set()
     next_start: dict[int, datetime] = {}
     for seat_id, starts_at in session.execute(
@@ -233,6 +239,7 @@ def _seat_map(session: Session, place: Place, now: datetime) -> list[SeatOut]:
                 occupied=s.id in taken,
                 free_now=free_now,
                 free_until=until if free_now else None,
+                maybe_still_taken=free_now and s.id in lingering,
             )
         )
     return seats
@@ -362,7 +369,7 @@ def get_place(place_id: Annotated[int, Path(gt=0)], session: SessionDep, now: No
     all_day = open_all_day_place_ids(session, institution.id, local_today)
     seats = None
     if place.kind == PlaceKind.COMPUTER_LAB:
-        seats = _seat_map(session, place, now)
+        seats = _seat_map(session, place, now, institution.grace_minutes)
     # The building's own numbers, for the small map on the place's page: only this building's places.
     here = session.scalars(_places_query().where(Place.building_id == place.building_id)).all()
     here_views = _place_views(session, institution, here, now, all_day)

@@ -22,6 +22,7 @@ export interface SpaceStatus {
 export function spaceStatus(place: Place, timeZone: string): SpaceStatus {
   if (!place.is_open) return { tone: 'closed', label: 'סגור עכשיו' }
   if (place.kind === 'group_room') {
+    if (place.free_now && place.maybe_still_taken) return { tone: 'filling', label: 'פנוי, אולי עדיין תפוס' }
     if (place.free_now) return { tone: 'free', label: 'פנוי עכשיו' }
     if (place.free_from) return { tone: 'full', label: `פנוי מ-${formatTime(place.free_from, timeZone)}` }
     return { tone: 'full', label: 'תפוס' }
