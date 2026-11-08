@@ -1,6 +1,6 @@
 # Requirements
 
-What I set out to build, what I built, and what I did not. I wrote a first list of requirements on the first day (14 items). Some changed on the way, and the table says so. Each row names where to look in the code.
+This page compares what I set out to build with what I built, and lists what I did not build. I wrote a first list of requirements on the first day (14 items). Some changed during development, and the table says so. Each row names where to look in the code.
 
 **Status:** *built*, *partly* (part of it works), or *not built* (and why).
 
@@ -10,7 +10,7 @@ What I set out to build, what I built, and what I did not. I wrote a first list 
 |---|---|---|---|
 | 1 | Institutions, buildings, places of several kinds (the list began with three; it is four now: computer lab, group room, library, open area), seats, opening hours and special periods | built | `backend/app/models/campus.py`, `backend/app/models/hours.py` |
 | 2 | See what is free right now, on a map and a list, and open a place | built | `frontend/src/pages/HomePage.tsx`, `frontend/src/features/space/SpacePage.tsx` |
-| 3 | The database refuses two overlapping bookings of the same room, proved by a concurrency test | built | `ex_bookings_room_overlap` in `backend/app/models/bookings.py`, `backend/tests/test_booking_concurrency.py` |
+| 3 | The database refuses two overlapping bookings of the same room, with a concurrency test as evidence | built | `ex_bookings_room_overlap` in `backend/app/models/bookings.py`, `backend/tests/test_booking_concurrency.py` |
 | 4 | Sign in with Google or Microsoft, an email code, or a password; three roles (student, institution admin, system admin) | built | `backend/app/api/auth.py`, `backend/tests/test_access_matrix.py` |
 | 5 | A check-in (scanning a signed code on the sign) ends after two hours, or at closing time (a booked check-in lasts as long as its booking) | built | `backend/app/checkins.py` |
 | 6 | A booking with no scan within 15 minutes is released | built | `NO_SHOW_AFTER` in `backend/app/bookings.py`, `backend/app/sweeper.py` |
@@ -39,13 +39,13 @@ These came from using the site and from a full audit I ran after the first two w
 
 ## Quality requirements: the target, and what was measured
 
-A target is what I decided in advance. A measurement is what I found. They are different columns on purpose.
+The target is what I decided in advance, and the measurement is what I found, so they are kept in separate columns.
 
 | Topic | Target | Measured | Where |
 |---|---|---|---|
 | Size of the first script | at most 120 kB compressed | 118.4 kB | `frontend/scripts/check-bundle-size.mjs` |
 | Access control | every route listed and tested | a test that goes over the routes with each role | `backend/tests/test_access_matrix.py` |
-| Accessibility | no `axe` findings; buttons at least 24 by 24 px | no serious or critical findings on 25 page visits (guest, student, admin tabs) on three devices; the full check, all impact levels, on the main screens at computer and phone width, light and dark. Keyboard and screen reader checked by hand | `frontend/e2e/sweep.spec.ts`, `frontend/e2e/a11y.spec.ts` |
+| Accessibility | no `axe` findings; buttons at least 24 by 24 px | No serious or critical findings on 25 page visits (guest, student, admin tabs) on three devices. The full check, at all impact levels, runs on the main screens at computer and phone width, in light and dark. Keyboard and screen reader were checked by hand | `frontend/e2e/sweep.spec.ts`, `frontend/e2e/a11y.spec.ts` |
 | Backups | every night, encrypted | a workflow that runs nightly, restores into an empty database and checks the list of tables | `.github/workflows/backup.yml` |
 | Privacy | keep as little as possible | a privacy page, and full account deletion | `frontend/src/pages/PrivacyPage.tsx` |
 | Capacity | not set in advance | about 80 requests per second on one local machine; not measured on the live free server | [Testing](testing.md) |

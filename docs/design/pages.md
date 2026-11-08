@@ -1,6 +1,6 @@
 # Pages
 
-Every page of the web app, who can open it, and what it does. The routes are defined in `frontend/src/router.tsx`. Every page is loaded only when someone opens it (lazy loading), so the first script stays small.
+This page lists every page of the web app, who can open it, and what it does. The routes are defined in `frontend/src/router.tsx`. Every page is loaded only when someone opens it (lazy loading), so the first script stays small.
 
 On a phone, the home page, `/me` and `/institutions` also have a tab bar at the bottom (search, map, my area, and institutions for a guest). The root address `/` sends a visitor to their institution; `/signed-in` is where Google and Microsoft sign-in return to; and `/places/<id>` and `/spaces/<id>` are old addresses that redirect to the place page.
 
@@ -27,7 +27,7 @@ On a phone, the home page, `/me` and `/institutions` also have a tab bar at the 
 
 The files are `frontend/src/admin/AdminPage.tsx`, `frontend/src/system/SystemPage.tsx`, `frontend/src/pages/InvitePage.tsx` and `frontend/src/screen/ScreenPage.tsx`.
 
-**Permissions.** The site hides what you may not use (`RequireAuth`, `RequireAdmin`, `RequireSystemAdmin` in `frontend/src/auth/guards.tsx`), but that is only a convenience. The real protection is on the server, on every route, and a test goes over all of them with each role (`backend/tests/test_access_matrix.py`).
+**Permissions.** The web app hides what a person may not use (`RequireAuth`, `RequireAdmin`, `RequireSystemAdmin` in `frontend/src/auth/guards.tsx`), but that is only for convenience. Authorization is enforced on the server, on every route, and a test checks every route against each role (`backend/tests/test_access_matrix.py`).
 
 ## Information pages
 
@@ -42,14 +42,14 @@ The files are `frontend/src/admin/AdminPage.tsx`, `frontend/src/system/SystemPag
 
 ## What the pages do in each state
 
-The texts on the site are in Hebrew; they are described here in English.
+The site's interface is in Hebrew; it is described here in English.
 
 | State | What the person sees | Where |
 |---|---|---|
 | Loading | "Loading…", or a grey outline in the shape of the content | `frontend/src/ui/PageLoading.tsx`, `frontend/src/ui/Skeleton.tsx` |
 | Empty | A heading, an explanation and the next step ("No bookings", with "Find a place") | `EmptyState` in `frontend/src/ui/States.tsx` |
 | Error | A message in Hebrew chosen by the error code, and a "try again" button | `ErrorState` in `frontend/src/ui/States.tsx`, `frontend/src/i18n/errors.ts` |
-| No network | The booking form asks the server again for the times, because the request may have arrived | `frontend/src/features/booking/BookingForm.tsx` |
+| No network | The booking form rechecks the available times with the server, because the first request may have reached it | `frontend/src/features/booking/BookingForm.tsx` |
 | A page that does not exist | "Not found", inside the site's frame | `frontend/src/pages/NotFoundPage.tsx` |
 
-**How I checked the pages.** One test (`frontend/e2e/sweep.spec.ts`) opens the main pages (14 as a guest, 6 as a student, and five of the six admin tabs (the newest, "Staying after time", has its own browser test, `frontend/e2e/overstay.spec.ts`)) on a computer, a tablet and a phone, and fails on any unexpected error. Some pages, such as `/system`, `/screen` and `/unsubscribe`, are not in it. Another (`frontend/e2e/a11y.spec.ts`) runs an accessibility scan on the main pages, in the light and the dark theme. See [Testing](testing.md).
+**How I checked the pages.** One test (`frontend/e2e/sweep.spec.ts`) opens the main pages on a computer, a tablet and a phone, and fails on any unexpected error. It covers 14 pages as a guest, 6 as a student, and five of the six admin tabs. The newest tab, "Staying after time", has its own browser test (`frontend/e2e/overstay.spec.ts`). Some pages, such as `/system`, `/screen` and `/unsubscribe`, are not in it. Another (`frontend/e2e/a11y.spec.ts`) runs an accessibility scan on the main pages, in the light and the dark theme. See [Testing](testing.md).
