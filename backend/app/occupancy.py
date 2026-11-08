@@ -1,6 +1,7 @@
 """Live occupancy, computed from active check-ins.
 
-A check-in is active while it has not ended and has not expired yet.
+A check-in is active while it has not ended, has not expired yet, and is
+not on a break that ran out.
 Expired rows may still have ended_at empty (they are closed lazily), so
 every count filters on expires_at too.
 """
@@ -8,14 +9,18 @@ every count filters on expires_at too.
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import ColumnElement, and_, func, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import CheckIn, SpecialPeriod, SpecialPeriodPlace
 
 
 def is_active(now: datetime) -> ColumnElement[bool]:
-    return and_(CheckIn.ended_at.is_(None), CheckIn.expires_at > now)
+    # A break that ran out with no scan back (app/breaks.py) is over at once.
+    return and_(
+        CheckIn.ended_at.is_(None), CheckIn.expires_at > now,
+        or_(CheckIn.break_until.is_(None), CheckIn.break_until > now),
+    )
 
 
 def occupied_by_place(session: Session, place_ids: Iterable[int], now: datetime) -> dict[int, int]:

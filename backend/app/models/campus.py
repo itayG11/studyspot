@@ -116,6 +116,7 @@ class Institution(Base):
     __table_args__ = (
         CheckConstraint("slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'", name="slug_format"),
         CheckConstraint("grace_minutes BETWEEN 0 AND 15", name="grace_minutes_range"),
+        CheckConstraint("break_minutes BETWEEN 0 AND 60", name="break_minutes_range"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -144,6 +145,9 @@ class Institution(Base):
     # if the student did not leave by themselves, the place is shown as
     # "maybe still taken" (app/lingering.py). A hint only: nothing is blocked.
     grace_minutes: Mapped[int] = mapped_column(default=5, server_default="5")
+    # How long a student in a room or at a lab seat may step out and keep the
+    # place (app/breaks.py). 0 turns breaks off for this institution.
+    break_minutes: Mapped[int] = mapped_column(default=20, server_default="20")
 
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="institution", cascade="all, delete-orphan", order_by="Building.id"

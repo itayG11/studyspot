@@ -85,6 +85,8 @@ export interface Place extends Occupancy {
   // A free room whose last stay ended by the clock, not by the student leaving, within the
   // institution's grace minutes: it may not have left yet. A hint; free_now stays as it is.
   maybe_still_taken?: boolean
+  // A room whose student stepped out and keeps it until then (free_now stays false).
+  on_break_until?: string | null
 }
 
 export interface OpeningHours {
@@ -102,6 +104,7 @@ export interface Seat {
   free_now: boolean
   free_until: string | null // ISO time; null when not free, or free all day
   maybe_still_taken?: boolean // free, but the last stay ended by the clock a moment ago
+  break_until?: string | null // taken by a student on a break until then
 }
 
 export interface SlotForecast {
@@ -217,10 +220,12 @@ export interface CheckIn {
   started_at: string
   expires_at: string
   ended_at: string | null
-  end_reason: 'checkout' | 'expired' | 'moved' | null
+  end_reason: 'checkout' | 'expired' | 'moved' | 'break_over' | null
   booking_id: number | null
   cut_short_by: 'booking' | 'closing' | null
   can_extend: boolean // "still here" may extend it once (no booking, not used yet)
+  can_break?: boolean // a room or lab seat: may step out and keep the place, once per stay
+  break_until?: string | null // on a break: the place is held until then; scan the sign to come back
 }
 
 export type CheckInMode = 'sign' | 'screen'

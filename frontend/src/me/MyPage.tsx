@@ -1,7 +1,7 @@
 // "My area": where I am checked in now, where to study between my classes,
 // my bookings, my timetable, my favourite places, and my account.
 
-import { CalendarX2, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
+import { CalendarX2, Coffee, LogOut, MapPin, ScanLine, Star, Timer } from 'lucide-react'
 import { InstallTip } from '../components/InstallTip'
 import { CalendarFeedCard } from './CalendarFeed'
 import { PasswordCard } from './PasswordCard'
@@ -11,7 +11,7 @@ import { Waitlist } from './Waitlist'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getPlaces } from '../api/campus'
-import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, myCheckIn, myClasses, stillHere } from '../api/student'
+import { betweenClasses, cancelBooking, checkOut, extendBooking, extendOptions, goOnBreak, myCheckIn, myClasses, stillHere } from '../api/student'
 import { useMyBookings } from './myBookings'
 import type { Booking, CheckIn, Place } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -170,6 +170,7 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
   const toast = useToast()
   const leave = useAction()
   const stay = useAction()
+  const rest = useAction()
   // The clock moves on while the page is open: the offer appears near the end,
   // as the "still here?" notice does (backend/app/reminders.py).
   const [now, setNow] = useState(() => Date.now())
@@ -206,6 +207,22 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
         >
           יציאה
         </Button>
+        {checkIn.can_break && (
+          <Button
+            variant="secondary"
+            icon={<Coffee aria-hidden="true" />}
+            busy={rest.busy}
+            onClick={() =>
+              void rest.run(async () => {
+                const away = await goOnBreak(checkIn.id)
+                toast(`המקום שמור לך עד ${formatTime(away.break_until ?? away.expires_at, timezone)}. כשחוזרים, סורקים את השלט.`, 'success')
+                onLeft()
+              })
+            }
+          >
+            יוצא להפסקה
+          </Button>
+        )}
         {checkIn.can_extend && ending && (
           <Button
             variant="secondary"
@@ -224,11 +241,17 @@ function NowCard({ checkIn, onLeft }: { checkIn: CheckIn; onLeft: () => void }) 
         )}
         <ShareStay kind="check_in" id={checkIn.id} placeName={checkIn.place_name} />
       </div>
+      {checkIn.break_until && (
+        <p className={styles.endingSoon}>
+          בהפסקה עד {formatTime(checkIn.break_until, timezone)}. כשחוזרים, סורקים את השלט, אחרת המקום יתפנה.
+        </p>
+      )}
       {endingSoon && (
         <p className={styles.endingSoon}>הזמן נגמר בקרוב. אם סיימת, אפשר ללחוץ "יציאה", והמקום יתפנה לאחרים.</p>
       )}
       <ActionError action={leave} />
       <ActionError action={stay} />
+      <ActionError action={rest} />
     </>
   )
 }

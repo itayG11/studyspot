@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.activity import Activity
 from app.bookings import mark_no_shows
+from app.breaks import end_overdue_breaks
 from app.campus_admin import DEMO_TIMEZONE, reset_demo_if_due
 from app.clock import get_now
 from app.closing import delete_due as delete_closed
@@ -62,6 +63,7 @@ class SweepResult:
     no_shows: int
     completed: int
     expired_check_ins: int
+    ended_breaks: int = 0
     deleted_sessions: int = 0
     deleted_check_ins: int = 0
     deleted_codes: int = 0
@@ -69,6 +71,7 @@ class SweepResult:
 
 def sweep(session: Session, now: datetime) -> SweepResult:
     no_shows = mark_no_shows(session, now)
+    ended_breaks = end_overdue_breaks(session, now)  # before the next step: it completes their bookings
     completed = session.execute(
         update(Booking)
         .where(Booking.status == BookingStatus.CHECKED_IN, Booking.ends_at <= now)
@@ -121,6 +124,7 @@ def sweep(session: Session, now: datetime) -> SweepResult:
         no_shows=no_shows,
         completed=completed,
         expired_check_ins=expired,
+        ended_breaks=ended_breaks,
         deleted_sessions=old_sessions,
         deleted_check_ins=old_check_ins,
         deleted_codes=old_codes,

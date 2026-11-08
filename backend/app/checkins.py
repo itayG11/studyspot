@@ -32,6 +32,7 @@ from app.bookings import (
     release_no_shows,
     renew,
 )
+from app.breaks import back_from_break, end_overdue_breaks
 from app.closing import refuse_if_closing
 from app.codes import InvalidCode, is_fresh, read_code
 from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
@@ -171,6 +172,8 @@ def _counted_check_in(session, user, place, seat_id, current, now) -> CheckInRes
 
 def _room_check_in(session, user, place, current, now) -> CheckInResult:
     if current is not None and current.place_id == place.id:
+        back_from_break(current)  # scanning the sign again ends a break
+        session.flush()
         return CheckInResult(current, created=False)
     booking = _arriving_booking(session, user, place, now)
     if booking is None:
@@ -188,6 +191,7 @@ def _lab_check_in(session, user, place, seat_id, current, now) -> CheckInResult:
     # Walk-in: the student picks a free seat without a booking.
     seat = _seat_for(session, place, seat_id)
     if current is not None and current.place_id == place.id and current.seat_id == seat.id:
+        back_from_break(current)  # scanning the sign again ends a break
         if current.booking_id is not None:
             renew(session, session.get(Booking, current.booking_id), now)
         return CheckInResult(current, created=False)
@@ -420,8 +424,10 @@ def _seat_is_taken(session: Session, seat: Seat, now: datetime) -> bool:
 
 
 def _expire(session: Session, which, now: datetime) -> None:
-    """Lazy release: end expired open check-ins, so the partial unique
-    indexes ("one open check-in per user / per seat") stop counting them."""
+    """Lazy release: end expired open check-ins, and those whose break ran
+    out, so the partial unique indexes ("one open check-in per user / per
+    seat") stop counting them."""
+    end_overdue_breaks(session, now, which)
     ended = session.execute(
         update(CheckIn)
         .where(which, CheckIn.ended_at.is_(None), CheckIn.expires_at <= now)

@@ -14,6 +14,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.breaks import end_overdue_breaks
 from app.clock import get_now
 from app.closing import refuse_if_closing
 from app.errors import EXCLUSION_VIOLATION, Refusal, sqlstate
@@ -97,6 +98,11 @@ def release_no_shows(session: Session, now: datetime, place: Place, seat_id: int
     """Lazy release for one room or seat, so a no-show never blocks a new
     booking while the background sweep has not run yet."""
     mark_no_shows(session, now, same_resource(place, seat_id))
+    # A stay whose break ran out holds nothing any more (app/breaks.py).
+    end_overdue_breaks(
+        session, now,
+        CheckIn.seat_id == seat_id if seat_id is not None else and_(CheckIn.place_id == place.id, CheckIn.seat_id.is_(None)),
+    )
 
 
 def next_booking_start(

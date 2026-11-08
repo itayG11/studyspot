@@ -35,6 +35,9 @@ export const checkOut = (id: number) => api<CheckIn>(`/check-ins/${id}/checkout`
 // "Still here": extends a check-in without a booking, once (backend/app/checkins.py).
 export const stillHere = (id: number) => api<CheckIn>(`/check-ins/${id}/still-here`, { method: 'POST', auth: true })
 
+// "Going on a break": a room or a lab seat is kept for a while; coming back is scanning the sign (backend/app/breaks.py).
+export const goOnBreak = (id: number) => api<CheckIn>(`/check-ins/${id}/break`, { method: 'POST', auth: true })
+
 // The student's own week, and the places it suggests between classes.
 export const myClasses = () => api<ClassSlot[]>('/me/classes', { auth: true })
 export const addClass = (lesson: NewClass) => api<ClassSlot>('/me/classes', { method: 'POST', body: lesson, auth: true })

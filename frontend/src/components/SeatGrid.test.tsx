@@ -23,6 +23,13 @@ describe('seatState', () => {
     expect(seatDescription(seat(), true, TZ)).toBe('A1: פנוי')
   })
 
+  it('a seat whose student stepped out says until when, and is still taken', () => {
+    const away = seat({ occupied: true, free_now: false, break_until: '2026-10-11T09:00:00Z' })
+    expect(seatState(away, true)).toBe('taken')
+    expect(seatDescription(away, true, TZ)).toBe('A1: תפוס, בהפסקה עד 12:00')
+    expect(seatDescription(seat({ occupied: true, free_now: false }), true, TZ)).toBe('A1: תפוס')
+  })
+
   it('a free seat whose last stay may not have left says so, and stays free to pick', () => {
     const maybe = seat({ maybe_still_taken: true })
     expect(seatState(maybe, true)).toBe('free')

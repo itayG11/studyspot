@@ -27,6 +27,7 @@ class CheckInEndReason(enum.StrEnum):
     CHECKOUT = "checkout"  # the student checked out
     EXPIRED = "expired"  # the time ran out
     MOVED = "moved"  # the student checked in somewhere else
+    BREAK_OVER = "break_over"  # went on a break (app/breaks.py) and did not scan back in time
 
 
 class CheckIn(Base):
@@ -97,6 +98,12 @@ class CheckIn(Base):
     # answered from the app. The answer extends once; after that, a scan.
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     still_here_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A break (app/breaks.py), rooms and lab seats only: when it began (kept, so
+    # there is one per stay), until when the place is held (emptied when the
+    # student scans back in), and whether we told them it is about to end.
+    break_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    break_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    break_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Read-only links: ids are set explicitly, because the composite
     # foreign keys share columns and would fight over copying them.

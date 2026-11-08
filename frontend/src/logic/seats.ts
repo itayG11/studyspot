@@ -24,6 +24,7 @@ export function seatState(seat: Seat, placeOpen: boolean): SeatState {
 export function seatDescription(seat: Seat, placeOpen: boolean, timeZone: string): string {
   const state = seatState(seat, placeOpen)
   const maybe = state === 'free' && seat.maybe_still_taken ? ', אולי עדיין תפוס' : ''
+  if (state === 'taken' && seat.break_until) return `${seat.label}: ${SEAT_LABELS.taken}, בהפסקה עד ${formatTime(seat.break_until, timeZone)}`
   if (state === 'free' && seat.free_until) return `${seat.label}: פנוי עד ${formatTime(seat.free_until, timeZone)}${maybe}`
   return `${seat.label}: ${SEAT_LABELS[state]}${maybe}`
 }

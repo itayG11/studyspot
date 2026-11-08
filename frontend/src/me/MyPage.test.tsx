@@ -78,6 +78,8 @@ beforeEach(() => {
     }
     if (path === '/check-ins/3/still-here')
       return Promise.resolve(jsonResponse({ ...CHECK_IN, can_extend: false, expires_at: '2026-10-11T10:00:00Z' }))
+    if (path === '/check-ins/3/break')
+      return Promise.resolve(jsonResponse({ ...CHECK_IN, can_break: false, break_until: new Date(Date.now() + 20 * 60_000).toISOString() }))
     if (path === '/check-ins/3/checkout') {
       checkIn = null
       return Promise.resolve(jsonResponse({ ...CHECK_IN, ended_at: '2026-10-11T07:30:00Z', end_reason: 'checkout' }))
@@ -142,6 +144,32 @@ describe('MyPage, a stay that is about to end or has just been left by the clock
     renderMe()
     const room = await screen.findByRole('listitem', { name: /EM107/ })
     expect(within(room).queryByText(/הקודם אולי עוד לא יצא/)).not.toBeInTheDocument()
+  })
+})
+
+describe('MyPage, going on a break', () => {
+  it('offers a break to a stay that can have one, and holds the place when it is taken', async () => {
+    checkIn = { ...CHECK_IN, expires_at: inMinutes(90), can_break: true, break_until: null }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    await userEvent.click(await within(current).findByRole('button', { name: 'יוצא להפסקה' }))
+    expect(calls).toContain('/check-ins/3/break')
+  })
+
+  it('does not offer it when the stay cannot have one', async () => {
+    checkIn = { ...CHECK_IN, expires_at: inMinutes(90), can_break: false, break_until: null }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    await within(current).findByText(/M206/)
+    expect(within(current).queryByRole('button', { name: 'יוצא להפסקה' })).not.toBeInTheDocument()
+  })
+
+  it('on a break it says until when and how to come back, and offers no second break', async () => {
+    checkIn = { ...CHECK_IN, expires_at: inMinutes(90), can_break: false, break_until: inMinutes(15) }
+    renderMe()
+    const current = await screen.findByRole('region', { name: 'עכשיו' })
+    expect(await within(current).findByText(/בהפסקה עד/)).toHaveTextContent('סורקים את השלט')
+    expect(within(current).queryByRole('button', { name: 'יוצא להפסקה' })).not.toBeInTheDocument()
   })
 })
 

@@ -364,6 +364,8 @@ class PlaceOut(Occupancy):
     # leaving, within the institution's grace minutes (app/lingering.py).
     # A hint: free_now stays as it is.
     maybe_still_taken: bool = False
+    # A room whose student stepped out and keeps it until then (app/breaks.py); free_now stays false.
+    on_break_until: datetime | None = None
 
 
 class OpeningHoursOut(BaseModel):
@@ -385,6 +387,7 @@ class SeatOut(BaseModel):
     free_now: bool
     free_until: datetime | None
     maybe_still_taken: bool = False  # as PlaceOut's: free, but the last stay may not have left
+    break_until: datetime | None = None  # taken, by a student on a break until then (app/breaks.py)
 
 
 class SlotForecastOut(BaseModel):
@@ -467,6 +470,9 @@ class CheckInOut(BaseModel):
     cut_short_by: Literal["booking", "closing"] | None = None
     # "Still here" can extend it from the app: no booking, not used yet.
     can_extend: bool = False
+    # Rooms and lab seats (app/breaks.py): may step out and keep the place, and until when they are out.
+    can_break: bool = False
+    break_until: datetime | None = None
 
 
 class MeOut(BaseModel):

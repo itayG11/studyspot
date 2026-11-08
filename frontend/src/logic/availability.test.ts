@@ -36,6 +36,14 @@ describe('a room whose last stay may not have left yet', () => {
   })
 })
 
+describe('a room whose student stepped out for a while', () => {
+  it('says until when, in campus time, and is not free', () => {
+    const room = place({ kind: 'group_room', free_now: false, on_break_until: '2026-10-11T10:30:00Z' })
+    expect(spaceStatus(room, TZ)).toEqual({ tone: 'full', label: 'בהפסקה עד 13:30' })
+    expect(isFreeNow(room)).toBe(false)
+  })
+})
+
 describe('isFreeNow', () => {
   it('is an open place with room, or a group room nobody holds', () => {
     expect(isFreeNow(place({ available: 3 }))).toBe(true)

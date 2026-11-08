@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from app import bookings as rules
 from app.api.deps import get_session
 from app.bookings import MIN_WALK_IN, holding
+from app.breaks import room_breaks, seat_breaks
 from app.clock import get_now
 from app.config import Settings, get_settings
 from app.forecast import forecast, forecast_many
@@ -129,6 +130,7 @@ def _place_views(
     rooms = [p.id for p in places if p.kind == PlaceKind.GROUP_ROOM]
     held_until = _room_held_until(session, rooms, now)
     lingering = lingering_room_ids(session, rooms, now, institution.grace_minutes)
+    on_break = room_breaks(session, rooms, now)
     # "Usually frees at" for the full places, all in one go (wave 7.2).
     full = [
         p for p in places
@@ -170,6 +172,7 @@ def _place_views(
                 free_from=free_from,
                 usually_frees_at=frees_at,
                 maybe_still_taken=maybe_taken,
+                on_break_until=on_break.get(place.id),
             )
         )
     return views
@@ -212,6 +215,7 @@ def _seat_map(session: Session, place: Place, now: datetime, grace_minutes: int)
     status = place_status(session, place, now)
     taken = occupied_seat_ids(session, place.id, now)
     lingering = lingering_seat_ids(session, place.id, now, grace_minutes)
+    on_break = seat_breaks(session, place.id, now)
     held_now: set[int] = set()
     next_start: dict[int, datetime] = {}
     for seat_id, starts_at in session.execute(
@@ -240,6 +244,7 @@ def _seat_map(session: Session, place: Place, now: datetime, grace_minutes: int)
                 free_now=free_now,
                 free_until=until if free_now else None,
                 maybe_still_taken=free_now and s.id in lingering,
+                break_until=on_break.get(s.id),
             )
         )
     return seats
