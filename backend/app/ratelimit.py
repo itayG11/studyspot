@@ -291,6 +291,8 @@ def per_person(name: str, limit: int, window_seconds: float) -> Callable:
 # slowly). Per person, so that one visitor of the shared demo users cannot
 # use up the others' writes.
 write_limit = per_person("writes", limit=30, window_seconds=60)
+# Saying that a booked place is taken (app/reports.py): a few an hour is plenty, and a flood of them is noise.
+report_limit = per_person("reports", limit=5, window_seconds=3600)
 geocode_limit = per_person("geocode", limit=10, window_seconds=60)
 # Checking a domain's TXT record (app/dns_verify.py): each try asks a public resolver.
 dns_check_limit = per_person("dns_check", limit=6, window_seconds=60)

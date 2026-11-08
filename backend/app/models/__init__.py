@@ -36,6 +36,7 @@ from app.models.people import (
     UserRole,
 )
 from app.models.push import ClosingNotice, NoticeEmail, PushSubscription
+from app.models.reports import OccupancyReport, ReportResolution, ReportStatus
 from app.models.screens import PlaceScreen
 from app.models.waitlist import WaitlistEntry
 from app.models.webhooks import DeliveryStatus, WebhookDelivery, WebhookEndpoint, WebhookTestHit
@@ -64,6 +65,7 @@ __all__ = [
     "InstitutionLoginRule",
     "NoticeEmail",
     "OccupancyHistory",
+    "OccupancyReport",
     "OpeningHours",
     "PasswordTry",
     "Place",
@@ -72,6 +74,8 @@ __all__ = [
     "PlaceKind",
     "PlaceScreen",
     "PushSubscription",
+    "ReportResolution",
+    "ReportStatus",
     "Seat",
     "SpecialPeriod",
     "SpecialPeriodPlace",

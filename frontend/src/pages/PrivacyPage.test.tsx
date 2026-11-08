@@ -19,6 +19,18 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/לנעול את הסיסמה אחרי 20/)).toBeInTheDocument()
   })
 
+  it('says a report that a booked place is taken holds no name of the other person, who sees it, and for how long', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    const item = screen.getByText(/דיווח שיש מישהו במקום/).closest('li')
+    expect(item).toHaveTextContent('בלי שם של מי שהיה שם')
+    expect(item).toHaveTextContent('90 יום')
+  })
+
+  it('says a break is part of the stay record and goes with it', () => {
+    render(<MemoryRouter><PrivacyPage /></MemoryRouter>)
+    expect(screen.getByText(/"יוצא להפסקה"/).closest('li')).toHaveTextContent('נמחק איתה')
+  })
+
   it('says a timetable photo goes abroad, and to crop the name and ID number out first', () => {
     // A screenshot of the timetable often shows both.
     render(<MemoryRouter><PrivacyPage /></MemoryRouter>)

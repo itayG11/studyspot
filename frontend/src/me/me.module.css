@@ -209,6 +209,21 @@
   color: var(--ink-2);
 }
 
+.elsewhere {
+  margin-top: var(--s-3);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.elsewhere p {
+  margin: 0 0 var(--s-2);
+}
+
+.elsewhere ul {
+  margin: 0;
+  padding-inline-start: var(--s-4);
+}
+
 .endingSoon {
   margin: var(--s-2) 0 0;
   font-size: var(--text-sm);
