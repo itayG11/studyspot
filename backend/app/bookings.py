@@ -260,6 +260,7 @@ def renew(session: Session, booking: Booking, now: datetime, until: datetime | N
     try:
         with session.begin_nested():
             booking.ends_at = new_end
+            booking.reminded_end_at = None  # the new end gets its own "ends soon"
             check_in = session.scalars(
                 select(CheckIn).where(CheckIn.booking_id == booking.id)
             ).first()

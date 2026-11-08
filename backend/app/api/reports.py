@@ -14,6 +14,7 @@ from app.auth import get_current_user
 from app.between_classes import walk_minutes, walk_table
 from app.bookings import holding
 from app.clock import get_now
+from app.hours import place_status
 from app.models import Booking, Institution, Place, User
 from app.policy import effective_grace
 from app.ratelimit import report_limit, write_limit
@@ -63,10 +64,15 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
     table = walk_table(session, institution)
     walk = {p.id: walk_minutes(here.building, p.building, table) for p in places}
 
+    def open_through(place_id: int) -> bool:
+        """Not closing before the booking would have ended."""
+        closes = place_status(session, by_id[place_id], max(now, booking.starts_at)).closes_at
+        return closes is None or closes >= booking.ends_at
+
     found: list[AlternativeOut] = []
     if booking.seat_id is None:
         open_now = sorted(
-            (v for v in views.values() if v.free_now and v.id not in busy_rooms and not v.maybe_still_taken and v.on_break_until is None),
+            (v for v in views.values() if v.free_now and v.id not in busy_rooms and not v.maybe_still_taken and v.on_break_until is None and open_through(v.id)),
             key=lambda v: (walk[v.id], v.name),
         )
         for v in open_now[:MAX_ALTERNATIVES]:
@@ -84,7 +90,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
             place_id=here.id, place_name=here.name, building_code=here.building.code, walk_minutes=walk_minutes(here.building, here.building),
             seat_id=s.id, seat_label=s.label, free_until=s.free_until,
         ))
-    for place_id in sorted((v.id for v in views.values() if v.is_open), key=lambda i: (walk[i], i))[:MAX_LABS_LOOKED_AT]:
+    for place_id in sorted((v.id for v in views.values() if v.is_open and open_through(v.id)), key=lambda i: (walk[i], i))[:MAX_LABS_LOOKED_AT]:
         if len(found) >= MAX_ALTERNATIVES:
             break
         lab = by_id[place_id]

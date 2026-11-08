@@ -5,7 +5,8 @@ from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy import exists, select
+from sqlalchemy.orm import Session, object_session
 
 from app import waitlist
 from app.api.actions import run_action
@@ -14,7 +15,7 @@ from app.auth import get_current_user
 from app.bookings import busy_ranges, cancel_booking, create_booking, extend_booking, extend_options, upcoming_bookings
 from app.clock import get_now
 from app.errors import Refusal
-from app.models import Booking, Place, User
+from app.models import Booking, OccupancyReport, Place, User
 from app.models.waitlist import WaitlistEntry
 from app.ratelimit import public_read_limit, write_limit
 from app.reminders import ALARM, START_AHEAD
@@ -49,6 +50,7 @@ def _out(row: Booking) -> BookingOut:
         ends_at=row.ends_at,
         status=row.status,
         source=row.source,
+        reported=object_session(row).scalar(select(exists().where(OccupancyReport.booking_id == row.id))),
     )
 
 

@@ -233,3 +233,14 @@ def test_no_break_reminder_after_coming_back_or_without_a_subscription(client, s
     client.post("/check-ins", json={"code": code_for(room)})  # back
     send_reminders(session, push(seen), NOW + BREAK - BREAK_ENDING_AHEAD)
     assert seen == []
+
+
+def test_no_break_reminder_once_the_institution_switched_it_off(client, session, braude, student):
+    seen = []
+    subscribe(session, student, Browser())
+    _, stay = room_stay(client, session, braude, student)
+    go_on_break(client, stay)
+    braude.overstay_policy = "none"
+    session.flush()
+    send_reminders(session, push(seen), NOW + BREAK - BREAK_ENDING_AHEAD)
+    assert seen == []

@@ -107,7 +107,8 @@ def check_out(session: Session, user: User, check_in_id: int, now: datetime) -> 
     if row is None:
         raise Refusal(404, "check_in_not_found")
     if row.expires_at <= now:
-        row.ended_at, row.end_reason = row.expires_at, CheckInEndReason.EXPIRED
+        # Scanning out late is still leaving by oneself: not "maybe still taken".
+        row.ended_at, row.end_reason = row.expires_at, CheckInEndReason.CHECKOUT
     else:
         row.ended_at, row.end_reason = now, CheckInEndReason.CHECKOUT
     _complete_booking(session, row)

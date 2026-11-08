@@ -32,6 +32,8 @@ For every choice: what I picked, the alternative, why, and what it costs.
 | One website | Mobile app | One codebase, no store approval, instant updates | Less access to the phone; on iPhone, notifications need "add to home screen" |
 | Refresh every 30 seconds | Live push | Simple, fits a free server | Up to 30 seconds of delay |
 | Everything belongs to an institution | One site per institution | A new institution needs no code or server | Every query filters by institution |
+| "Maybe still taken" is a hint, never a block | Refusing a booking because someone might be there | Nothing in the software can see a chair; a block could hurt a real student | A student can still find the place taken, so there is a report |
+| A report holds no name, and each institution picks its policy (none, reminders, reports) | Punishing a person by software, or one rule for all | I would rather the institution fix a place than chase a person; institutions differ | The institution only sees a count by place and hour |
 | Shared-sign mark is a hint only | Automatic block, or GPS | A block could hurt real students; GPS is a privacy cost | An admin has to look at it |
 | A neutral, Apple-like look with the device's own font, restyled through design tokens only | Custom web fonts, or rewriting components in a CSS framework | No new dependency or font server, the content security policy stays strict, and a restyle cannot break behaviour (checked with a before/after inventory of every link, form and ID) | Looks a little different on each operating system; blue as small text needed its own darker shade to pass contrast |
 

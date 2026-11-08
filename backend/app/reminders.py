@@ -85,6 +85,11 @@ def _institution_reminds():
     return Booking.institution_id.in_(select(Institution.id).where(Institution.overstay_policy != OverstayPolicy.NONE))
 
 
+def _institution_reminds_check_in():
+    """The same for a check-in (a break that began before the institution switched wave 19 off)."""
+    return CheckIn.institution_id.in_(select(Institution.id).where(Institution.overstay_policy != OverstayPolicy.NONE))
+
+
 def _asking_still_here(now: datetime):
     """Check-ins to ask about: open, no booking (a booked one ends with it),
     not asked yet, ending within STILL_HERE_AHEAD, a real student to tell."""
@@ -140,14 +145,21 @@ def _take_due(session: Session, now: datetime) -> list[_Due]:
         b.reminded_end_at = now
         at = _hhmm(b.ends_at, zones[b.institution_id])
         if latest_renewal(session, b, now) is None:
-            out.append(_Due(b.user_id, Notice("הזמן שלך נגמר בקרוב", f"{b.place.name} נגמר ב-{at}, והוא מוזמן אחריך. תודה שתפנה בזמן.", "/me")))
+            booked_after = session.scalars(
+                select(Booking.id).where(
+                    Booking.place_id == b.place_id, Booking.seat_id.is_(b.seat_id) if b.seat_id is None else Booking.seat_id == b.seat_id,
+                    Booking.status == BookingStatus.BOOKED, Booking.starts_at >= b.ends_at, Booking.starts_at < b.ends_at + NO_SHOW_AFTER,
+                ).limit(1)
+            ).first() is not None
+            reason = "והוא מוזמן אחריך" if booked_after else "ואי אפשר להאריך"
+            out.append(_Due(b.user_id, Notice("הזמן שלך נגמר בקרוב", f"{b.place.name} נגמר ב-{at}, {reason}. תודה שתפנה בזמן.", "/me")))
         else:
             out.append(_Due(b.user_id, Notice("הזמן שלך נגמר בקרוב", f"{b.place.name} נגמר ב-{at}. אפשר להאריך או לצאת ב\"האזור שלי\".", "/me")))
     on_break = session.scalars(
         select(CheckIn).where(
             CheckIn.ended_at.is_(None), CheckIn.break_until.is_not(None), CheckIn.break_reminded_at.is_(None),
             ~CheckIn.simulated, CheckIn.break_until - BREAK_ENDING_AHEAD <= now, CheckIn.break_until > now,
-            _subscribed(CheckIn.user_id),
+            _subscribed(CheckIn.user_id), _institution_reminds_check_in(),
         ).options(selectinload(CheckIn.place)).with_for_update(skip_locked=True, of=CheckIn)
     ).all()
     for c in on_break:
@@ -207,7 +219,7 @@ def next_due(session: Session, now: datetime) -> datetime | None:
     first_break_end = session.scalar(
         select(func.min(CheckIn.break_until - BREAK_ENDING_AHEAD)).where(
             CheckIn.ended_at.is_(None), CheckIn.break_until.is_not(None), CheckIn.break_reminded_at.is_(None),
-            ~CheckIn.simulated, CheckIn.break_until > now, _subscribed(CheckIn.user_id),
+            ~CheckIn.simulated, CheckIn.break_until > now, _subscribed(CheckIn.user_id), _institution_reminds_check_in(),
         )
     )
     first_still_here = session.scalar(

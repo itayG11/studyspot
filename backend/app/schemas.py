@@ -548,6 +548,7 @@ class BookingOut(BaseModel):
     ends_at: datetime
     status: BookingStatus
     source: BookingSource
+    reported: bool = False  # "someone is in my place" was already said for this booking (wave 19.2)
 
 
 class AlternativeOut(BaseModel):

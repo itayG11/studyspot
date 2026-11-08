@@ -296,7 +296,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
   // Someone is in the room or seat that was booked (wave 19.2): sayable in the arrival window only.
   const untilStart = Date.parse(booking.starts_at) - now
   const canReport =
-    policy === 'reports' && booking.status === 'booked' && (place?.kind === 'group_room' || place?.kind === 'computer_lab') &&
+    policy === 'reports' && !booking.reported && booking.status === 'booked' && (place?.kind === 'group_room' || place?.kind === 'computer_lab') &&
     untilStart <= REPORT_FROM_MS && untilStart > -REPORT_UNTIL_MS
 
   return (

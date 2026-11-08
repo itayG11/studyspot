@@ -699,3 +699,12 @@ def test_the_same_address_twice_is_one_and_a_long_list_is_cut_at_four():
     problem, addresses = webhooks.checked_address("https://many.example.edu/h", False, many)
     assert problem is None
     assert addresses == [PUBLIC, "93.184.216.35", "93.184.216.36", "93.184.216.37"]
+
+
+def test_the_report_event_can_be_chosen_through_the_api(client, admin, receiver):
+    """All five events together, and the new one alone, are accepted (a list of four once refused it)."""
+    created = _add(client, admin, events=webhooks.EVENTS)
+    assert created.status_code == 201, created.text
+    hook = created.json()["webhook"]["id"]
+    changed = client.patch(f"/admin/webhooks/{hook}", json={"events": ["place.overstay_reported"]})
+    assert changed.status_code == 200 and changed.json()["events"] == ["place.overstay_reported"], changed.text

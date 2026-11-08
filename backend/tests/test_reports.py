@@ -226,3 +226,19 @@ def test_deleting_the_student_deletes_their_reports(client, session, braude, stu
     session.delete(student)
     session.flush()
     assert session.query(OccupancyReport).count() == 0
+
+
+def test_a_room_that_closes_before_the_booking_would_end_is_not_offered(client, session, braude, student):
+    room, spare = place_named(braude, "EM", "EM107"), open_room(session, braude)
+    for hours in spare.opening_hours:
+        hours.closes = (NOW + timedelta(minutes=30)).time()  # shuts half an hour in; the booking runs an hour
+    session.flush()
+    session.refresh(spare)
+    assert report(client, booked(session, braude, student, room)).json()["alternatives"] == []
+
+
+def test_a_booking_that_was_reported_says_so_when_listed_again(client, session, braude, student):
+    booking = booked(session, braude, student, place_named(braude, "EM", "EM107"))
+    assert client.get("/me/bookings").json()[0]["reported"] is False
+    report(client, booking)
+    assert client.get("/me/bookings").json()[0]["reported"] is True
