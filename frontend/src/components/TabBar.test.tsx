@@ -35,7 +35,7 @@ describe('TabBar', () => {
     auth.status = 'signed-in'
     show('/me')
     expect(screen.getByRole('link', { name: 'ההזמנות' })).toHaveAttribute('href', '/me#my-bookings')
-    expect(screen.getByRole('link', { name: 'שלי' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'האזור שלי' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks the map tab while the map is shown', () => {

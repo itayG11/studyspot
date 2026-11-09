@@ -834,3 +834,12 @@
   justify-content: space-between;
   gap: var(--s-2);
 }
+
+/* A short line of explanation under a field (wave 19 follow-up). */
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}

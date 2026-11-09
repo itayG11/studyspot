@@ -102,12 +102,14 @@ function Settings({ data, onSaved }: { data: OverstaySettings; onSaved: () => vo
         }}
       >
         <label className={styles.label}>
-          דקות חסד (0 עד 15)
+          זמן המתנה אחרי הסיום (דקות, 0 עד 15)
           <input className={styles.field} type="number" min={0} max={15} value={grace} disabled={data.locked} onChange={(e) => setGrace(e.target.value)} />
+          <small className={styles.hint}>כמה דקות אחרי סיום ההזמנה המקום מסומן "אולי עדיין תפוס".</small>
         </label>
         <label className={styles.label}>
-          דקות הפסקה (0 עד 60)
+          אורך הפסקה (דקות, 0 עד 60)
           <input className={styles.field} type="number" min={0} max={60} value={rest} disabled={data.locked} onChange={(e) => setRest(e.target.value)} />
+          <small className={styles.hint}>כמה זמן סטודנט יכול לצאת ולשמור את המקום. 0 מכבה הפסקות.</small>
         </label>
         <Button type="submit" busy={action.busy} disabled={data.locked}>
           לשמור
