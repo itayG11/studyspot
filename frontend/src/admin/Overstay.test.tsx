@@ -49,7 +49,7 @@ describe('Overstay', () => {
     show()
     await user.click(await screen.findByRole('button', { name: 'תזכורות' }))
     expect(api.saveOverstay).toHaveBeenCalledWith('braude', { policy: 'reminders' })
-    const grace = screen.getByLabelText(/דקות חסד/)
+    const grace = screen.getByLabelText(/זמן המתנה אחרי הסיום/)
     await user.clear(grace)
     await user.type(grace, '3')
     await user.click(screen.getByRole('button', { name: 'לשמור' }))

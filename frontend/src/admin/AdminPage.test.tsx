@@ -298,8 +298,8 @@ describe('AdminPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'הוספה' }))
     await userEvent.selectOptions(await screen.findByLabelText('סוג המקום'), 'computer_lab')
     expect(screen.queryByLabelText('כמה אנשים')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('שורות של עמדות')).toBeInTheDocument()
-    expect(screen.getByLabelText('עמדות בכל שורה')).toBeInTheDocument()
+    expect(screen.getByLabelText('שורות של עמדות (1 עד 20)')).toBeInTheDocument()
+    expect(screen.getByLabelText('עמדות בכל שורה (1 עד 20)')).toBeInTheDocument()
   })
 
   it('signs: an institution with no places is told how signs come about', async () => {

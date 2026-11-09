@@ -67,7 +67,7 @@ export function TabBar({ home }: { home: string }) {
           </Link>
           <Link to="/me" className={styles.tab} aria-current={pathname === '/me' ? 'page' : undefined} viewTransition>
             <UserRound aria-hidden="true" />
-            <span>שלי</span>
+            <span>האזור שלי</span>
           </Link>
         </>
       ) : (

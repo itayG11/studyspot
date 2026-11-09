@@ -393,7 +393,7 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
       {lab ? (
         <>
           <label className={styles.label} htmlFor={`${id}-rows`}>
-            שורות של עמדות
+            שורות של עמדות (1 עד 20)
           </label>
           <input
             id={`${id}-rows`}
@@ -406,8 +406,9 @@ function PlaceForm({ buildings, onAdded }: { buildings: BuildingChoice[]; onAdde
             value={rows}
             onChange={(event) => setRows(event.target.value)}
           />
+          <small className={styles.hint}>מפת העמדות מוגבלת ל-20 על 20, כדי שתישאר קריאה במסך קטן. מעבדה גדולה יותר אפשר להוסיף כשני מקומות.</small>
           <label className={styles.label} htmlFor={`${id}-cols`}>
-            עמדות בכל שורה
+            עמדות בכל שורה (1 עד 20)
           </label>
           <input
             id={`${id}-cols`}
