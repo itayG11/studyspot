@@ -83,6 +83,11 @@ test('after a reload, a reported booking says so and stays', async ({ page }) =>
   await expect(row.getByRole('button', { name: 'יש מישהו במקום' })).toHaveCount(0)
   await expect(row.getByRole('button', { name: 'לבטל' })).toBeVisible()
   await expect(row.getByRole('link', { name: 'EM107' })).toHaveAttribute('href', `/demo/spaces/${roomId}`)
+  // The rest of the page (timetable, its form) still loading can fade a button in mid-check.
+  await page.waitForLoadState('networkidle')
+  await page.waitForFunction(
+    "document.getAnimations().every((a) => !(a.timeline instanceof DocumentTimeline) || a.effect?.getTiming().iterations === Infinity || a.playState !== 'running')",
+  )
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
   expect(result.violations.map((v) => `${v.id} ${v.nodes[0]?.target.join(" ")}`)).toEqual([])
   // After axe: scrolled, the tab bar half-covers a timetable chip, which axe counts as a small target.
