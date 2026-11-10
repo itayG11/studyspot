@@ -38,6 +38,7 @@ let latest: string | null
 let extendBody: unknown
 let extendRefuses: boolean
 let roomMaybeTaken: boolean
+let reportAlternatives: unknown[] = []
 let reportRefuses: boolean
 
 beforeEach(() => {
@@ -51,6 +52,7 @@ beforeEach(() => {
   extendRefuses = false
   roomMaybeTaken = false
   reportRefuses = false
+  reportAlternatives = []
   institutionPolicy = 'reports'
   vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
     const path = new URL(url).pathname
@@ -86,7 +88,9 @@ beforeEach(() => {
       if (reportRefuses) return Promise.resolve(jsonResponse({ detail: 'report_exists' }, 409))
       return Promise.resolve(jsonResponse({
         reported: true,
-        alternatives: [{ place_id: 9, place_name: 'EM108', building_code: 'EM', walk_minutes: 2, seat_id: null, seat_label: null, free_until: null }],
+        alternatives: reportAlternatives.length
+          ? reportAlternatives
+          : [{ place_id: 9, place_name: 'EM108', building_code: 'EM', walk_minutes: 2, kind: 'group_room', seat_id: null, seat_label: null, free_until: null }],
       }))
     }
     if (path === '/check-ins/3/break')
@@ -203,6 +207,35 @@ describe('MyPage, someone is in the booked place', () => {
     await userEvent.click(within(room).getByRole('button', { name: 'יש מישהו במקום' }))
     await userEvent.click(within(room).getByRole('button', { name: 'כן, לדווח' }))
     expect(await within(room).findByText(/כבר דיווחת/)).toBeInTheDocument()
+  })
+
+  it('still says the booking was reported after a reload, and that it is kept', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65), reported: true }]
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(room).getByText(/דיווחת שהמקום תפוס/)).toBeInTheDocument()
+    expect(within(room).getByText(/ההזמנה נשמרת/)).toBeInTheDocument()
+    expect(within(room).getByRole('link', { name: 'לחפש מקום' })).toHaveAttribute('href', '/braude#finder')
+  })
+
+  it('offers an open study area, saying no booking is needed, when no room is free', async () => {
+    bookings = [{ ...ROOM, starts_at: inMinutes(5), ends_at: inMinutes(65) }]
+    reportAlternatives = [{ place_id: 4, place_name: 'מתחם 1', building_code: 'P', walk_minutes: 4, kind: 'open_area', seat_id: null, seat_label: null, free_until: null }]
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    await userEvent.click(within(room).getByRole('button', { name: 'יש מישהו במקום' }))
+    await userEvent.click(within(room).getByRole('button', { name: 'כן, לדווח' }))
+    const list = await within(room).findByRole('list', { name: 'מקומות פנויים קרובים' })
+    expect(list).toHaveTextContent('מתחם פתוח, בלי הזמנה')
+  })
+})
+
+describe('MyPage, the place of a booking', () => {
+  it('links to the place, where its times are shown', async () => {
+    bookings = [ROOM]
+    renderMe()
+    const room = await screen.findByRole('listitem', { name: /EM107/ })
+    expect(within(room).getByRole('link', { name: 'EM107' })).toHaveAttribute('href', '/braude/spaces/3')
   })
 })
 

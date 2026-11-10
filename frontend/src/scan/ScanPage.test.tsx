@@ -215,6 +215,17 @@ describe('ScanPage', () => {
     expect(checkInBody).toEqual({ code: `p1.v1.${SIG}`, seat_id: 2 })
   })
 
+  it('back from a break: says so, and "I am back" checks in at the same station', async () => {
+    current = { id: 3, place_id: 1, place_name: 'M206', building_code: 'M', seat_id: 2, seat_label: 'A2',
+      started_at: NOW.toISOString(), expires_at: '2026-10-11T08:00:00Z', ended_at: null, end_reason: null,
+      booking_id: 5, cut_short_by: null, break_until: '2026-10-11T07:20:00Z' }
+    renderScan(`/scan#c=p1.v1.${SIG}`)
+    expect(await screen.findByText(/חזרת מההפסקה\? לחץ כדי לחזור למקום, בתא A2/)).toBeInTheDocument()
+    expect(screen.queryByText(/אתה כבר כאן/)).not.toBeInTheDocument()
+    await user().click(screen.getByRole('button', { name: 'חזרתי' }))
+    expect(checkInBody).toEqual({ code: `p1.v1.${SIG}`, seat_id: 2 })
+  })
+
   it('if my bookings cannot be loaded, it says so and offers to retry', async () => {
     vi.mocked(fetch).mockImplementation((url) => {
       const path = new URL(String(url)).pathname

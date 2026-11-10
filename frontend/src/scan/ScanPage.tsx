@@ -226,7 +226,12 @@ function ScanPlace({ code, placeId }: { code: string; placeId: number }) {
         </div>
       ) : (
         <>
-          {here && (
+          {here?.break_until && (
+            <p className={styles.lead}>
+              חזרת מההפסקה? לחץ כדי לחזור למקום{here.seat_label ? `, בתא ${here.seat_label}` : ''}. הוא שמור לך עד {formatTime(here.expires_at, timezone)}.
+            </p>
+          )}
+          {here && !here.break_until && (
             <p className={styles.lead}>
               אתה כבר כאן{here.seat_label ? `, בתא ${here.seat_label}` : ''}, עד {formatTime(here.expires_at, timezone)}.
               {here.booking_id === null && ' אם אתה נשאר, לחץ כדי להמשיך.'}
@@ -263,7 +268,7 @@ function ScanPlace({ code, placeId }: { code: string; placeId: number }) {
             </>
           )}
           <Button size="lg" block disabled={!ready} busy={action.busy} onClick={() => void confirm()}>
-            {here ? 'אני עדיין כאן' : 'אני כאן'}
+            {here?.break_until ? 'חזרתי' : here ? 'אני עדיין כאן' : 'אני כאן'}
           </Button>
         </>
       )}

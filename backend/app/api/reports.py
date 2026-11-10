@@ -15,7 +15,7 @@ from app.between_classes import walk_minutes, walk_table
 from app.bookings import holding
 from app.clock import get_now
 from app.hours import place_status
-from app.models import Booking, Institution, Place, User
+from app.models import Booking, Institution, Place, PlaceKind, User
 from app.policy import effective_grace
 from app.ratelimit import report_limit, write_limit
 from app.reports import report_occupied
@@ -46,7 +46,39 @@ def report_occupied_endpoint(booking_id: Annotated[int, Path(gt=0)], user: UserD
 def alternatives(session: Session, booking: Booking, now: datetime) -> list[AlternativeOut]:
     """Up to three places free for the whole booking, nearest first. A room: other rooms.
     A seat: other seats of the same lab first, then a seat in another lab. Never a place
-    that may still be taken, or whose student is on a break."""
+    that may still be taken, or whose student is on a break. When nothing of that kind
+    is free, an open study area or a library with room in it, which needs no booking."""
+    found = _same_kind(session, booking, now)
+    return found or _shared_spaces(session, booking, now)
+
+
+def _open_through(session: Session, place: Place, booking: Booking, now: datetime) -> bool:
+    """Not closing before the booking would have ended."""
+    closes = place_status(session, place, max(now, booking.starts_at)).closes_at
+    return closes is None or closes >= booking.ends_at
+
+
+def _shared_spaces(session: Session, booking: Booking, now: datetime) -> list[AlternativeOut]:
+    institution = session.get(Institution, booking.institution_id)
+    here = session.get(Place, booking.place_id)
+    places = session.scalars(
+        _places_query().where(Place.institution_id == institution.id, Place.kind.in_((PlaceKind.OPEN_AREA, PlaceKind.LIBRARY)))
+    ).all()
+    by_id = {p.id: p for p in places}
+    table = walk_table(session, institution)
+    walk = {p.id: walk_minutes(here.building, p.building, table) for p in places}
+    room = sorted(
+        (v for v in _place_views(session, institution, places, now)
+         if v.is_open and v.available > 0 and _open_through(session, by_id[v.id], booking, now)),
+        key=lambda v: (walk[v.id], v.name),
+    )
+    return [
+        AlternativeOut(place_id=v.id, place_name=v.name, building_code=v.building_code, walk_minutes=walk[v.id], kind=v.kind)
+        for v in room[:MAX_ALTERNATIVES]
+    ]
+
+
+def _same_kind(session: Session, booking: Booking, now: datetime) -> list[AlternativeOut]:
     institution = session.get(Institution, booking.institution_id)
     here = session.get(Place, booking.place_id)
     overlapping = and_(holding(now), Booking.ends_at > now, Booking.starts_at < booking.ends_at, Booking.id != booking.id)
@@ -65,9 +97,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
     walk = {p.id: walk_minutes(here.building, p.building, table) for p in places}
 
     def open_through(place_id: int) -> bool:
-        """Not closing before the booking would have ended."""
-        closes = place_status(session, by_id[place_id], max(now, booking.starts_at)).closes_at
-        return closes is None or closes >= booking.ends_at
+        return _open_through(session, by_id[place_id], booking, now)
 
     found: list[AlternativeOut] = []
     if booking.seat_id is None:
@@ -76,7 +106,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
             key=lambda v: (walk[v.id], v.name),
         )
         for v in open_now[:MAX_ALTERNATIVES]:
-            found.append(AlternativeOut(place_id=v.id, place_name=v.name, building_code=v.building_code, walk_minutes=walk[v.id]))
+            found.append(AlternativeOut(place_id=v.id, place_name=v.name, building_code=v.building_code, walk_minutes=walk[v.id], kind=here.kind))
         return found
 
     mine = next(s for s in here.seats if s.id == booking.seat_id)
@@ -87,7 +117,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
     )
     for s in nearby[:MAX_ALTERNATIVES]:
         found.append(AlternativeOut(
-            place_id=here.id, place_name=here.name, building_code=here.building.code, walk_minutes=walk_minutes(here.building, here.building),
+            place_id=here.id, place_name=here.name, building_code=here.building.code, walk_minutes=walk_minutes(here.building, here.building), kind=here.kind,
             seat_id=s.id, seat_label=s.label, free_until=s.free_until,
         ))
     for place_id in sorted((v.id for v in views.values() if v.is_open and open_through(v.id)), key=lambda i: (walk[i], i))[:MAX_LABS_LOOKED_AT]:
@@ -101,7 +131,7 @@ def alternatives(session: Session, booking: Booking, now: datetime) -> list[Alte
         if free:
             s = free[0]
             found.append(AlternativeOut(
-                place_id=lab.id, place_name=lab.name, building_code=lab.building.code, walk_minutes=walk[lab.id],
+                place_id=lab.id, place_name=lab.name, building_code=lab.building.code, walk_minutes=walk[lab.id], kind=lab.kind,
                 seat_id=s.id, seat_label=s.label, free_until=s.free_until,
             ))
     return found

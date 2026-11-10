@@ -25,11 +25,13 @@ from app.models import (
     ReportStatus,
     User,
 )
+from app.overstay import ADVICE_AFTER
 from app.seed.demo import DEMO
 
 DAYS = 14
 OPEN_FOR = 3  # reports of the last days are still open; older ones were handled
 HOT_DAYS = (1, 3)  # Tuesday and Thursday, in Python's numbering
+RECENT_DAYS = 5  # within the advice's week (app/overstay.py), whatever the hour today
 REPORTER_EMAIL = "simulated-reporter@demo.invalid"
 
 
@@ -60,7 +62,10 @@ def simulate_reports(session: Session, institution: Institution, today: date) ->
         day = today - timedelta(days=back)
         wanted = []
         if room is not None and day.weekday() in HOT_DAYS:
-            wanted += [(room, None, rng.choice((12, 13, 13, 14)))] * rng.choice((1, 2))
+            # Enough in the last days for the advice to show at any hour of any day:
+            # five days back always hold a Tuesday or a Thursday.
+            times = ADVICE_AFTER if back <= RECENT_DAYS else rng.choice((1, 2))
+            wanted += [(room, None, rng.choice((12, 13, 13, 14))) for _ in range(times)]
         if lab is not None and rng.random() < 0.25:
             wanted.append((lab, rng.choice(lab.seats), rng.choice((9, 10, 15, 16))))
         for place, seat, hour in wanted:

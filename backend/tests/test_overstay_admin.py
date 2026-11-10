@@ -362,3 +362,23 @@ def test_another_campus_gets_no_made_up_reports(session, braude):
 
     assert simulate_reports(session, braude, date(2026, 11, 8)) == 0
     assert braude.overstay_policy == "reminders"
+
+
+@pytest.mark.parametrize("day", range(8, 15))  # 8 to 14 Nov 2026: each weekday once
+def test_the_demo_campus_shows_a_suggestion_on_any_day_at_any_hour(session, day):
+    """The live demo showed the table but no suggestion on a Tuesday (10 Nov): the
+    room's reports of the last week were left to chance, under the threshold."""
+    from datetime import date, datetime, time
+    from zoneinfo import ZoneInfo
+
+    from app.overstay import heat
+    from app.seed import seed_demo
+    from app.seed.reports import simulate_reports
+
+    demo = seed_demo(session)
+    today = date(2026, 11, day)
+    simulate_reports(session, demo, today)
+    zone = ZoneInfo(demo.timezone)
+    for hour in (time(0, 5), time(12, 0), time(23, 55)):
+        _, advice = heat(session, demo, datetime.combine(today, hour, tzinfo=zone), 30)
+        assert advice, f"no suggestion on {today} at {hour}"

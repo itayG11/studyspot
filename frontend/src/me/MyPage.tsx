@@ -162,6 +162,8 @@ export function MyPage() {
 
 const STILL_HERE_OFFER_MS = 30 * 60_000
 const ENDING_SOON_MS = 10 * 60_000 // the time is nearly up: say that leaving frees the place
+// Offered when no room or seat is free: walk in, no booking (backend/app/api/reports.py).
+const SHARED_KINDS = new Set(['open_area', 'library'])
 const REPORT_FROM_MS = 30 * 60_000 // a booked room or seat can be reported taken from this long before its start...
 const REPORT_UNTIL_MS = 15 * 60_000 // ...until this long after it (the arrival window, backend/app/reports.py)
 const PREVIOUS_MAY_STAY_MS = 30 * 60_000 // a booked room this close to its start: the last student may still be there
@@ -308,7 +310,9 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
         <span className={booking.status === 'checked_in' ? `${styles.status} ${styles.statusIn}` : styles.status}>
           {STATUS_LABELS[booking.status] ?? booking.status}
         </span>
-        <span className={styles.bookingTitle}>{where}</span>
+        <Link to={`/${slug}/spaces/${booking.place_id}`} className={styles.bookingTitle}>
+          {where}
+        </Link>
         <span className={styles.bookingWhen}>
           {day} · <span className={styles.num}>{time}</span>
         </span>
@@ -360,6 +364,12 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
           />
         )}
       </div>
+      {elsewhere === null && booking.reported && booking.status === 'booked' && (
+        <p className={styles.elsewhere}>
+          דיווחת שהמקום תפוס. ההזמנה נשמרת: אם הוא מתפנה, סורקים את השלט כרגיל. אם לא, אפשר לבטל.{' '}
+          <Link to={`/${slug}#finder`}>לחפש מקום</Link>
+        </p>
+      )}
       {elsewhere !== null && (
         <div className={styles.elsewhere}>
           <p>הדיווח נשמר למוסד, בלי שם של מי שהיה שם.</p>
@@ -373,7 +383,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
                     {a.place_name}
                     {a.seat_label && `, תא ${a.seat_label}`}
                   </Link>{' '}
-                  · בניין {a.building_code} · {a.walk_minutes} דקות הליכה
+                  {SHARED_KINDS.has(a.kind) && ' · מתחם פתוח, בלי הזמנה'} · בניין {a.building_code} · {a.walk_minutes} דקות הליכה
                 </li>
               ))}
             </ul>

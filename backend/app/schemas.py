@@ -558,6 +558,9 @@ class AlternativeOut(BaseModel):
     place_name: str
     building_code: str
     walk_minutes: int  # from the place that was booked
+    # The kind of place: the booked kind, or an open study area or library when
+    # nothing of that kind is free (no booking needed there).
+    kind: PlaceKind
     seat_id: int | None = None
     seat_label: str | None = None
     free_until: datetime | None = None
