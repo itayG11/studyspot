@@ -262,6 +262,7 @@ export interface Alternative {
   place_name: string
   building_code: string
   walk_minutes: number // from the place that was booked
+  kind: PlaceKind // the booked kind, or an open area or library when nothing of that kind is free
   seat_id: number | null
   seat_label: string | null
   free_until: string | null

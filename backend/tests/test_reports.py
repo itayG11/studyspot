@@ -57,6 +57,11 @@ def report(client, booking):
     return client.post(f"/bookings/{booking.id}/report-occupied")
 
 
+def rooms_in(alternatives):
+    """The rooms offered, leaving out the open study areas offered when no room is free."""
+    return [a for a in alternatives if a["kind"] == "group_room"]
+
+
 def open_room(session, braude, building_code="EM", name="EM-extra"):
     """Another group room that is open when EM107 is."""
     building = next(b for b in braude.buildings if b.code == building_code)
@@ -160,7 +165,7 @@ def test_a_free_room_is_offered_and_never_the_room_itself(client, session, braud
 def test_a_room_that_is_busy_during_the_booking_is_not_offered(client, session, braude, student, other):
     room, spare = place_named(braude, "EM", "EM107"), open_room(session, braude)
     booked(session, braude, other, spare, starts=NOW + timedelta(minutes=30))  # inside the hour the student booked
-    assert report(client, booked(session, braude, student, room)).json()["alternatives"] == []
+    assert rooms_in(report(client, booked(session, braude, student, room)).json()["alternatives"]) == []
 
 
 def test_a_room_that_may_still_be_taken_or_is_on_a_break_is_not_offered(client, session, braude, student, other):
@@ -173,7 +178,7 @@ def test_a_room_that_may_still_be_taken_or_is_on_a_break_is_not_offered(client, 
         started_at=ended - timedelta(hours=1), expires_at=ended, ended_at=ended, end_reason=CheckInEndReason.EXPIRED,
     ))
     session.flush()
-    assert report(client, booked(session, braude, student, room)).json()["alternatives"] == []
+    assert rooms_in(report(client, booked(session, braude, student, room)).json()["alternatives"]) == []
 
 
 def test_the_nearest_come_first_and_there_are_at_most_three(client, session, braude, student):
@@ -234,7 +239,7 @@ def test_a_room_that_closes_before_the_booking_would_end_is_not_offered(client, 
         hours.closes = (NOW + timedelta(minutes=30)).time()  # shuts half an hour in; the booking runs an hour
     session.flush()
     session.refresh(spare)
-    assert report(client, booked(session, braude, student, room)).json()["alternatives"] == []
+    assert rooms_in(report(client, booked(session, braude, student, room)).json()["alternatives"]) == []
 
 
 def test_a_booking_that_was_reported_says_so_when_listed_again(client, session, braude, student):
@@ -242,3 +247,50 @@ def test_a_booking_that_was_reported_says_so_when_listed_again(client, session, 
     assert client.get("/me/bookings").json()[0]["reported"] is False
     report(client, booking)
     assert client.get("/me/bookings").json()[0]["reported"] is True
+
+
+# --- When nothing of the same kind is free (the user's trial institution, 10 Nov) ----------
+
+
+def test_with_no_other_room_free_an_open_study_area_is_offered(client, session, braude, student):
+    room = place_named(braude, "EM", "EM107")  # the only group room
+    alternatives = report(client, booked(session, braude, student, room)).json()["alternatives"]
+    assert alternatives and len(alternatives) <= 3
+    assert {a["kind"] for a in alternatives} <= {"open_area", "library"}
+    assert [a["walk_minutes"] for a in alternatives] == sorted(a["walk_minutes"] for a in alternatives)
+
+
+def test_a_study_area_is_not_offered_when_a_room_is_free(client, session, braude, student):
+    room, spare = place_named(braude, "EM", "EM107"), open_room(session, braude)
+    alternatives = report(client, booked(session, braude, student, room)).json()["alternatives"]
+    assert [(a["place_id"], a["kind"]) for a in alternatives] == [(spare.id, "group_room")]
+
+
+def test_a_full_or_closed_study_area_is_not_offered(client, session, braude, student, other):
+    room = place_named(braude, "EM", "EM107")
+    areas = [p for b in braude.buildings for p in b.places if p.kind in (PlaceKind.OPEN_AREA, PlaceKind.LIBRARY)]
+    full, closed = areas[0], areas[1:]
+    full.capacity = 1
+    session.add(CheckIn(
+        institution_id=braude.id, user_id=other.id, place_id=full.id,
+        started_at=NOW - timedelta(minutes=10), expires_at=NOW + timedelta(hours=1),
+    ))
+    for place in closed:
+        for hours in place.opening_hours:
+            hours.closes = (NOW + timedelta(minutes=30)).time()
+    session.flush()
+    for place in areas:
+        session.refresh(place)
+    assert report(client, booked(session, braude, student, room)).json()["alternatives"] == []
+
+
+def test_with_no_free_seat_in_any_lab_a_study_area_is_offered(client, session, braude, student):
+    labs = [p for b in braude.buildings for p in b.places if p.kind == PlaceKind.COMPUTER_LAB]
+    mine_lab = labs[0]
+    for lab in labs:
+        for i, seat in enumerate(lab.seats):
+            if lab is mine_lab and i == 0:
+                continue
+            booked(session, braude, make_user(session, braude, f"s{lab.id}-{i}@braude.example"), lab, seat=seat)
+    alternatives = report(client, booked(session, braude, student, mine_lab, seat=mine_lab.seats[0])).json()["alternatives"]
+    assert alternatives and {a["kind"] for a in alternatives} <= {"open_area", "library"}
