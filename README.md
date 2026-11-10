@@ -179,4 +179,4 @@ Every push runs [CI](.github/workflows/ci.yml): the server's tests on a real Pos
 
 ## Rights
 
-All rights reserved for now. The code is public so it can be read and discussed.
+© 2026 Itay Gabay. All rights reserved. The code is public so it can be read and discussed, but it may not be copied, modified or used without my written permission. The open-source libraries it uses keep their own licenses, listed on the site's licenses page.
