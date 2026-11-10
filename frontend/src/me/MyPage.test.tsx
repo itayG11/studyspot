@@ -226,7 +226,8 @@ describe('MyPage, someone is in the booked place', () => {
     await userEvent.click(within(room).getByRole('button', { name: 'יש מישהו במקום' }))
     await userEvent.click(within(room).getByRole('button', { name: 'כן, לדווח' }))
     const list = await within(room).findByRole('list', { name: 'מקומות פנויים קרובים' })
-    expect(list).toHaveTextContent('מתחם פתוח, בלי הזמנה')
+    expect(list).toHaveTextContent('מתחם 1 · בלי הזמנה')
+    expect(list).not.toHaveTextContent('מתחם פתוח') // a library is not an open area
   })
 })
 

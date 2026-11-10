@@ -383,7 +383,7 @@ function BookingRow({ booking, place, onChange }: { booking: Booking; place: Pla
                     {a.place_name}
                     {a.seat_label && `, תא ${a.seat_label}`}
                   </Link>{' '}
-                  {SHARED_KINDS.has(a.kind) && ' · מתחם פתוח, בלי הזמנה'} · בניין {a.building_code} · {a.walk_minutes} דקות הליכה
+                  {SHARED_KINDS.has(a.kind) && ' · בלי הזמנה'} · בניין {a.building_code} · {a.walk_minutes} דקות הליכה
                 </li>
               ))}
             </ul>
