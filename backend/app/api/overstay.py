@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.admin import AdminDep, SessionDep, SettingsDep, _demo_slug, _managed, _refuse_demo
+from app.api.deps import Slug
 from app.clock import get_now
 from app.models import Building, Institution, OccupancyReport, Place, ReportResolution, ReportStatus, Seat
 from app.overstay import heat, open_count
@@ -22,7 +23,6 @@ from app.schemas import HeatOut, OverstayOut, OverstayPatchIn, ReportItemOut, Re
 router = APIRouter(prefix="/admin", tags=["overstay"])
 
 NowDep = Annotated[datetime, Depends(get_now)]
-Slug = Annotated[str, Path(max_length=64)]
 MAX_LIST = 200
 
 

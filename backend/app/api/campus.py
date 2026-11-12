@@ -11,7 +11,7 @@ from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import bookings as rules
-from app.api.deps import get_session
+from app.api.deps import Slug, get_session
 from app.bookings import MIN_WALK_IN, holding
 from app.breaks import room_breaks, seat_breaks
 from app.clock import get_now
@@ -50,7 +50,6 @@ router = APIRouter(tags=["campus"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 NowDep = Annotated[datetime, Depends(get_now)]
-Slug = Annotated[str, Path(max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]  # as slug_format
 
 
 def _institution(session: Session, slug: str) -> Institution:

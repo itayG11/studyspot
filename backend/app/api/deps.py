@@ -1,12 +1,18 @@
 """Dependencies shared by the API routes."""
 
 from collections.abc import Iterator
+from typing import Annotated
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Path, Request
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import SessionLocal, get_engine
+
+# An institution's address in a path: as the table's slug_format check. One
+# definition, so every route refuses a malformed value (a line break, say)
+# before it reaches a query or a log line.
+Slug = Annotated[str, Path(max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")]
 
 
 def get_session() -> Iterator[Session]:

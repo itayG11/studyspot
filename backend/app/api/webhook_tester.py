@@ -19,14 +19,13 @@ from app.api.connections import (
     _webhook_out,
     sample_limit,
 )
-from app.api.deps import limited_body
+from app.api.deps import Slug, limited_body
 from app.clock import get_now
 from app.ratelimit import per_ip, write_limit
 
 router = APIRouter(tags=["webhook tester"])
 
 NowDep = Annotated[datetime, Depends(get_now)]
-Slug = Annotated[str, Path(max_length=64)]
 tester_limit = per_ip("webhook-tester", limit=120, window_seconds=60, evict=True)
 
 
