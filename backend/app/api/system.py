@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import campus_setup, closing, institutions
 from app.api.auth import get_mailer
-from app.api.deps import get_session
+from app.api.deps import Slug, get_session
 from app.auth import get_current_user
 from app.clock import get_now
 from app.config import Settings, get_settings
@@ -41,7 +41,6 @@ OwnerDep = Annotated[User, Depends(require_role(UserRole.SYSTEM_ADMIN))]
 UserDep = Annotated[User, Depends(get_current_user)]
 NowDep = Annotated[datetime, Depends(get_now)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-Slug = Annotated[str, Path(max_length=64)]
 
 
 def _key(settings: Settings) -> bytes:
@@ -150,7 +149,7 @@ def close(
             try:
                 mailer.send(to, subject, text)
             except Refusal:
-                log.warning("closing %s: the email to an admin did not go out", slug)
+                log.warning("closing %s: the email to an admin did not go out", institution.slug)
     return _row(db, institution)
 
 

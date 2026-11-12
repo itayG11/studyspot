@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 
 from app import api_keys, webhooks
 from app.api.admin import AdminDep, SessionDep, SettingsDep, _demo_slug, _managed, _refuse_demo
+from app.api.deps import Slug
 from app.clock import get_now
 from app.errors import Refusal
 from app.models import ApiKey, DeliveryStatus, Institution, WebhookDelivery, WebhookEndpoint
@@ -22,7 +23,6 @@ from app.ratelimit import LIMITERS, SlidingWindow, _too_many, write_limit
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 NowDep = Annotated[datetime, Depends(get_now)]
-Slug = Annotated[str, Path(max_length=64)]
 
 
 class ApiKeyIn(BaseModel):
