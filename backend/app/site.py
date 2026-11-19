@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from starlette.middleware.gzip import GZipMiddleware
 
-from app import shares
+from app import seo, shares
 from app.api.deps import get_session
 from app.api.shares import share_key
 from app.clock import get_now
@@ -145,6 +145,15 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
     # the moment it ends.
     index_html = index.read_text(encoding="utf-8") if index.is_file() else ""
 
+    # The public pages with their own title and canonical link (app/seo.py),
+    # made once. Without the address they are named after, they are left out.
+    origin = f"{canonical.scheme}://{canonical.netloc}"
+    public_pages = (
+        {path: seo.page_html(index_html, path, origin) for path in seo.PAGES}
+        if index_html and canonical.scheme and canonical.hostname
+        else {}
+    )
+
     @site.api_route(
         "/s/{token}", methods=["GET", "HEAD"], include_in_schema=False, dependencies=[Depends(share_page_limit)]
     )
@@ -172,7 +181,7 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
 
     # HEAD too: uptime monitors and `curl -I` ask that way.
     @site.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
-    def web_app(path: str) -> FileResponse:
+    def web_app(path: str) -> Response:
         if path == "api" or path.startswith(("api/", "embed/")):
             # Under embed/ only the widget's own address exists (above).
             raise HTTPException(404)  # an API address the API did not take
@@ -183,6 +192,8 @@ def create_site(static_dir: Path, api_docs: bool = False) -> Edge:
             return FileResponse(file, headers={"Cache-Control": ONE_YEAR if path.startswith("assets/") else ONE_WEEK})
         if "." in path.rsplit("/", 1)[-1]:
             raise HTTPException(404)  # a missing file, not a page of the app
+        if path in public_pages:
+            return HTMLResponse(public_pages[path], headers={"Cache-Control": "no-cache"})
         # Every other address is a page of the web app; its router decides.
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
